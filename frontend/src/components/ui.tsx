@@ -236,3 +236,60 @@ export function Spinner() {
     </div>
   );
 }
+
+export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  label?: string;
+  variant?: InputVariant;
+  options: { value: string; label: string }[];
+}
+
+export function Select({
+  label,
+  variant = 'admin',
+  className = '',
+  options,
+  id: externalId,
+  value,
+  defaultValue,
+  onFocus,
+  onBlur,
+  ...props
+}: SelectProps) {
+  const autoId = useId();
+  const id = externalId ?? autoId;
+  const displayLabel = label ?? 'Seçiniz';
+  const { setFocused, floated } = useFloatedState(value, defaultValue);
+
+  return (
+    <FloatFieldShell
+      variant={variant}
+      floated={floated}
+      className={className}
+      displayLabel={displayLabel}
+    >
+      <select
+        id={id}
+        aria-label={displayLabel}
+        className="float-field__input float-field__select"
+        value={value}
+        defaultValue={defaultValue}
+        onFocus={(e) => {
+          setFocused(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocused(false);
+          onBlur?.(e);
+        }}
+        {...props}
+      >
+        <option value="">Seçiniz</option>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </FloatFieldShell>
+  );
+}

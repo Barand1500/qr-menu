@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Package, ChevronRight, Pencil } from 'lucide-react';
+import { X, Package, ChevronRight } from 'lucide-react';
 import { api, formatPrice, imageUrl } from '@/lib/api';
 import { Badge, Button, Spinner } from '@/components/ui';
 
@@ -139,22 +139,6 @@ export default function GroupProductsModal({
             </ul>
           )}
         </div>
-
-        {products.length > 0 && (
-          <div
-            className="px-6 py-4 shrink-0 flex items-center gap-2 text-sm admin-text-muted"
-            style={{
-              borderTop: '1px solid var(--admin-card-border)',
-              background: 'var(--admin-input-bg)',
-            }}
-          >
-            <Pencil className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
-            <span>
-              Düzenlemek isterseniz bir ürüne <strong className="text-[var(--admin-text)]">tıklayınız</strong>
-              — ürünler sayfasında düzenleme ekranı açılır.
-            </span>
-          </div>
-        )}
 
         <div className="px-6 pb-6 pt-2 shrink-0">
           <Button variant="secondary" className="w-full" onClick={onClose}>

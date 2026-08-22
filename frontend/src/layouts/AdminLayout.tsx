@@ -32,11 +32,13 @@ function NavItem({
   to,
   label,
   end,
+  sub,
   onNavigate,
 }: {
   to: string;
   label: string;
   end?: boolean;
+  sub?: boolean;
   onNavigate?: () => void;
 }) {
   return (
@@ -45,10 +47,8 @@ function NavItem({
       end={end}
       onClick={onNavigate}
       className={({ isActive }) =>
-        `block px-5 py-3 text-[15px] font-medium rounded-xl transition-all duration-200 ${
-          isActive
-            ? 'bg-[var(--admin-sidebar-active-bg)] text-[var(--admin-sidebar-active-text)] shadow-sm'
-            : 'text-[var(--admin-sidebar-text)] hover:bg-white/10 hover:text-white'
+        `sidebar-nav-link${sub ? ' sidebar-nav-link--sub' : ''}${
+          isActive ? ' sidebar-nav-link--active' : ''
         }`
       }
     >
@@ -88,10 +88,9 @@ export default function AdminLayout() {
 
   const sidebar = (
     <aside
-      className="flex flex-col w-full h-full min-h-screen"
+      className="flex flex-col w-full h-full min-h-screen overflow-hidden"
       style={{ background: 'var(--admin-sidebar)' }}
     >
-      {/* Logo */}
       <div className="px-6 pt-8 pb-6">
         <h1 className="text-xl font-bold text-white tracking-tight">Menu QR</h1>
         <p className="text-[11px] text-white/50 uppercase tracking-[0.15em] mt-1">
@@ -99,8 +98,7 @@ export default function AdminLayout() {
         </p>
       </div>
 
-      {/* Menüyü Gör */}
-      <div className="px-5 mb-6">
+      <div className="px-5 mb-5">
         <button
           onClick={openPublicMenu}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all hover:brightness-105 active:scale-[0.98]"
@@ -114,24 +112,20 @@ export default function AdminLayout() {
         </button>
       </div>
 
-      {/* Divider */}
-      <div className="mx-5 h-px bg-white/10 mb-4" />
+      <div className="mx-5 h-px bg-white/10 mb-2" />
 
-      {/* Navigation */}
-      <nav className="flex-1 px-4 space-y-1 admin-scroll overflow-y-auto pb-8">
+      <nav className="sidebar-nav flex-1 overflow-y-auto admin-scroll pb-8">
         {mainNav.map(({ to, label, end }) => (
           <NavItem key={to} to={to} label={label} end={end} onNavigate={closeMobile} />
         ))}
 
-        {/* Raporlar */}
-        <div className="pt-3">
+        <div className="pt-2">
           <button
             onClick={() => setReportsOpen(!reportsOpen)}
-            className={`w-full flex items-center justify-between px-5 py-3 text-[15px] font-medium rounded-xl transition-all ${
-              reportsActive && !reportsOpen
-                ? 'bg-[var(--admin-sidebar-active-bg)] text-[var(--admin-sidebar-active-text)]'
-                : 'text-[var(--admin-sidebar-text)] hover:bg-white/10'
+            className={`sidebar-nav-link w-full text-left flex items-center justify-between ${
+              reportsActive && !reportsOpen ? 'sidebar-nav-link--active' : ''
             }`}
+            type="button"
           >
             <span>Raporlar</span>
             <ChevronDown
@@ -139,23 +133,21 @@ export default function AdminLayout() {
             />
           </button>
           {reportsOpen && (
-            <div className="mt-1 ml-3 pl-3 border-l border-white/15 space-y-0.5">
+            <div className="mt-0.5">
               {reportNav.map(({ to, label }) => (
-                <NavItem key={to} to={to} label={label} onNavigate={closeMobile} />
+                <NavItem key={to} to={to} label={label} sub onNavigate={closeMobile} />
               ))}
             </div>
           )}
         </div>
 
-        {/* Yönetim */}
-        <div className="pt-1">
+        <div>
           <button
             onClick={() => setManagementOpen(!managementOpen)}
-            className={`w-full flex items-center justify-between px-5 py-3 text-[15px] font-medium rounded-xl transition-all ${
-              managementActive && !managementOpen
-                ? 'bg-[var(--admin-sidebar-active-bg)] text-[var(--admin-sidebar-active-text)]'
-                : 'text-[var(--admin-sidebar-text)] hover:bg-white/10'
+            className={`sidebar-nav-link w-full text-left flex items-center justify-between ${
+              managementActive && !managementOpen ? 'sidebar-nav-link--active' : ''
             }`}
+            type="button"
           >
             <span>Yönetim</span>
             <ChevronDown
@@ -163,16 +155,15 @@ export default function AdminLayout() {
             />
           </button>
           {managementOpen && (
-            <div className="mt-1 ml-3 pl-3 border-l border-white/15 space-y-0.5">
+            <div className="mt-0.5">
               {managementNav.map(({ to, label }) => (
-                <NavItem key={to} to={to} label={label} onNavigate={closeMobile} />
+                <NavItem key={to} to={to} label={label} sub onNavigate={closeMobile} />
               ))}
             </div>
           )}
         </div>
       </nav>
 
-      {/* Footer — restoran adı */}
       <div className="px-6 py-5 border-t border-white/10 mt-auto">
         <p className="text-xs text-white/40 truncate">{user?.restaurant.name}</p>
       </div>
@@ -188,7 +179,6 @@ export default function AdminLayout() {
         />
       )}
 
-      {/* Sidebar — tam yükseklik, sabit genişlik */}
       <div
         className={`fixed inset-y-0 left-0 z-50 w-[260px] transform transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
@@ -197,7 +187,6 @@ export default function AdminLayout() {
         {sidebar}
       </div>
 
-      {/* Ana içerik */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         <header
           className="sticky top-0 z-30 px-4 sm:px-6 h-16 flex items-center gap-4 shrink-0"

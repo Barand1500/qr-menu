@@ -7,8 +7,6 @@ import {
   GripVertical,
   FolderTree,
   Layers,
-  SlidersHorizontal,
-  ChevronDown,
   X,
   Package,
   CornerDownRight,
@@ -34,6 +32,11 @@ import { api, imageUrl } from '@/lib/api';
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Spinner } from '@/components/ui';
 import GroupModal, { type GroupFormState } from '@/components/GroupModal';
 import GroupProductsModal from '@/components/GroupProductsModal';
+import {
+  AdminFilterBar,
+  FilterChipGroup,
+  ToggleSwitch,
+} from '@/components/AdminFilterBar';
 
 interface Group {
   id: number;
@@ -286,6 +289,7 @@ export default function GroupsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [hideSubGroups, setHideSubGroups] = useState(false);
   const [sortMode, setSortMode] = useState(false);
 
   const [modalMode, setModalMode] = useState<ModalMode>(null);
@@ -344,6 +348,10 @@ export default function GroupsPage() {
     if (typeFilter === 'main') list = list.filter((g) => !g.isSubGroup);
     if (typeFilter === 'sub') list = list.filter((g) => g.isSubGroup);
 
+    if (hideSubGroups) {
+      return list.filter((g) => !g.isSubGroup).sort((a, b) => a.sortOrder - b.sortOrder);
+    }
+
     const roots = list.filter((g) => !g.isSubGroup).sort((a, b) => a.sortOrder - b.sortOrder);
     const ordered: Group[] = [];
     for (const root of roots) {
@@ -355,12 +363,13 @@ export default function GroupsPage() {
     const seen = new Set(ordered.map((g) => g.id));
     list.filter((g) => !seen.has(g.id)).forEach((g) => ordered.push(g));
     return ordered;
-  }, [allGroups, search, statusFilter, typeFilter]);
+  }, [allGroups, search, statusFilter, typeFilter, hideSubGroups]);
 
   const activeFilterCount = [
     statusFilter !== 'all',
     typeFilter !== 'all',
     search.trim().length > 0,
+    hideSubGroups,
   ].filter(Boolean).length;
 
   function openCreateMain() {
@@ -505,6 +514,7 @@ export default function GroupsPage() {
     setSearch('');
     setStatusFilter('all');
     setTypeFilter('all');
+    setHideSubGroups(false);
   }
 
   if (loading) return <Spinner />;
@@ -560,124 +570,49 @@ export default function GroupsPage() {
       )}
 
       <Card className="overflow-hidden !p-0">
-        <div
-          className="p-4 sm:p-5 border-b flex flex-col gap-4"
-          style={{ borderColor: 'var(--admin-card-border)' }}
+        <AdminFilterBar
+          search={
+            <Input
+              label="Grup adı veya üst grup ara..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          }
+          filterOpen={filterOpen}
+          onFilterToggle={() => setFilterOpen(!filterOpen)}
+          activeFilterCount={activeFilterCount}
+          recordLabel={`${filteredGroups.length} / ${allGroups.length} kayıt`}
+          onClear={clearFilters}
         >
-          <div className="flex flex-col lg:flex-row lg:items-center gap-3 justify-between">
-            <div className="relative flex-1 max-w-md">
-              <Input
-                label="Grup adı veya üst grup ara..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => setFilterOpen(!filterOpen)}
-                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition border ${
-                  filterOpen ? 'ring-2 ring-[var(--admin-accent)]' : ''
-                }`}
-                style={{
-                  background: 'var(--admin-input-bg)',
-                  borderColor: 'var(--admin-card-border)',
-                  color: 'var(--admin-text)',
-                }}
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-                Filtrele
-                {activeFilterCount > 0 && (
-                  <span
-                    className="ml-1 min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center text-white"
-                    style={{ background: 'var(--admin-accent)' }}
-                  >
-                    {activeFilterCount}
-                  </span>
-                )}
-                <ChevronDown
-                  className={`w-4 h-4 transition-transform ${filterOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-              <span className="text-sm admin-text-muted">
-                {filteredGroups.length} / {allGroups.length} kayıt
-              </span>
-            </div>
+          <FilterChipGroup
+            label="Durum"
+            value={statusFilter}
+            options={[
+              { value: 'all', label: 'Tümü' },
+              { value: 'active', label: 'Aktif' },
+              { value: 'passive', label: 'Pasif' },
+            ]}
+            onChange={setStatusFilter}
+          />
+          <FilterChipGroup
+            label="Grup Tipi"
+            value={typeFilter}
+            options={[
+              { value: 'all', label: 'Tümü' },
+              { value: 'main', label: 'Ana Grup' },
+              { value: 'sub', label: 'Alt Grup' },
+            ]}
+            onChange={setTypeFilter}
+          />
+          <div className="flex items-center">
+            <ToggleSwitch
+              checked={hideSubGroups}
+              onChange={setHideSubGroups}
+              label="Alt grupları gizle"
+              description="Listede yalnızca ana gruplar görünür"
+            />
           </div>
-
-          <div
-            className={`grid transition-all duration-300 ease-out ${
-              filterOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-            }`}
-          >
-            <div className="overflow-hidden">
-              <div
-                className="rounded-2xl p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4"
-                style={{ background: 'var(--admin-input-bg)' }}
-              >
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
-                    Durum
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {(
-                      [
-                        ['all', 'Tümü'],
-                        ['active', 'Aktif'],
-                        ['passive', 'Pasif'],
-                      ] as const
-                    ).map(([val, label]) => (
-                      <button
-                        key={val}
-                        onClick={() => setStatusFilter(val)}
-                        className="px-3 py-1.5 rounded-xl text-sm font-medium transition"
-                        style={{
-                          background:
-                            statusFilter === val ? 'var(--admin-accent)' : 'var(--admin-card)',
-                          color:
-                            statusFilter === val ? '#fff' : 'var(--admin-text-muted)',
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
-                    Grup Tipi
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {(
-                      [
-                        ['all', 'Tümü'],
-                        ['main', 'Ana Grup'],
-                        ['sub', 'Alt Grup'],
-                      ] as const
-                    ).map(([val, label]) => (
-                      <button
-                        key={val}
-                        onClick={() => setTypeFilter(val)}
-                        className="px-3 py-1.5 rounded-xl text-sm font-medium transition"
-                        style={{
-                          background:
-                            typeFilter === val ? 'var(--admin-accent)' : 'var(--admin-card)',
-                          color: typeFilter === val ? '#fff' : 'var(--admin-text-muted)',
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-end">
-                  <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full sm:w-auto">
-                    Filtreleri Temizle
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        </AdminFilterBar>
 
         <div className="overflow-x-auto admin-scroll">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

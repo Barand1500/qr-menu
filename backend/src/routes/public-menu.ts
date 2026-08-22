@@ -45,6 +45,7 @@ router.get('/:slug', async (req, res) => {
     }),
     prisma.showcaseImage.findMany({
       where: { restaurantId: restaurant.id, isActive: true },
+      include: { translations: { where: { languageId: langId } } },
       orderBy: { sortOrder: 'asc' },
     }),
     prisma.welcomeMessage.findFirst({
@@ -64,7 +65,13 @@ router.get('/:slug', async (req, res) => {
     },
     welcomeMessage: welcomeMessage?.message || '',
     languages: languages.map((l) => ({ code: l.code, name: l.name })),
-    showcase,
+    showcase: showcase.map((s) => ({
+      id: s.id,
+      imageUrl: s.imageUrl,
+      title1: s.translations[0]?.title1 || '',
+      title2: s.translations[0]?.title2 || '',
+      sortOrder: s.sortOrder,
+    })),
     groups: groups.map((g) => ({
       id: g.id,
       name: g.translations[0]?.name || '',

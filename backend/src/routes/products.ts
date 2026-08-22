@@ -94,7 +94,20 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const { groupId, price, translations, sortOrder, isActive } = req.body;
+  const {
+    groupId,
+    price,
+    translations,
+    sortOrder,
+    isActive,
+    prepTimeMinutes,
+    calories,
+    isVegan,
+    isVegetarian,
+    isGlutenFree,
+    isDiabetic,
+    isRecommended,
+  } = req.body;
 
   const group = await prisma.group.findFirst({
     where: { id: Number(groupId), restaurantId: restaurantId! },
@@ -113,12 +126,27 @@ router.post('/', async (req, res) => {
       price: price ?? 0,
       sortOrder: sortOrder ?? (maxOrder._max.sortOrder ?? 0) + 1,
       isActive: isActive ?? true,
+      prepTimeMinutes: prepTimeMinutes != null ? Number(prepTimeMinutes) : null,
+      calories: calories != null ? Number(calories) : null,
+      isVegan: isVegan ?? false,
+      isVegetarian: isVegetarian ?? false,
+      isGlutenFree: isGlutenFree ?? false,
+      isDiabetic: isDiabetic ?? false,
+      isRecommended: isRecommended ?? false,
       translations: {
         create: (translations || []).map(
-          (t: { languageId: number; name: string; description?: string }) => ({
+          (t: {
+            languageId: number;
+            name: string;
+            description?: string;
+            ingredients?: string;
+            allergens?: string;
+          }) => ({
             languageId: t.languageId,
             name: t.name,
             description: t.description,
+            ingredients: t.ingredients,
+            allergens: t.allergens,
           })
         ),
       },
@@ -135,21 +163,48 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   const id = Number(req.params.id);
-  const { groupId, price, translations, sortOrder, isActive, imageUrl } = req.body;
+  const {
+    groupId,
+    price,
+    translations,
+    sortOrder,
+    isActive,
+    imageUrl,
+    prepTimeMinutes,
+    calories,
+    isVegan,
+    isVegetarian,
+    isGlutenFree,
+    isDiabetic,
+    isRecommended,
+  } = req.body;
 
   const existing = await prisma.product.findFirst({ where: { id, restaurantId: restaurantId! } });
   if (!existing) return res.status(404).json({ message: 'Ürün bulunamadı' });
 
   if (translations?.length) {
-    for (const t of translations as { languageId: number; name: string; description?: string }[]) {
+    for (const t of translations as {
+      languageId: number;
+      name: string;
+      description?: string;
+      ingredients?: string;
+      allergens?: string;
+    }[]) {
       await prisma.productTranslation.upsert({
         where: { productId_languageId: { productId: id, languageId: t.languageId } },
-        update: { name: t.name, description: t.description },
+        update: {
+          name: t.name,
+          description: t.description,
+          ingredients: t.ingredients,
+          allergens: t.allergens,
+        },
         create: {
           productId: id,
           languageId: t.languageId,
           name: t.name,
           description: t.description,
+          ingredients: t.ingredients,
+          allergens: t.allergens,
         },
       });
     }
@@ -163,6 +218,17 @@ router.put('/:id', async (req, res) => {
       ...(sortOrder !== undefined && { sortOrder }),
       ...(isActive !== undefined && { isActive }),
       ...(imageUrl !== undefined && { imageUrl }),
+      ...(prepTimeMinutes !== undefined && {
+        prepTimeMinutes: prepTimeMinutes != null ? Number(prepTimeMinutes) : null,
+      }),
+      ...(calories !== undefined && {
+        calories: calories != null ? Number(calories) : null,
+      }),
+      ...(isVegan !== undefined && { isVegan }),
+      ...(isVegetarian !== undefined && { isVegetarian }),
+      ...(isGlutenFree !== undefined && { isGlutenFree }),
+      ...(isDiabetic !== undefined && { isDiabetic }),
+      ...(isRecommended !== undefined && { isRecommended }),
     },
     include: {
       translations: { include: { language: true } },
@@ -238,6 +304,13 @@ async function mapProduct(
     id: number;
     groupId: number;
     price: unknown;
+    prepTimeMinutes: number | null;
+    calories: number | null;
+    isVegan: boolean;
+    isVegetarian: boolean;
+    isGlutenFree: boolean;
+    isDiabetic: boolean;
+    isRecommended: boolean;
     imageUrl: string | null;
     sortOrder: number;
     isActive: boolean;
@@ -245,6 +318,8 @@ async function mapProduct(
       languageId: number;
       name: string;
       description: string | null;
+      ingredients: string | null;
+      allergens: string | null;
       language: { code: string };
     }[];
     group: {
@@ -263,6 +338,13 @@ async function mapProduct(
     groupId: product.groupId,
     groupName: groupTr?.name || product.group.translations[0]?.name || '',
     price: Number(product.price),
+    prepTimeMinutes: product.prepTimeMinutes,
+    calories: product.calories,
+    isVegan: product.isVegan,
+    isVegetarian: product.isVegetarian,
+    isGlutenFree: product.isGlutenFree,
+    isDiabetic: product.isDiabetic,
+    isRecommended: product.isRecommended,
     imageUrl: product.imageUrl,
     sortOrder: product.sortOrder,
     isActive: product.isActive,
@@ -273,6 +355,8 @@ async function mapProduct(
       languageCode: t.language.code,
       name: t.name,
       description: t.description,
+      ingredients: t.ingredients,
+      allergens: t.allergens,
     })),
   };
 }

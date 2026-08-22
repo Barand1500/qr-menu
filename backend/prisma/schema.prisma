@@ -62,9 +62,10 @@ model Language {
   name     String  @db.VarChar(50)
   isActive Boolean @default(true) @map("is_active")
 
-  groupTranslations    GroupTranslation[]
-  productTranslations  ProductTranslation[]
-  welcomeMessages      WelcomeMessage[]
+  groupTranslations     GroupTranslation[]
+  productTranslations   ProductTranslation[]
+  showcaseTranslations  ShowcaseTranslation[]
+  welcomeMessages       WelcomeMessage[]
 
   @@map("languages")
 }
@@ -106,19 +107,27 @@ model GroupTranslation {
 }
 
 model Product {
-  id           Int      @id @default(autoincrement())
-  restaurantId Int      @map("restaurant_id")
-  groupId      Int      @map("group_id")
-  price        Decimal  @default(0) @db.Decimal(10, 2)
-  imageUrl     String?  @map("image_url") @db.VarChar(500)
-  sortOrder    Int      @default(0) @map("sort_order")
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id              Int      @id @default(autoincrement())
+  restaurantId    Int      @map("restaurant_id")
+  groupId         Int      @map("group_id")
+  price           Decimal  @default(0) @db.Decimal(10, 2)
+  prepTimeMinutes Int?     @map("prep_time_minutes")
+  calories        Int?
+  isVegan         Boolean  @default(false) @map("is_vegan")
+  isVegetarian    Boolean  @default(false) @map("is_vegetarian")
+  isGlutenFree    Boolean  @default(false) @map("is_gluten_free")
+  isDiabetic      Boolean  @default(false) @map("is_diabetic")
+  isRecommended   Boolean  @default(false) @map("is_recommended")
+  imageUrl        String?  @map("image_url") @db.VarChar(500)
+  sortOrder       Int      @default(0) @map("sort_order")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  restaurant   Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  group        Group                @relation(fields: [groupId], references: [id], onDelete: Restrict)
-  translations ProductTranslation[]
+  restaurant      Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  group           Group                @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  translations    ProductTranslation[]
+  showcaseImages  ShowcaseImage[]
 
   @@index([restaurantId, groupId, sortOrder])
   @@map("products")
@@ -130,6 +139,8 @@ model ProductTranslation {
   languageId  Int     @map("language_id")
   name        String  @db.VarChar(200)
   description String? @db.Text
+  ingredients String? @db.Text
+  allergens   String? @db.Text
 
   product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
@@ -141,6 +152,7 @@ model ProductTranslation {
 model ShowcaseImage {
   id           Int      @id @default(autoincrement())
   restaurantId Int      @map("restaurant_id")
+  productId    Int?     @map("product_id")
   name         String   @db.VarChar(200)
   imageUrl     String?  @map("image_url") @db.VarChar(500)
   sortOrder    Int      @default(0) @map("sort_order")
@@ -148,10 +160,26 @@ model ShowcaseImage {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant             @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  product      Product?               @relation(fields: [productId], references: [id], onDelete: SetNull)
+  translations ShowcaseTranslation[]
 
   @@index([restaurantId, sortOrder])
   @@map("showcase_images")
+}
+
+model ShowcaseTranslation {
+  id          Int     @id @default(autoincrement())
+  showcaseId  Int     @map("showcase_id")
+  languageId  Int     @map("language_id")
+  title1      String? @db.VarChar(200)
+  title2      String? @db.VarChar(200)
+
+  showcase ShowcaseImage @relation(fields: [showcaseId], references: [id], onDelete: Cascade)
+  language Language      @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([showcaseId, languageId])
+  @@map("showcase_translations")
 }
 
 model WelcomeMessage {

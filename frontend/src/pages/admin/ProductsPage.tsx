@@ -5,8 +5,6 @@ import {
   Pencil,
   EyeOff,
   Eye,
-  SlidersHorizontal,
-  ChevronDown,
 } from 'lucide-react';
 import { api, formatPrice, imageUrl } from '@/lib/api';
 import {
@@ -16,12 +14,18 @@ import {
   EmptyState,
   Input,
   PageHeader,
+  Select,
   Spinner,
 } from '@/components/ui';
 import ProductModal, {
   type ProductFormState,
   type ProductTranslationFields,
 } from '@/components/ProductModal';
+import {
+  AdminFilterBar,
+  FilterChipGroup,
+  FilterFieldLabel,
+} from '@/components/AdminFilterBar';
 
 interface Product {
   id: number;
@@ -29,6 +33,13 @@ interface Product {
   groupId: number;
   groupName: string;
   price: number;
+  prepTimeMinutes?: number | null;
+  calories?: number | null;
+  isVegan?: boolean;
+  isVegetarian?: boolean;
+  isGlutenFree?: boolean;
+  isDiabetic?: boolean;
+  isRecommended?: boolean;
   imageUrl?: string | null;
   sortOrder: number;
   isActive: boolean;
@@ -38,6 +49,8 @@ interface Product {
     languageCode: string;
     name: string;
     description?: string | null;
+    ingredients?: string | null;
+    allergens?: string | null;
   }[];
 }
 
@@ -60,6 +73,13 @@ type StatusFilter = 'all' | 'active' | 'passive';
 const emptyForm = (): ProductFormState => ({
   groupId: '',
   price: '',
+  prepTimeMinutes: '',
+  calories: '',
+  isVegan: false,
+  isVegetarian: false,
+  isGlutenFree: false,
+  isDiabetic: false,
+  isRecommended: false,
   translations: {},
   isActive: true,
 });
@@ -70,11 +90,20 @@ function buildFormFromProduct(product: Product): ProductFormState {
     translations[t.languageCode] = {
       name: t.name,
       description: t.description || '',
+      ingredients: t.ingredients || '',
+      allergens: t.allergens || '',
     };
   }
   return {
     groupId: product.groupId.toString(),
     price: product.price.toString(),
+    prepTimeMinutes: product.prepTimeMinutes?.toString() || '',
+    calories: product.calories?.toString() || '',
+    isVegan: product.isVegan ?? false,
+    isVegetarian: product.isVegetarian ?? false,
+    isGlutenFree: product.isGlutenFree ?? false,
+    isDiabetic: product.isDiabetic ?? false,
+    isRecommended: product.isRecommended ?? false,
     translations,
     isActive: product.isActive,
   };
@@ -214,11 +243,20 @@ export default function ProductsPage() {
         languageId: l.id,
         name: form.translations[l.code]?.name || '',
         description: form.translations[l.code]?.description || '',
+        ingredients: form.translations[l.code]?.ingredients || '',
+        allergens: form.translations[l.code]?.allergens || '',
       }));
 
       const payload = {
         groupId: Number(form.groupId),
         price: parseFloat(form.price) || 0,
+        prepTimeMinutes: form.prepTimeMinutes ? Number(form.prepTimeMinutes) : null,
+        calories: form.calories ? Number(form.calories) : null,
+        isVegan: form.isVegan,
+        isVegetarian: form.isVegetarian,
+        isGlutenFree: form.isGlutenFree,
+        isDiabetic: form.isDiabetic,
+        isRecommended: form.isRecommended,
         translations,
         isActive: form.isActive,
       };
@@ -274,6 +312,15 @@ export default function ProductsPage() {
     setStatusFilter('all');
   }
 
+  const groupFilterOptions = useMemo(
+    () =>
+      groups.map((g) => ({
+        value: g.id.toString(),
+        label: g.isSubGroup && g.parentName ? `${g.parentName} › ${g.name}` : g.name,
+      })),
+    [groups]
+  );
+
   if (loading) return <Spinner />;
 
   return (
@@ -289,122 +336,40 @@ export default function ProductsPage() {
       />
 
       <Card className="overflow-hidden !p-0">
-        <div
-          className="p-4 sm:p-5 border-b flex flex-col gap-4"
-          style={{ borderColor: 'var(--admin-card-border)' }}
+        <AdminFilterBar
+          search={
+            <Input
+              label="Ürün adı ara..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          }
+          filterOpen={filterOpen}
+          onFilterToggle={() => setFilterOpen(!filterOpen)}
+          activeFilterCount={activeFilterCount}
+          recordLabel={`${products.length} kayıt`}
+          onClear={clearFilters}
         >
-          <div className="flex flex-col lg:flex-row lg:items-center gap-3 justify-between">
-            <div className="relative flex-1 max-w-md">
-              <Input
-                label="Ürün adı ara..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => setFilterOpen(!filterOpen)}
-                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition border ${
-                  filterOpen ? 'ring-2 ring-[var(--admin-accent)]' : ''
-                }`}
-                style={{
-                  background: 'var(--admin-input-bg)',
-                  borderColor: 'var(--admin-card-border)',
-                  color: 'var(--admin-text)',
-                }}
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-                Filtrele
-                {activeFilterCount > 0 && (
-                  <span
-                    className="ml-1 min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center"
-                    style={{
-                      background: 'var(--admin-accent)',
-                      color: 'var(--admin-btn-primary-text)',
-                    }}
-                  >
-                    {activeFilterCount}
-                  </span>
-                )}
-                <ChevronDown
-                  className={`w-4 h-4 transition-transform ${filterOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-              <span className="text-sm admin-text-muted">{products.length} kayıt</span>
-            </div>
+          <div>
+            <FilterFieldLabel>Grup</FilterFieldLabel>
+            <Select
+              label="Tüm gruplar"
+              value={groupFilter}
+              options={groupFilterOptions}
+              onChange={(e) => setGroupFilter(e.target.value)}
+            />
           </div>
-
-          <div
-            className={`grid transition-all duration-300 ease-out ${
-              filterOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-            }`}
-          >
-            <div className="overflow-hidden">
-              <div
-                className="rounded-2xl p-4 grid sm:grid-cols-2 gap-4"
-                style={{ background: 'var(--admin-input-bg)' }}
-              >
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
-                    Grup
-                  </p>
-                  <select
-                    value={groupFilter}
-                    onChange={(e) => setGroupFilter(e.target.value)}
-                    className="w-full rounded-xl px-3 py-2.5 text-sm"
-                    style={{
-                      background: 'var(--admin-card)',
-                      border: '1px solid var(--admin-card-border)',
-                      color: 'var(--admin-text)',
-                    }}
-                  >
-                    <option value="">Tüm Gruplar</option>
-                    {groups.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.isSubGroup && g.parentName ? `${g.parentName} › ${g.name}` : g.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
-                    Durum
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {(
-                      [
-                        ['all', 'Tümü'],
-                        ['active', 'Aktif'],
-                        ['passive', 'Pasif'],
-                      ] as const
-                    ).map(([val, label]) => (
-                      <button
-                        key={val}
-                        onClick={() => setStatusFilter(val)}
-                        className="px-3 py-1.5 rounded-xl text-sm font-medium transition"
-                        style={{
-                          background:
-                            statusFilter === val ? 'var(--admin-accent)' : 'var(--admin-card)',
-                          color:
-                            statusFilter === val
-                              ? 'var(--admin-btn-primary-text)'
-                              : 'var(--admin-text-muted)',
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="sm:col-span-2">
-                  <Button variant="ghost" size="sm" onClick={clearFilters}>
-                    Filtreleri Temizle
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+          <FilterChipGroup
+            label="Durum"
+            value={statusFilter}
+            options={[
+              { value: 'all', label: 'Tümü' },
+              { value: 'active', label: 'Aktif' },
+              { value: 'passive', label: 'Pasif' },
+            ]}
+            onChange={setStatusFilter}
+          />
+        </AdminFilterBar>
 
         <div className="overflow-x-auto admin-scroll">
           <table className="w-full text-sm">
