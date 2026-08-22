@@ -155,7 +155,7 @@ export default function ShowcasePage() {
             <h2 className="text-lg font-semibold mb-4">
               {editing ? 'Düzenle' : 'Yeni Vitrin Görseli'}
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-4 float-field-stack">
               <Input label="Adı" value={name} onChange={(e) => setName(e.target.value)} />
               <div>
                 <label className="block text-sm font-medium mb-1">Görsel</label>

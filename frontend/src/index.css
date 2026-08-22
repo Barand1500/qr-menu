@@ -185,13 +185,29 @@ body {
 .float-field {
   position: relative;
   display: block;
-  margin: 0;
+  margin: 0 0 1rem 0;
   padding: 0;
   min-width: 0;
   border-radius: 14px;
   border: 1.5px solid var(--float-border, #e2e8f0);
   background: var(--float-bg, transparent);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  overflow: visible;
+}
+
+/* Formlarda üst üste binmeyi önle (fieldset margin collapse fix) */
+.float-field:last-child {
+  margin-bottom: 0;
+}
+
+.float-field-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.float-field-stack .float-field {
+  margin-bottom: 0;
 }
 
 .float-field:focus-within {

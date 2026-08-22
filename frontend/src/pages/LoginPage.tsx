@@ -227,25 +227,27 @@ export default function LoginPage() {
               </div>
             )}
 
-            <Input
-              variant="glass"
-              type="email"
-              label="E-posta"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
+            <div className="float-field-stack">
+              <Input
+                variant="glass"
+                type="email"
+                label="E-posta"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
 
-            <Input
-              variant="glass"
-              type="password"
-              label="Şifre"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
+              <Input
+                variant="glass"
+                type="password"
+                label="Şifre"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+            </div>
 
             <label className="flex items-center gap-2 text-sm text-white/60 cursor-pointer">
               <input

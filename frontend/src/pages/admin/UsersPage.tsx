@@ -148,7 +148,7 @@ export default function UsersPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
           <Card className="w-full max-w-md p-6">
             <h2 className="text-lg font-semibold mb-4">{editing ? 'Kullanıcı Düzenle' : 'Yeni Kullanıcı'}</h2>
-            <div className="space-y-4">
+            <div className="float-field-stack">
               <Input
                 label="Ad Soyad"
                 value={form.fullName}

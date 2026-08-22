@@ -149,7 +149,7 @@ export default function SettingsPage() {
         <Card className="p-6 lg:col-span-2">
           <h3 className="font-semibold text-slate-800 mb-4">Firma Ayarları</h3>
           <div className="flex flex-col sm:flex-row gap-6">
-            <div className="flex-1 space-y-4">
+            <div className="flex-1 space-y-4 float-field-stack">
               <Input
                 label="Firma Adı"
                 value={companyName}

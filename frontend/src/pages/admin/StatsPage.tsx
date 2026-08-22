@@ -90,7 +90,7 @@ export default function StatsPage() {
       <PageHeader
         title="İstatistikler"
         actions={
-          <div className="flex flex-wrap gap-2 items-center">
+            <div className="flex flex-wrap gap-3 items-end float-field-stack">
             <Input
               type="date"
               label="Başlangıç"

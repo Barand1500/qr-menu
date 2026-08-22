@@ -263,7 +263,7 @@ export default function ProductsPage() {
             <h2 className="text-lg font-semibold mb-4">
               {editing ? 'Ürün Düzenle' : 'Yeni Ürün'}
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-4 float-field-stack">
               <div>
                 <label className="block text-sm font-medium mb-1">Grup</label>
                 <select

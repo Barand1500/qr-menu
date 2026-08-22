@@ -110,7 +110,7 @@ export default function GroupModal({
           </div>
         </div>
 
-        <div className="px-6 pb-6 space-y-5">
+        <div className="px-6 pb-6 float-field-stack">
           {languages.map((lang) => (
             <Input
               key={lang.id}
