@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, imageUrl } from '@/lib/api';
-import { Button, Card, Input, PageHeader, Spinner } from '@/components/ui';
+import { Button, Card, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
 
 interface Language {
   id: number;
@@ -136,14 +136,12 @@ export default function SettingsPage() {
           <h3 className="font-semibold text-slate-800 mb-4">Karşılama Metinleri</h3>
           <div className="grid md:grid-cols-2 gap-4">
             {data.languages.filter((l) => l.isActive).map((lang) => (
-              <div key={lang.id}>
-                <label className="block text-sm font-medium mb-1">{lang.name}</label>
-                <textarea
-                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm min-h-[80px]"
-                  value={messages[lang.id] || ''}
-                  onChange={(e) => setMessages({ ...messages, [lang.id]: e.target.value })}
-                />
-              </div>
+              <Textarea
+                key={lang.id}
+                label={`Karşılama Metni (${lang.name})`}
+                value={messages[lang.id] || ''}
+                onChange={(e) => setMessages({ ...messages, [lang.id]: e.target.value })}
+              />
             ))}
           </div>
         </Card>
@@ -152,10 +150,11 @@ export default function SettingsPage() {
           <h3 className="font-semibold text-slate-800 mb-4">Firma Ayarları</h3>
           <div className="flex flex-col sm:flex-row gap-6">
             <div className="flex-1 space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Firma Adı</label>
-                <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-              </div>
+              <Input
+                label="Firma Adı"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+              />
               <div>
                 <label className="block text-sm font-medium mb-1">Logo</label>
                 <input type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} />

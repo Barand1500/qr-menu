@@ -156,10 +156,7 @@ export default function ShowcasePage() {
               {editing ? 'Düzenle' : 'Yeni Vitrin Görseli'}
             </h2>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Adı</label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
+              <Input label="Adı" value={name} onChange={(e) => setName(e.target.value)} />
               <div>
                 <label className="block text-sm font-medium mb-1">Görsel</label>
                 <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} />

@@ -46,9 +46,12 @@ export function createApp() {
     res.status(404).json({ message: 'Endpoint bulunamadı' });
   });
 
-  app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  app.use((err: Error & { status?: number; statusCode?: number; type?: string }, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     console.error(err);
-    res.status(500).json({ message: 'Sunucu hatası' });
+    if (err.type === 'entity.parse.failed') {
+      return res.status(400).json({ message: 'Geçersiz istek gövdesi' });
+    }
+    res.status(err.status || err.statusCode || 500).json({ message: 'Sunucu hatası' });
   });
 
   return app;

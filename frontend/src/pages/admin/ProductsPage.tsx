@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Pencil, EyeOff, Search } from 'lucide-react';
+import { Plus, Pencil, EyeOff } from 'lucide-react';
 import { api, formatPrice, imageUrl } from '@/lib/api';
 import {
   Badge,
@@ -162,11 +162,9 @@ export default function ProductsPage() {
 
       <Card className="overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <div className="flex-1 max-w-xs">
             <Input
-              className="pl-9"
-              placeholder="Ara..."
+              label="Ara..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -280,28 +278,25 @@ export default function ProductsPage() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Fiyat (₺)</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={form.price}
-                  onChange={(e) => setForm({ ...form, price: e.target.value })}
-                />
-              </div>
+              <Input
+                label="Fiyat (₺)"
+                type="number"
+                step="0.01"
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
+              />
               {languages.map((lang) => (
-                <div key={lang.id}>
-                  <label className="block text-sm font-medium mb-1">Ad ({lang.name})</label>
-                  <Input
-                    value={form.translations[lang.code] || ''}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        translations: { ...form.translations, [lang.code]: e.target.value },
-                      })
-                    }
-                  />
-                </div>
+                <Input
+                  key={lang.id}
+                  label={`Ad (${lang.name})`}
+                  value={form.translations[lang.code] || ''}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      translations: { ...form.translations, [lang.code]: e.target.value },
+                    })
+                  }
+                />
               ))}
               <div>
                 <label className="block text-sm font-medium mb-1">Görsel</label>

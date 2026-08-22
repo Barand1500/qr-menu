@@ -91,9 +91,21 @@ export default function StatsPage() {
         title="İstatistikler"
         actions={
           <div className="flex flex-wrap gap-2 items-center">
-            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-auto" />
+            <Input
+              type="date"
+              label="Başlangıç"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              className="w-44"
+            />
             <span className="text-slate-400">—</span>
-            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-auto" />
+            <Input
+              type="date"
+              label="Bitiş"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              className="w-44"
+            />
             <button
               onClick={load}
               className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"

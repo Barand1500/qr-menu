@@ -112,21 +112,18 @@ export default function GroupModal({
 
         <div className="px-6 pb-6 space-y-5">
           {languages.map((lang) => (
-            <div key={lang.id}>
-              <label className="block text-sm font-medium text-[var(--admin-text)] mb-2">
-                Grup Adı ({lang.name})
-              </label>
-              <Input
-                placeholder={lang.code === 'tr' ? 'Örn: Kahvaltılar' : 'Örn: Breakfasts'}
-                value={form.translations[lang.code] || ''}
-                onChange={(e) =>
-                  onFormChange({
-                    ...form,
-                    translations: { ...form.translations, [lang.code]: e.target.value },
-                  })
-                }
-              />
-            </div>
+            <Input
+              key={lang.id}
+              label={`Grup Adı (${lang.name})`}
+              placeholder={lang.code === 'tr' ? 'Örn: Kahvaltılar' : 'Örn: Breakfasts'}
+              value={form.translations[lang.code] || ''}
+              onChange={(e) =>
+                onFormChange({
+                  ...form,
+                  translations: { ...form.translations, [lang.code]: e.target.value },
+                })
+              }
+            />
           ))}
 
           <div>

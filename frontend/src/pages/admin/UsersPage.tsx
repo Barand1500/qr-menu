@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, EyeOff, Search } from 'lucide-react';
+import { Plus, Pencil, EyeOff } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Spinner } from '@/components/ui';
 
@@ -101,9 +101,8 @@ export default function UsersPage() {
 
       <Card className="overflow-hidden">
         <div className="p-4 border-b">
-          <div className="relative max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input className="pl-9" placeholder="Ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="max-w-xs">
+            <Input label="Ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -150,22 +149,28 @@ export default function UsersPage() {
           <Card className="w-full max-w-md p-6">
             <h2 className="text-lg font-semibold mb-4">{editing ? 'Kullanıcı Düzenle' : 'Yeni Kullanıcı'}</h2>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Ad Soyad</label>
-                <Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">E-posta</label>
-                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">{editing ? 'Yeni Şifre (opsiyonel)' : 'Şifre'}</label>
-                <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">GSM</label>
-                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              </div>
+              <Input
+                label="Ad Soyad"
+                value={form.fullName}
+                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+              />
+              <Input
+                label="E-posta"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+              <Input
+                label={editing ? 'Yeni Şifre (opsiyonel)' : 'Şifre'}
+                type="password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+              />
+              <Input
+                label="GSM"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
                 Aktif

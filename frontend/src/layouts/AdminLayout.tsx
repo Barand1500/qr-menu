@@ -6,10 +6,10 @@ import {
   LogOut,
   ExternalLink,
   ChevronDown,
-  Search,
   Sun,
   Moon,
 } from 'lucide-react';
+import { Input } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoData } from '@/contexts/DemoDataContext';
@@ -213,21 +213,12 @@ export default function AdminLayout() {
             <Menu className="w-5 h-5" style={{ color: 'var(--admin-text)' }} />
           </button>
 
-          <div className="flex-1 max-w-md relative hidden sm:block">
-            <Search
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-              style={{ color: 'var(--admin-text-subtle)' }}
-            />
-            <input
+          <div className="flex-1 max-w-md hidden sm:block">
+            <Input
+              label="Ara..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Ara..."
-              className="w-full pl-10 pr-4 py-2 rounded-full text-sm outline-none"
-              style={{
-                background: 'var(--admin-input-bg)',
-                border: '1px solid var(--admin-input-border)',
-                color: 'var(--admin-text)',
-              }}
+              className="[&_input]:rounded-full"
             />
           </div>
 

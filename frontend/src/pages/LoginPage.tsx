@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { QrCode, X, Building2 } from 'lucide-react';
+import { Input } from '@/components/ui';
 
 function ContactModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   if (!open) return null;
@@ -226,31 +227,25 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm text-white/80 mb-2">E-posta</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="ornek@firma.com"
-                required
-                autoComplete="email"
-                className="login-input-line w-full text-base"
-              />
-            </div>
+            <Input
+              variant="glass"
+              type="email"
+              label="E-posta"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+            />
 
-            <div>
-              <label className="block text-sm text-white/80 mb-2">Şifre</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                autoComplete="current-password"
-                className="login-input-line w-full text-base"
-              />
-            </div>
+            <Input
+              variant="glass"
+              type="password"
+              label="Şifre"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
 
             <label className="flex items-center gap-2 text-sm text-white/60 cursor-pointer">
               <input

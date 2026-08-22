@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -49,15 +49,114 @@ export function Button({
   );
 }
 
+export type InputVariant = 'admin' | 'glass' | 'public';
+
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
+  variant?: InputVariant;
+}
+
+const inputVariants: Record<
+  InputVariant,
+  { input: string; label: string; bgLabel: string }
+> = {
+  admin: {
+    input:
+      'border-[var(--admin-input-border)] bg-[var(--admin-input-bg)] text-[var(--admin-text)] focus:border-[var(--admin-accent)] focus:ring-[var(--admin-accent-soft)]',
+    label:
+      'text-[var(--admin-text-muted)] peer-focus:text-[var(--admin-accent)] peer-[:not(:placeholder-shown)]:text-[var(--admin-accent)]',
+    bgLabel: 'bg-[var(--admin-input-bg)]',
+  },
+  glass: {
+    input:
+      'border-white/35 bg-white/5 text-white focus:border-white/80 focus:ring-white/15 placeholder:text-transparent',
+    label:
+      'text-white/55 peer-focus:text-white/90 peer-[:not(:placeholder-shown)]:text-white/80',
+    bgLabel: 'bg-transparent',
+  },
+  public: {
+    input:
+      'border-slate-200 bg-white text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/20',
+    label:
+      'text-slate-400 peer-focus:text-indigo-600 peer-[:not(:placeholder-shown)]:text-indigo-600',
+    bgLabel: 'bg-white',
+  },
+};
+
 export function Input({
+  label,
+  variant = 'admin',
   className = '',
+  placeholder,
+  id: externalId,
   ...props
-}: React.InputHTMLAttributes<HTMLInputElement>) {
+}: InputProps) {
+  const autoId = useId();
+  const id = externalId ?? autoId;
+  const displayLabel = label ?? placeholder ?? '';
+  const styles = inputVariants[variant];
+
   return (
-    <input
-      className={`w-full rounded-xl border border-[var(--admin-input-border)] bg-[var(--admin-input-bg)] px-4 py-2.5 text-sm text-[var(--admin-text)] outline-none transition focus:border-[var(--admin-accent)] focus:ring-2 focus:ring-[var(--admin-accent-soft)] ${className}`}
-      {...props}
-    />
+    <div className={`relative ${className}`}>
+      <input
+        id={id}
+        placeholder=" "
+        className={`peer w-full rounded-xl border px-4 pt-5 pb-2.5 text-sm outline-none transition focus:ring-2 ${styles.input}`}
+        {...props}
+      />
+      {displayLabel ? (
+        <label
+          htmlFor={id}
+          className={`absolute left-3.5 top-1/2 -translate-y-1/2 px-0.5 text-sm pointer-events-none transition-all duration-200 origin-left
+            peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-xs peer-focus:font-medium
+            peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:font-medium
+            ${styles.label} ${styles.bgLabel}`}
+        >
+          {displayLabel}
+        </label>
+      ) : null}
+    </div>
+  );
+}
+
+export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  label?: string;
+  variant?: InputVariant;
+}
+
+export function Textarea({
+  label,
+  variant = 'admin',
+  className = '',
+  placeholder,
+  id: externalId,
+  ...props
+}: TextareaProps) {
+  const autoId = useId();
+  const id = externalId ?? autoId;
+  const displayLabel = label ?? placeholder ?? '';
+  const styles = inputVariants[variant];
+
+  return (
+    <div className={`relative ${className}`}>
+      <textarea
+        id={id}
+        placeholder=" "
+        className={`peer w-full rounded-xl border px-4 pt-6 pb-2.5 text-sm outline-none transition focus:ring-2 min-h-[88px] resize-y ${styles.input}`}
+        {...props}
+      />
+      {displayLabel ? (
+        <label
+          htmlFor={id}
+          className={`absolute left-3.5 top-4 px-0.5 text-sm pointer-events-none transition-all duration-200 origin-left
+            peer-focus:top-2 peer-focus:text-xs peer-focus:font-medium
+            peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:font-medium
+            ${styles.label} ${styles.bgLabel}`}
+        >
+          {displayLabel}
+        </label>
+      ) : null}
+    </div>
   );
 }
 

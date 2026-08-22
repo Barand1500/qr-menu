@@ -9,7 +9,6 @@ import {
   Layers,
   SlidersHorizontal,
   ChevronDown,
-  Search,
   X,
   Package,
 } from 'lucide-react';
@@ -488,10 +487,8 @@ export default function GroupsPage() {
         >
           <div className="flex flex-col lg:flex-row lg:items-center gap-3 justify-between">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 admin-text-subtle" />
               <Input
-                className="pl-10"
-                placeholder="Grup adı veya üst grup ara..."
+                label="Grup adı veya üst grup ara..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
