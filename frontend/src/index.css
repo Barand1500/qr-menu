@@ -29,6 +29,7 @@
   --admin-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
   --admin-chart-secondary: #f59e0b;
   --admin-badge: #2563eb;
+  --admin-btn-primary-text: #ffffff;
 }
 
 /* Gece modu — siyah + sarı */
@@ -55,6 +56,7 @@
   --admin-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
   --admin-chart-secondary: #facc15;
   --admin-badge: #facc15;
+  --admin-btn-primary-text: #0c0c0c;
 }
 
 * {

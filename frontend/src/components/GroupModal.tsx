@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X, ImagePlus, Layers, FolderTree } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 
@@ -28,6 +28,43 @@ interface GroupModalProps {
   onImageChange: (file: File | null) => void;
 }
 
+function LanguageTabs({
+  languages,
+  activeCode,
+  onChange,
+}: {
+  languages: Language[];
+  activeCode: string;
+  onChange: (code: string) => void;
+}) {
+  if (languages.length <= 1) return null;
+
+  return (
+    <div
+      className="flex gap-1 p-1 rounded-xl"
+      style={{ background: 'var(--admin-input-bg)' }}
+    >
+      {languages.map((lang) => {
+        const active = lang.code === activeCode;
+        return (
+          <button
+            key={lang.code}
+            type="button"
+            onClick={() => onChange(lang.code)}
+            className="flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all"
+            style={{
+              background: active ? 'var(--admin-accent)' : 'transparent',
+              color: active ? 'var(--admin-btn-primary-text)' : 'var(--admin-text-muted)',
+            }}
+          >
+            {lang.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function GroupModal({
   open,
   mode,
@@ -42,15 +79,21 @@ export default function GroupModal({
   onImageChange,
 }: GroupModalProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const sortedLangs = [...languages].sort((a, b) =>
+    a.code === 'tr' ? -1 : b.code === 'tr' ? 1 : 0
+  );
+  const [activeLang, setActiveLang] = useState(sortedLangs[0]?.code || 'tr');
 
   useEffect(() => {
     if (!open) return;
+    const tr = languages.find((l) => l.code === 'tr');
+    setActiveLang(tr?.code || languages[0]?.code || 'tr');
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open, onClose, languages]);
 
   if (!open) return null;
 
@@ -62,6 +105,8 @@ export default function GroupModal({
       : mode === 'create'
         ? 'Menüde görünecek yeni bir ana grup oluşturun'
         : 'Grup bilgilerini güncelleyin';
+
+  const currentLang = sortedLangs.find((l) => l.code === activeLang) || sortedLangs[0];
 
   return (
     <div
@@ -110,21 +155,33 @@ export default function GroupModal({
           </div>
         </div>
 
-        <div className="px-6 pb-6 float-field-stack">
-          {languages.map((lang) => (
-            <Input
-              key={lang.id}
-              label={`Grup Adı (${lang.name})`}
-              placeholder={lang.code === 'tr' ? 'Örn: Kahvaltılar' : 'Örn: Breakfasts'}
-              value={form.translations[lang.code] || ''}
-              onChange={(e) =>
-                onFormChange({
-                  ...form,
-                  translations: { ...form.translations, [lang.code]: e.target.value },
-                })
-              }
+        <div className="px-6 pb-6 space-y-5">
+          <div className="space-y-3">
+            <LanguageTabs
+              languages={sortedLangs}
+              activeCode={activeLang}
+              onChange={setActiveLang}
             />
-          ))}
+            {currentLang && (
+              <Input
+                key={currentLang.code}
+                label="Grup Adı"
+                placeholder={
+                  currentLang.code === 'tr' ? 'Örn: Kahvaltılar' : 'Örn: Breakfasts'
+                }
+                value={form.translations[currentLang.code] || ''}
+                onChange={(e) =>
+                  onFormChange({
+                    ...form,
+                    translations: {
+                      ...form.translations,
+                      [currentLang.code]: e.target.value,
+                    },
+                  })
+                }
+              />
+            )}
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-[var(--admin-text)] mb-2">
@@ -183,7 +240,7 @@ export default function GroupModal({
             </div>
           </label>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-1">
             <Button variant="secondary" className="flex-1" onClick={onClose} disabled={saving}>
               İptal
             </Button>

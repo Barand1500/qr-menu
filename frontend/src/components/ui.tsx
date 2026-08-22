@@ -27,7 +27,7 @@ export function Button({
 }: ButtonProps) {
   const variants = {
     primary:
-      'bg-[var(--admin-accent)] text-[var(--admin-sidebar-active-text)] hover:opacity-90 shadow-sm [data-theme=light]:text-white',
+      'bg-[var(--admin-accent)] text-[var(--admin-btn-primary-text)] hover:opacity-90 shadow-sm',
     secondary:
       'bg-[var(--admin-card)] text-[var(--admin-text)] border border-[var(--admin-card-border)] hover:bg-[var(--admin-accent-soft)]',
     ghost: 'text-[var(--admin-text-muted)] hover:bg-[var(--admin-accent-soft)]',

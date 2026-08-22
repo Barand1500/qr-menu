@@ -73,7 +73,7 @@ function SortableRow({
   pickMode: boolean;
   selectedForSub: number | null;
   onEdit: (g: Group) => void;
-  onToggle: (id: number) => void;
+  onToggle: (g: Group) => void;
   onPickParent: (g: Group) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -84,7 +84,7 @@ function SortableRow({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.5 : group.isActive ? 1 : 0.38,
   };
 
   const canPick = pickMode && !group.isSubGroup;
@@ -94,7 +94,9 @@ function SortableRow({
     <tr
       ref={setNodeRef}
       onClick={() => canPick && onPickParent(group)}
-      className={`border-b transition-colors ${
+      className={`border-b transition-all duration-300 ${
+        !group.isActive ? 'grayscale-[30%]' : ''
+      } ${
         isHighlighted
           ? 'bg-[var(--admin-accent-soft)] ring-2 ring-inset ring-[var(--admin-accent)]'
           : canPick
@@ -194,9 +196,13 @@ function SortableRow({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onToggle(group.id);
+                onToggle(group);
               }}
-              className="p-2 rounded-xl transition hover:bg-[var(--admin-input-bg)] admin-text-muted"
+              className={`p-2 rounded-xl transition ${
+                group.isActive
+                  ? 'hover:bg-amber-500/10 text-amber-600'
+                  : 'hover:bg-emerald-500/10 text-emerald-600'
+              }`}
               title={group.isActive ? 'Pasifleştir' : 'Aktifleştir'}
             >
               {group.isActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -387,9 +393,18 @@ export default function GroupsPage() {
     });
   }
 
-  async function handleToggle(id: number) {
-    await api(`/api/admin/groups/${id}/toggle`, { method: 'PATCH' });
-    await load();
+  async function handleToggle(group: Group) {
+    const nextActive = !group.isActive;
+    setAllGroups((prev) =>
+      prev.map((g) => (g.id === group.id ? { ...g, isActive: nextActive } : g))
+    );
+    try {
+      await api(`/api/admin/groups/${group.id}/toggle`, { method: 'PATCH' });
+    } catch {
+      setAllGroups((prev) =>
+        prev.map((g) => (g.id === group.id ? { ...g, isActive: group.isActive } : g))
+      );
+    }
   }
 
   async function handleDragEnd(event: DragEndEvent) {
