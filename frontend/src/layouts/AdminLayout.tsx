@@ -218,7 +218,7 @@ export default function AdminLayout() {
               label="Ara..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="[&_input]:rounded-full"
+              className="[&_.float-field]:rounded-full"
             />
           </div>
 

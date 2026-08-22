@@ -56,33 +56,6 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   variant?: InputVariant;
 }
 
-const inputVariants: Record<
-  InputVariant,
-  { input: string; label: string; labelFloat: string; labelBg: string }
-> = {
-  admin: {
-    input:
-      'border-[var(--admin-input-border)] bg-[var(--admin-input-bg)] text-[var(--admin-text)] focus:border-[var(--admin-accent)]',
-    label: 'text-[var(--admin-text-muted)]',
-    labelFloat: 'text-[var(--admin-accent)]',
-    labelBg: 'bg-[var(--admin-input-bg)]',
-  },
-  glass: {
-    input:
-      'border-white/40 bg-white/5 text-white focus:border-white/90 focus:ring-0',
-    label: 'text-white/50',
-    labelFloat: 'text-white',
-    labelBg: 'floating-label-bg-glass',
-  },
-  public: {
-    input:
-      'border-slate-200 bg-white text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/15',
-    label: 'text-slate-400',
-    labelFloat: 'text-indigo-600',
-    labelBg: 'bg-white',
-  },
-};
-
 function useFloatedState(
   value: InputProps['value'],
   defaultValue: InputProps['defaultValue']
@@ -92,7 +65,7 @@ function useFloatedState(
     value !== undefined && value !== null
       ? String(value).length > 0
       : defaultValue !== undefined && defaultValue !== null && String(defaultValue).length > 0;
-  return { focused, setFocused, floated: focused || hasValue };
+  return { setFocused, floated: focused || hasValue };
 }
 
 export function Input({
@@ -110,14 +83,20 @@ export function Input({
   const autoId = useId();
   const id = externalId ?? autoId;
   const displayLabel = label ?? placeholder ?? '';
-  const styles = inputVariants[variant];
   const { setFocused, floated } = useFloatedState(value, defaultValue);
 
   return (
-    <div className={`relative ${className}`}>
+    <div
+      className={`float-field float-field--${variant} ${floated ? 'is-floated' : ''} ${className}`}
+    >
+      {displayLabel ? (
+        <label htmlFor={id} className="float-field__label">
+          {displayLabel}
+        </label>
+      ) : null}
       <input
         id={id}
-        placeholder=" "
+        className="float-field__input"
         value={value}
         defaultValue={defaultValue}
         onFocus={(e) => {
@@ -128,21 +107,8 @@ export function Input({
           setFocused(false);
           onBlur?.(e);
         }}
-        className={`peer w-full min-h-[52px] rounded-xl border px-4 pb-2.5 pt-4 text-sm outline-none transition-all duration-200 focus:ring-2 ${styles.input}`}
         {...props}
       />
-      {displayLabel ? (
-        <label
-          htmlFor={id}
-          className={`absolute left-3 px-1 pointer-events-none transition-all duration-200 ease-out origin-left leading-none
-            ${floated
-              ? `top-0 -translate-y-1/2 text-[11px] font-medium ${styles.labelFloat} ${styles.labelBg}`
-              : `top-1/2 -translate-y-1/2 text-sm ${styles.label}`
-            }`}
-        >
-          {displayLabel}
-        </label>
-      ) : null}
     </div>
   );
 }
@@ -167,14 +133,20 @@ export function Textarea({
   const autoId = useId();
   const id = externalId ?? autoId;
   const displayLabel = label ?? placeholder ?? '';
-  const styles = inputVariants[variant];
   const { setFocused, floated } = useFloatedState(value, defaultValue);
 
   return (
-    <div className={`relative ${className}`}>
+    <div
+      className={`float-field float-field--${variant} float-field--textarea ${floated ? 'is-floated' : ''} ${className}`}
+    >
+      {displayLabel ? (
+        <label htmlFor={id} className="float-field__label">
+          {displayLabel}
+        </label>
+      ) : null}
       <textarea
         id={id}
-        placeholder=" "
+        className="float-field__input"
         value={value}
         defaultValue={defaultValue}
         onFocus={(e) => {
@@ -185,21 +157,8 @@ export function Textarea({
           setFocused(false);
           onBlur?.(e);
         }}
-        className={`peer w-full rounded-xl border px-4 pb-2.5 pt-5 text-sm outline-none transition-all duration-200 focus:ring-2 min-h-[96px] resize-y ${styles.input}`}
         {...props}
       />
-      {displayLabel ? (
-        <label
-          htmlFor={id}
-          className={`absolute left-3 px-1 pointer-events-none transition-all duration-200 ease-out origin-left leading-none
-            ${floated
-              ? `top-0 -translate-y-1/2 text-[11px] font-medium ${styles.labelFloat} ${styles.labelBg}`
-              : `top-5 text-sm ${styles.label}`
-            }`}
-        >
-          {displayLabel}
-        </label>
-      ) : null}
     </div>
   );
 }

@@ -181,9 +181,126 @@ body {
   box-shadow: none;
 }
 
-/* Floating label — cam arka plan (login) */
-.floating-label-bg-glass {
-  background: rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+/* ── Outlined floating label input (Material Design) ── */
+.float-field {
+  position: relative;
+  display: block;
+  border-radius: 14px;
+  border: 1.5px solid var(--float-border, #e2e8f0);
+  background: var(--float-bg, transparent);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+
+.float-field:focus-within {
+  border-color: var(--float-border-focus, #2563eb);
+  box-shadow: 0 0 0 3px var(--float-ring, rgba(37, 99, 235, 0.12));
+}
+
+.float-field__input {
+  display: block;
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 18px 16px 10px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--float-text, inherit);
+  border-radius: inherit;
+}
+
+.float-field__label {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 15px;
+  line-height: 1;
+  color: var(--float-label, #94a3b8);
+  pointer-events: none;
+  user-select: none;
+  padding: 0 5px;
+  background: transparent;
+  transition:
+    top 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    font-size 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.18s ease,
+    background 0.18s ease;
+  z-index: 1;
+}
+
+/* Floated: label sits ON the top border line */
+.float-field.is-floated .float-field__label,
+.float-field:focus-within .float-field__label {
+  top: 0;
+  transform: translateY(-50%);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--float-label-focus, #2563eb);
+  background: var(--float-notch-bg, #fff);
+}
+
+.float-field--admin {
+  --float-border: var(--admin-input-border);
+  --float-border-focus: var(--admin-accent);
+  --float-ring: color-mix(in srgb, var(--admin-accent) 14%, transparent);
+  --float-bg: var(--admin-input-bg);
+  --float-text: var(--admin-text);
+  --float-label: var(--admin-text-subtle);
+  --float-label-focus: var(--admin-accent);
+  --float-notch-bg: var(--admin-input-bg);
+}
+
+.float-field--glass {
+  --float-border: rgba(255, 255, 255, 0.45);
+  --float-border-focus: rgba(255, 255, 255, 0.95);
+  --float-ring: rgba(255, 255, 255, 0.08);
+  --float-bg: rgba(255, 255, 255, 0.06);
+  --float-text: #ffffff;
+  --float-label: rgba(255, 255, 255, 0.55);
+  --float-label-focus: #ffffff;
+  /* Cam kart rengi — border çizgisini keser */
+  --float-notch-bg: rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+}
+
+.float-field--glass:focus-within {
+  box-shadow: none;
+}
+
+.float-field--glass.is-floated .float-field__label,
+.float-field--glass:focus-within .float-field__label {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.float-field--public {
+  --float-border: #e2e8f0;
+  --float-border-focus: #6366f1;
+  --float-ring: rgba(99, 102, 241, 0.12);
+  --float-bg: #ffffff;
+  --float-text: #0f172a;
+  --float-label: #94a3b8;
+  --float-label-focus: #6366f1;
+  --float-notch-bg: #ffffff;
+}
+
+.float-field--textarea .float-field__input {
+  min-height: 96px;
+  padding-top: 22px;
+  resize: vertical;
+}
+
+.float-field--textarea .float-field__label {
+  top: 22px;
+  transform: none;
+}
+
+.float-field--textarea.is-floated .float-field__label,
+.float-field--textarea:focus-within .float-field__label {
+  top: 0;
+  transform: translateY(-50%);
+}
+

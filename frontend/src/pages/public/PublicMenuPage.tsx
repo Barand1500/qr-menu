@@ -118,7 +118,7 @@ export default function PublicMenuPage() {
               label="Ürün ara..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="[&_input]:rounded-full [&_input]:bg-slate-100 [&_input]:border-0"
+              className="[&_.float-field]:rounded-full [&_.float-field]:border-0 [&_.float-field]:bg-slate-100 [&_.float-field--public]:[--float-notch-bg:#f1f5f9]"
             />
           </div>
         </div>
