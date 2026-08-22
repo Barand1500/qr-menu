@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -58,30 +58,42 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 
 const inputVariants: Record<
   InputVariant,
-  { input: string; label: string; bgLabel: string }
+  { input: string; label: string; labelFloat: string; labelBg: string }
 > = {
   admin: {
     input:
-      'border-[var(--admin-input-border)] bg-[var(--admin-input-bg)] text-[var(--admin-text)] focus:border-[var(--admin-accent)] focus:ring-[var(--admin-accent-soft)]',
-    label:
-      'text-[var(--admin-text-muted)] peer-focus:text-[var(--admin-accent)] peer-[:not(:placeholder-shown)]:text-[var(--admin-accent)]',
-    bgLabel: 'bg-[var(--admin-input-bg)]',
+      'border-[var(--admin-input-border)] bg-[var(--admin-input-bg)] text-[var(--admin-text)] focus:border-[var(--admin-accent)]',
+    label: 'text-[var(--admin-text-muted)]',
+    labelFloat: 'text-[var(--admin-accent)]',
+    labelBg: 'bg-[var(--admin-input-bg)]',
   },
   glass: {
     input:
-      'border-white/35 bg-white/5 text-white focus:border-white/80 focus:ring-white/15 placeholder:text-transparent',
-    label:
-      'text-white/55 peer-focus:text-white/90 peer-[:not(:placeholder-shown)]:text-white/80',
-    bgLabel: 'bg-transparent',
+      'border-white/40 bg-white/5 text-white focus:border-white/90 focus:ring-0',
+    label: 'text-white/50',
+    labelFloat: 'text-white',
+    labelBg: 'floating-label-bg-glass',
   },
   public: {
     input:
-      'border-slate-200 bg-white text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/20',
-    label:
-      'text-slate-400 peer-focus:text-indigo-600 peer-[:not(:placeholder-shown)]:text-indigo-600',
-    bgLabel: 'bg-white',
+      'border-slate-200 bg-white text-slate-900 focus:border-indigo-500 focus:ring-indigo-500/15',
+    label: 'text-slate-400',
+    labelFloat: 'text-indigo-600',
+    labelBg: 'bg-white',
   },
 };
+
+function useFloatedState(
+  value: InputProps['value'],
+  defaultValue: InputProps['defaultValue']
+) {
+  const [focused, setFocused] = useState(false);
+  const hasValue =
+    value !== undefined && value !== null
+      ? String(value).length > 0
+      : defaultValue !== undefined && defaultValue !== null && String(defaultValue).length > 0;
+  return { focused, setFocused, floated: focused || hasValue };
+}
 
 export function Input({
   label,
@@ -89,28 +101,44 @@ export function Input({
   className = '',
   placeholder,
   id: externalId,
+  value,
+  defaultValue,
+  onFocus,
+  onBlur,
   ...props
 }: InputProps) {
   const autoId = useId();
   const id = externalId ?? autoId;
   const displayLabel = label ?? placeholder ?? '';
   const styles = inputVariants[variant];
+  const { setFocused, floated } = useFloatedState(value, defaultValue);
 
   return (
     <div className={`relative ${className}`}>
       <input
         id={id}
         placeholder=" "
-        className={`peer w-full rounded-xl border px-4 pt-5 pb-2.5 text-sm outline-none transition focus:ring-2 ${styles.input}`}
+        value={value}
+        defaultValue={defaultValue}
+        onFocus={(e) => {
+          setFocused(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocused(false);
+          onBlur?.(e);
+        }}
+        className={`peer w-full min-h-[52px] rounded-xl border px-4 pb-2.5 pt-4 text-sm outline-none transition-all duration-200 focus:ring-2 ${styles.input}`}
         {...props}
       />
       {displayLabel ? (
         <label
           htmlFor={id}
-          className={`absolute left-3.5 top-1/2 -translate-y-1/2 px-0.5 text-sm pointer-events-none transition-all duration-200 origin-left
-            peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-xs peer-focus:font-medium
-            peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:font-medium
-            ${styles.label} ${styles.bgLabel}`}
+          className={`absolute left-3 px-1 pointer-events-none transition-all duration-200 ease-out origin-left leading-none
+            ${floated
+              ? `top-0 -translate-y-1/2 text-[11px] font-medium ${styles.labelFloat} ${styles.labelBg}`
+              : `top-1/2 -translate-y-1/2 text-sm ${styles.label}`
+            }`}
         >
           {displayLabel}
         </label>
@@ -130,28 +158,44 @@ export function Textarea({
   className = '',
   placeholder,
   id: externalId,
+  value,
+  defaultValue,
+  onFocus,
+  onBlur,
   ...props
 }: TextareaProps) {
   const autoId = useId();
   const id = externalId ?? autoId;
   const displayLabel = label ?? placeholder ?? '';
   const styles = inputVariants[variant];
+  const { setFocused, floated } = useFloatedState(value, defaultValue);
 
   return (
     <div className={`relative ${className}`}>
       <textarea
         id={id}
         placeholder=" "
-        className={`peer w-full rounded-xl border px-4 pt-6 pb-2.5 text-sm outline-none transition focus:ring-2 min-h-[88px] resize-y ${styles.input}`}
+        value={value}
+        defaultValue={defaultValue}
+        onFocus={(e) => {
+          setFocused(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocused(false);
+          onBlur?.(e);
+        }}
+        className={`peer w-full rounded-xl border px-4 pb-2.5 pt-5 text-sm outline-none transition-all duration-200 focus:ring-2 min-h-[96px] resize-y ${styles.input}`}
         {...props}
       />
       {displayLabel ? (
         <label
           htmlFor={id}
-          className={`absolute left-3.5 top-4 px-0.5 text-sm pointer-events-none transition-all duration-200 origin-left
-            peer-focus:top-2 peer-focus:text-xs peer-focus:font-medium
-            peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:font-medium
-            ${styles.label} ${styles.bgLabel}`}
+          className={`absolute left-3 px-1 pointer-events-none transition-all duration-200 ease-out origin-left leading-none
+            ${floated
+              ? `top-0 -translate-y-1/2 text-[11px] font-medium ${styles.labelFloat} ${styles.labelBg}`
+              : `top-5 text-sm ${styles.label}`
+            }`}
         >
           {displayLabel}
         </label>
