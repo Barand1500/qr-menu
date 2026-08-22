@@ -325,6 +325,50 @@ body {
   padding-right: 36px;
 }
 
+.float-field__select--empty {
+  color: transparent;
+}
+
+.float-field__select--empty option {
+  color: var(--admin-text);
+}
+
+.sidebar-nav-group-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: calc(100% - 8px);
+  margin-left: 8px;
+  padding: 11px 20px 11px 24px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--admin-sidebar-text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.sidebar-nav-group-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-nav-group-btn--open {
+  color: #fff;
+}
+
+.sidebar-nav-submenu {
+  margin: 4px 0 8px 20px;
+  padding-left: 12px;
+  border-left: 2px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 /* Sidebar — scooped active item */
 .sidebar-nav {
   display: flex;

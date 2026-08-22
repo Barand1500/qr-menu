@@ -259,18 +259,20 @@ export function Select({
   const id = externalId ?? autoId;
   const displayLabel = label ?? 'Seçiniz';
   const { setFocused, floated } = useFloatedState(value, defaultValue);
+  const effectiveFloated = floated || Boolean(label);
+  const isEmpty = value === '' || value === undefined || value === null;
 
   return (
     <FloatFieldShell
       variant={variant}
-      floated={floated}
+      floated={effectiveFloated}
       className={className}
       displayLabel={displayLabel}
     >
       <select
         id={id}
         aria-label={displayLabel}
-        className="float-field__input float-field__select"
+        className={`float-field__input float-field__select${isEmpty && label ? ' float-field__select--empty' : ''}`}
         value={value}
         defaultValue={defaultValue}
         onFocus={(e) => {
@@ -283,7 +285,7 @@ export function Select({
         }}
         {...props}
       >
-        <option value="">Seçiniz</option>
+        <option value="" disabled hidden />
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}

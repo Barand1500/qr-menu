@@ -107,6 +107,7 @@ router.post('/', async (req, res) => {
     isGlutenFree,
     isDiabetic,
     isRecommended,
+    features,
   } = req.body;
 
   const group = await prisma.group.findFirst({
@@ -133,6 +134,7 @@ router.post('/', async (req, res) => {
       isGlutenFree: isGlutenFree ?? false,
       isDiabetic: isDiabetic ?? false,
       isRecommended: isRecommended ?? false,
+      features: Array.isArray(features) ? features : [],
       translations: {
         create: (translations || []).map(
           (t: {
@@ -177,6 +179,7 @@ router.put('/:id', async (req, res) => {
     isGlutenFree,
     isDiabetic,
     isRecommended,
+    features,
   } = req.body;
 
   const existing = await prisma.product.findFirst({ where: { id, restaurantId: restaurantId! } });
@@ -229,6 +232,7 @@ router.put('/:id', async (req, res) => {
       ...(isGlutenFree !== undefined && { isGlutenFree }),
       ...(isDiabetic !== undefined && { isDiabetic }),
       ...(isRecommended !== undefined && { isRecommended }),
+      ...(features !== undefined && { features: Array.isArray(features) ? features : [] }),
     },
     include: {
       translations: { include: { language: true } },
@@ -306,6 +310,7 @@ async function mapProduct(
     price: unknown;
     prepTimeMinutes: number | null;
     calories: number | null;
+    features: unknown;
     isVegan: boolean;
     isVegetarian: boolean;
     isGlutenFree: boolean;
@@ -340,10 +345,7 @@ async function mapProduct(
     price: Number(product.price),
     prepTimeMinutes: product.prepTimeMinutes,
     calories: product.calories,
-    isVegan: product.isVegan,
-    isVegetarian: product.isVegetarian,
-    isGlutenFree: product.isGlutenFree,
-    isDiabetic: product.isDiabetic,
+    features: resolveFeatures(product),
     isRecommended: product.isRecommended,
     imageUrl: product.imageUrl,
     sortOrder: product.sortOrder,
@@ -359,6 +361,24 @@ async function mapProduct(
       allergens: t.allergens,
     })),
   };
+}
+
+function resolveFeatures(product: {
+  features: unknown;
+  isVegan: boolean;
+  isVegetarian: boolean;
+  isGlutenFree: boolean;
+  isDiabetic: boolean;
+}): string[] {
+  if (Array.isArray(product.features) && product.features.length > 0) {
+    return product.features.filter((f): f is string => typeof f === 'string' && f.trim().length > 0);
+  }
+  const legacy: string[] = [];
+  if (product.isVegan) legacy.push('Vegan');
+  if (product.isVegetarian) legacy.push('Vejeteryan');
+  if (product.isGlutenFree) legacy.push('Glutensiz');
+  if (product.isDiabetic) legacy.push('Diyabetik');
+  return legacy;
 }
 
 export default router;

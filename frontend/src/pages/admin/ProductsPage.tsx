@@ -35,10 +35,7 @@ interface Product {
   price: number;
   prepTimeMinutes?: number | null;
   calories?: number | null;
-  isVegan?: boolean;
-  isVegetarian?: boolean;
-  isGlutenFree?: boolean;
-  isDiabetic?: boolean;
+  features?: string[];
   isRecommended?: boolean;
   imageUrl?: string | null;
   sortOrder: number;
@@ -75,10 +72,7 @@ const emptyForm = (): ProductFormState => ({
   price: '',
   prepTimeMinutes: '',
   calories: '',
-  isVegan: false,
-  isVegetarian: false,
-  isGlutenFree: false,
-  isDiabetic: false,
+  features: [],
   isRecommended: false,
   translations: {},
   isActive: true,
@@ -99,10 +93,7 @@ function buildFormFromProduct(product: Product): ProductFormState {
     price: product.price.toString(),
     prepTimeMinutes: product.prepTimeMinutes?.toString() || '',
     calories: product.calories?.toString() || '',
-    isVegan: product.isVegan ?? false,
-    isVegetarian: product.isVegetarian ?? false,
-    isGlutenFree: product.isGlutenFree ?? false,
-    isDiabetic: product.isDiabetic ?? false,
+    features: product.features ?? [],
     isRecommended: product.isRecommended ?? false,
     translations,
     isActive: product.isActive,
@@ -252,10 +243,7 @@ export default function ProductsPage() {
         price: parseFloat(form.price) || 0,
         prepTimeMinutes: form.prepTimeMinutes ? Number(form.prepTimeMinutes) : null,
         calories: form.calories ? Number(form.calories) : null,
-        isVegan: form.isVegan,
-        isVegetarian: form.isVegetarian,
-        isGlutenFree: form.isGlutenFree,
-        isDiabetic: form.isDiabetic,
+        features: form.features,
         isRecommended: form.isRecommended,
         translations,
         isActive: form.isActive,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Menu,
@@ -27,6 +27,34 @@ const managementNav = [
   { to: '/admin/users', label: 'Kullanıcılar' },
   { to: '/admin/settings', label: 'Ayarlar' },
 ];
+
+function NavGroup({
+  label,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="pt-1">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`sidebar-nav-group-btn ${open ? 'sidebar-nav-group-btn--open' : ''}`}
+      >
+        <span>{label}</span>
+        <ChevronDown
+          className={`w-4 h-4 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open && <div className="sidebar-nav-submenu">{children}</div>}
+    </div>
+  );
+}
 
 function NavItem({
   to,
@@ -86,6 +114,14 @@ export default function AdminLayout() {
     location.pathname.startsWith('/admin/users') ||
     location.pathname.startsWith('/admin/settings');
 
+  useEffect(() => {
+    if (reportsActive) setReportsOpen(true);
+  }, [reportsActive]);
+
+  useEffect(() => {
+    if (managementActive) setManagementOpen(true);
+  }, [managementActive]);
+
   const sidebar = (
     <aside
       className="flex flex-col w-full h-full min-h-screen overflow-hidden"
@@ -119,49 +155,21 @@ export default function AdminLayout() {
           <NavItem key={to} to={to} label={label} end={end} onNavigate={closeMobile} />
         ))}
 
-        <div className="pt-2">
-          <button
-            onClick={() => setReportsOpen(!reportsOpen)}
-            className={`sidebar-nav-link w-full text-left flex items-center justify-between ${
-              reportsActive && !reportsOpen ? 'sidebar-nav-link--active' : ''
-            }`}
-            type="button"
-          >
-            <span>Raporlar</span>
-            <ChevronDown
-              className={`w-4 h-4 transition-transform duration-200 ${reportsOpen ? 'rotate-180' : ''}`}
-            />
-          </button>
-          {reportsOpen && (
-            <div className="mt-0.5">
-              {reportNav.map(({ to, label }) => (
-                <NavItem key={to} to={to} label={label} sub onNavigate={closeMobile} />
-              ))}
-            </div>
-          )}
-        </div>
+        <NavGroup label="Raporlar" open={reportsOpen} onToggle={() => setReportsOpen(!reportsOpen)}>
+          {reportNav.map(({ to, label }) => (
+            <NavItem key={to} to={to} label={label} sub onNavigate={closeMobile} />
+          ))}
+        </NavGroup>
 
-        <div>
-          <button
-            onClick={() => setManagementOpen(!managementOpen)}
-            className={`sidebar-nav-link w-full text-left flex items-center justify-between ${
-              managementActive && !managementOpen ? 'sidebar-nav-link--active' : ''
-            }`}
-            type="button"
-          >
-            <span>Yönetim</span>
-            <ChevronDown
-              className={`w-4 h-4 transition-transform duration-200 ${managementOpen ? 'rotate-180' : ''}`}
-            />
-          </button>
-          {managementOpen && (
-            <div className="mt-0.5">
-              {managementNav.map(({ to, label }) => (
-                <NavItem key={to} to={to} label={label} sub onNavigate={closeMobile} />
-              ))}
-            </div>
-          )}
-        </div>
+        <NavGroup
+          label="Yönetim"
+          open={managementOpen}
+          onToggle={() => setManagementOpen(!managementOpen)}
+        >
+          {managementNav.map(({ to, label }) => (
+            <NavItem key={to} to={to} label={label} sub onNavigate={closeMobile} />
+          ))}
+        </NavGroup>
       </nav>
 
       <div className="px-6 py-5 border-t border-white/10 mt-auto">

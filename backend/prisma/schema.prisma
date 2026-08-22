@@ -113,6 +113,7 @@ model Product {
   price           Decimal  @default(0) @db.Decimal(10, 2)
   prepTimeMinutes Int?     @map("prep_time_minutes")
   calories        Int?
+  features        Json     @default("[]")
   isVegan         Boolean  @default(false) @map("is_vegan")
   isVegetarian    Boolean  @default(false) @map("is_vegetarian")
   isGlutenFree    Boolean  @default(false) @map("is_gluten_free")

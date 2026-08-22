@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, ImagePlus, UtensilsCrossed } from 'lucide-react';
+import { X, ImagePlus, UtensilsCrossed, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Button, Input, Select, Textarea } from '@/components/ui';
 import LanguageTabs, { type Language } from '@/components/LanguageTabs';
 
@@ -15,10 +15,7 @@ export interface ProductFormState {
   price: string;
   prepTimeMinutes: string;
   calories: string;
-  isVegan: boolean;
-  isVegetarian: boolean;
-  isGlutenFree: boolean;
-  isDiabetic: boolean;
+  features: string[];
   isRecommended: boolean;
   translations: Record<string, ProductTranslationFields>;
   isActive: boolean;
@@ -39,12 +36,145 @@ const MODAL_TABS: { id: ModalTab; label: string }[] = [
   { id: 'image', label: 'Görsel' },
 ];
 
-const FEATURES = [
-  { key: 'isVegan' as const, label: 'Vegan' },
-  { key: 'isVegetarian' as const, label: 'Vejeteryan' },
-  { key: 'isGlutenFree' as const, label: 'Glutensiz' },
-  { key: 'isDiabetic' as const, label: 'Diyabetik' },
-];
+function ProductFeaturesEditor({
+  features,
+  onChange,
+}: {
+  features: string[];
+  onChange: (features: string[]) => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState('');
+
+  function addFeature() {
+    const name = newName.trim();
+    if (!name) return;
+    onChange([...features, name]);
+    setNewName('');
+    setAdding(false);
+  }
+
+  function removeFeature(index: number) {
+    onChange(features.filter((_, i) => i !== index));
+  }
+
+  function startEdit(index: number) {
+    setEditingIdx(index);
+    setEditValue(features[index]);
+  }
+
+  function saveEdit(index: number) {
+    const name = editValue.trim();
+    if (!name) return;
+    onChange(features.map((f, i) => (i === index ? name : f)));
+    setEditingIdx(null);
+    setEditValue('');
+  }
+
+  return (
+    <div
+      className="rounded-2xl p-4 space-y-3"
+      style={{ background: 'var(--admin-input-bg)' }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-bold uppercase tracking-wide admin-text-muted">Özellikler</p>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="w-8 h-8 rounded-xl flex items-center justify-center transition hover:opacity-90"
+          style={{ background: 'var(--admin-accent)', color: 'var(--admin-btn-primary-text)' }}
+          title="Özellik ekle"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+
+      {features.length === 0 && !adding && (
+        <p className="text-sm admin-text-muted">Henüz özellik eklenmedi</p>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {features.map((feature, index) =>
+          editingIdx === index ? (
+            <div key={index} className="flex items-center gap-1.5 w-full sm:w-auto">
+              <Input
+                label="Özellik adı"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                className="flex-1 min-w-[140px]"
+              />
+              <Button size="sm" type="button" onClick={() => saveEdit(index)}>
+                OK
+              </Button>
+              <Button size="sm" variant="ghost" type="button" onClick={() => setEditingIdx(null)}>
+                ×
+              </Button>
+            </div>
+          ) : (
+            <span
+              key={index}
+              className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-xl text-sm font-medium"
+              style={{
+                background: 'var(--admin-card)',
+                border: '1px solid var(--admin-card-border)',
+                color: 'var(--admin-text)',
+              }}
+            >
+              {feature}
+              <button
+                type="button"
+                onClick={() => startEdit(index)}
+                className="p-1 rounded-lg hover:bg-[var(--admin-accent-soft)]"
+                style={{ color: 'var(--admin-accent)' }}
+                title="Düzenle"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => removeFeature(index)}
+                className="p-1 rounded-lg hover:bg-red-500/10 text-red-500"
+                title="Sil"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </span>
+          )
+        )}
+      </div>
+
+      {adding && (
+        <div className="flex flex-col sm:flex-row gap-2 pt-1">
+          <Input
+            label="Yeni özellik"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className="flex-1"
+            onKeyDown={(e) => e.key === 'Enter' && addFeature()}
+          />
+          <div className="flex gap-2 shrink-0">
+            <Button size="sm" type="button" onClick={addFeature}>
+              Ekle
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              type="button"
+              onClick={() => {
+                setAdding(false);
+                setNewName('');
+              }}
+            >
+              İptal
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface ProductModalProps {
   open: boolean;
@@ -111,10 +241,6 @@ export default function ProductModal({
         [currentLang.code]: { ...currentTranslation, [field]: value },
       },
     });
-  }
-
-  function toggleFeature(key: keyof Pick<ProductFormState, 'isVegan' | 'isVegetarian' | 'isGlutenFree' | 'isDiabetic'>) {
-    onFormChange({ ...form, [key]: !form[key] });
   }
 
   const groupOptions = groups.map((g) => ({
@@ -221,30 +347,10 @@ export default function ProductModal({
                 onChange={(e) => onFormChange({ ...form, calories: e.target.value })}
               />
 
-              <div
-                className="rounded-2xl p-4 space-y-3"
-                style={{ background: 'var(--admin-input-bg)' }}
-              >
-                <p className="text-xs font-bold uppercase tracking-wide admin-text-muted">
-                  Özellikler
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {FEATURES.map((f) => (
-                    <label
-                      key={f.key}
-                      className="flex items-center gap-2 cursor-pointer text-sm text-[var(--admin-text)]"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={form[f.key]}
-                        onChange={() => toggleFeature(f.key)}
-                        className="w-4 h-4 rounded accent-[var(--admin-accent)]"
-                      />
-                      {f.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <ProductFeaturesEditor
+                features={form.features}
+                onChange={(features) => onFormChange({ ...form, features })}
+              />
 
               <div className="flex flex-col gap-3">
                 <label className="flex items-center gap-2.5 cursor-pointer text-sm text-[var(--admin-text)]">
