@@ -1,0 +1,12 @@
+node_modules/
+dist/
+frontend/dist/
+backend/dist/
+uploads/
+.env
+.env.local
+*.log
+.DS_Store
+Thumbs.db
+electron/dist/
+electron/out/

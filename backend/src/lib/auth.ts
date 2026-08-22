@@ -1,0 +1,66 @@
+import type { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import { config } from '../config.js';
+import { prisma } from './prisma.js';
+
+export interface AuthPayload {
+  userId: number;
+  restaurantId: number;
+  email: string;
+  role: string;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthPayload;
+    }
+  }
+}
+
+export function signToken(payload: AuthPayload): string {
+  return jwt.sign(payload, config.jwtSecret, { expiresIn: '7d' });
+}
+
+export function authRequired(req: Request, res: Response, next: NextFunction) {
+  const header = req.headers.authorization;
+  const token = header?.startsWith('Bearer ') ? header.slice(7) : null;
+
+  if (!token) {
+    return res.status(401).json({ message: 'Oturum gerekli' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, config.jwtSecret) as AuthPayload;
+    req.user = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ message: 'Geçersiz oturum' });
+  }
+}
+
+export async function getRestaurantId(req: Request): Promise<number | null> {
+  return req.user?.restaurantId ?? null;
+}
+
+export async function validateProduct(productId: number, restaurantId: number) {
+  const product = await prisma.product.findFirst({
+    where: { id: productId, restaurantId },
+    include: {
+      translations: { include: { language: true } },
+    },
+  });
+  if (!product) return { valid: false, issues: ['Ürün bulunamadı'] };
+
+  const issues: string[] = [];
+  if (!product.imageUrl) issues.push('Görsel eksik');
+  if (Number(product.price) <= 0) issues.push('Fiyat geçersiz');
+
+  const activeLanguages = await prisma.language.findMany({ where: { isActive: true } });
+  for (const lang of activeLanguages) {
+    const tr = product.translations.find((t) => t.languageId === lang.id);
+    if (!tr?.name) issues.push(`${lang.code} çeviri eksik`);
+  }
+
+  return { valid: issues.length === 0, issues };
+}
