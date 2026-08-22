@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Globe, Plug, MessageSquare, Building2, ImagePlus } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
-import { Button, Card, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
+import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
 
 interface Language {
   id: number;
@@ -16,23 +17,65 @@ interface SettingsData {
   settings: Record<string, string>;
 }
 
+function SettingsSection({
+  icon: Icon,
+  title,
+  children,
+  className = '',
+}: {
+  icon: typeof Globe;
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`admin-card overflow-hidden flex flex-col ${className}`}>
+      <div
+        className="flex items-center gap-2.5 px-5 py-3.5 shrink-0"
+        style={{
+          background: 'var(--admin-input-bg)',
+          borderBottom: '1px solid var(--admin-card-border)',
+        }}
+      >
+        <Icon className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
+        <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--admin-text)]">
+          {title}
+        </h3>
+      </div>
+      <div className="p-5 flex-1">{children}</div>
+    </section>
+  );
+}
+
 export default function SettingsPage() {
+  const fileRef = useRef<HTMLInputElement>(null);
   const [data, setData] = useState<SettingsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [companyName, setCompanyName] = useState('');
   const [messages, setMessages] = useState<Record<number, string>>({});
   const [integrationEnabled, setIntegrationEnabled] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api<SettingsData>('/api/admin/settings').then((d) => {
-      setData(d);
-      setCompanyName(d.restaurant.name);
-      setMessages(Object.fromEntries(d.welcomeMessages.map((m) => [m.languageId, m.message])));
-      setIntegrationEnabled(d.settings.integration_enabled === 'true');
-    }).finally(() => setLoading(false));
+    api<SettingsData>('/api/admin/settings')
+      .then((d) => {
+        setData(d);
+        setCompanyName(d.restaurant.name);
+        setMessages(Object.fromEntries(d.welcomeMessages.map((m) => [m.languageId, m.message])));
+        setIntegrationEnabled(d.settings.integration_enabled === 'true');
+        setLogoPreview(d.restaurant.logoUrl ? imageUrl(d.restaurant.logoUrl) : null);
+      })
+      .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!logoFile) return;
+    const url = URL.createObjectURL(logoFile);
+    setLogoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [logoFile]);
 
   async function saveLanguages() {
     if (!data) return;
@@ -92,84 +135,129 @@ export default function SettingsPage() {
 
   if (loading || !data) return <Spinner />;
 
+  const activeLanguages = data.languages.filter((l) => l.isActive);
+
   return (
-    <div>
+    <div className="space-y-5 max-w-5xl">
       <PageHeader
         title="Ayarlar"
-        actions={<Button onClick={handleSave} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Button>}
+        actions={
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? 'Kaydediliyor...' : 'Kaydet'}
+          </Button>
+        }
       />
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <h3 className="font-semibold text-slate-800 mb-4">Dil Ayarları</h3>
-          <div className="space-y-3">
+      <div className="grid md:grid-cols-2 gap-5">
+        <SettingsSection icon={Globe} title="Dil Ayarları">
+          <div className="space-y-1">
             {data.languages.map((lang) => (
-              <label key={lang.id} className="flex items-center justify-between py-2 border-b border-slate-50">
-                <span className="text-sm">{lang.name}</span>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-slate-500">Aktif</span>
+              <label
+                key={lang.id}
+                className="flex items-center justify-between py-3 px-3 rounded-xl cursor-pointer transition hover:bg-[var(--admin-accent-soft)]/30"
+                style={{ borderBottom: '1px solid var(--admin-card-border)' }}
+              >
+                <span className="text-sm font-medium text-[var(--admin-text)]">{lang.name}</span>
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xs admin-text-muted">Aktif</span>
                   <input
                     type="checkbox"
                     checked={lang.isActive}
                     onChange={() => toggleLanguage(lang.id)}
-                    className="rounded text-indigo-600"
+                    className="w-4 h-4 rounded accent-[var(--admin-accent)]"
                   />
                 </div>
               </label>
             ))}
           </div>
-        </Card>
+        </SettingsSection>
 
-        <Card className="p-6">
-          <h3 className="font-semibold text-slate-800 mb-4">Entegrasyon Ayarları</h3>
-          <label className="flex items-center gap-2 text-sm">
+        <SettingsSection icon={Plug} title="Entegrasyon Ayarları">
+          <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl hover:bg-[var(--admin-accent-soft)]/30 transition">
             <input
               type="checkbox"
               checked={integrationEnabled}
               onChange={(e) => setIntegrationEnabled(e.target.checked)}
+              className="w-4 h-4 mt-0.5 rounded accent-[var(--admin-accent)]"
             />
-            Entegrasyonu etkinleştir
+            <div>
+              <p className="text-sm font-medium text-[var(--admin-text)]">
+                Entegrasyonu etkinleştir
+              </p>
+              <p className="text-xs admin-text-muted mt-1">
+                Harici POS veya sipariş sistemleri ile bağlantı
+              </p>
+            </div>
           </label>
-        </Card>
+        </SettingsSection>
+      </div>
 
-        <Card className="p-6 lg:col-span-2">
-          <h3 className="font-semibold text-slate-800 mb-4">Karşılama Metinleri</h3>
-          <div className="grid md:grid-cols-2 gap-4">
-            {data.languages.filter((l) => l.isActive).map((lang) => (
+      <SettingsSection icon={MessageSquare} title="Karşılama Metinleri">
+        <div className="grid sm:grid-cols-2 gap-4 float-field-stack">
+          {activeLanguages.length === 0 ? (
+            <p className="text-sm admin-text-muted col-span-2">
+              Karşılama metni eklemek için en az bir dil aktif olmalı.
+            </p>
+          ) : (
+            activeLanguages.map((lang) => (
               <Textarea
                 key={lang.id}
-                label={`Karşılama Metni (${lang.name})`}
+                label={`Karşılama metni (${lang.name})`}
+                rows={4}
                 value={messages[lang.id] || ''}
                 onChange={(e) => setMessages({ ...messages, [lang.id]: e.target.value })}
               />
-            ))}
-          </div>
-        </Card>
+            ))
+          )}
+        </div>
+      </SettingsSection>
 
-        <Card className="p-6 lg:col-span-2">
-          <h3 className="font-semibold text-slate-800 mb-4">Firma Ayarları</h3>
-          <div className="flex flex-col sm:flex-row gap-6">
-            <div className="flex-1 space-y-4 float-field-stack">
-              <Input
-                label="Firma Adı"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-              />
-              <div>
-                <label className="block text-sm font-medium mb-1">Logo</label>
-                <input type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} />
-              </div>
-            </div>
-            {data.restaurant.logoUrl && (
-              <img
-                src={imageUrl(data.restaurant.logoUrl)}
-                alt="Logo"
-                className="w-32 h-32 object-contain rounded-xl border border-slate-200 p-2"
-              />
-            )}
+      <SettingsSection icon={Building2} title="Firma Ayarları">
+        <div className="grid sm:grid-cols-2 gap-6">
+          <div className="float-field-stack">
+            <Input
+              label="Firma Adı"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+            />
           </div>
-        </Card>
-      </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
+              Logo
+            </p>
+            <div
+              className="rounded-2xl border-2 border-dashed p-6 text-center transition hover:border-[var(--admin-accent)] cursor-pointer min-h-[160px] flex flex-col items-center justify-center"
+              style={{ borderColor: 'var(--admin-card-border)' }}
+              onClick={() => fileRef.current?.click()}
+            >
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+              />
+              {logoPreview ? (
+                <img
+                  src={logoPreview}
+                  alt="Logo önizleme"
+                  className="max-h-24 max-w-full object-contain mb-2"
+                />
+              ) : (
+                <ImagePlus
+                  className="w-10 h-10 mb-2"
+                  style={{ color: 'var(--admin-accent)' }}
+                />
+              )}
+              <p className="text-sm font-medium text-[var(--admin-text)]">
+                Logo yüklemek için tıklayın
+              </p>
+              <p className="text-xs admin-text-subtle mt-1">PNG, JPG — şeffaf arka plan önerilir</p>
+            </div>
+          </div>
+        </div>
+      </SettingsSection>
     </div>
   );
 }
