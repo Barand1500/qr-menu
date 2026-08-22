@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, ImagePlus, Layers, FolderTree } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
+import LanguageTabs from '@/components/LanguageTabs';
 
 export interface GroupFormState {
   translations: Record<string, string>;
@@ -26,43 +27,6 @@ interface GroupModalProps {
   onSave: () => void;
   onFormChange: (form: GroupFormState) => void;
   onImageChange: (file: File | null) => void;
-}
-
-function LanguageTabs({
-  languages,
-  activeCode,
-  onChange,
-}: {
-  languages: Language[];
-  activeCode: string;
-  onChange: (code: string) => void;
-}) {
-  if (languages.length <= 1) return null;
-
-  return (
-    <div
-      className="flex gap-1 p-1 rounded-xl"
-      style={{ background: 'var(--admin-input-bg)' }}
-    >
-      {languages.map((lang) => {
-        const active = lang.code === activeCode;
-        return (
-          <button
-            key={lang.code}
-            type="button"
-            onClick={() => onChange(lang.code)}
-            className="flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all"
-            style={{
-              background: active ? 'var(--admin-accent)' : 'transparent',
-              color: active ? 'var(--admin-btn-primary-text)' : 'var(--admin-text-muted)',
-            }}
-          >
-            {lang.name}
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 export default function GroupModal({

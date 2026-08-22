@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Plus, Pencil, EyeOff } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import {
+  Plus,
+  Pencil,
+  EyeOff,
+  Eye,
+  SlidersHorizontal,
+  ChevronDown,
+} from 'lucide-react';
 import { api, formatPrice, imageUrl } from '@/lib/api';
 import {
   Badge,
@@ -10,6 +18,10 @@ import {
   PageHeader,
   Spinner,
 } from '@/components/ui';
+import ProductModal, {
+  type ProductFormState,
+  type ProductTranslationFields,
+} from '@/components/ProductModal';
 
 interface Product {
   id: number;
@@ -21,12 +33,20 @@ interface Product {
   sortOrder: number;
   isActive: boolean;
   isValid: boolean;
-  translations: { languageId: number; languageCode: string; name: string }[];
+  translations: {
+    languageId: number;
+    languageCode: string;
+    name: string;
+    description?: string | null;
+  }[];
 }
 
 interface Group {
   id: number;
   name: string;
+  parentId?: number | null;
+  parentName?: string | null;
+  isSubGroup?: boolean;
 }
 
 interface Language {
@@ -35,165 +55,371 @@ interface Language {
   name: string;
 }
 
+type StatusFilter = 'all' | 'active' | 'passive';
+
+const emptyForm = (): ProductFormState => ({
+  groupId: '',
+  price: '',
+  translations: {},
+  isActive: true,
+});
+
+function buildFormFromProduct(product: Product): ProductFormState {
+  const translations: Record<string, ProductTranslationFields> = {};
+  for (const t of product.translations) {
+    translations[t.languageCode] = {
+      name: t.name,
+      description: t.description || '',
+    };
+  }
+  return {
+    groupId: product.groupId.toString(),
+    price: product.price.toString(),
+    translations,
+    isActive: product.isActive,
+  };
+}
+
 export default function ProductsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [languages, setLanguages] = useState<Language[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [filterOpen, setFilterOpen] = useState(false);
+
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editing, setEditing] = useState<Product | null>(null);
-  const [form, setForm] = useState({
-    groupId: '',
-    price: '',
-    translations: {} as Record<string, string>,
-    isActive: true,
-  });
+  const [form, setForm] = useState<ProductFormState>(emptyForm());
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const params = new URLSearchParams({ limit: '100' });
     if (search) params.set('search', search);
     if (groupFilter) params.set('groupId', groupFilter);
+    if (statusFilter === 'active') params.set('active', 'true');
+    if (statusFilter === 'passive') params.set('active', 'false');
 
     const [p, g, langs] = await Promise.all([
       api<{ data: Product[] }>(`/api/admin/products?${params}`),
-      api<{ data: Group[] }>('/api/admin/groups?limit=100'),
+      api<{ data: Group[] }>('/api/admin/groups?limit=200'),
       api<Language[]>('/api/admin/languages'),
     ]);
     setProducts(p.data);
     setGroups(g.data);
     setLanguages(langs.filter((l) => l.code === 'tr' || l.code === 'en'));
-  }, [search, groupFilter]);
+  }, [search, groupFilter, statusFilter]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
   }, [load]);
 
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreview(editing?.imageUrl ? imageUrl(editing.imageUrl) : null);
+      return;
+    }
+    const url = URL.createObjectURL(imageFile);
+    setImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile, editing?.imageUrl]);
+
+  const groupOptions = useMemo(
+    () =>
+      groups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        isSubGroup: g.isSubGroup,
+        parentName: g.parentName,
+      })),
+    [groups]
+  );
+
+  const activeFilterCount = [
+    groupFilter.length > 0,
+    statusFilter !== 'all',
+    search.trim().length > 0,
+  ].filter(Boolean).length;
+
   function openCreate() {
+    setModalMode('create');
     setEditing(null);
     setForm({
+      ...emptyForm(),
       groupId: groups[0]?.id?.toString() || '',
-      price: '',
-      translations: {},
-      isActive: true,
     });
     setImageFile(null);
+    setImagePreview(null);
     setModalOpen(true);
   }
 
   function openEdit(product: Product) {
+    setModalMode('edit');
     setEditing(product);
-    setForm({
-      groupId: product.groupId.toString(),
-      price: product.price.toString(),
-      translations: Object.fromEntries(product.translations.map((t) => [t.languageCode, t.name])),
-      isActive: product.isActive,
-    });
+    setForm(buildFormFromProduct(product));
     setImageFile(null);
+    setImagePreview(product.imageUrl ? imageUrl(product.imageUrl) : null);
     setModalOpen(true);
   }
 
-  async function handleSave() {
-    const translations = languages.map((l) => ({
-      languageId: l.id,
-      name: form.translations[l.code] || '',
-    }));
-
-    const payload = {
-      groupId: Number(form.groupId),
-      price: parseFloat(form.price) || 0,
-      translations,
-      isActive: form.isActive,
-    };
-
-    if (editing) {
-      await api(`/api/admin/products/${editing.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-      });
-      if (imageFile) {
-        const fd = new FormData();
-        fd.append('image', imageFile);
-        await fetch(`/api/admin/products/${editing.id}/image`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-          body: fd,
-        });
-      }
-    } else {
-      const created = await api<Product>('/api/admin/products', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-      if (imageFile) {
-        const fd = new FormData();
-        fd.append('image', imageFile);
-        await fetch(`/api/admin/products/${created.id}/image`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-          body: fd,
-        });
-      }
-    }
-
+  function closeModal() {
     setModalOpen(false);
-    await load();
+    setEditing(null);
+    setForm(emptyForm());
+    setImageFile(null);
+    setImagePreview(null);
   }
 
-  async function handleToggle(id: number) {
-    await api(`/api/admin/products/${id}/toggle`, { method: 'PATCH' });
-    await load();
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (!editId || loading) return;
+
+    const id = Number(editId);
+    if (!id) return;
+
+    async function openFromUrl() {
+      const fromList = products.find((p) => p.id === id);
+      if (fromList) {
+        openEdit(fromList);
+      } else {
+        try {
+          const product = await api<Product>(`/api/admin/products/${id}`);
+          openEdit(product);
+        } catch {
+          /* ignore */
+        }
+      }
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('edit');
+        return next;
+      }, { replace: true });
+    }
+
+    openFromUrl();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, products, loading]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const translations = languages.map((l) => ({
+        languageId: l.id,
+        name: form.translations[l.code]?.name || '',
+        description: form.translations[l.code]?.description || '',
+      }));
+
+      const payload = {
+        groupId: Number(form.groupId),
+        price: parseFloat(form.price) || 0,
+        translations,
+        isActive: form.isActive,
+      };
+
+      if (editing) {
+        await api(`/api/admin/products/${editing.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+        if (imageFile) await uploadImage(editing.id);
+      } else {
+        const created = await api<Product>('/api/admin/products', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        if (imageFile) await uploadImage(created.id);
+      }
+
+      closeModal();
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function uploadImage(id: number) {
+    const fd = new FormData();
+    fd.append('image', imageFile!);
+    await fetch(`/api/admin/products/${id}/image`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      body: fd,
+    });
+  }
+
+  async function handleToggle(product: Product) {
+    const nextActive = !product.isActive;
+    setProducts((prev) =>
+      prev.map((p) => (p.id === product.id ? { ...p, isActive: nextActive } : p))
+    );
+    try {
+      await api(`/api/admin/products/${product.id}/toggle`, { method: 'PATCH' });
+    } catch {
+      setProducts((prev) =>
+        prev.map((p) => (p.id === product.id ? { ...p, isActive: product.isActive } : p))
+      );
+    }
+  }
+
+  function clearFilters() {
+    setSearch('');
+    setGroupFilter('');
+    setStatusFilter('all');
   }
 
   if (loading) return <Spinner />;
 
   return (
-    <div>
+    <div className="space-y-5">
       <PageHeader
         title="Ürünler"
         actions={
           <Button onClick={openCreate}>
-            <Plus className="w-4 h-4" /> Yeni Ürün
+            <Plus className="w-4 h-4" />
+            Yeni Ürün Ekle
           </Button>
         }
       />
 
-      <Card className="overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 max-w-xs">
-            <Input
-              label="Ara..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+      <Card className="overflow-hidden !p-0">
+        <div
+          className="p-4 sm:p-5 border-b flex flex-col gap-4"
+          style={{ borderColor: 'var(--admin-card-border)' }}
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3 justify-between">
+            <div className="relative flex-1 max-w-md">
+              <Input
+                label="Ürün adı ara..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setFilterOpen(!filterOpen)}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition border ${
+                  filterOpen ? 'ring-2 ring-[var(--admin-accent)]' : ''
+                }`}
+                style={{
+                  background: 'var(--admin-input-bg)',
+                  borderColor: 'var(--admin-card-border)',
+                  color: 'var(--admin-text)',
+                }}
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                Filtrele
+                {activeFilterCount > 0 && (
+                  <span
+                    className="ml-1 min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center"
+                    style={{
+                      background: 'var(--admin-accent)',
+                      color: 'var(--admin-btn-primary-text)',
+                    }}
+                  >
+                    {activeFilterCount}
+                  </span>
+                )}
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform ${filterOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              <span className="text-sm admin-text-muted">{products.length} kayıt</span>
+            </div>
           </div>
-          <select
-            value={groupFilter}
-            onChange={(e) => setGroupFilter(e.target.value)}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+
+          <div
+            className={`grid transition-all duration-300 ease-out ${
+              filterOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+            }`}
           >
-            <option value="">Tüm Gruplar</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </select>
+            <div className="overflow-hidden">
+              <div
+                className="rounded-2xl p-4 grid sm:grid-cols-2 gap-4"
+                style={{ background: 'var(--admin-input-bg)' }}
+              >
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
+                    Grup
+                  </p>
+                  <select
+                    value={groupFilter}
+                    onChange={(e) => setGroupFilter(e.target.value)}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm"
+                    style={{
+                      background: 'var(--admin-card)',
+                      border: '1px solid var(--admin-card-border)',
+                      color: 'var(--admin-text)',
+                    }}
+                  >
+                    <option value="">Tüm Gruplar</option>
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.isSubGroup && g.parentName ? `${g.parentName} › ${g.name}` : g.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
+                    Durum
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      [
+                        ['all', 'Tümü'],
+                        ['active', 'Aktif'],
+                        ['passive', 'Pasif'],
+                      ] as const
+                    ).map(([val, label]) => (
+                      <button
+                        key={val}
+                        onClick={() => setStatusFilter(val)}
+                        className="px-3 py-1.5 rounded-xl text-sm font-medium transition"
+                        style={{
+                          background:
+                            statusFilter === val ? 'var(--admin-accent)' : 'var(--admin-card)',
+                          color:
+                            statusFilter === val
+                              ? 'var(--admin-btn-primary-text)'
+                              : 'var(--admin-text-muted)',
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="sm:col-span-2">
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Filtreleri Temizle
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto admin-scroll">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-slate-500 bg-slate-50/80">
-                <th className="py-3 px-4 w-16" />
-                <th className="py-3 px-4 font-medium">Adı</th>
-                <th className="py-3 px-4 font-medium hidden md:table-cell">Grubu</th>
-                <th className="py-3 px-4 font-medium">Fiyat</th>
-                <th className="py-3 px-4 font-medium hidden sm:table-cell">Sıra</th>
-                <th className="py-3 px-4 font-medium">Aktif</th>
-                <th className="py-3 px-4 w-24" />
+              <tr
+                className="text-left text-xs uppercase tracking-wide admin-text-muted"
+                style={{ background: 'var(--admin-input-bg)' }}
+              >
+                <th className="py-3.5 px-4 font-semibold w-[72px]">Görsel</th>
+                <th className="py-3.5 px-4 font-semibold">Adı</th>
+                <th className="py-3.5 px-4 font-semibold hidden md:table-cell">Grubu</th>
+                <th className="py-3.5 px-4 font-semibold">Fiyat</th>
+                <th className="py-3.5 px-4 font-semibold hidden sm:table-cell">Sıra</th>
+                <th className="py-3.5 px-4 font-semibold">Durum</th>
+                <th className="py-3.5 px-4 font-semibold w-[100px]">İşlem</th>
               </tr>
             </thead>
             <tbody>
@@ -205,47 +431,71 @@ export default function ProductsPage() {
                 </tr>
               ) : (
                 products.map((product) => (
-                  <tr key={product.id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                    <td className="py-3 px-4">
+                  <tr
+                    key={product.id}
+                    className="border-b transition-all duration-300 hover:bg-[var(--admin-accent-soft)]/30"
+                    style={{
+                      borderColor: 'var(--admin-card-border)',
+                      opacity: product.isActive ? 1 : 0.38,
+                    }}
+                  >
+                    <td className="py-3.5 px-4">
                       {product.imageUrl ? (
                         <img
                           src={imageUrl(product.imageUrl)}
                           alt=""
-                          className="w-12 h-12 rounded-lg object-cover"
+                          className="w-12 h-12 rounded-xl object-cover"
+                          style={{ background: 'var(--admin-input-bg)' }}
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-lg bg-slate-100" />
+                        <div
+                          className="w-12 h-12 rounded-xl"
+                          style={{ background: 'var(--admin-accent-soft)' }}
+                        />
                       )}
                     </td>
-                    <td className="py-3 px-4 font-medium">
-                      {product.name}
+                    <td className="py-3.5 px-4">
+                      <p className="font-semibold text-[var(--admin-text)]">{product.name}</p>
                       {!product.isValid && (
-                        <span className="ml-2 text-xs text-red-500">Hatalı</span>
+                        <span className="text-xs text-red-500">Eksik çeviri</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-slate-500 hidden md:table-cell">
+                    <td className="py-3.5 px-4 admin-text-muted hidden md:table-cell">
                       {product.groupName}
                     </td>
-                    <td className="py-3 px-4">{formatPrice(product.price)} ₺</td>
-                    <td className="py-3 px-4 text-slate-500 hidden sm:table-cell">
+                    <td className="py-3.5 px-4 font-medium text-[var(--admin-text)]">
+                      {formatPrice(product.price)} ₺
+                    </td>
+                    <td className="py-3.5 px-4 admin-text-muted hidden sm:table-cell">
                       {product.sortOrder}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3.5 px-4">
                       <Badge active={product.isActive} />
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3.5 px-4">
                       <div className="flex gap-1">
                         <button
                           onClick={() => openEdit(product)}
-                          className="p-2 rounded-lg hover:bg-amber-50 text-amber-600"
+                          className="p-2 rounded-xl transition hover:bg-[var(--admin-accent-soft)]"
+                          style={{ color: 'var(--admin-accent)' }}
+                          title="Düzenle"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleToggle(product.id)}
-                          className="p-2 rounded-lg hover:bg-slate-100 text-slate-500"
+                          onClick={() => handleToggle(product)}
+                          className={`p-2 rounded-xl transition ${
+                            product.isActive
+                              ? 'hover:bg-amber-500/10 text-amber-600'
+                              : 'hover:bg-emerald-500/10 text-emerald-600'
+                          }`}
+                          title={product.isActive ? 'Pasifleştir' : 'Aktifleştir'}
                         >
-                          <EyeOff className="w-4 h-4" />
+                          {product.isActive ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     </td>
@@ -257,69 +507,19 @@ export default function ProductsPage() {
         </div>
       </Card>
 
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <Card className="w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-4">
-              {editing ? 'Ürün Düzenle' : 'Yeni Ürün'}
-            </h2>
-            <div className="space-y-4 float-field-stack">
-              <div>
-                <label className="block text-sm font-medium mb-1">Grup</label>
-                <select
-                  value={form.groupId}
-                  onChange={(e) => setForm({ ...form, groupId: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                >
-                  {groups.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Input
-                label="Fiyat (₺)"
-                type="number"
-                step="0.01"
-                value={form.price}
-                onChange={(e) => setForm({ ...form, price: e.target.value })}
-              />
-              {languages.map((lang) => (
-                <Input
-                  key={lang.id}
-                  label={`Ad (${lang.name})`}
-                  value={form.translations[lang.code] || ''}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      translations: { ...form.translations, [lang.code]: e.target.value },
-                    })
-                  }
-                />
-              ))}
-              <div>
-                <label className="block text-sm font-medium mb-1">Görsel</label>
-                <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} />
-              </div>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.isActive}
-                  onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-                />
-                Aktif
-              </label>
-            </div>
-            <div className="flex gap-2 mt-6 justify-end">
-              <Button variant="secondary" onClick={() => setModalOpen(false)}>
-                İptal
-              </Button>
-              <Button onClick={handleSave}>Kaydet</Button>
-            </div>
-          </Card>
-        </div>
-      )}
+      <ProductModal
+        open={modalOpen}
+        mode={modalMode}
+        languages={languages}
+        groups={groupOptions}
+        form={form}
+        imagePreview={imagePreview}
+        saving={saving}
+        onClose={closeModal}
+        onSave={handleSave}
+        onFormChange={setForm}
+        onImageChange={setImageFile}
+      />
     </div>
   );
 }

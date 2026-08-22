@@ -11,6 +11,7 @@ import {
   ChevronDown,
   X,
   Package,
+  CornerDownRight,
 } from 'lucide-react';
 import {
   DndContext,
@@ -32,6 +33,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { api, imageUrl } from '@/lib/api';
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Spinner } from '@/components/ui';
 import GroupModal, { type GroupFormState } from '@/components/GroupModal';
+import GroupProductsModal from '@/components/GroupProductsModal';
 
 interface Group {
   id: number;
@@ -59,22 +61,56 @@ type TypeFilter = 'all' | 'main' | 'sub';
 
 const emptyForm: GroupFormState = { translations: {}, isActive: true, parentId: null };
 
+type SubPosition = 'none' | 'first' | 'middle' | 'last' | 'only';
+
+interface RowLayout {
+  hideBottomBorder: boolean;
+  subPosition: SubPosition;
+  hasChildren: boolean;
+}
+
+function getRowLayout(groups: Group[], index: number): RowLayout {
+  const group = groups[index];
+  const prev = groups[index - 1];
+  const next = groups[index + 1];
+
+  if (!group.isSubGroup) {
+    const hasChildren = next?.parentId === group.id;
+    return { hideBottomBorder: hasChildren, subPosition: 'none', hasChildren };
+  }
+
+  const isFirst = !prev || prev.id === group.parentId;
+  const isLast = !next || next.parentId !== group.parentId;
+
+  let subPosition: SubPosition;
+  if (isFirst && isLast) subPosition = 'only';
+  else if (isFirst) subPosition = 'first';
+  else if (isLast) subPosition = 'last';
+  else subPosition = 'middle';
+
+  return { hideBottomBorder: !isLast, subPosition, hasChildren: false };
+}
+
 function SortableRow({
   group,
+  layout,
   sortMode,
   pickMode,
   selectedForSub,
   onEdit,
   onToggle,
   onPickParent,
+  onShowProducts,
 }: {
   group: Group;
+  layout: RowLayout;
   sortMode: boolean;
   pickMode: boolean;
   selectedForSub: number | null;
   onEdit: (g: Group) => void;
   onToggle: (g: Group) => void;
   onPickParent: (g: Group) => void;
+  onShowProducts: (g: Group) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: group.id,
@@ -89,23 +125,32 @@ function SortableRow({
 
   const canPick = pickMode && !group.isSubGroup;
   const isHighlighted = pickMode && selectedForSub === group.id;
+  const isSub = group.isSubGroup;
+  const { hideBottomBorder, hasChildren } = layout;
+
+  const subRowBg = isSub
+    ? { background: 'color-mix(in srgb, var(--admin-accent-soft) 40%, var(--admin-card))' }
+    : {};
 
   return (
     <tr
       ref={setNodeRef}
       onClick={() => canPick && onPickParent(group)}
-      className={`border-b transition-all duration-300 ${
-        !group.isActive ? 'grayscale-[30%]' : ''
-      } ${
+      className={`transition-all duration-300 ${
+        hideBottomBorder ? '' : 'border-b'
+      } ${!group.isActive ? 'grayscale-[30%]' : ''} ${
         isHighlighted
           ? 'bg-[var(--admin-accent-soft)] ring-2 ring-inset ring-[var(--admin-accent)]'
           : canPick
             ? 'cursor-pointer hover:bg-[var(--admin-accent-soft)]/60'
-            : 'hover:bg-[var(--admin-accent-soft)]/30'
-      }`}
+            : isSub
+              ? 'hover:bg-[var(--admin-accent-soft)]/50'
+              : 'hover:bg-[var(--admin-accent-soft)]/30'
+      } ${hasChildren ? 'border-b-0' : ''}`}
       style={{
         ...style,
-        borderColor: 'var(--admin-card-border)',
+        borderColor: hideBottomBorder ? 'transparent' : 'var(--admin-card-border)',
+        ...subRowBg,
       }}
     >
       {sortMode && (
@@ -119,41 +164,49 @@ function SortableRow({
           </button>
         </td>
       )}
-      <td className="py-3.5 px-4 w-[72px]">
-        {group.imageUrl ? (
-          <img
-            src={imageUrl(group.imageUrl)}
-            alt=""
-            className="w-12 h-12 rounded-xl object-cover"
-            style={{ background: 'var(--admin-input-bg)' }}
-          />
-        ) : (
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center"
-            style={{ background: 'var(--admin-accent-soft)' }}
-          >
-            {group.isSubGroup ? (
-              <FolderTree className="w-5 h-5" style={{ color: 'var(--admin-accent)' }} />
-            ) : (
-              <Layers className="w-5 h-5" style={{ color: 'var(--admin-accent)' }} />
-            )}
-          </div>
-        )}
+      <td className={`py-3.5 px-4 w-[72px] ${isSub ? 'pl-6' : ''}`}>
+        <div className="flex items-center gap-1">
+          {isSub && (
+            <CornerDownRight
+              className="w-4 h-4 shrink-0 admin-text-subtle"
+              style={{ color: 'var(--admin-accent)' }}
+            />
+          )}
+          {group.imageUrl ? (
+            <img
+              src={imageUrl(group.imageUrl)}
+              alt=""
+              className={`${isSub ? 'w-10 h-10' : 'w-12 h-12'} rounded-xl object-cover`}
+              style={{ background: 'var(--admin-input-bg)' }}
+            />
+          ) : (
+            <div
+              className={`${isSub ? 'w-10 h-10' : 'w-12 h-12'} rounded-xl flex items-center justify-center`}
+              style={{ background: 'var(--admin-accent-soft)' }}
+            >
+              {group.isSubGroup ? (
+                <FolderTree className={`${isSub ? 'w-4 h-4' : 'w-5 h-5'}`} style={{ color: 'var(--admin-accent)' }} />
+              ) : (
+                <Layers className="w-5 h-5" style={{ color: 'var(--admin-accent)' }} />
+              )}
+            </div>
+          )}
+        </div>
       </td>
       <td className="py-3.5 px-4 min-w-[180px]">
-        <div
-          className="flex items-center gap-2"
-          style={{ paddingLeft: group.isSubGroup ? '1.25rem' : 0 }}
-        >
-          {group.isSubGroup && (
-            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--admin-accent)' }} />
+        <div className={`min-w-0 ${isSub ? 'pl-1' : ''}`}>
+          <p
+            className={`truncate text-[var(--admin-text)] ${
+              isSub ? 'text-sm font-medium' : 'font-semibold'
+            }`}
+          >
+            {group.name}
+          </p>
+          {hasChildren && (
+            <p className="text-xs admin-text-subtle mt-0.5">
+              {group.childrenCount} alt grup
+            </p>
           )}
-          <div className="min-w-0">
-            <p className="font-semibold text-[var(--admin-text)] truncate">{group.name}</p>
-            {group.isSubGroup && group.parentName && (
-              <p className="text-xs admin-text-subtle truncate">Üst: {group.parentName}</p>
-            )}
-          </div>
         </div>
       </td>
       <td className="py-3.5 px-4 hidden md:table-cell">
@@ -170,11 +223,20 @@ function SortableRow({
       <td className="py-3.5 px-4 hidden sm:table-cell text-sm admin-text-muted">
         {group.sortOrder}
       </td>
-      <td className="py-3.5 px-4 hidden lg:table-cell text-sm admin-text-muted">
-        <span className="inline-flex items-center gap-1">
+      <td className="py-3.5 px-4 hidden lg:table-cell">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onShowProducts(group);
+          }}
+          className="inline-flex items-center gap-1.5 text-sm font-medium px-2.5 py-1 rounded-xl transition hover:bg-[var(--admin-accent-soft)]"
+          style={{ color: 'var(--admin-accent-text)' }}
+          title="Grup ürünlerini gör"
+        >
           <Package className="w-3.5 h-3.5" />
           {group.productCount}
-        </span>
+        </button>
       </td>
       <td className="py-3.5 px-4">
         <Badge active={group.isActive} />
@@ -234,6 +296,8 @@ export default function GroupsPage() {
 
   const [subGroupPickMode, setSubGroupPickMode] = useState(false);
   const [pickParent, setPickParent] = useState<Group | null>(null);
+
+  const [productsModalGroup, setProductsModalGroup] = useState<Group | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -645,16 +709,18 @@ export default function GroupsPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredGroups.map((group) => (
+                    filteredGroups.map((group, index) => (
                       <SortableRow
                         key={group.id}
                         group={group}
+                        layout={getRowLayout(filteredGroups, index)}
                         sortMode={sortMode}
                         pickMode={subGroupPickMode}
                         selectedForSub={pickParent?.id ?? null}
                         onEdit={openEdit}
                         onToggle={handleToggle}
                         onPickParent={handlePickParent}
+                        onShowProducts={setProductsModalGroup}
                       />
                     ))
                   )}
@@ -664,6 +730,13 @@ export default function GroupsPage() {
           </DndContext>
         </div>
       </Card>
+
+      <GroupProductsModal
+        open={productsModalGroup !== null}
+        groupId={productsModalGroup?.id ?? null}
+        groupName={productsModalGroup?.name ?? ''}
+        onClose={() => setProductsModalGroup(null)}
+      />
 
       <GroupModal
         open={modalMode !== null}
