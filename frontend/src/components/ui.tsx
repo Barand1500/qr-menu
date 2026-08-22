@@ -68,6 +68,36 @@ function useFloatedState(
   return { setFocused, floated: focused || hasValue };
 }
 
+function FloatFieldShell({
+  variant,
+  floated,
+  className,
+  displayLabel,
+  children,
+}: {
+  variant: InputVariant;
+  floated: boolean;
+  className: string;
+  displayLabel: string;
+  children: ReactNode;
+}) {
+  return (
+    <fieldset
+      className={`float-field float-field--${variant} ${floated ? 'is-floated' : ''} ${className}`}
+    >
+      {floated && displayLabel ? (
+        <legend className="float-field__legend">{displayLabel}</legend>
+      ) : null}
+      {!floated && displayLabel ? (
+        <span className="float-field__placeholder" aria-hidden="true">
+          {displayLabel}
+        </span>
+      ) : null}
+      {children}
+    </fieldset>
+  );
+}
+
 export function Input({
   label,
   variant = 'admin',
@@ -86,16 +116,15 @@ export function Input({
   const { setFocused, floated } = useFloatedState(value, defaultValue);
 
   return (
-    <div
-      className={`float-field float-field--${variant} ${floated ? 'is-floated' : ''} ${className}`}
+    <FloatFieldShell
+      variant={variant}
+      floated={floated}
+      className={className}
+      displayLabel={displayLabel}
     >
-      {displayLabel ? (
-        <label htmlFor={id} className="float-field__label">
-          {displayLabel}
-        </label>
-      ) : null}
       <input
         id={id}
+        aria-label={displayLabel || undefined}
         className="float-field__input"
         value={value}
         defaultValue={defaultValue}
@@ -109,7 +138,7 @@ export function Input({
         }}
         {...props}
       />
-    </div>
+    </FloatFieldShell>
   );
 }
 
@@ -136,16 +165,15 @@ export function Textarea({
   const { setFocused, floated } = useFloatedState(value, defaultValue);
 
   return (
-    <div
-      className={`float-field float-field--${variant} float-field--textarea ${floated ? 'is-floated' : ''} ${className}`}
+    <FloatFieldShell
+      variant={variant}
+      floated={floated}
+      className={`float-field--textarea ${className}`}
+      displayLabel={displayLabel}
     >
-      {displayLabel ? (
-        <label htmlFor={id} className="float-field__label">
-          {displayLabel}
-        </label>
-      ) : null}
       <textarea
         id={id}
+        aria-label={displayLabel || undefined}
         className="float-field__input"
         value={value}
         defaultValue={defaultValue}
@@ -159,7 +187,7 @@ export function Textarea({
         }}
         {...props}
       />
-    </div>
+    </FloatFieldShell>
   );
 }
 

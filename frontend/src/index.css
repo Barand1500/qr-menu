@@ -181,10 +181,13 @@ body {
   box-shadow: none;
 }
 
-/* ── Outlined floating label input (Material Design) ── */
+/* ── Outlined floating label (fieldset + legend — border doğal kesilir) ── */
 .float-field {
   position: relative;
   display: block;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
   border-radius: 14px;
   border: 1.5px solid var(--float-border, #e2e8f0);
   background: var(--float-bg, transparent);
@@ -196,22 +199,26 @@ body {
   box-shadow: 0 0 0 3px var(--float-ring, rgba(37, 99, 235, 0.12));
 }
 
-.float-field__input {
+.float-field__legend {
   display: block;
-  width: 100%;
-  border: none;
-  outline: none;
+  width: auto;
+  max-width: calc(100% - 24px);
+  padding: 0 6px;
+  margin-left: 10px;
+  margin-bottom: 0;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--float-label-focus, #2563eb);
   background: transparent;
-  padding: 18px 16px 10px;
-  font-size: 15px;
-  line-height: 1.4;
-  color: var(--float-text, inherit);
-  border-radius: inherit;
+  border: none;
+  float: unset;
 }
 
-.float-field__label {
+.float-field__placeholder {
   position: absolute;
-  left: 13px;
+  left: 16px;
   top: 50%;
   transform: translateY(-50%);
   font-size: 15px;
@@ -219,27 +226,25 @@ body {
   color: var(--float-label, #94a3b8);
   pointer-events: none;
   user-select: none;
-  padding: 0 5px;
-  background: transparent;
-  transition:
-    top 0.18s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
-    font-size 0.18s cubic-bezier(0.4, 0, 0.2, 1),
-    color 0.18s ease,
-    background 0.18s ease;
-  z-index: 1;
 }
 
-/* Floated: label sits ON the top border line */
-.float-field.is-floated .float-field__label,
-.float-field:focus-within .float-field__label {
-  top: 0;
-  transform: translateY(-50%);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  color: var(--float-label-focus, #2563eb);
-  background: var(--float-notch-bg, #fff);
+.float-field__input {
+  display: block;
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 16px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--float-text, inherit);
+  border-radius: inherit;
+}
+
+.float-field.is-floated .float-field__input,
+.float-field:focus-within .float-field__input {
+  padding-top: 10px;
+  padding-bottom: 12px;
 }
 
 .float-field--admin {
@@ -250,30 +255,21 @@ body {
   --float-text: var(--admin-text);
   --float-label: var(--admin-text-subtle);
   --float-label-focus: var(--admin-accent);
-  --float-notch-bg: var(--admin-input-bg);
 }
 
 .float-field--glass {
   --float-border: rgba(255, 255, 255, 0.45);
   --float-border-focus: rgba(255, 255, 255, 0.95);
-  --float-ring: rgba(255, 255, 255, 0.08);
+  --float-ring: transparent;
   --float-bg: rgba(255, 255, 255, 0.06);
   --float-text: #ffffff;
   --float-label: rgba(255, 255, 255, 0.55);
   --float-label-focus: #ffffff;
-  /* Cam kart rengi — border çizgisini keser */
-  --float-notch-bg: rgba(255, 255, 255, 0.12);
   border-radius: 16px;
 }
 
 .float-field--glass:focus-within {
   box-shadow: none;
-}
-
-.float-field--glass.is-floated .float-field__label,
-.float-field--glass:focus-within .float-field__label {
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
 }
 
 .float-field--public {
@@ -284,23 +280,22 @@ body {
   --float-text: #0f172a;
   --float-label: #94a3b8;
   --float-label-focus: #6366f1;
-  --float-notch-bg: #ffffff;
 }
 
 .float-field--textarea .float-field__input {
   min-height: 96px;
-  padding-top: 22px;
+  padding-top: 20px;
   resize: vertical;
 }
 
-.float-field--textarea .float-field__label {
-  top: 22px;
+.float-field--textarea.is-floated .float-field__input,
+.float-field--textarea:focus-within .float-field__input {
+  padding-top: 14px;
+}
+
+.float-field--textarea .float-field__placeholder {
+  top: 20px;
   transform: none;
 }
 
-.float-field--textarea.is-floated .float-field__label,
-.float-field--textarea:focus-within .float-field__label {
-  top: 0;
-  transform: translateY(-50%);
-}
 
