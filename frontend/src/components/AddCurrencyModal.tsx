@@ -77,7 +77,7 @@ export default function AddCurrencyModal({
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[6px]" />
 
       <div
-        className="relative w-full sm:max-w-lg max-h-[88vh] flex flex-col rounded-t-[28px] sm:rounded-[28px] shadow-2xl animate-slide-up overflow-hidden"
+        className="relative w-full sm:w-[520px] sm:max-w-[92vw] max-h-[min(520px,78vh)] flex flex-col rounded-t-[24px] sm:rounded-[24px] shadow-2xl animate-slide-up overflow-hidden"
         style={{
           background: 'var(--admin-card)',
           border: '1px solid var(--admin-card-border)',
@@ -85,42 +85,42 @@ export default function AddCurrencyModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          className="px-5 pt-5 pb-4 shrink-0"
+          className="px-4 pt-4 pb-3 shrink-0"
           style={{ borderBottom: '1px solid var(--admin-card-border)' }}
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div
-                className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
                 style={{ background: 'var(--admin-accent-soft)' }}
               >
                 💱
               </div>
-              <div>
-                <h2 className="text-base font-bold text-[var(--admin-text)]">Para Birimi Ekle</h2>
-                <p className="text-xs admin-text-muted mt-0.5 leading-relaxed">
-                  Kur hesabı yok. Ürün fiyatına yazdığın rakam, seçtiğin birimle gösterilir.
+              <div className="min-w-0">
+                <h2 className="text-sm font-bold text-[var(--admin-text)]">Para Birimi Ekle</h2>
+                <p className="text-[11px] admin-text-muted truncate">
+                  Kur yok — yazdığın fiyat olduğu gibi
                 </p>
               </div>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[var(--admin-accent-soft)] transition"
+              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--admin-accent-soft)] transition shrink-0"
               aria-label="Kapat"
             >
               <X className="w-4 h-4 admin-text-muted" />
             </button>
           </div>
 
-          <div className="relative mt-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 admin-text-muted" />
+          <div className="relative mt-2.5">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 admin-text-muted" />
             <input
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Ara (TRY, Dolar, €…)"
-              className="w-full h-11 pl-10 pr-3 rounded-2xl text-sm outline-none"
+              className="w-full h-9 pl-9 pr-3 rounded-xl text-sm outline-none"
               style={{
                 background: 'var(--admin-input-bg)',
                 border: '1px solid var(--admin-card-border)',
@@ -130,9 +130,9 @@ export default function AddCurrencyModal({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto admin-scroll px-3 py-3 space-y-1.5 min-h-0">
+        <div className="flex-1 overflow-y-auto admin-scroll px-2.5 py-2 space-y-0.5 min-h-0">
           {filtered.length === 0 ? (
-            <p className="text-sm admin-text-muted text-center py-10">Sonuç bulunamadı</p>
+            <p className="text-sm admin-text-muted text-center py-8">Sonuç bulunamadı</p>
           ) : (
             filtered.map((currency) => {
               const already = existingCodes.has(currency.code);
@@ -141,43 +141,42 @@ export default function AddCurrencyModal({
               return (
                 <div
                   key={currency.code}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-2xl transition"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition"
                   style={{
                     background: already ? 'var(--admin-input-bg)' : undefined,
                     opacity: already ? 0.72 : 1,
                   }}
                 >
-                  <span className="text-2xl leading-none w-9 text-center shrink-0">
+                  <span className="text-lg leading-none w-7 text-center shrink-0">
                     {currency.flag}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-semibold text-[var(--admin-text)] truncate">
-                        {currency.name}
-                      </p>
-                      <span className="text-[10px] font-bold uppercase tracking-wide admin-text-subtle">
-                        {currency.code}
-                      </span>
-                    </div>
-                    <p className="text-xs admin-text-muted">Sembol: {currency.symbol}</p>
+                  <div className="min-w-0 flex-1 flex items-center gap-1.5">
+                    <p className="text-[13px] font-semibold text-[var(--admin-text)] truncate">
+                      {currency.name}
+                    </p>
+                    <span className="text-[10px] font-bold uppercase admin-text-subtle shrink-0">
+                      {currency.code}
+                    </span>
+                    <span className="text-[11px] admin-text-muted shrink-0">{currency.symbol}</span>
                   </div>
 
                   {already ? (
-                    <span className="text-xs font-medium admin-text-muted shrink-0 px-2">
+                    <span className="text-[11px] font-medium admin-text-muted shrink-0 px-1">
                       Eklendi
                     </span>
                   ) : (
                     <Button
                       type="button"
+                      size="sm"
                       onClick={() => handleAdd(currency)}
                       disabled={Boolean(saving || pendingCode)}
-                      className="!h-9 !px-3 !rounded-xl shrink-0 gap-1"
+                      className="!h-7 !px-2.5 !rounded-lg shrink-0 gap-0.5 !text-xs"
                     >
                       {busy ? (
                         '…'
                       ) : (
                         <>
-                          <Plus className="w-3.5 h-3.5" />
+                          <Plus className="w-3 h-3" />
                           Ekle
                         </>
                       )}
@@ -190,10 +189,16 @@ export default function AddCurrencyModal({
         </div>
 
         <div
-          className="px-5 py-3.5 shrink-0 flex justify-end"
+          className="px-4 py-2.5 shrink-0 flex justify-end"
           style={{ borderTop: '1px solid var(--admin-card-border)' }}
         >
-          <Button type="button" variant="secondary" onClick={onClose} className="!rounded-xl">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onClose}
+            className="!rounded-xl"
+          >
             Kapat
           </Button>
         </div>
