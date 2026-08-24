@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { authRequired } from '../lib/auth.js';
+import { listCurrencies } from '../lib/currencies.js';
 
 const router = Router();
 router.use(authRequired);
 
 router.get('/', async (_req, res) => {
-  const currencies = await prisma.currency.findMany({ orderBy: { id: 'asc' } });
+  const currencies = await listCurrencies();
   res.json(currencies);
 });
 

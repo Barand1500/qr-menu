@@ -1,8 +1,13 @@
 import 'dotenv/config';
 import { createApp } from './app.js';
 import { config } from './config.js';
+import { ensureDefaultCurrency } from './lib/currencies.js';
 
 const app = createApp();
+
+ensureDefaultCurrency().catch((err) => {
+  console.warn('[backend] Varsayılan para birimi (TRY) oluşturulamadı:', err);
+});
 
 const server = app.listen(config.port, () => {
   console.log(`Menu QR: http://localhost:${config.port}`);

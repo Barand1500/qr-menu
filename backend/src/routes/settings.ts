@@ -6,6 +6,7 @@ import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId } from '../lib/auth.js';
 import { config } from '../config.js';
 import { getLanguages, mergeWelcomeI18n } from '../lib/i18n-json.js';
+import { listCurrencies } from '../lib/currencies.js';
 import {
   DEFAULT_MENU_THEME,
   DEFAULT_WELCOME_THEME,
@@ -34,7 +35,7 @@ router.get('/', async (req, res) => {
   const [restaurant, languages, currencies, settings] = await Promise.all([
     prisma.restaurant.findUnique({ where: { id: restaurantId! } }),
     getLanguages(),
-    prisma.currency.findMany({ orderBy: { id: 'asc' } }),
+    listCurrencies(),
     prisma.setting.findMany({ where: { restaurantId: restaurantId! } }),
   ]);
 

@@ -15,6 +15,7 @@ import {
   toProductTranslations,
 } from '../lib/i18n-json.js';
 import { imagesPayload, parseProductImages } from '../lib/product-images.js';
+import { ensureDefaultCurrency } from '../lib/currencies.js';
 
 const router = Router();
 router.use(authRequired);
@@ -131,10 +132,8 @@ router.post('/', async (req, res) => {
     if (!currency) return res.status(400).json({ message: 'Geçersiz para birimi' });
     resolvedCurrencyId = currency.id;
   } else {
-    const fallback = await prisma.currency.findFirst({
-      where: { code: 'TRY', isActive: true },
-    });
-    resolvedCurrencyId = fallback?.id ?? null;
+    const fallback = await ensureDefaultCurrency();
+    resolvedCurrencyId = fallback.id;
   }
 
   const [maxOrder, languages] = await Promise.all([
