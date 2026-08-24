@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus } from 'lucide-react';
+import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
 import { TranslatableTextarea } from '@/components/TranslatableField';
 import AddLanguageModal from '@/components/AddLanguageModal';
+import AddCurrencyModal from '@/components/AddCurrencyModal';
 import { languageFlag } from '@/lib/languageFlags';
 import { catalogByCode, type CatalogLanguage } from '@/lib/languageCatalog';
+import { currencyCatalogByCode, type CatalogCurrency } from '@/lib/currencyCatalog';
 
 interface Language {
   id: number;
@@ -14,9 +16,18 @@ interface Language {
   isActive: boolean;
 }
 
+interface Currency {
+  id: number;
+  code: string;
+  name: string;
+  symbol: string;
+  isActive: boolean;
+}
+
 interface SettingsData {
   restaurant: { id: number; name: string; logoUrl?: string | null };
   languages: Language[];
+  currencies?: Currency[];
   welcomeMessages: { languageId: number; languageCode: string; message: string }[];
   settings: Record<string, string>;
 }
@@ -62,6 +73,7 @@ function SettingsSection({
 export default function SettingsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [data, setData] = useState<SettingsData | null>(null);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [loading, setLoading] = useState(true);
   const [companyName, setCompanyName] = useState('');
   const [companyAbout, setCompanyAbout] = useState('');
@@ -73,6 +85,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [addLangOpen, setAddLangOpen] = useState(false);
   const [addingLang, setAddingLang] = useState(false);
+  const [addCurrencyOpen, setAddCurrencyOpen] = useState(false);
+  const [addingCurrency, setAddingCurrency] = useState(false);
   const [translateStatus, setTranslateStatus] = useState<TranslateStatus | null>(null);
 
   useEffect(() => {
@@ -82,9 +96,11 @@ export default function SettingsPage() {
         openaiConfigured: false,
         freeFallback: true,
       })),
+      api<Currency[]>('/api/admin/currencies').catch(() => [] as Currency[]),
     ])
-      .then(([d, status]) => {
+      .then(([d, status, curs]) => {
         setData(d);
+        setCurrencies(d.currencies?.length ? d.currencies : curs);
         setCompanyName(d.restaurant.name);
         setCompanyAbout(d.settings.company_about || '');
         setMessages(Object.fromEntries(d.welcomeMessages.map((m) => [m.languageId, m.message])));
@@ -128,6 +144,15 @@ export default function SettingsPage() {
     });
   }
 
+  async function saveCurrencies() {
+    await api('/api/admin/settings/currencies', {
+      method: 'PUT',
+      body: JSON.stringify({
+        currencies: currencies.map((c) => ({ id: c.id, isActive: c.isActive })),
+      }),
+    });
+  }
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -145,6 +170,7 @@ export default function SettingsPage() {
         }),
       });
       await saveLanguages();
+      await saveCurrencies();
       await api('/api/admin/settings/integration', {
         method: 'PUT',
         body: JSON.stringify({
@@ -177,6 +203,12 @@ export default function SettingsPage() {
     });
   }
 
+  function toggleCurrency(id: number) {
+    setCurrencies((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, isActive: !c.isActive } : c))
+    );
+  }
+
   async function handleAddLanguage(lang: CatalogLanguage) {
     setAddingLang(true);
     try {
@@ -203,6 +235,31 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleAddCurrency(currency: CatalogCurrency) {
+    setAddingCurrency(true);
+    try {
+      const created = await api<Currency>('/api/admin/currencies', {
+        method: 'POST',
+        body: JSON.stringify({
+          code: currency.code,
+          name: currency.name,
+          symbol: currency.symbol,
+        }),
+      });
+      setCurrencies((prev) => {
+        const exists = prev.some((c) => c.id === created.id);
+        return exists
+          ? prev.map((c) => (c.id === created.id ? created : c))
+          : [...prev, created];
+      });
+      setAddCurrencyOpen(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Para birimi eklenemedi');
+    } finally {
+      setAddingCurrency(false);
+    }
+  }
+
   if (loading || !data) return <Spinner />;
 
   const activeLanguages = [...data.languages.filter((l) => l.isActive)].sort((a, b) =>
@@ -213,6 +270,11 @@ export default function SettingsPage() {
   const sortedLanguages = [...data.languages].sort((a, b) => {
     if (a.code === 'tr') return -1;
     if (b.code === 'tr') return 1;
+    return a.name.localeCompare(b.name, 'tr');
+  });
+  const sortedCurrencies = [...currencies].sort((a, b) => {
+    if (a.code === 'TRY') return -1;
+    if (b.code === 'TRY') return 1;
     return a.name.localeCompare(b.name, 'tr');
   });
 
@@ -236,10 +298,7 @@ export default function SettingsPage() {
               type="button"
               onClick={() => setAddLangOpen(true)}
               className="inline-flex items-center gap-1 h-8 px-2.5 rounded-xl text-xs font-bold transition hover:opacity-90"
-              style={{
-                background: 'var(--admin-accent)',
-                color: '#fff',
-              }}
+              style={{ background: 'var(--admin-accent)', color: '#fff' }}
             >
               <Plus className="w-3.5 h-3.5" />
               Dil Ekle
@@ -290,10 +349,74 @@ export default function SettingsPage() {
           </div>
           <p className="text-[11px] admin-text-muted mt-3 leading-relaxed">
             Aktif diller menüde ve karşılama ekranında görünür. Dil ekleme anında kaydedilir;
-            aktif/pasif değişiklikleri için Kaydet’e bas.
+            aktif/pasif için Kaydet’e bas.
           </p>
         </SettingsSection>
 
+        <SettingsSection
+          icon={Coins}
+          title="Para Birimleri"
+          action={
+            <button
+              type="button"
+              onClick={() => setAddCurrencyOpen(true)}
+              className="inline-flex items-center gap-1 h-8 px-2.5 rounded-xl text-xs font-bold transition hover:opacity-90"
+              style={{ background: 'var(--admin-accent)', color: '#fff' }}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Para Birimi
+            </button>
+          }
+        >
+          <div className="space-y-1">
+            {sortedCurrencies.length === 0 ? (
+              <p className="text-sm admin-text-muted py-4 text-center">
+                Henüz para birimi yok. + Para Birimi ile ekle.
+              </p>
+            ) : (
+              sortedCurrencies.map((currency) => {
+                const catalog = currencyCatalogByCode(currency.code);
+                return (
+                  <label
+                    key={currency.id}
+                    className="flex items-center justify-between py-3 px-3 rounded-xl cursor-pointer transition hover:bg-[var(--admin-accent-soft)]/30 gap-3"
+                    style={{ borderBottom: '1px solid var(--admin-card-border)' }}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-xl leading-none shrink-0 w-8 text-center">
+                        {catalog?.flag || '💱'}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[var(--admin-text)] truncate">
+                          {currency.symbol} · {currency.name}
+                        </p>
+                        <p className="text-[11px] admin-text-muted uppercase tracking-wide">
+                          {currency.code}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <span className="text-xs admin-text-muted">Aktif</span>
+                      <input
+                        type="checkbox"
+                        checked={currency.isActive}
+                        onChange={() => toggleCurrency(currency.id)}
+                        className="w-4 h-4 rounded accent-[var(--admin-accent)]"
+                      />
+                    </div>
+                  </label>
+                );
+              })
+            )}
+          </div>
+          <p className="text-[11px] admin-text-muted mt-3 leading-relaxed">
+            Kur yok: ürün fiyatına yazdığın rakam, seçtiğin birimle menüde görünür. Ekleme anında
+            kaydolur; aktif/pasif için Kaydet.
+          </p>
+        </SettingsSection>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-5">
         <SettingsSection icon={Plug} title="Entegrasyon Ayarları" className="flex flex-col">
           <div className="flex flex-col h-full gap-5">
             <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl hover:bg-[var(--admin-accent-soft)]/30 transition">
@@ -331,6 +454,60 @@ export default function SettingsPage() {
             </div>
           </div>
         </SettingsSection>
+
+        <SettingsSection icon={Building2} title="Firma Ayarları">
+          <div className="grid sm:grid-cols-2 gap-6 items-stretch">
+            <div className="flex flex-col gap-4 min-h-[240px]">
+              <Input
+                label="Firma Adı"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+              />
+              <Textarea
+                label="Hakkında"
+                value={companyAbout}
+                onChange={(e) => setCompanyAbout(e.target.value)}
+                className="flex-1 [&_.float-field]:h-full [&_.float-field__input]:min-h-[160px] [&_.float-field__input]:h-full [&_.float-field__input]:resize-none"
+                rows={8}
+              />
+            </div>
+
+            <div className="flex flex-col min-h-[240px]">
+              <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
+                Logo
+              </p>
+              <div
+                className="flex-1 rounded-2xl border-2 border-dashed p-6 text-center transition hover:border-[var(--admin-accent)] cursor-pointer flex flex-col items-center justify-center min-h-[240px]"
+                style={{ borderColor: 'var(--admin-card-border)' }}
+                onClick={() => fileRef.current?.click()}
+              >
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                />
+                {logoPreview ? (
+                  <img
+                    src={logoPreview}
+                    alt="Logo önizleme"
+                    className="max-h-28 max-w-full object-contain mb-2"
+                  />
+                ) : (
+                  <ImagePlus
+                    className="w-10 h-10 mb-2"
+                    style={{ color: 'var(--admin-accent)' }}
+                  />
+                )}
+                <p className="text-sm font-medium text-[var(--admin-text)]">
+                  Logo yüklemek için tıklayın
+                </p>
+                <p className="text-xs admin-text-subtle mt-1">PNG, JPG — şeffaf arka plan önerilir</p>
+              </div>
+            </div>
+          </div>
+        </SettingsSection>
       </div>
 
       <SettingsSection icon={MessageSquare} title="Karşılama Metinleri">
@@ -355,60 +532,6 @@ export default function SettingsPage() {
         </div>
       </SettingsSection>
 
-      <SettingsSection icon={Building2} title="Firma Ayarları">
-        <div className="grid sm:grid-cols-2 gap-6 items-stretch">
-          <div className="flex flex-col gap-4 min-h-[240px]">
-            <Input
-              label="Firma Adı"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-            />
-            <Textarea
-              label="Hakkında"
-              value={companyAbout}
-              onChange={(e) => setCompanyAbout(e.target.value)}
-              className="flex-1 [&_.float-field]:h-full [&_.float-field__input]:min-h-[160px] [&_.float-field__input]:h-full [&_.float-field__input]:resize-none"
-              rows={8}
-            />
-          </div>
-
-          <div className="flex flex-col min-h-[240px]">
-            <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
-              Logo
-            </p>
-            <div
-              className="flex-1 rounded-2xl border-2 border-dashed p-6 text-center transition hover:border-[var(--admin-accent)] cursor-pointer flex flex-col items-center justify-center min-h-[240px]"
-              style={{ borderColor: 'var(--admin-card-border)' }}
-              onClick={() => fileRef.current?.click()}
-            >
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
-              />
-              {logoPreview ? (
-                <img
-                  src={logoPreview}
-                  alt="Logo önizleme"
-                  className="max-h-28 max-w-full object-contain mb-2"
-                />
-              ) : (
-                <ImagePlus
-                  className="w-10 h-10 mb-2"
-                  style={{ color: 'var(--admin-accent)' }}
-                />
-              )}
-              <p className="text-sm font-medium text-[var(--admin-text)]">
-                Logo yüklemek için tıklayın
-              </p>
-              <p className="text-xs admin-text-subtle mt-1">PNG, JPG — şeffaf arka plan önerilir</p>
-            </div>
-          </div>
-        </div>
-      </SettingsSection>
-
       <AddLanguageModal
         open={addLangOpen}
         existing={data.languages}
@@ -416,6 +539,14 @@ export default function SettingsPage() {
         saving={addingLang}
         onClose={() => setAddLangOpen(false)}
         onAdd={handleAddLanguage}
+      />
+
+      <AddCurrencyModal
+        open={addCurrencyOpen}
+        existing={currencies}
+        saving={addingCurrency}
+        onClose={() => setAddCurrencyOpen(false)}
+        onAdd={handleAddCurrency}
       />
     </div>
   );

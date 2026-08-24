@@ -38,6 +38,14 @@ export function formatPrice(price: number): string {
   }).format(price);
 }
 
+export function formatMoney(
+  price: number,
+  currency?: { symbol?: string | null; code?: string | null } | null
+): string {
+  const symbol = currency?.symbol?.trim() || currency?.code?.trim() || '₺';
+  return `${formatPrice(price)} ${symbol}`;
+}
+
 export function getSessionId(): string {
   let id = localStorage.getItem('menu_session_id');
   if (!id) {

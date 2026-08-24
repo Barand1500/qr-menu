@@ -16,6 +16,22 @@ function getLangCode(req: { query: Record<string, unknown> }): string {
   return String(req.query.lang || 'tr');
 }
 
+function mapCurrency(currency?: {
+  id: number;
+  code: string;
+  name: string;
+  symbol: string;
+} | null) {
+  if (!currency) {
+    return { code: 'TRY', name: 'Türk Lirası', symbol: '₺' };
+  }
+  return {
+    code: currency.code,
+    name: currency.name,
+    symbol: currency.symbol,
+  };
+}
+
 async function trackView(
   restaurantId: number,
   entityType: 'group' | 'product' | 'showcase' | 'menu',
@@ -89,7 +105,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
 
   const product = await prisma.product.findFirst({
     where: { id: productId, restaurantId: restaurant.id, isActive: true },
-    include: { group: true },
+    include: { group: true, currency: true },
   });
   if (!product) return res.status(404).json({ message: 'Ürün bulunamadı' });
 
@@ -113,6 +129,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
     ingredients: getProductField(product.i18n, activeLang, 'ingredients'),
     allergens: getProductField(product.i18n, activeLang, 'allergens'),
     price: Number(product.price),
+    currency: mapCurrency(product.currency),
     imageUrl: images[0] ?? null,
     images,
     prepTimeMinutes: product.prepTimeMinutes,
@@ -247,6 +264,7 @@ router.get('/:slug/groups/:groupId/products', async (req, res) => {
 
   const products = await prisma.product.findMany({
     where: { groupId, restaurantId: restaurant.id, isActive: true },
+    include: { currency: true },
     orderBy: { sortOrder: 'asc' },
   });
 
@@ -265,6 +283,7 @@ router.get('/:slug/groups/:groupId/products', async (req, res) => {
         name: getProductField(p.i18n, activeLang, 'name'),
         description: getProductField(p.i18n, activeLang, 'description'),
         price: Number(p.price),
+        currency: mapCurrency(p.currency),
         imageUrl: images[0] ?? null,
       };
     }),
@@ -327,7 +346,7 @@ router.get('/:slug/popular-products', async (req, res) => {
 
   const products = await prisma.product.findMany({
     where: { id: { in: orderedIds }, isActive: true },
-    include: { group: true },
+    include: { group: true, currency: true },
   });
 
   const items = orderedIds
@@ -337,6 +356,7 @@ router.get('/:slug/popular-products', async (req, res) => {
       id: p!.id,
       name: getProductField(p!.i18n, activeLang, 'name'),
       price: Number(p!.price),
+      currency: mapCurrency(p!.currency),
       imageUrl: p!.imageUrl,
       groupId: p!.groupId,
       groupName: getGroupName(p!.group.i18n, activeLang),
@@ -360,7 +380,7 @@ router.get('/:slug/search', async (req, res) => {
 
   const products = await prisma.product.findMany({
     where: { restaurantId: restaurant.id, isActive: true },
-    include: { group: true },
+    include: { group: true, currency: true },
     take: 100,
   });
 
@@ -373,6 +393,7 @@ router.get('/:slug/search', async (req, res) => {
       id: p.id,
       name: getProductField(p.i18n, activeLang, 'name'),
       price: Number(p.price),
+      currency: mapCurrency(p.currency),
       imageUrl: p.imageUrl,
       groupName: getGroupName(p.group.i18n, activeLang),
       groupId: p.groupId,

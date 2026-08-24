@@ -16,12 +16,23 @@ async function main() {
   await prisma.user.deleteMany();
   await prisma.restaurant.deleteMany();
   await prisma.language.deleteMany();
+  await prisma.currency.deleteMany();
 
   const languages = await Promise.all([
     prisma.language.create({ data: { code: 'tr', name: 'Türkçe', isActive: true } }),
     prisma.language.create({ data: { code: 'en', name: 'English', isActive: true } }),
     prisma.language.create({ data: { code: 'ru', name: 'Русский', isActive: false } }),
   ]);
+
+  const tryCurrency = await prisma.currency.create({
+    data: { code: 'TRY', name: 'Türk Lirası', symbol: '₺', isActive: true },
+  });
+  await prisma.currency.create({
+    data: { code: 'USD', name: 'ABD Doları', symbol: '$', isActive: true },
+  });
+  await prisma.currency.create({
+    data: { code: 'EUR', name: 'Euro', symbol: '€', isActive: false },
+  });
 
   const restaurant = await prisma.restaurant.create({
     data: {
@@ -85,6 +96,7 @@ async function main() {
           restaurantId: restaurant.id,
           groupId: group.id,
           price: p.price,
+          currencyId: tryCurrency.id,
           sortOrder: p.sortOrder,
           imageUrl: p.imageUrl,
           images: p.imageUrl ? [p.imageUrl] : [],
@@ -161,6 +173,7 @@ async function main() {
   );
   console.log(`  Vitrin: ${SEED_BANNERS.length} banner, ${SEED_STORIES.length} hikaye`);
   console.log(`  Diller: ${languages.filter((l) => l.isActive).map((l) => l.name).join(', ')}`);
+  console.log('  Para birimleri: TRY, USD (aktif), EUR (pasif)');
   console.log('');
   console.log('Giriş: admin@guzelteknoloji.com / 123456');
 }

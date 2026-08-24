@@ -6,7 +6,7 @@ import {
   EyeOff,
   Eye,
 } from 'lucide-react';
-import { api, formatPrice, imageUrl } from '@/lib/api';
+import { api, formatMoney, imageUrl } from '@/lib/api';
 import { getActiveLanguages, type AdminLanguage } from '@/lib/languages';
 import {
   Badge,
@@ -29,12 +29,22 @@ import {
   FilterSection,
 } from '@/components/AdminFilterBar';
 
+interface Currency {
+  id: number;
+  code: string;
+  name: string;
+  symbol: string;
+  isActive: boolean;
+}
+
 interface Product {
   id: number;
   name: string;
   groupId: number;
   groupName: string;
   price: number;
+  currencyId?: number | null;
+  currency?: { id: number | null; code: string; name: string; symbol: string };
   prepTimeMinutes?: number | null;
   calories?: number | null;
   features?: string[];
@@ -69,6 +79,7 @@ type StatusFilter = 'all' | 'active' | 'passive';
 const emptyForm = (): ProductFormState => ({
   groupId: '',
   price: '',
+  currencyId: '',
   prepTimeMinutes: '',
   calories: '',
   features: [],
@@ -90,6 +101,7 @@ function buildFormFromProduct(product: Product): ProductFormState {
   return {
     groupId: product.groupId.toString(),
     price: product.price.toString(),
+    currencyId: (product.currencyId ?? product.currency?.id)?.toString() || '',
     prepTimeMinutes: product.prepTimeMinutes?.toString() || '',
     calories: product.calories?.toString() || '',
     features: product.features ?? [],
@@ -104,6 +116,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [languages, setLanguages] = useState<Language[]>([]);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -126,14 +139,16 @@ export default function ProductsPage() {
     if (statusFilter === 'active') params.set('active', 'true');
     if (statusFilter === 'passive') params.set('active', 'false');
 
-    const [p, g, langs] = await Promise.all([
+    const [p, g, langs, curs] = await Promise.all([
       api<{ data: Product[] }>(`/api/admin/products?${params}`),
       api<{ data: Group[] }>('/api/admin/groups?limit=200'),
       api<Language[]>('/api/admin/languages'),
+      api<Currency[]>('/api/admin/currencies'),
     ]);
     setProducts(p.data);
     setGroups(g.data);
     setLanguages(getActiveLanguages(langs));
+    setCurrencies(curs);
   }, [search, groupFilter, statusFilter]);
 
   useEffect(() => {
@@ -166,9 +181,13 @@ export default function ProductsPage() {
   function openCreate() {
     setModalMode('create');
     setEditing(null);
+    const defaultCurrency =
+      currencies.find((c) => c.code === 'TRY' && c.isActive) ||
+      currencies.find((c) => c.isActive);
     setForm({
       ...emptyForm(),
       groupId: groups[0]?.id?.toString() || '',
+      currencyId: defaultCurrency?.id.toString() || '',
     });
     setProductImages([]);
     setPendingFiles([]);
@@ -304,6 +323,7 @@ export default function ProductsPage() {
       const payload = {
         groupId: Number(form.groupId),
         price: parseFloat(form.price) || 0,
+        currencyId: form.currencyId ? Number(form.currencyId) : null,
         prepTimeMinutes: form.prepTimeMinutes ? Number(form.prepTimeMinutes) : null,
         calories: form.calories ? Number(form.calories) : null,
         features: form.features,
@@ -483,7 +503,7 @@ export default function ProductsPage() {
                       {product.groupName}
                     </td>
                     <td className="py-3.5 px-4 font-medium text-[var(--admin-text)]">
-                      {formatPrice(product.price)} ₺
+                      {formatMoney(product.price, product.currency)}
                     </td>
                     <td className="py-3.5 px-4 admin-text-muted hidden sm:table-cell">
                       {product.sortOrder}
@@ -530,6 +550,7 @@ export default function ProductsPage() {
         open={modalOpen}
         mode={modalMode}
         languages={languages}
+        currencies={currencies}
         groups={groupOptions}
         form={form}
         productImages={productImages}

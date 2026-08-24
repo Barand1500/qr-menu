@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Package, ChevronRight } from 'lucide-react';
-import { api, formatPrice, imageUrl } from '@/lib/api';
+import { api, formatMoney, imageUrl } from '@/lib/api';
 import { Badge, Button, Spinner } from '@/components/ui';
 
 interface ProductItem {
   id: number;
   name: string;
   price: number;
+  currency?: { code?: string; symbol?: string } | null;
   imageUrl?: string | null;
   isActive: boolean;
 }
@@ -129,7 +130,7 @@ export default function GroupProductsModal({
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-[var(--admin-text)] truncate">{product.name}</p>
-                      <p className="text-sm admin-text-muted">{formatPrice(product.price)} ₺</p>
+                      <p className="text-sm admin-text-muted">{formatMoney(product.price, product.currency)}</p>
                     </div>
                     <Badge active={product.isActive} />
                     <ChevronRight className="w-4 h-4 admin-text-subtle shrink-0 group-hover:text-[var(--admin-accent)] transition" />

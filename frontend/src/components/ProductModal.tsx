@@ -15,6 +15,7 @@ export interface ProductTranslationFields {
 export interface ProductFormState {
   groupId: string;
   price: string;
+  currencyId: string;
   prepTimeMinutes: string;
   calories: string;
   features: string[];
@@ -182,6 +183,7 @@ interface ProductModalProps {
   open: boolean;
   mode: 'create' | 'edit';
   languages: Language[];
+  currencies: { id: number; code: string; name: string; symbol: string; isActive: boolean }[];
   groups: GroupOption[];
   form: ProductFormState;
   productImages: string[];
@@ -200,6 +202,7 @@ export default function ProductModal({
   open,
   mode,
   languages,
+  currencies,
   groups,
   form,
   productImages,
@@ -349,10 +352,23 @@ export default function ProductModal({
                   type="number"
                   step="0.01"
                   min="0"
-                  label="Fiyat (₺)"
+                  label="Fiyat"
                   value={form.price}
                   onChange={(e) => onFormChange({ ...form, price: e.target.value })}
                 />
+                <Select
+                  label="Para birimi"
+                  value={form.currencyId}
+                  options={currencies
+                    .filter((c) => c.isActive || c.id.toString() === form.currencyId)
+                    .map((c) => ({
+                      value: c.id.toString(),
+                      label: `${c.symbol} ${c.code} — ${c.name}`,
+                    }))}
+                  onChange={(e) => onFormChange({ ...form, currencyId: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <Input
                   type="number"
                   min="0"
@@ -360,14 +376,14 @@ export default function ProductModal({
                   value={form.prepTimeMinutes}
                   onChange={(e) => onFormChange({ ...form, prepTimeMinutes: e.target.value })}
                 />
+                <Input
+                  type="number"
+                  min="0"
+                  label="Kalori (cal.)"
+                  value={form.calories}
+                  onChange={(e) => onFormChange({ ...form, calories: e.target.value })}
+                />
               </div>
-              <Input
-                type="number"
-                min="0"
-                label="Kalori (cal.)"
-                value={form.calories}
-                onChange={(e) => onFormChange({ ...form, calories: e.target.value })}
-              />
 
               <ProductFeaturesEditor
                 features={form.features}

@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom';
 import { Flame } from 'lucide-react';
-import { formatPrice, imageUrl } from '@/lib/api';
+import { formatMoney, imageUrl } from '@/lib/api';
 import { menuProductPath } from '@/lib/menuPaths';
 
 export interface PopularProduct {
   id: number;
   name: string;
   price: number;
+  currency?: { code?: string; symbol?: string } | null;
   imageUrl?: string | null;
   groupId: number;
   groupName: string;
@@ -21,16 +22,16 @@ interface PopularSearchProductsProps {
 export default function PopularSearchProducts({
   products,
   onNavigate,
-  compact = false,
+  compact,
 }: PopularSearchProductsProps) {
   if (products.length === 0) return null;
 
   return (
-    <div className={`public-popular-search ${compact ? 'public-popular-search--compact' : ''}`}>
-      <p className="public-popular-search__title">
-        <Flame className="w-4 h-4 text-orange-500" />
-        Müşterilerimiz en çok bunları yiyor
-      </p>
+    <div className={`public-popular-search${compact ? ' public-popular-search--compact' : ''}`}>
+      <div className="public-popular-search__head">
+        <Flame className="w-4 h-4" />
+        <span>Popüler ürünler</span>
+      </div>
       <div className="public-popular-search__list">
         {products.map((p) => (
           <Link
@@ -40,15 +41,14 @@ export default function PopularSearchProducts({
             onClick={onNavigate}
           >
             {p.imageUrl ? (
-              <img src={imageUrl(p.imageUrl)} alt="" className="public-popular-search__thumb" />
+              <img src={imageUrl(p.imageUrl)} alt="" className="public-popular-search__img" />
             ) : (
-              <div className="public-popular-search__thumb public-popular-search__thumb--empty" />
+              <div className="public-popular-search__img public-popular-search__img--empty" />
             )}
-            <div className="min-w-0 flex-1">
-              <p className="public-popular-search__name">{p.name}</p>
-              <p className="public-popular-search__meta">{p.groupName}</p>
+            <div className="public-popular-search__meta">
+              <span className="public-popular-search__name">{p.name}</span>
+              <span className="public-popular-search__price">{formatMoney(p.price, p.currency)}</span>
             </div>
-            <span className="public-popular-search__price">{formatPrice(p.price)} ₺</span>
           </Link>
         ))}
       </div>

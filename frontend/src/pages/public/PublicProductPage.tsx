@@ -10,7 +10,7 @@ import {
   ChevronRight,
   Star,
 } from 'lucide-react';
-import { api, formatPrice, getSessionId, imageUrl } from '@/lib/api';
+import { api, formatMoney, getSessionId, imageUrl } from '@/lib/api';
 import { useDemoData } from '@/contexts/DemoDataContext';
 import { getDemoProductDetail } from '@/lib/demoData';
 import ProductImageGallery, {
@@ -29,6 +29,7 @@ interface ProductDetail {
   ingredients: string;
   allergens: string;
   price: number;
+  currency?: { code?: string; symbol?: string } | null;
   imageUrl?: string | null;
   images?: string[];
   prepTimeMinutes?: number | null;
@@ -43,6 +44,7 @@ interface RelatedProduct {
   id: number;
   name: string;
   price: number;
+  currency?: { code?: string; symbol?: string } | null;
   imageUrl?: string | null;
 }
 
@@ -147,7 +149,7 @@ export default function PublicProductPage() {
         <div className="public-product-hero__bottom">
           <span className="public-product-hero__chip">{product.group.name}</span>
           <h1 className="public-product-hero__title">{product.name}</h1>
-          <p className="public-product-hero__price">{formatPrice(product.price)} ₺</p>
+          <p className="public-product-hero__price">{formatMoney(product.price, product.currency)}</p>
         </div>
       </header>
 
@@ -303,7 +305,7 @@ export default function PublicProductPage() {
                       )}
                       <div className="public-product-related__info">
                         <p className="public-product-related__name">{item.name}</p>
-                        <p className="public-product-related__price">{formatPrice(item.price)} ₺</p>
+                        <p className="public-product-related__price">{formatMoney(item.price, item.currency)}</p>
                       </div>
                     </Link>
                   ))}

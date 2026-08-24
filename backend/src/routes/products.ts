@@ -46,7 +46,7 @@ router.get('/', async (req, res) => {
   const [products, languages, total] = await Promise.all([
     prisma.product.findMany({
       where,
-      include: { group: true },
+      include: { group: true, currency: true },
       orderBy: { sortOrder: 'asc' },
       skip,
       take: limitNum,
@@ -91,7 +91,7 @@ router.get('/:id', async (req, res) => {
   const [product, languages] = await Promise.all([
     prisma.product.findFirst({
       where: { id: Number(req.params.id), restaurantId: restaurantId! },
-      include: { group: true },
+      include: { group: true, currency: true },
     }),
     getLanguages(),
   ]);
@@ -104,6 +104,7 @@ router.post('/', async (req, res) => {
   const {
     groupId,
     price,
+    currencyId,
     translations,
     sortOrder,
     isActive,
@@ -122,6 +123,20 @@ router.post('/', async (req, res) => {
   });
   if (!group) return res.status(400).json({ message: 'Geçersiz grup' });
 
+  let resolvedCurrencyId: number | null = null;
+  if (currencyId != null && currencyId !== '') {
+    const currency = await prisma.currency.findFirst({
+      where: { id: Number(currencyId), isActive: true },
+    });
+    if (!currency) return res.status(400).json({ message: 'Geçersiz para birimi' });
+    resolvedCurrencyId = currency.id;
+  } else {
+    const fallback = await prisma.currency.findFirst({
+      where: { code: 'TRY', isActive: true },
+    });
+    resolvedCurrencyId = fallback?.id ?? null;
+  }
+
   const [maxOrder, languages] = await Promise.all([
     prisma.product.aggregate({
       where: { groupId: Number(groupId) },
@@ -134,6 +149,7 @@ router.post('/', async (req, res) => {
     data: {
       restaurantId: restaurantId!,
       groupId: Number(groupId),
+      currencyId: resolvedCurrencyId,
       price: price ?? 0,
       sortOrder: sortOrder ?? (maxOrder._max.sortOrder ?? 0) + 1,
       isActive: isActive ?? true,
@@ -147,7 +163,7 @@ router.post('/', async (req, res) => {
       features: Array.isArray(features) ? features : [],
       i18n: buildProductI18n(translations || [], languages),
     },
-    include: { group: true },
+    include: { group: true, currency: true },
   });
 
   res.status(201).json(await mapProduct(product, restaurantId!, languages));
@@ -159,6 +175,7 @@ router.put('/:id', async (req, res) => {
   const {
     groupId,
     price,
+    currencyId,
     translations,
     sortOrder,
     isActive,
@@ -176,6 +193,13 @@ router.put('/:id', async (req, res) => {
   const existing = await prisma.product.findFirst({ where: { id, restaurantId: restaurantId! } });
   if (!existing) return res.status(404).json({ message: 'Ürün bulunamadı' });
 
+  if (currencyId !== undefined && currencyId != null && currencyId !== '') {
+    const currency = await prisma.currency.findFirst({
+      where: { id: Number(currencyId), isActive: true },
+    });
+    if (!currency) return res.status(400).json({ message: 'Geçersiz para birimi' });
+  }
+
   const languages = await getLanguages();
   const i18n =
     translations?.length > 0
@@ -187,6 +211,10 @@ router.put('/:id', async (req, res) => {
     data: {
       ...(groupId !== undefined && { groupId: Number(groupId) }),
       ...(price !== undefined && { price }),
+      ...(currencyId !== undefined && {
+        currencyId:
+          currencyId == null || currencyId === '' ? null : Number(currencyId),
+      }),
       ...(sortOrder !== undefined && { sortOrder }),
       ...(isActive !== undefined && { isActive }),
       ...(imageUrl !== undefined && { imageUrl }),
@@ -204,7 +232,7 @@ router.put('/:id', async (req, res) => {
       ...(features !== undefined && { features: Array.isArray(features) ? features : [] }),
       ...(i18n !== undefined && { i18n }),
     },
-    include: { group: true },
+    include: { group: true, currency: true },
   });
 
   res.json(await mapProduct(product, restaurantId!, languages));
@@ -220,7 +248,7 @@ router.patch('/:id/toggle', async (req, res) => {
     prisma.product.update({
       where: { id },
       data: { isActive: !existing.isActive },
-      include: { group: true },
+      include: { group: true, currency: true },
     }),
     getLanguages(),
   ]);
@@ -254,7 +282,7 @@ router.post('/:id/image', upload.single('image'), async (req, res) => {
     prisma.product.update({
       where: { id },
       data: imagesPayload(images),
-      include: { group: true },
+      include: { group: true, currency: true },
     }),
     getLanguages(),
   ]);
@@ -274,7 +302,7 @@ router.post('/:id/images', upload.array('images', 12), async (req, res) => {
     prisma.product.update({
       where: { id },
       data: imagesPayload(images),
-      include: { group: true },
+      include: { group: true, currency: true },
     }),
     getLanguages(),
   ]);
@@ -295,7 +323,7 @@ router.delete('/:id/images', async (req, res) => {
     prisma.product.update({
       where: { id },
       data: imagesPayload(images),
-      include: { group: true },
+      include: { group: true, currency: true },
     }),
     getLanguages(),
   ]);
@@ -320,7 +348,7 @@ router.put('/:id/images/reorder', async (req, res) => {
     prisma.product.update({
       where: { id },
       data: imagesPayload(ordered),
-      include: { group: true },
+      include: { group: true, currency: true },
     }),
     getLanguages(),
   ]);
@@ -341,6 +369,7 @@ async function mapProduct(
   product: {
     id: number;
     groupId: number;
+    currencyId?: number | null;
     price: unknown;
     prepTimeMinutes: number | null;
     calories: number | null;
@@ -356,12 +385,26 @@ async function mapProduct(
     isActive: boolean;
     i18n: unknown;
     group: { i18n: unknown };
+    currency?: {
+      id: number;
+      code: string;
+      name: string;
+      symbol: string;
+    } | null;
   },
   restaurantId: number,
   languages: { id: number; code: string }[]
 ) {
   const validation = await validateProduct(product.id, restaurantId);
   const images = parseProductImages(product);
+  const currency = product.currency
+    ? {
+        id: product.currency.id,
+        code: product.currency.code,
+        name: product.currency.name,
+        symbol: product.currency.symbol,
+      }
+    : { id: null as number | null, code: 'TRY', name: 'Türk Lirası', symbol: '₺' };
 
   return {
     id: product.id,
@@ -369,6 +412,8 @@ async function mapProduct(
     groupId: product.groupId,
     groupName: getGroupName(product.group.i18n),
     price: Number(product.price),
+    currencyId: product.currencyId ?? currency.id,
+    currency,
     prepTimeMinutes: product.prepTimeMinutes,
     calories: product.calories,
     features: resolveFeatures(product),

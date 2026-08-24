@@ -31,9 +31,10 @@ const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 router.get('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
 
-  const [restaurant, languages, settings] = await Promise.all([
+  const [restaurant, languages, currencies, settings] = await Promise.all([
     prisma.restaurant.findUnique({ where: { id: restaurantId! } }),
     getLanguages(),
+    prisma.currency.findMany({ orderBy: { id: 'asc' } }),
     prisma.setting.findMany({ where: { restaurantId: restaurantId! } }),
   ]);
 
@@ -48,6 +49,7 @@ router.get('/', async (req, res) => {
   res.json({
     restaurant,
     languages,
+    currencies,
     welcomeMessages,
     settings: Object.fromEntries(settings.map((s) => [s.key, s.value])),
   });
@@ -64,6 +66,20 @@ router.put('/languages', async (req, res) => {
   }
 
   const updated = await prisma.language.findMany({ orderBy: { id: 'asc' } });
+  res.json(updated);
+});
+
+router.put('/currencies', async (req, res) => {
+  const { currencies } = req.body as { currencies: { id: number; isActive: boolean }[] };
+
+  for (const currency of currencies || []) {
+    await prisma.currency.update({
+      where: { id: currency.id },
+      data: { isActive: currency.isActive },
+    });
+  }
+
+  const updated = await prisma.currency.findMany({ orderBy: { id: 'asc' } });
   res.json(updated);
 });
 
