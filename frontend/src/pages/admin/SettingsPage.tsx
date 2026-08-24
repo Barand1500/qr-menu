@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Globe, Plug, MessageSquare, Building2, ImagePlus } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
+import { TranslatableTextarea } from '@/components/TranslatableField';
 
 interface Language {
   id: number;
@@ -52,8 +53,10 @@ export default function SettingsPage() {
   const [data, setData] = useState<SettingsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [companyName, setCompanyName] = useState('');
+  const [companyAbout, setCompanyAbout] = useState('');
   const [messages, setMessages] = useState<Record<number, string>>({});
   const [integrationEnabled, setIntegrationEnabled] = useState(false);
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -63,8 +66,10 @@ export default function SettingsPage() {
       .then((d) => {
         setData(d);
         setCompanyName(d.restaurant.name);
+        setCompanyAbout(d.settings.company_about || '');
         setMessages(Object.fromEntries(d.welcomeMessages.map((m) => [m.languageId, m.message])));
         setIntegrationEnabled(d.settings.integration_enabled === 'true');
+        setOpenaiApiKey(d.settings.openai_api_key || '');
         setLogoPreview(d.restaurant.logoUrl ? imageUrl(d.restaurant.logoUrl) : null);
       })
       .finally(() => setLoading(false));
@@ -92,7 +97,7 @@ export default function SettingsPage() {
     try {
       await api('/api/admin/settings/company', {
         method: 'PUT',
-        body: JSON.stringify({ name: companyName }),
+        body: JSON.stringify({ name: companyName, about: companyAbout }),
       });
       await api('/api/admin/settings/welcome-messages', {
         method: 'PUT',
@@ -106,7 +111,10 @@ export default function SettingsPage() {
       await saveLanguages();
       await api('/api/admin/settings/integration', {
         method: 'PUT',
-        body: JSON.stringify({ enabled: integrationEnabled }),
+        body: JSON.stringify({
+          enabled: integrationEnabled,
+          openaiApiKey,
+        }),
       });
       if (logoFile) {
         const fd = new FormData();
@@ -135,10 +143,14 @@ export default function SettingsPage() {
 
   if (loading || !data) return <Spinner />;
 
-  const activeLanguages = data.languages.filter((l) => l.isActive);
+  const activeLanguages = [...data.languages.filter((l) => l.isActive)].sort((a, b) =>
+    a.code === 'tr' ? -1 : b.code === 'tr' ? 1 : 0
+  );
+  const trLanguage = data.languages.find((l) => l.code === 'tr');
+  const trWelcomeMessage = trLanguage ? messages[trLanguage.id] || '' : '';
 
   return (
-    <div className="space-y-5 max-w-5xl">
+    <div className="space-y-5 w-full">
       <PageHeader
         title="Ayarlar"
         actions={
@@ -148,7 +160,7 @@ export default function SettingsPage() {
         }
       />
 
-      <div className="grid md:grid-cols-2 gap-5">
+      <div className="grid lg:grid-cols-2 gap-5">
         <SettingsSection icon={Globe} title="Dil Ayarları">
           <div className="space-y-1">
             {data.languages.map((lang) => (
@@ -172,40 +184,61 @@ export default function SettingsPage() {
           </div>
         </SettingsSection>
 
-        <SettingsSection icon={Plug} title="Entegrasyon Ayarları">
-          <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl hover:bg-[var(--admin-accent-soft)]/30 transition">
-            <input
-              type="checkbox"
-              checked={integrationEnabled}
-              onChange={(e) => setIntegrationEnabled(e.target.checked)}
-              className="w-4 h-4 mt-0.5 rounded accent-[var(--admin-accent)]"
-            />
-            <div>
-              <p className="text-sm font-medium text-[var(--admin-text)]">
-                Entegrasyonu etkinleştir
-              </p>
-              <p className="text-xs admin-text-muted mt-1">
-                Harici POS veya sipariş sistemleri ile bağlantı
+        <SettingsSection icon={Plug} title="Entegrasyon Ayarları" className="flex flex-col">
+          <div className="flex flex-col h-full gap-5">
+            <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl hover:bg-[var(--admin-accent-soft)]/30 transition">
+              <input
+                type="checkbox"
+                checked={integrationEnabled}
+                onChange={(e) => setIntegrationEnabled(e.target.checked)}
+                className="w-4 h-4 mt-0.5 rounded accent-[var(--admin-accent)]"
+              />
+              <div>
+                <p className="text-sm font-medium text-[var(--admin-text)]">
+                  Entegrasyonu etkinleştir
+                </p>
+                <p className="text-xs admin-text-muted mt-1">
+                  Harici POS veya sipariş sistemleri ile bağlantı
+                </p>
+              </div>
+            </label>
+
+            <div
+              className="rounded-2xl p-4 flex-1"
+              style={{ background: 'var(--admin-input-bg)' }}
+            >
+              <Input
+                label="OpenAI API Anahtarı"
+                type="password"
+                value={openaiApiKey}
+                onChange={(e) => setOpenaiApiKey(e.target.value)}
+                placeholder="sk-..."
+              />
+              <p className="text-xs admin-text-muted mt-3 leading-relaxed">
+                Oto çeviri için ChatGPT anahtarınızı yapıştırın. Anahtar kaydedildiğinde çeviriler
+                önce OpenAI ile yapılır; yoksa ücretsiz servisler kullanılır.
               </p>
             </div>
-          </label>
+          </div>
         </SettingsSection>
       </div>
 
       <SettingsSection icon={MessageSquare} title="Karşılama Metinleri">
-        <div className="grid sm:grid-cols-2 gap-4 float-field-stack">
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4 float-field-stack">
           {activeLanguages.length === 0 ? (
-            <p className="text-sm admin-text-muted col-span-2">
+            <p className="text-sm admin-text-muted col-span-full">
               Karşılama metni eklemek için en az bir dil aktif olmalı.
             </p>
           ) : (
             activeLanguages.map((lang) => (
-              <Textarea
+              <TranslatableTextarea
                 key={lang.id}
                 label={`Karşılama metni (${lang.name})`}
                 rows={4}
+                sourceText={trWelcomeMessage}
+                targetLang={lang.code}
                 value={messages[lang.id] || ''}
-                onChange={(e) => setMessages({ ...messages, [lang.id]: e.target.value })}
+                onChange={(val) => setMessages({ ...messages, [lang.id]: val })}
               />
             ))
           )}
@@ -213,21 +246,28 @@ export default function SettingsPage() {
       </SettingsSection>
 
       <SettingsSection icon={Building2} title="Firma Ayarları">
-        <div className="grid sm:grid-cols-2 gap-6">
-          <div className="float-field-stack">
+        <div className="grid sm:grid-cols-2 gap-6 items-stretch">
+          <div className="flex flex-col gap-4 min-h-[240px]">
             <Input
               label="Firma Adı"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
             />
+            <Textarea
+              label="Hakkında"
+              value={companyAbout}
+              onChange={(e) => setCompanyAbout(e.target.value)}
+              className="flex-1 [&_.float-field]:h-full [&_.float-field__input]:min-h-[160px] [&_.float-field__input]:h-full [&_.float-field__input]:resize-none"
+              rows={8}
+            />
           </div>
 
-          <div>
+          <div className="flex flex-col min-h-[240px]">
             <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
               Logo
             </p>
             <div
-              className="rounded-2xl border-2 border-dashed p-6 text-center transition hover:border-[var(--admin-accent)] cursor-pointer min-h-[160px] flex flex-col items-center justify-center"
+              className="flex-1 rounded-2xl border-2 border-dashed p-6 text-center transition hover:border-[var(--admin-accent)] cursor-pointer flex flex-col items-center justify-center min-h-[240px]"
               style={{ borderColor: 'var(--admin-card-border)' }}
               onClick={() => fileRef.current?.click()}
             >
@@ -242,7 +282,7 @@ export default function SettingsPage() {
                 <img
                   src={logoPreview}
                   alt="Logo önizleme"
-                  className="max-h-24 max-w-full object-contain mb-2"
+                  className="max-h-28 max-w-full object-contain mb-2"
                 />
               ) : (
                 <ImagePlus

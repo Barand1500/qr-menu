@@ -19,206 +19,191 @@ enum ViewEntityType {
   menu
 }
 
+enum ShowcaseDisplayType {
+  banner
+  story
+}
+
+/// Restoran / işletme
 model Restaurant {
-  id        Int      @id @default(autoincrement())
-  name      String   @db.VarChar(150)
-  slug      String   @unique @db.VarChar(100)
-  logoUrl   String?  @map("logo_url") @db.VarChar(500)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(150)
+  slug        String   @unique @db.VarChar(100)
+  logoUrl     String?  @map("logo_url") @db.VarChar(500)
+  welcomeI18n Json     @default("{}") @map("hosgeldin_ceviriler")
+  createdAt   DateTime @default(now()) @map("olusturma")
+  updatedAt   DateTime @updatedAt @map("guncelleme")
 
-  users           User[]
-  groups          Group[]
-  products        Product[]
-  showcaseImages  ShowcaseImage[]
-  settings        Setting[]
-  welcomeMessages WelcomeMessage[]
-  viewEvents      ViewEvent[]
+  users          User[]
+  groups         Group[]
+  products       Product[]
+  showcaseImages ShowcaseImage[]
+  settings       Setting[]
+  viewEvents     ViewEvent[]
+  complaints     Complaint[]
+  suggestions    Suggestion[]
 
-  @@map("restaurants")
+  @@map("restoranlar")
 }
 
 model User {
   id           Int      @id @default(autoincrement())
-  restaurantId Int      @map("restaurant_id")
+  restaurantId Int      @map("restoran_id")
   email        String   @unique @db.VarChar(150)
-  passwordHash String   @map("password_hash") @db.VarChar(255)
-  fullName     String   @map("full_name") @db.VarChar(150)
+  passwordHash String   @map("sifre_hash") @db.VarChar(255)
+  fullName     String   @map("ad_soyad") @db.VarChar(150)
   phone        String?  @db.VarChar(30)
   role         UserRole @default(admin)
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  isActive     Boolean  @default(true) @map("aktif")
+  createdAt    DateTime @default(now()) @map("olusturma")
+  updatedAt    DateTime @updatedAt @map("guncelleme")
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@index([restaurantId])
-  @@map("users")
+  @@map("kullanicilar")
 }
 
 model Language {
   id       Int     @id @default(autoincrement())
   code     String  @unique @db.VarChar(10)
   name     String  @db.VarChar(50)
-  isActive Boolean @default(true) @map("is_active")
+  isActive Boolean @default(true) @map("aktif")
 
-  groupTranslations     GroupTranslation[]
-  productTranslations   ProductTranslation[]
-  showcaseTranslations  ShowcaseTranslation[]
-  welcomeMessages       WelcomeMessage[]
-
-  @@map("languages")
+  @@map("diller")
 }
 
-/// Menü grupları — ana grup ve alt grup hiyerarşisi
+/// Menü grupları — ceviriler JSON: { "tr": { "name": "..." }, "en": { ... } }
 model Group {
   id           Int      @id @default(autoincrement())
-  restaurantId Int      @map("restaurant_id")
-  parentId     Int?     @map("ust_grup_id") /// Üst grup (null = ana grup)
-  imageUrl     String?  @map("image_url") @db.VarChar(500)
-  sortOrder    Int      @default(0) @map("sort_order")
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  restaurantId Int      @map("restoran_id")
+  parentId     Int?     @map("ust_grup_id")
+  imageUrl     String?  @map("gorsel_url") @db.VarChar(500)
+  sortOrder    Int      @default(0) @map("sira")
+  isActive     Boolean  @default(true) @map("aktif")
+  i18n         Json     @default("{}") @map("ceviriler")
+  createdAt    DateTime @default(now()) @map("olusturma")
+  updatedAt    DateTime @updatedAt @map("guncelleme")
 
-  restaurant   Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  parent       Group?             @relation("GrupHiyerarsi", fields: [parentId], references: [id], onDelete: Cascade)
-  children     Group[]            @relation("GrupHiyerarsi")
-  products     Product[]
-  translations GroupTranslation[]
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  parent     Group?     @relation("GrupHiyerarsi", fields: [parentId], references: [id], onDelete: Cascade)
+  children   Group[]    @relation("GrupHiyerarsi")
+  products   Product[]
 
   @@index([restaurantId, sortOrder])
   @@index([restaurantId, parentId])
-  @@map("groups")
+  @@map("gruplar")
 }
 
-/// Grup adı çevirileri (Türkçe, İngilizce vb.)
-model GroupTranslation {
-  id         Int    @id @default(autoincrement())
-  groupId    Int    @map("group_id")
-  languageId Int    @map("language_id")
-  name       String @db.VarChar(200)
-
-  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
-
-  @@unique([groupId, languageId])
-  @@map("group_translations")
-}
-
+/// Ürünler — ceviriler JSON içinde ad, açıklama, malzemeler, alerjenler
 model Product {
   id              Int      @id @default(autoincrement())
-  restaurantId    Int      @map("restaurant_id")
-  groupId         Int      @map("group_id")
+  restaurantId    Int      @map("restoran_id")
+  groupId         Int      @map("grup_id")
   price           Decimal  @default(0) @db.Decimal(10, 2)
-  prepTimeMinutes Int?     @map("prep_time_minutes")
-  calories        Int?
-  features        Json     @default("[]")
-  isVegan         Boolean  @default(false) @map("is_vegan")
-  isVegetarian    Boolean  @default(false) @map("is_vegetarian")
-  isGlutenFree    Boolean  @default(false) @map("is_gluten_free")
-  isDiabetic      Boolean  @default(false) @map("is_diabetic")
-  isRecommended   Boolean  @default(false) @map("is_recommended")
-  imageUrl        String?  @map("image_url") @db.VarChar(500)
-  sortOrder       Int      @default(0) @map("sort_order")
-  isActive        Boolean  @default(true) @map("is_active")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  prepTimeMinutes Int?     @map("hazirlik_dk")
+  calories        Int?     @map("kalori")
+  features        Json     @default("[]") @map("ozellikler")
+  isVegan         Boolean  @default(false) @map("vegan")
+  isVegetarian    Boolean  @default(false) @map("vejetaryen")
+  isGlutenFree    Boolean  @default(false) @map("glutensiz")
+  isDiabetic      Boolean  @default(false) @map("diyabetik")
+  isRecommended   Boolean  @default(false) @map("onerilen")
+  imageUrl        String?  @map("gorsel_url") @db.VarChar(500)
+  images          Json     @default("[]") @map("gorseller")
+  sortOrder       Int      @default(0) @map("sira")
+  isActive        Boolean  @default(true) @map("aktif")
+  i18n            Json     @default("{}") @map("ceviriler")
+  createdAt       DateTime @default(now()) @map("olusturma")
+  updatedAt       DateTime @updatedAt @map("guncelleme")
 
-  restaurant      Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  group           Group                @relation(fields: [groupId], references: [id], onDelete: Restrict)
-  translations    ProductTranslation[]
-  showcaseImages  ShowcaseImage[]
+  restaurant     Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  group          Group           @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  showcaseImages ShowcaseImage[]
 
   @@index([restaurantId, groupId, sortOrder])
-  @@map("products")
+  @@map("urunler")
 }
 
-model ProductTranslation {
-  id          Int     @id @default(autoincrement())
-  productId   Int     @map("product_id")
-  languageId  Int     @map("language_id")
-  name        String  @db.VarChar(200)
-  description String? @db.Text
-  ingredients String? @db.Text
-  allergens   String? @db.Text
-
-  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
-
-  @@unique([productId, languageId])
-  @@map("product_translations")
-}
-
+/// Vitrin görselleri — web banner veya mobil hikaye
 model ShowcaseImage {
-  id           Int      @id @default(autoincrement())
-  restaurantId Int      @map("restaurant_id")
-  productId    Int?     @map("product_id")
-  name         String   @db.VarChar(200)
-  imageUrl     String?  @map("image_url") @db.VarChar(500)
-  sortOrder    Int      @default(0) @map("sort_order")
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  restaurant   Restaurant             @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  product      Product?               @relation(fields: [productId], references: [id], onDelete: SetNull)
-  translations ShowcaseTranslation[]
-
-  @@index([restaurantId, sortOrder])
-  @@map("showcase_images")
-}
-
-model ShowcaseTranslation {
-  id          Int     @id @default(autoincrement())
-  showcaseId  Int     @map("showcase_id")
-  languageId  Int     @map("language_id")
-  title1      String? @db.VarChar(200)
-  title2      String? @db.VarChar(200)
-
-  showcase ShowcaseImage @relation(fields: [showcaseId], references: [id], onDelete: Cascade)
-  language Language      @relation(fields: [languageId], references: [id], onDelete: Cascade)
-
-  @@unique([showcaseId, languageId])
-  @@map("showcase_translations")
-}
-
-model WelcomeMessage {
-  id           Int    @id @default(autoincrement())
-  restaurantId Int    @map("restaurant_id")
-  languageId   Int    @map("language_id")
-  message      String @db.Text
+  id           Int                 @id @default(autoincrement())
+  restaurantId Int                 @map("restoran_id")
+  productId    Int?                @map("urun_id")
+  name         String              @db.VarChar(200)
+  imageUrl     String?             @map("gorsel_url") @db.VarChar(500)
+  displayType  ShowcaseDisplayType @default(banner) @map("gosterim_tipi")
+  sortOrder    Int                 @default(0) @map("sira")
+  isActive     Boolean             @default(true) @map("aktif")
+  durationSeconds Int              @default(5) @map("sure_sn")
+  i18n         Json                @default("{}") @map("ceviriler")
+  createdAt    DateTime            @default(now()) @map("olusturma")
+  updatedAt    DateTime            @updatedAt @map("guncelleme")
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  language   Language   @relation(fields: [languageId], references: [id], onDelete: Cascade)
+  product    Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
 
-  @@unique([restaurantId, languageId])
-  @@map("welcome_messages")
+  @@index([restaurantId, sortOrder])
+  @@map("vitrin_gorselleri")
 }
 
+/// Anahtar-değer ayarları (firma hakkında, entegrasyon vb.)
 model Setting {
   id           Int     @id @default(autoincrement())
-  restaurantId Int     @map("restaurant_id")
+  restaurantId Int     @map("restoran_id")
   key          String  @db.VarChar(100)
   value        String? @db.Text
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@unique([restaurantId, key])
-  @@map("settings")
+  @@map("ayarlar")
 }
 
 model ViewEvent {
   id           BigInt         @id @default(autoincrement())
-  restaurantId Int            @map("restaurant_id")
-  entityType   ViewEntityType @map("entity_type")
-  entityId     Int            @map("entity_id")
-  sessionId    String         @map("session_id") @db.VarChar(64)
-  viewedAt     DateTime       @default(now()) @map("viewed_at")
+  restaurantId Int            @map("restoran_id")
+  entityType   ViewEntityType @map("varlik_tipi")
+  entityId     Int            @map("varlik_id")
+  sessionId    String         @map("oturum_id") @db.VarChar(64)
+  viewedAt     DateTime       @default(now()) @map("goruntulenme")
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@index([restaurantId, entityType, viewedAt])
   @@index([restaurantId, sessionId, viewedAt])
-  @@map("view_events")
+  @@map("goruntuleme_kayitlari")
+}
+
+/// Misafir şikayet / geri bildirim kutusu
+model Complaint {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int      @map("restoran_id")
+  fullName     String   @map("ad_soyad") @db.VarChar(150)
+  phone        String?  @db.VarChar(30)
+  message      String   @map("mesaj") @db.Text
+  isRead       Boolean  @default(false) @map("okundu")
+  createdAt    DateTime @default(now()) @map("olusturma")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, createdAt])
+  @@map("sikayetler")
+}
+
+/// Misafir öneri / memnuniyet anketi
+model Suggestion {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int      @map("restoran_id")
+  fullName     String?  @map("ad_soyad") @db.VarChar(150)
+  phone        String?  @db.VarChar(30)
+  message      String?  @map("mesaj") @db.Text
+  rating       Int      @map("puan")
+  isRead       Boolean  @default(false) @map("okundu")
+  createdAt    DateTime @default(now()) @map("olusturma")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, createdAt])
+  @@map("oneriler")
 }

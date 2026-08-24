@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId } from '../lib/auth.js';
+import { getGroupName, getProductField } from '../lib/i18n-json.js';
 
 const router = Router();
 router.use(authRequired);
@@ -36,14 +37,12 @@ async function topEntities(
   if (entityType === 'group') {
     const groups = await prisma.group.findMany({
       where: { id: { in: events.map((e) => e.entityId) } },
-      include: { translations: { include: { language: true } } },
     });
     return events.map((e) => {
       const group = groups.find((g) => g.id === e.entityId);
-      const tr = group?.translations.find((t) => t.language.code === 'tr');
       return {
         id: e.entityId,
-        name: tr?.name || group?.translations[0]?.name || 'Bilinmiyor',
+        name: group ? getGroupName(group.i18n) : 'Bilinmiyor',
         count: e._count.entityId,
       };
     });
@@ -51,14 +50,12 @@ async function topEntities(
 
   const products = await prisma.product.findMany({
     where: { id: { in: events.map((e) => e.entityId) } },
-    include: { translations: { include: { language: true } } },
   });
   return events.map((e) => {
     const product = products.find((p) => p.id === e.entityId);
-    const tr = product?.translations.find((t) => t.language.code === 'tr');
     return {
       id: e.entityId,
-      name: tr?.name || product?.translations[0]?.name || 'Bilinmiyor',
+      name: product ? getProductField(product.i18n, 'tr', 'name') : 'Bilinmiyor',
       count: e._count.entityId,
     };
   });

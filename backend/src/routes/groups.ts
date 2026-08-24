@@ -5,6 +5,14 @@ import fs from 'fs';
 import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId } from '../lib/auth.js';
 import { config } from '../config.js';
+import {
+  buildGroupI18n,
+  getGroupName,
+  getLanguages,
+  mergeGroupI18n,
+  textMatchesI18n,
+  toGroupTranslations,
+} from '../lib/i18n-json.js';
 
 const router = Router();
 router.use(authRequired);
@@ -37,47 +45,49 @@ router.get('/', async (req, res) => {
     where.parentId = parentId === 'null' ? null : Number(parentId);
   }
 
-  const groups = await prisma.group.findMany({
-    where,
-    include: {
-      translations: { include: { language: true } },
-      parent: { include: { translations: { include: { language: true } } } },
-      _count: { select: { children: true, products: true } },
-    },
-    orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
-    skip,
-    take: limitNum,
-  });
+  const [groups, languages, total] = await Promise.all([
+    prisma.group.findMany({
+      where,
+      include: {
+        parent: true,
+        _count: { select: { children: true, products: true } },
+      },
+      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+      skip,
+      take: limitNum,
+    }),
+    getLanguages(),
+    prisma.group.count({ where }),
+  ]);
 
   let filtered = groups;
   if (search) {
     const q = String(search).toLowerCase();
-    filtered = groups.filter((g) =>
-      g.translations.some((t) => t.name.toLowerCase().includes(q))
-    );
+    filtered = groups.filter((g) => textMatchesI18n(g.i18n, 'tr', ['name'], q));
   }
 
   const sorted = sortGroupsHierarchical(filtered);
-  const total = await prisma.group.count({ where });
-
   res.json({
-    data: sorted.map(mapGroup),
+    data: sorted.map((g) => mapGroup(g, languages, groups)),
     pagination: { page: pageNum, limit: limitNum, total },
   });
 });
 
 router.get('/:id', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const group = await prisma.group.findFirst({
-    where: { id: Number(req.params.id), restaurantId: restaurantId! },
-    include: {
-      translations: { include: { language: true } },
-      parent: { include: { translations: { include: { language: true } } } },
-      _count: { select: { children: true, products: true } },
-    },
-  });
+  const [group, languages, allGroups] = await Promise.all([
+    prisma.group.findFirst({
+      where: { id: Number(req.params.id), restaurantId: restaurantId! },
+      include: {
+        parent: true,
+        _count: { select: { children: true, products: true } },
+      },
+    }),
+    getLanguages(),
+    prisma.group.findMany({ where: { restaurantId: restaurantId! } }),
+  ]);
   if (!group) return res.status(404).json({ message: 'Grup bulunamadı' });
-  res.json(mapGroup(group));
+  res.json(mapGroup(group, languages, allGroups));
 });
 
 router.post('/', async (req, res) => {
@@ -89,7 +99,9 @@ router.post('/', async (req, res) => {
       where: { id: Number(parentId), restaurantId: restaurantId!, parentId: null },
     });
     if (!parent) {
-      return res.status(400).json({ message: 'Geçersiz üst grup. Alt grup yalnızca ana grupların altına eklenebilir.' });
+      return res.status(400).json({
+        message: 'Geçersiz üst grup. Alt grup yalnızca ana grupların altına eklenebilir.',
+      });
     }
   }
 
@@ -98,10 +110,10 @@ router.post('/', async (req, res) => {
     parentId: parentId ? Number(parentId) : null,
   };
 
-  const maxOrder = await prisma.group.aggregate({
-    where: scopeWhere,
-    _max: { sortOrder: true },
-  });
+  const [maxOrder, languages] = await Promise.all([
+    prisma.group.aggregate({ where: scopeWhere, _max: { sortOrder: true } }),
+    getLanguages(),
+  ]);
 
   const group = await prisma.group.create({
     data: {
@@ -109,21 +121,16 @@ router.post('/', async (req, res) => {
       parentId: parentId ? Number(parentId) : null,
       sortOrder: sortOrder ?? (maxOrder._max.sortOrder ?? 0) + 1,
       isActive: isActive ?? true,
-      translations: {
-        create: (translations || []).map((t: { languageId: number; name: string }) => ({
-          languageId: t.languageId,
-          name: t.name,
-        })),
-      },
+      i18n: buildGroupI18n(translations || [], languages),
     },
     include: {
-      translations: { include: { language: true } },
-      parent: { include: { translations: { include: { language: true } } } },
+      parent: true,
       _count: { select: { children: true, products: true } },
     },
   });
 
-  res.status(201).json(mapGroup(group));
+  const allGroups = await prisma.group.findMany({ where: { restaurantId: restaurantId! } });
+  res.status(201).json(mapGroup(group, languages, allGroups));
 });
 
 router.put('/:id', async (req, res) => {
@@ -146,15 +153,11 @@ router.put('/:id', async (req, res) => {
     }
   }
 
-  if (translations?.length) {
-    for (const t of translations as { languageId: number; name: string }[]) {
-      await prisma.groupTranslation.upsert({
-        where: { groupId_languageId: { groupId: id, languageId: t.languageId } },
-        update: { name: t.name },
-        create: { groupId: id, languageId: t.languageId, name: t.name },
-      });
-    }
-  }
+  const languages = await getLanguages();
+  const i18n =
+    translations?.length > 0
+      ? mergeGroupI18n(existing.i18n, translations, languages)
+      : undefined;
 
   const group = await prisma.group.update({
     where: { id },
@@ -163,15 +166,16 @@ router.put('/:id', async (req, res) => {
       ...(isActive !== undefined && { isActive }),
       ...(imageUrl !== undefined && { imageUrl }),
       ...(parentId !== undefined && { parentId: parentId ? Number(parentId) : null }),
+      ...(i18n !== undefined && { i18n }),
     },
     include: {
-      translations: { include: { language: true } },
-      parent: { include: { translations: { include: { language: true } } } },
+      parent: true,
       _count: { select: { children: true, products: true } },
     },
   });
 
-  res.json(mapGroup(group));
+  const allGroups = await prisma.group.findMany({ where: { restaurantId: restaurantId! } });
+  res.json(mapGroup(group, languages, allGroups));
 });
 
 router.patch('/:id/toggle', async (req, res) => {
@@ -180,16 +184,19 @@ router.patch('/:id/toggle', async (req, res) => {
   const existing = await prisma.group.findFirst({ where: { id, restaurantId: restaurantId! } });
   if (!existing) return res.status(404).json({ message: 'Grup bulunamadı' });
 
-  const group = await prisma.group.update({
-    where: { id },
-    data: { isActive: !existing.isActive },
-    include: {
-      translations: { include: { language: true } },
-      parent: { include: { translations: { include: { language: true } } } },
-      _count: { select: { children: true, products: true } },
-    },
-  });
-  res.json(mapGroup(group));
+  const [group, languages, allGroups] = await Promise.all([
+    prisma.group.update({
+      where: { id },
+      data: { isActive: !existing.isActive },
+      include: {
+        parent: true,
+        _count: { select: { children: true, products: true } },
+      },
+    }),
+    getLanguages(),
+    prisma.group.findMany({ where: { restaurantId: restaurantId! } }),
+  ]);
+  res.json(mapGroup(group, languages, allGroups));
 });
 
 router.put('/reorder/bulk', async (req, res) => {
@@ -214,16 +221,19 @@ router.post('/:id/image', upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'Görsel gerekli' });
 
   const imageUrl = `/uploads/${req.file.filename}`;
-  const group = await prisma.group.update({
-    where: { id },
-    data: { imageUrl },
-    include: {
-      translations: { include: { language: true } },
-      parent: { include: { translations: { include: { language: true } } } },
-      _count: { select: { children: true, products: true } },
-    },
-  });
-  res.json(mapGroup(group));
+  const [group, languages, allGroups] = await Promise.all([
+    prisma.group.update({
+      where: { id },
+      data: { imageUrl },
+      include: {
+        parent: true,
+        _count: { select: { children: true, products: true } },
+      },
+    }),
+    getLanguages(),
+    prisma.group.findMany({ where: { restaurantId: restaurantId! } }),
+  ]);
+  res.json(mapGroup(group, languages, allGroups));
 });
 
 router.delete('/:id', async (req, res) => {
@@ -250,35 +260,29 @@ type GroupRecord = {
   imageUrl: string | null;
   sortOrder: number;
   isActive: boolean;
-  translations: { languageId: number; name: string; language: { code: string; name: string } }[];
-  parent?: {
-    translations: { name: string; language: { code: string } }[];
-  } | null;
+  i18n: unknown;
+  parent?: { i18n: unknown } | null;
   _count?: { children: number; products: number };
 };
 
-function getTrName(translations: { name: string; language: { code: string } }[]) {
-  const tr = translations.find((t) => t.language.code === 'tr');
-  return tr?.name || translations[0]?.name || '';
-}
-
-function mapGroup(group: GroupRecord) {
+function mapGroup(
+  group: GroupRecord,
+  languages: { id: number; code: string }[],
+  allGroups: { id: number; i18n: unknown }[]
+) {
+  const parent = group.parent ?? allGroups.find((g) => g.id === group.parentId);
   return {
     id: group.id,
-    name: getTrName(group.translations),
+    name: getGroupName(group.i18n),
     parentId: group.parentId,
-    parentName: group.parent ? getTrName(group.parent.translations) : null,
+    parentName: parent ? getGroupName(parent.i18n) : null,
     isSubGroup: group.parentId !== null,
     imageUrl: group.imageUrl,
     sortOrder: group.sortOrder,
     isActive: group.isActive,
     childrenCount: group._count?.children ?? 0,
     productCount: group._count?.products ?? 0,
-    translations: group.translations.map((t) => ({
-      languageId: t.languageId,
-      languageCode: t.language.code,
-      name: t.name,
-    })),
+    translations: toGroupTranslations(group.i18n, languages),
   };
 }
 

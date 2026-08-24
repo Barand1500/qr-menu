@@ -29,12 +29,14 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { api, imageUrl } from '@/lib/api';
+import { getActiveLanguages, type AdminLanguage } from '@/lib/languages';
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Spinner } from '@/components/ui';
 import GroupModal, { type GroupFormState } from '@/components/GroupModal';
 import GroupProductsModal from '@/components/GroupProductsModal';
 import {
   AdminFilterBar,
   FilterChipGroup,
+  FilterSection,
   ToggleSwitch,
 } from '@/components/AdminFilterBar';
 
@@ -52,11 +54,7 @@ interface Group {
   translations: { languageId: number; languageCode: string; name: string }[];
 }
 
-interface Language {
-  id: number;
-  code: string;
-  name: string;
-}
+interface Language extends AdminLanguage {}
 
 type ModalMode = 'create' | 'edit' | 'sub' | null;
 type StatusFilter = 'all' | 'active' | 'passive';
@@ -139,7 +137,10 @@ function SortableRow({
     <tr
       ref={setNodeRef}
       onClick={() => canPick && onPickParent(group)}
-      className={`transition-all duration-300 ${
+      onDoubleClick={() => {
+        if (!pickMode) onEdit(group);
+      }}
+      className={`transition-all duration-300 admin-table-row--editable ${
         hideBottomBorder ? '' : 'border-b'
       } ${!group.isActive ? 'grayscale-[30%]' : ''} ${
         isHighlighted
@@ -244,7 +245,7 @@ function SortableRow({
       <td className="py-3.5 px-4">
         <Badge active={group.isActive} />
       </td>
-      <td className="py-3.5 px-4 w-[100px]">
+      <td className="py-3.5 px-4 w-[100px]" onDoubleClick={(e) => e.stopPropagation()}>
         {!pickMode && (
           <div className="flex gap-1">
             <button
@@ -314,7 +315,7 @@ export default function GroupsPage() {
       api<Language[]>('/api/admin/languages'),
     ]);
     setAllGroups(g.data);
-    setLanguages(langs.filter((l) => l.code === 'tr' || l.code === 'en'));
+    setLanguages(getActiveLanguages(langs));
   }, []);
 
   useEffect(() => {
@@ -584,34 +585,38 @@ export default function GroupsPage() {
           recordLabel={`${filteredGroups.length} / ${allGroups.length} kayıt`}
           onClear={clearFilters}
         >
-          <FilterChipGroup
-            label="Durum"
-            value={statusFilter}
-            options={[
-              { value: 'all', label: 'Tümü' },
-              { value: 'active', label: 'Aktif' },
-              { value: 'passive', label: 'Pasif' },
-            ]}
-            onChange={setStatusFilter}
-          />
-          <FilterChipGroup
-            label="Grup Tipi"
-            value={typeFilter}
-            options={[
-              { value: 'all', label: 'Tümü' },
-              { value: 'main', label: 'Ana Grup' },
-              { value: 'sub', label: 'Alt Grup' },
-            ]}
-            onChange={setTypeFilter}
-          />
-          <div className="flex items-center">
+          <FilterSection>
+            <FilterChipGroup
+              label="Durum"
+              value={statusFilter}
+              options={[
+                { value: 'all', label: 'Tümü' },
+                { value: 'active', label: 'Aktif' },
+                { value: 'passive', label: 'Pasif' },
+              ]}
+              onChange={setStatusFilter}
+            />
+          </FilterSection>
+          <FilterSection>
+            <FilterChipGroup
+              label="Grup Tipi"
+              value={typeFilter}
+              options={[
+                { value: 'all', label: 'Tümü' },
+                { value: 'main', label: 'Ana Grup' },
+                { value: 'sub', label: 'Alt Grup' },
+              ]}
+              onChange={setTypeFilter}
+            />
+          </FilterSection>
+          <FilterSection className="min-w-[240px]">
             <ToggleSwitch
               checked={hideSubGroups}
               onChange={setHideSubGroups}
               label="Alt grupları gizle"
               description="Listede yalnızca ana gruplar görünür"
             />
-          </div>
+          </FilterSection>
         </AdminFilterBar>
 
         <div className="overflow-x-auto admin-scroll">

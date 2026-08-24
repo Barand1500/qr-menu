@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { X, ImagePlus, LayoutPanelTop } from 'lucide-react';
 import { Button, Input, Select } from '@/components/ui';
 import LanguageTabs, { type Language } from '@/components/LanguageTabs';
+import { TranslatableInput } from '@/components/TranslatableField';
 
 export interface ShowcaseTranslationFields {
   title1: string;
@@ -57,12 +58,17 @@ export default function ShowcaseModal({
     if (!open) return;
     const tr = languages.find((l) => l.code === 'tr');
     setActiveLang(tr?.code || languages[0]?.code || 'tr');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose, languages]);
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -71,6 +77,7 @@ export default function ShowcaseModal({
     title1: '',
     title2: '',
   };
+  const trTranslation = form.translations.tr || { title1: '', title2: '' };
 
   function updateTranslation(field: keyof ShowcaseTranslationFields, value: string) {
     if (!currentLang) return;
@@ -213,17 +220,21 @@ export default function ShowcaseModal({
               />
               {currentLang && (
                 <div className="space-y-4 float-field-stack pt-1">
-                  <Input
+                  <TranslatableInput
                     key={`t1-${currentLang.code}`}
                     label="Başlık (1)"
+                    sourceText={trTranslation.title1}
+                    targetLang={currentLang.code}
                     value={currentTranslation.title1}
-                    onChange={(e) => updateTranslation('title1', e.target.value)}
+                    onChange={(val) => updateTranslation('title1', val)}
                   />
-                  <Input
+                  <TranslatableInput
                     key={`t2-${currentLang.code}`}
                     label="Başlık (2)"
+                    sourceText={trTranslation.title2}
+                    targetLang={currentLang.code}
                     value={currentTranslation.title2}
-                    onChange={(e) => updateTranslation('title2', e.target.value)}
+                    onChange={(val) => updateTranslation('title2', val)}
                   />
                 </div>
               )}

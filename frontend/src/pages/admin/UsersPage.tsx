@@ -146,7 +146,8 @@ export default function UsersPage() {
                 users.map((user) => (
                   <tr
                     key={user.id}
-                    className="border-b transition hover:bg-[var(--admin-accent-soft)]/30"
+                    onDoubleClick={() => openEdit(user)}
+                    className="border-b transition hover:bg-[var(--admin-accent-soft)]/30 admin-table-row--editable cursor-pointer"
                     style={{
                       borderColor: 'var(--admin-card-border)',
                       opacity: user.isActive ? 1 : 0.45,
@@ -173,7 +174,7 @@ export default function UsersPage() {
                     <td className="py-3.5 px-4">
                       <Badge active={user.isActive} />
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4" onDoubleClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-1">
                         <button
                           onClick={() => openEdit(user)}

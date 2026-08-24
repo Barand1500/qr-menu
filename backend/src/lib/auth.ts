@@ -2,6 +2,8 @@ import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
 import { prisma } from './prisma.js';
+import { getLanguages, getProductField } from './i18n-json.js';
+import { parseProductImages } from './product-images.js';
 
 export interface AuthPayload {
   userId: number;
@@ -46,20 +48,18 @@ export async function getRestaurantId(req: Request): Promise<number | null> {
 export async function validateProduct(productId: number, restaurantId: number) {
   const product = await prisma.product.findFirst({
     where: { id: productId, restaurantId },
-    include: {
-      translations: { include: { language: true } },
-    },
   });
   if (!product) return { valid: false, issues: ['Ürün bulunamadı'] };
 
   const issues: string[] = [];
-  if (!product.imageUrl) issues.push('Görsel eksik');
+  const images = parseProductImages(product);
+  if (images.length === 0) issues.push('Görsel eksik');
   if (Number(product.price) <= 0) issues.push('Fiyat geçersiz');
 
-  const activeLanguages = await prisma.language.findMany({ where: { isActive: true } });
+  const activeLanguages = (await getLanguages()).filter((l) => l.isActive);
   for (const lang of activeLanguages) {
-    const tr = product.translations.find((t) => t.languageId === lang.id);
-    if (!tr?.name) issues.push(`${lang.code} çeviri eksik`);
+    const name = getProductField(product.i18n, lang.code, 'name');
+    if (!name) issues.push(`${lang.code} çeviri eksik`);
   }
 
   return { valid: issues.length === 0, issues };

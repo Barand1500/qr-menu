@@ -14,7 +14,7 @@ const PAPER_SIZES = [
 export default function BarcodePage() {
   const { user } = useAuth();
   const [paperSize, setPaperSize] = useState('');
-  const menuUrl = `${window.location.origin}/m/${user?.restaurant.slug || ''}`;
+  const menuUrl = `${window.location.origin}/menu`;
 
   function handlePrint() {
     if (!paperSize) {

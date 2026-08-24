@@ -7,6 +7,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { api, formatPrice, imageUrl } from '@/lib/api';
+import { getActiveLanguages, type AdminLanguage } from '@/lib/languages';
 import {
   Badge,
   Button,
@@ -25,6 +26,7 @@ import {
   AdminFilterBar,
   FilterChipGroup,
   FilterFieldLabel,
+  FilterSection,
 } from '@/components/AdminFilterBar';
 
 interface Product {
@@ -38,6 +40,7 @@ interface Product {
   features?: string[];
   isRecommended?: boolean;
   imageUrl?: string | null;
+  images?: string[];
   sortOrder: number;
   isActive: boolean;
   isValid: boolean;
@@ -59,11 +62,7 @@ interface Group {
   isSubGroup?: boolean;
 }
 
-interface Language {
-  id: number;
-  code: string;
-  name: string;
-}
+interface Language extends AdminLanguage {}
 
 type StatusFilter = 'all' | 'active' | 'passive';
 
@@ -117,8 +116,8 @@ export default function ProductsPage() {
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductFormState>(emptyForm());
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [productImages, setProductImages] = useState<string[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<{ id: string; file: File; url: string }[]>([]);
 
   const load = useCallback(async () => {
     const params = new URLSearchParams({ limit: '100' });
@@ -134,7 +133,7 @@ export default function ProductsPage() {
     ]);
     setProducts(p.data);
     setGroups(g.data);
-    setLanguages(langs.filter((l) => l.code === 'tr' || l.code === 'en'));
+    setLanguages(getActiveLanguages(langs));
   }, [search, groupFilter, statusFilter]);
 
   useEffect(() => {
@@ -142,14 +141,10 @@ export default function ProductsPage() {
   }, [load]);
 
   useEffect(() => {
-    if (!imageFile) {
-      setImagePreview(editing?.imageUrl ? imageUrl(editing.imageUrl) : null);
-      return;
-    }
-    const url = URL.createObjectURL(imageFile);
-    setImagePreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [imageFile, editing?.imageUrl]);
+    return () => {
+      pendingFiles.forEach((p) => URL.revokeObjectURL(p.url));
+    };
+  }, [pendingFiles]);
 
   const groupOptions = useMemo(
     () =>
@@ -175,8 +170,8 @@ export default function ProductsPage() {
       ...emptyForm(),
       groupId: groups[0]?.id?.toString() || '',
     });
-    setImageFile(null);
-    setImagePreview(null);
+    setProductImages([]);
+    setPendingFiles([]);
     setModalOpen(true);
   }
 
@@ -184,8 +179,10 @@ export default function ProductsPage() {
     setModalMode('edit');
     setEditing(product);
     setForm(buildFormFromProduct(product));
-    setImageFile(null);
-    setImagePreview(product.imageUrl ? imageUrl(product.imageUrl) : null);
+    setPendingFiles([]);
+    setProductImages(
+      product.images?.length ? product.images : product.imageUrl ? [product.imageUrl] : []
+    );
     setModalOpen(true);
   }
 
@@ -193,8 +190,9 @@ export default function ProductsPage() {
     setModalOpen(false);
     setEditing(null);
     setForm(emptyForm());
-    setImageFile(null);
-    setImagePreview(null);
+    pendingFiles.forEach((p) => URL.revokeObjectURL(p.url));
+    setPendingFiles([]);
+    setProductImages([]);
   }
 
   useEffect(() => {
@@ -227,6 +225,71 @@ export default function ProductsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, products, loading]);
 
+  function handleAddImages(files: FileList | null) {
+    if (!files?.length) return;
+    const next = Array.from(files).map((file) => ({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      file,
+      url: URL.createObjectURL(file),
+    }));
+    setPendingFiles((prev) => [...prev, ...next]);
+  }
+
+  function handleRemovePending(id: string) {
+    setPendingFiles((prev) => {
+      const item = prev.find((p) => p.id === id);
+      if (item) URL.revokeObjectURL(item.url);
+      return prev.filter((p) => p.id !== id);
+    });
+  }
+
+  async function handleRemoveImage(url: string) {
+    if (editing) {
+      const updated = await api<Product>(`/api/admin/products/${editing.id}/images`, {
+        method: 'DELETE',
+        body: JSON.stringify({ url }),
+      });
+      setProductImages(updated.images ?? []);
+      setEditing(updated);
+      setProducts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+      return;
+    }
+    setProductImages((prev) => prev.filter((u) => u !== url));
+  }
+
+  async function handleMoveImage(url: string, direction: -1 | 1) {
+    const list = [...productImages];
+    const index = list.indexOf(url);
+    if (index < 0) return;
+    const target = index + direction;
+    if (target < 0 || target >= list.length) return;
+    [list[index], list[target]] = [list[target], list[index]];
+    setProductImages(list);
+
+    if (editing) {
+      const updated = await api<Product>(`/api/admin/products/${editing.id}/images/reorder`, {
+        method: 'PUT',
+        body: JSON.stringify({ images: list }),
+      });
+      setProductImages(updated.images ?? list);
+      setEditing(updated);
+      setProducts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+    }
+  }
+
+  async function uploadImages(id: number, files: File[]) {
+    if (files.length === 0) return;
+    const fd = new FormData();
+    files.forEach((file) => fd.append('images', file));
+    const res = await fetch(`/api/admin/products/${id}/images`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      body: fd,
+    });
+    if (!res.ok) throw new Error('Görsel yüklenemedi');
+    return res.json() as Promise<Product>;
+  }
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -254,13 +317,23 @@ export default function ProductsPage() {
           method: 'PUT',
           body: JSON.stringify(payload),
         });
-        if (imageFile) await uploadImage(editing.id);
+        if (pendingFiles.length > 0) {
+          await uploadImages(
+            editing.id,
+            pendingFiles.map((p) => p.file)
+          );
+        }
       } else {
         const created = await api<Product>('/api/admin/products', {
           method: 'POST',
           body: JSON.stringify(payload),
         });
-        if (imageFile) await uploadImage(created.id);
+        if (pendingFiles.length > 0) {
+          await uploadImages(
+            created.id,
+            pendingFiles.map((p) => p.file)
+          );
+        }
       }
 
       closeModal();
@@ -268,16 +341,6 @@ export default function ProductsPage() {
     } finally {
       setSaving(false);
     }
-  }
-
-  async function uploadImage(id: number) {
-    const fd = new FormData();
-    fd.append('image', imageFile!);
-    await fetch(`/api/admin/products/${id}/image`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      body: fd,
-    });
   }
 
   async function handleToggle(product: Product) {
@@ -338,7 +401,7 @@ export default function ProductsPage() {
           recordLabel={`${products.length} kayıt`}
           onClear={clearFilters}
         >
-          <div>
+          <FilterSection className="min-w-[200px]">
             <FilterFieldLabel>Grup</FilterFieldLabel>
             <Select
               label="Tüm gruplar"
@@ -346,17 +409,19 @@ export default function ProductsPage() {
               options={groupFilterOptions}
               onChange={(e) => setGroupFilter(e.target.value)}
             />
-          </div>
-          <FilterChipGroup
-            label="Durum"
-            value={statusFilter}
-            options={[
-              { value: 'all', label: 'Tümü' },
-              { value: 'active', label: 'Aktif' },
-              { value: 'passive', label: 'Pasif' },
-            ]}
-            onChange={setStatusFilter}
-          />
+          </FilterSection>
+          <FilterSection>
+            <FilterChipGroup
+              label="Durum"
+              value={statusFilter}
+              options={[
+                { value: 'all', label: 'Tümü' },
+                { value: 'active', label: 'Aktif' },
+                { value: 'passive', label: 'Pasif' },
+              ]}
+              onChange={setStatusFilter}
+            />
+          </FilterSection>
         </AdminFilterBar>
 
         <div className="overflow-x-auto admin-scroll">
@@ -386,7 +451,8 @@ export default function ProductsPage() {
                 products.map((product) => (
                   <tr
                     key={product.id}
-                    className="border-b transition-all duration-300 hover:bg-[var(--admin-accent-soft)]/30"
+                    onDoubleClick={() => openEdit(product)}
+                    className="border-b transition-all duration-300 hover:bg-[var(--admin-accent-soft)]/30 admin-table-row--editable cursor-pointer"
                     style={{
                       borderColor: 'var(--admin-card-border)',
                       opacity: product.isActive ? 1 : 0.38,
@@ -425,7 +491,7 @@ export default function ProductsPage() {
                     <td className="py-3.5 px-4">
                       <Badge active={product.isActive} />
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4" onDoubleClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-1">
                         <button
                           onClick={() => openEdit(product)}
@@ -466,12 +532,16 @@ export default function ProductsPage() {
         languages={languages}
         groups={groupOptions}
         form={form}
-        imagePreview={imagePreview}
+        productImages={productImages}
+        pendingPreviews={pendingFiles.map(({ id, url }) => ({ id, url }))}
         saving={saving}
         onClose={closeModal}
         onSave={handleSave}
         onFormChange={setForm}
-        onImageChange={setImageFile}
+        onAddImages={handleAddImages}
+        onRemoveImage={handleRemoveImage}
+        onRemovePending={handleRemovePending}
+        onMoveImage={handleMoveImage}
       />
     </div>
   );

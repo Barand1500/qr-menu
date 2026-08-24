@@ -1,5 +1,6 @@
 import cors from 'cors';
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { config } from './config.js';
 import authRouter from './routes/auth.js';
@@ -12,6 +13,9 @@ import usersRouter from './routes/users.js';
 import settingsRouter from './routes/settings.js';
 import publicMenuRouter from './routes/public-menu.js';
 import languagesRouter from './routes/languages.js';
+import translateRouter from './routes/translate.js';
+import complaintsRouter from './routes/complaints.js';
+import suggestionsRouter from './routes/suggestions.js';
 
 export function createApp() {
   const app = express();
@@ -40,7 +44,23 @@ export function createApp() {
   app.use('/api/admin/users', usersRouter);
   app.use('/api/admin/settings', settingsRouter);
   app.use('/api/admin/languages', languagesRouter);
+  app.use('/api/admin/translate', translateRouter);
+  app.use('/api/admin/complaints', complaintsRouter);
+  app.use('/api/admin/suggestions', suggestionsRouter);
   app.use('/api/menu', publicMenuRouter);
+
+  const publicDir = path.resolve(process.env.PUBLIC_DIR || './public');
+  if (fs.existsSync(publicDir)) {
+    app.use(express.static(publicDir, { index: false }));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+        return next();
+      }
+      res.sendFile(path.join(publicDir, 'index.html'), (err) => {
+        if (err) next();
+      });
+    });
+  }
 
   app.use((_req, res) => {
     res.status(404).json({ message: 'Endpoint bulunamadı' });

@@ -1,0 +1,226 @@
+import { prisma } from './prisma.js';
+
+export type GroupI18nEntry = { name?: string };
+export type ProductI18nEntry = {
+  name?: string;
+  description?: string;
+  ingredients?: string;
+  allergens?: string;
+};
+export type ShowcaseI18nEntry = { title1?: string; title2?: string };
+export type I18nMap<T> = Record<string, T>;
+
+let languageCache: { id: number; code: string; name: string; isActive: boolean }[] | null = null;
+
+export async function getLanguages() {
+  if (!languageCache) {
+    languageCache = await prisma.language.findMany({ orderBy: { id: 'asc' } });
+  }
+  return languageCache;
+}
+
+export function clearLanguageCache() {
+  languageCache = null;
+}
+
+function asMap<T>(json: unknown): I18nMap<T> {
+  if (json && typeof json === 'object' && !Array.isArray(json)) {
+    return json as I18nMap<T>;
+  }
+  return {};
+}
+
+export function getByLang<T extends Record<string, unknown>>(
+  json: unknown,
+  lang: string,
+  field: keyof T,
+  fallbackLang = 'tr'
+): string {
+  const map = asMap<T>(json);
+  const primary = map[lang]?.[field];
+  if (typeof primary === 'string' && primary.trim()) return primary;
+  const fallback = map[fallbackLang]?.[field];
+  if (typeof fallback === 'string') return fallback;
+  const first = Object.values(map).find((entry) => {
+    const v = entry?.[field];
+    return typeof v === 'string' && v.trim();
+  });
+  return typeof first?.[field] === 'string' ? (first[field] as string) : '';
+}
+
+export function getGroupName(json: unknown, lang = 'tr') {
+  return getByLang<GroupI18nEntry>(json, lang, 'name');
+}
+
+export function getProductField(
+  json: unknown,
+  lang: string,
+  field: keyof ProductI18nEntry
+) {
+  return getByLang<ProductI18nEntry>(json, lang, field);
+}
+
+export function getShowcaseTitles(json: unknown, lang: string) {
+  return {
+    title1: getByLang<ShowcaseI18nEntry>(json, lang, 'title1'),
+    title2: getByLang<ShowcaseI18nEntry>(json, lang, 'title2'),
+  };
+}
+
+export function getWelcomeMessage(json: unknown, lang: string) {
+  const map = asMap<{ message?: string }>(json);
+  return map[lang]?.message || map.tr?.message || Object.values(map)[0]?.message || '';
+}
+
+type LangRow = { id: number; code: string };
+
+export function toGroupTranslations(
+  json: unknown,
+  languages: LangRow[]
+) {
+  return languages.map((lang) => ({
+    languageId: lang.id,
+    languageCode: lang.code,
+    name: getGroupName(json, lang.code),
+  }));
+}
+
+export function toProductTranslations(
+  json: unknown,
+  languages: LangRow[]
+) {
+  return languages.map((lang) => ({
+    languageId: lang.id,
+    languageCode: lang.code,
+    name: getProductField(json, lang.code, 'name'),
+    description: getProductField(json, lang.code, 'description') || null,
+    ingredients: getProductField(json, lang.code, 'ingredients') || null,
+    allergens: getProductField(json, lang.code, 'allergens') || null,
+  }));
+}
+
+export function toShowcaseTranslations(
+  json: unknown,
+  languages: LangRow[]
+) {
+  return languages.map((lang) => {
+    const { title1, title2 } = getShowcaseTitles(json, lang.code);
+    return {
+      languageId: lang.id,
+      languageCode: lang.code,
+      title1: title1 || null,
+      title2: title2 || null,
+    };
+  });
+}
+
+export function mergeGroupI18n(
+  existing: unknown,
+  items: { languageId: number; name: string }[],
+  languages: LangRow[]
+) {
+  const map = { ...asMap<GroupI18nEntry>(existing) };
+  for (const item of items) {
+    const code = languages.find((l) => l.id === item.languageId)?.code;
+    if (!code) continue;
+    map[code] = { ...map[code], name: item.name };
+  }
+  return map;
+}
+
+export function mergeProductI18n(
+  existing: unknown,
+  items: {
+    languageId: number;
+    name: string;
+    description?: string;
+    ingredients?: string;
+    allergens?: string;
+  }[],
+  languages: LangRow[]
+) {
+  const map = { ...asMap<ProductI18nEntry>(existing) };
+  for (const item of items) {
+    const code = languages.find((l) => l.id === item.languageId)?.code;
+    if (!code) continue;
+    map[code] = {
+      ...map[code],
+      name: item.name,
+      description: item.description ?? map[code]?.description,
+      ingredients: item.ingredients ?? map[code]?.ingredients,
+      allergens: item.allergens ?? map[code]?.allergens,
+    };
+  }
+  return map;
+}
+
+export function mergeShowcaseI18n(
+  existing: unknown,
+  items: { languageId: number; title1?: string; title2?: string }[],
+  languages: LangRow[]
+) {
+  const map = { ...asMap<ShowcaseI18nEntry>(existing) };
+  for (const item of items) {
+    const code = languages.find((l) => l.id === item.languageId)?.code;
+    if (!code) continue;
+    map[code] = {
+      title1: item.title1 ?? map[code]?.title1,
+      title2: item.title2 ?? map[code]?.title2,
+    };
+  }
+  return map;
+}
+
+export function mergeWelcomeI18n(
+  existing: unknown,
+  items: { languageId: number; message: string }[],
+  languages: LangRow[]
+) {
+  const map = { ...asMap<{ message?: string }>(existing) };
+  for (const item of items) {
+    const code = languages.find((l) => l.id === item.languageId)?.code;
+    if (!code) continue;
+    map[code] = { message: item.message };
+  }
+  return map;
+}
+
+export function buildGroupI18n(
+  items: { languageId: number; name: string }[],
+  languages: LangRow[]
+) {
+  return mergeGroupI18n({}, items, languages);
+}
+
+export function buildProductI18n(
+  items: {
+    languageId: number;
+    name: string;
+    description?: string;
+    ingredients?: string;
+    allergens?: string;
+  }[],
+  languages: LangRow[]
+) {
+  return mergeProductI18n({}, items, languages);
+}
+
+export function buildShowcaseI18n(
+  items: { languageId: number; title1?: string; title2?: string }[],
+  languages: LangRow[]
+) {
+  return mergeShowcaseI18n({}, items, languages);
+}
+
+export function textMatchesI18n(
+  json: unknown,
+  lang: string,
+  fields: string[],
+  query: string
+) {
+  const q = query.toLowerCase();
+  const map = asMap<Record<string, string>>(json);
+  const entry = map[lang] || map.tr || Object.values(map)[0];
+  if (!entry) return false;
+  return fields.some((f) => String(entry[f] || '').toLowerCase().includes(q));
+}

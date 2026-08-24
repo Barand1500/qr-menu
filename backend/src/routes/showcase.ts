@@ -5,6 +5,13 @@ import fs from 'fs';
 import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId } from '../lib/auth.js';
 import { config } from '../config.js';
+import {
+  buildShowcaseI18n,
+  getLanguages,
+  getProductField,
+  mergeShowcaseI18n,
+  toShowcaseTranslations,
+} from '../lib/i18n-json.js';
 
 const router = Router();
 router.use(authRequired);
@@ -23,75 +30,72 @@ const upload = multer({ storage, limits: { fileSize: 8 * 1024 * 1024 } });
 
 router.get('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const items = await prisma.showcaseImage.findMany({
-    where: { restaurantId: restaurantId! },
-    include: {
-      translations: { include: { language: true } },
-      product: { include: { translations: { include: { language: true } } } },
-    },
-    orderBy: { sortOrder: 'asc' },
-  });
-  res.json(items.map(mapShowcase));
+  const type = req.query.type as string | undefined;
+  const where: { restaurantId: number; displayType?: 'banner' | 'story' } = {
+    restaurantId: restaurantId!,
+  };
+  if (type === 'banner' || type === 'story') {
+    where.displayType = type;
+  }
+
+  const [items, languages] = await Promise.all([
+    prisma.showcaseImage.findMany({
+      where,
+      include: { product: { include: { group: true } } },
+      orderBy: { sortOrder: 'asc' },
+    }),
+    getLanguages(),
+  ]);
+  res.json(items.map((item) => mapShowcase(item, languages)));
 });
 
 router.post('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const { name, productId, sortOrder, isActive, translations } = req.body;
+  const { name, productId, sortOrder, isActive, translations, displayType, durationSeconds } =
+    req.body;
 
-  const maxOrder = await prisma.showcaseImage.aggregate({
-    where: { restaurantId: restaurantId! },
-    _max: { sortOrder: true },
-  });
+  const itemType = displayType === 'story' ? ('story' as const) : ('banner' as const);
+
+  const [maxOrder, languages] = await Promise.all([
+    prisma.showcaseImage.aggregate({
+      where: { restaurantId: restaurantId!, displayType: itemType },
+      _max: { sortOrder: true },
+    }),
+    getLanguages(),
+  ]);
 
   const item = await prisma.showcaseImage.create({
     data: {
       restaurantId: restaurantId!,
-      name: name || 'Vitrin Görseli',
+      name: name || (itemType === 'story' ? 'Hikaye' : 'Vitrin Görseli'),
       productId: productId ? Number(productId) : null,
+      displayType: itemType,
       sortOrder: sortOrder ?? (maxOrder._max.sortOrder ?? 0) + 1,
       isActive: isActive ?? true,
-      translations: {
-        create: (translations || []).map(
-          (t: { languageId: number; title1?: string; title2?: string }) => ({
-            languageId: t.languageId,
-            title1: t.title1 || null,
-            title2: t.title2 || null,
-          })
-        ),
-      },
+      durationSeconds: clampDuration(durationSeconds, itemType),
+      i18n: buildShowcaseI18n(translations || [], languages),
     },
-    include: {
-      translations: { include: { language: true } },
-      product: { include: { translations: { include: { language: true } } } },
-    },
+    include: { product: { include: { group: true } } },
   });
-  res.status(201).json(mapShowcase(item));
+  res.status(201).json(mapShowcase(item, languages));
 });
 
 router.put('/:id', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   const id = Number(req.params.id);
-  const { name, productId, sortOrder, isActive, imageUrl, translations } = req.body;
+  const { name, productId, sortOrder, isActive, imageUrl, translations, displayType, durationSeconds } =
+    req.body;
 
   const existing = await prisma.showcaseImage.findFirst({
     where: { id, restaurantId: restaurantId! },
   });
   if (!existing) return res.status(404).json({ message: 'Kayıt bulunamadı' });
 
-  if (translations?.length) {
-    for (const t of translations as { languageId: number; title1?: string; title2?: string }[]) {
-      await prisma.showcaseTranslation.upsert({
-        where: { showcaseId_languageId: { showcaseId: id, languageId: t.languageId } },
-        update: { title1: t.title1 || null, title2: t.title2 || null },
-        create: {
-          showcaseId: id,
-          languageId: t.languageId,
-          title1: t.title1 || null,
-          title2: t.title2 || null,
-        },
-      });
-    }
-  }
+  const languages = await getLanguages();
+  const i18n =
+    translations?.length > 0
+      ? mergeShowcaseI18n(existing.i18n, translations, languages)
+      : undefined;
 
   const item = await prisma.showcaseImage.update({
     where: { id },
@@ -100,14 +104,18 @@ router.put('/:id', async (req, res) => {
       ...(productId !== undefined && { productId: productId ? Number(productId) : null }),
       ...(sortOrder !== undefined && { sortOrder }),
       ...(isActive !== undefined && { isActive }),
+      ...(displayType !== undefined && {
+        displayType: displayType === 'story' ? 'story' : 'banner',
+      }),
       ...(imageUrl !== undefined && { imageUrl }),
+      ...(durationSeconds !== undefined && {
+        durationSeconds: clampDuration(durationSeconds, existing.displayType),
+      }),
+      ...(i18n !== undefined && { i18n }),
     },
-    include: {
-      translations: { include: { language: true } },
-      product: { include: { translations: { include: { language: true } } } },
-    },
+    include: { product: { include: { group: true } } },
   });
-  res.json(mapShowcase(item));
+  res.json(mapShowcase(item, languages));
 });
 
 router.patch('/:id/toggle', async (req, res) => {
@@ -118,15 +126,15 @@ router.patch('/:id/toggle', async (req, res) => {
   });
   if (!existing) return res.status(404).json({ message: 'Kayıt bulunamadı' });
 
-  const item = await prisma.showcaseImage.update({
-    where: { id },
-    data: { isActive: !existing.isActive },
-    include: {
-      translations: { include: { language: true } },
-      product: { include: { translations: { include: { language: true } } } },
-    },
-  });
-  res.json(mapShowcase(item));
+  const [item, languages] = await Promise.all([
+    prisma.showcaseImage.update({
+      where: { id },
+      data: { isActive: !existing.isActive },
+      include: { product: { include: { group: true } } },
+    }),
+    getLanguages(),
+  ]);
+  res.json(mapShowcase(item, languages));
 });
 
 router.post('/:id/image', upload.single('image'), async (req, res) => {
@@ -139,15 +147,15 @@ router.post('/:id/image', upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'Görsel gerekli' });
 
   const imageUrl = `/uploads/${req.file.filename}`;
-  const item = await prisma.showcaseImage.update({
-    where: { id },
-    data: { imageUrl },
-    include: {
-      translations: { include: { language: true } },
-      product: { include: { translations: { include: { language: true } } } },
-    },
-  });
-  res.json(mapShowcase(item));
+  const [item, languages] = await Promise.all([
+    prisma.showcaseImage.update({
+      where: { id },
+      data: { imageUrl },
+      include: { product: { include: { group: true } } },
+    }),
+    getLanguages(),
+  ]);
+  res.json(mapShowcase(item, languages));
 });
 
 router.put('/reorder/bulk', async (req, res) => {
@@ -176,38 +184,39 @@ router.delete('/:id', async (req, res) => {
   res.json({ ok: true });
 });
 
-function mapShowcase(item: {
-  id: number;
-  name: string;
-  productId: number | null;
-  imageUrl: string | null;
-  sortOrder: number;
-  isActive: boolean;
-  translations: {
-    languageId: number;
-    title1: string | null;
-    title2: string | null;
-    language: { code: string };
-  }[];
-  product?: {
-    translations: { language: { code: string }; name: string }[];
-  } | null;
-}) {
-  const productTr = item.product?.translations.find((t) => t.language.code === 'tr');
+function clampDuration(value: unknown, displayType: 'banner' | 'story') {
+  if (displayType !== 'story') return 5;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 5;
+  return Math.min(30, Math.max(2, Math.round(n)));
+}
+
+function mapShowcase(
+  item: {
+    id: number;
+    name: string;
+    productId: number | null;
+    imageUrl: string | null;
+    displayType: 'banner' | 'story';
+    sortOrder: number;
+    isActive: boolean;
+    durationSeconds: number;
+    i18n: unknown;
+    product?: { i18n: unknown } | null;
+  },
+  languages: { id: number; code: string }[]
+) {
   return {
     id: item.id,
     name: item.name,
     productId: item.productId,
-    productName: productTr?.name || item.product?.translations[0]?.name || null,
+    productName: item.product ? getProductField(item.product.i18n, 'tr', 'name') : null,
     imageUrl: item.imageUrl,
+    displayType: item.displayType,
     sortOrder: item.sortOrder,
     isActive: item.isActive,
-    translations: item.translations.map((t) => ({
-      languageId: t.languageId,
-      languageCode: t.language.code,
-      title1: t.title1,
-      title2: t.title2,
-    })),
+    durationSeconds: item.durationSeconds,
+    translations: toShowcaseTranslations(item.i18n, languages),
   };
 }
 

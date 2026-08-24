@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, ImagePlus, Layers, FolderTree } from 'lucide-react';
-import { Button, Input } from '@/components/ui';
+import { Button } from '@/components/ui';
 import LanguageTabs from '@/components/LanguageTabs';
+import { TranslatableInput } from '@/components/TranslatableField';
 
 export interface GroupFormState {
   translations: Record<string, string>;
@@ -52,12 +53,17 @@ export default function GroupModal({
     if (!open) return;
     const tr = languages.find((l) => l.code === 'tr');
     setActiveLang(tr?.code || languages[0]?.code || 'tr');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose, languages]);
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -127,19 +133,18 @@ export default function GroupModal({
               onChange={setActiveLang}
             />
             {currentLang && (
-              <Input
+              <TranslatableInput
                 key={currentLang.code}
                 label="Grup Adı"
-                placeholder={
-                  currentLang.code === 'tr' ? 'Örn: Kahvaltılar' : 'Örn: Breakfasts'
-                }
+                sourceText={form.translations.tr || ''}
+                targetLang={currentLang.code}
                 value={form.translations[currentLang.code] || ''}
-                onChange={(e) =>
+                onChange={(val) =>
                   onFormChange({
                     ...form,
                     translations: {
                       ...form.translations,
-                      [currentLang.code]: e.target.value,
+                      [currentLang.code]: val,
                     },
                   })
                 }

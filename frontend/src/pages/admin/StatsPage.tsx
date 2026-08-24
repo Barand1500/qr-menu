@@ -1,8 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Calendar, Search, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { Calendar, Search } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button, Card, PageHeader, Select, Spinner } from '@/components/ui';
+import {
+  AdminFilterBar,
+  FilterSection,
+} from '@/components/AdminFilterBar';
 import { useDemoData } from '@/contexts/DemoDataContext';
 import { DEMO_STATS } from '@/lib/demoData';
 
@@ -149,9 +153,11 @@ function StatsBlock({
 export default function StatsPage() {
   const { demoEnabled } = useDemoData();
   const currentYear = new Date().getFullYear();
+  const currentMonth = String(new Date().getMonth() + 1);
   const [filterOpen, setFilterOpen] = useState(false);
   const [year, setYear] = useState(String(currentYear));
-  const [month, setMonth] = useState(String(new Date().getMonth() + 1));
+  const [month, setMonth] = useState(currentMonth);
+  const [fullYearMode, setFullYearMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [topGroups, setTopGroups] = useState<TopItem[]>([]);
@@ -219,27 +225,36 @@ export default function StatsPage() {
 
   function applyMonthFilter() {
     if (!month) return;
+    setFullYearMode(false);
     load(monthRange(year, month));
   }
 
   function applyYearFilter() {
+    setFullYearMode(true);
     load(yearRange(year));
   }
 
   function resetFilters() {
     const y = String(currentYear);
-    const m = String(new Date().getMonth() + 1);
+    const m = currentMonth;
     setYear(y);
     setMonth(m);
+    setFullYearMode(false);
     load(monthRange(y, m));
   }
 
-  const periodLabel = month
-    ? `${MONTHS.find((m) => m.value === month)?.label} ${year}`
-    : `${year} (tüm yıl)`;
+  const periodLabel = fullYearMode
+    ? `${year} (tüm yıl)`
+    : `${MONTHS.find((m) => m.value === month)?.label} ${year}`;
+
+  const activeFilterCount = useMemo(() => {
+    const isDefault =
+      year === String(currentYear) && month === currentMonth && !fullYearMode;
+    return isDefault ? 0 : 1;
+  }, [year, month, fullYearMode, currentYear, currentMonth]);
 
   return (
-    <div className="space-y-5 max-w-6xl">
+    <div className="space-y-5 w-full">
       <PageHeader title="İstatistikler" />
 
       {demoEnabled && (
@@ -256,54 +271,45 @@ export default function StatsPage() {
       )}
 
       <Card className="overflow-hidden !p-0">
-        <button
-          type="button"
-          onClick={() => setFilterOpen(!filterOpen)}
-          className="w-full flex items-center justify-between px-5 py-4 text-left transition hover:bg-[var(--admin-accent-soft)]/20"
-          style={{ borderBottom: filterOpen ? '1px solid var(--admin-card-border)' : 'none' }}
+        <AdminFilterBar
+          filterOpen={filterOpen}
+          onFilterToggle={() => setFilterOpen(!filterOpen)}
+          activeFilterCount={activeFilterCount}
+          recordLabel={periodLabel}
+          onClear={resetFilters}
         >
-          <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--admin-text)]">
-            <SlidersHorizontal className="w-4 h-4" style={{ color: 'var(--admin-accent)' }} />
-            Filtreler
-            {!filterOpen && (
-              <span className="text-xs font-normal admin-text-muted ml-1">· {periodLabel}</span>
-            )}
-          </span>
-          <span className="text-xs admin-text-muted">{filterOpen ? 'Gizle' : 'Göster'}</span>
-        </button>
-
-        {filterOpen && (
-          <div className="p-5" style={{ background: 'var(--admin-input-bg)' }}>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-              <Select
-                label="Yıl"
-                value={year}
-                options={yearOptions}
-                onChange={(e) => setYear(e.target.value)}
-              />
-              <Select
-                label="Ay"
-                value={month}
-                options={MONTHS}
-                onChange={(e) => setMonth(e.target.value)}
-              />
-              <Button variant="secondary" onClick={applyYearFilter} className="w-full">
-                <Calendar className="w-4 h-4" />
-                Tüm Yılı Göster
-              </Button>
-              <Button onClick={applyMonthFilter} className="w-full" disabled={!month}>
-                <Search className="w-4 h-4" />
-                Filtrele
-              </Button>
-            </div>
-            <div className="mt-4 pt-4 flex justify-end" style={{ borderTop: '1px solid var(--admin-card-border)' }}>
-              <Button variant="ghost" size="sm" onClick={resetFilters}>
-                <RotateCcw className="w-4 h-4" />
-                Sıfırla
-              </Button>
-            </div>
-          </div>
-        )}
+          <FilterSection className="min-w-[120px]">
+            <Select
+              label="Yıl"
+              value={year}
+              options={yearOptions}
+              onChange={(e) => setYear(e.target.value)}
+            />
+          </FilterSection>
+          <FilterSection className="min-w-[140px]">
+            <Select
+              label="Ay"
+              value={month}
+              options={MONTHS}
+              onChange={(e) => {
+                setMonth(e.target.value);
+                setFullYearMode(false);
+              }}
+            />
+          </FilterSection>
+          <FilterSection>
+            <Button variant="secondary" onClick={applyYearFilter} className="whitespace-nowrap">
+              <Calendar className="w-4 h-4" />
+              Tüm Yılı Göster
+            </Button>
+          </FilterSection>
+          <FilterSection>
+            <Button onClick={applyMonthFilter} className="whitespace-nowrap" disabled={!month}>
+              <Search className="w-4 h-4" />
+              Filtrele
+            </Button>
+          </FilterSection>
+        </AdminFilterBar>
       </Card>
 
       {loading ? (

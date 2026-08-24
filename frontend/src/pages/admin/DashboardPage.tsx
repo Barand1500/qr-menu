@@ -235,9 +235,7 @@ function FeaturedCard({
   const { theme } = useTheme();
 
   function openMenu() {
-    if (user?.restaurant.slug) {
-      window.open(`/m/${user.restaurant.slug}`, '_blank');
-    }
+    window.open('/menu', '_blank');
   }
 
   return (
@@ -263,7 +261,7 @@ function FeaturedCard({
           <div>
             <h3 className="text-lg font-bold text-[var(--admin-text)]">{user?.restaurant.name}</h3>
             <p className="text-sm admin-text-muted">QR Menü Aktif</p>
-            <p className="text-xs admin-text-subtle mt-1">/m/{user?.restaurant.slug}</p>
+            <p className="text-xs admin-text-subtle mt-1">/menu</p>
           </div>
         </div>
       </div>

@@ -5,6 +5,16 @@ import fs from 'fs';
 import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId, validateProduct } from '../lib/auth.js';
 import { config } from '../config.js';
+import {
+  buildProductI18n,
+  getGroupName,
+  getLanguages,
+  getProductField,
+  mergeProductI18n,
+  textMatchesI18n,
+  toProductTranslations,
+} from '../lib/i18n-json.js';
+import { imagesPayload, parseProductImages } from '../lib/product-images.js';
 
 const router = Router();
 router.use(authRequired);
@@ -33,28 +43,25 @@ router.get('/', async (req, res) => {
   if (active === 'true') where.isActive = true;
   if (active === 'false') where.isActive = false;
 
-  const products = await prisma.product.findMany({
-    where,
-    include: {
-      translations: { include: { language: true } },
-      group: { include: { translations: { include: { language: true } } } },
-    },
-    orderBy: { sortOrder: 'asc' },
-    skip,
-    take: limitNum,
-  });
+  const [products, languages, total] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      include: { group: true },
+      orderBy: { sortOrder: 'asc' },
+      skip,
+      take: limitNum,
+    }),
+    getLanguages(),
+    prisma.product.count({ where }),
+  ]);
 
   let filtered = products;
   if (search) {
     const q = String(search).toLowerCase();
-    filtered = products.filter((p) =>
-      p.translations.some((t) => t.name.toLowerCase().includes(q))
-    );
+    filtered = products.filter((p) => textMatchesI18n(p.i18n, 'tr', ['name'], q));
   }
 
-  const total = await prisma.product.count({ where });
-  const mapped = await Promise.all(filtered.map((p) => mapProduct(p, restaurantId!)));
-
+  const mapped = await Promise.all(filtered.map((p) => mapProduct(p, restaurantId!, languages)));
   res.json({
     data: mapped,
     pagination: { page: pageNum, limit: limitNum, total },
@@ -81,15 +88,15 @@ router.get('/stats/validation', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const product = await prisma.product.findFirst({
-    where: { id: Number(req.params.id), restaurantId: restaurantId! },
-    include: {
-      translations: { include: { language: true } },
-      group: { include: { translations: { include: { language: true } } } },
-    },
-  });
+  const [product, languages] = await Promise.all([
+    prisma.product.findFirst({
+      where: { id: Number(req.params.id), restaurantId: restaurantId! },
+      include: { group: true },
+    }),
+    getLanguages(),
+  ]);
   if (!product) return res.status(404).json({ message: 'Ürün bulunamadı' });
-  res.json(await mapProduct(product, restaurantId!));
+  res.json(await mapProduct(product, restaurantId!, languages));
 });
 
 router.post('/', async (req, res) => {
@@ -115,10 +122,13 @@ router.post('/', async (req, res) => {
   });
   if (!group) return res.status(400).json({ message: 'Geçersiz grup' });
 
-  const maxOrder = await prisma.product.aggregate({
-    where: { groupId: Number(groupId) },
-    _max: { sortOrder: true },
-  });
+  const [maxOrder, languages] = await Promise.all([
+    prisma.product.aggregate({
+      where: { groupId: Number(groupId) },
+      _max: { sortOrder: true },
+    }),
+    getLanguages(),
+  ]);
 
   const product = await prisma.product.create({
     data: {
@@ -135,31 +145,12 @@ router.post('/', async (req, res) => {
       isDiabetic: isDiabetic ?? false,
       isRecommended: isRecommended ?? false,
       features: Array.isArray(features) ? features : [],
-      translations: {
-        create: (translations || []).map(
-          (t: {
-            languageId: number;
-            name: string;
-            description?: string;
-            ingredients?: string;
-            allergens?: string;
-          }) => ({
-            languageId: t.languageId,
-            name: t.name,
-            description: t.description,
-            ingredients: t.ingredients,
-            allergens: t.allergens,
-          })
-        ),
-      },
+      i18n: buildProductI18n(translations || [], languages),
     },
-    include: {
-      translations: { include: { language: true } },
-      group: { include: { translations: { include: { language: true } } } },
-    },
+    include: { group: true },
   });
 
-  res.status(201).json(await mapProduct(product, restaurantId!));
+  res.status(201).json(await mapProduct(product, restaurantId!, languages));
 });
 
 router.put('/:id', async (req, res) => {
@@ -185,33 +176,11 @@ router.put('/:id', async (req, res) => {
   const existing = await prisma.product.findFirst({ where: { id, restaurantId: restaurantId! } });
   if (!existing) return res.status(404).json({ message: 'Ürün bulunamadı' });
 
-  if (translations?.length) {
-    for (const t of translations as {
-      languageId: number;
-      name: string;
-      description?: string;
-      ingredients?: string;
-      allergens?: string;
-    }[]) {
-      await prisma.productTranslation.upsert({
-        where: { productId_languageId: { productId: id, languageId: t.languageId } },
-        update: {
-          name: t.name,
-          description: t.description,
-          ingredients: t.ingredients,
-          allergens: t.allergens,
-        },
-        create: {
-          productId: id,
-          languageId: t.languageId,
-          name: t.name,
-          description: t.description,
-          ingredients: t.ingredients,
-          allergens: t.allergens,
-        },
-      });
-    }
-  }
+  const languages = await getLanguages();
+  const i18n =
+    translations?.length > 0
+      ? mergeProductI18n(existing.i18n, translations, languages)
+      : undefined;
 
   const product = await prisma.product.update({
     where: { id },
@@ -233,14 +202,12 @@ router.put('/:id', async (req, res) => {
       ...(isDiabetic !== undefined && { isDiabetic }),
       ...(isRecommended !== undefined && { isRecommended }),
       ...(features !== undefined && { features: Array.isArray(features) ? features : [] }),
+      ...(i18n !== undefined && { i18n }),
     },
-    include: {
-      translations: { include: { language: true } },
-      group: { include: { translations: { include: { language: true } } } },
-    },
+    include: { group: true },
   });
 
-  res.json(await mapProduct(product, restaurantId!));
+  res.json(await mapProduct(product, restaurantId!, languages));
 });
 
 router.patch('/:id/toggle', async (req, res) => {
@@ -249,15 +216,15 @@ router.patch('/:id/toggle', async (req, res) => {
   const existing = await prisma.product.findFirst({ where: { id, restaurantId: restaurantId! } });
   if (!existing) return res.status(404).json({ message: 'Ürün bulunamadı' });
 
-  const product = await prisma.product.update({
-    where: { id },
-    data: { isActive: !existing.isActive },
-    include: {
-      translations: { include: { language: true } },
-      group: { include: { translations: { include: { language: true } } } },
-    },
-  });
-  res.json(await mapProduct(product, restaurantId!));
+  const [product, languages] = await Promise.all([
+    prisma.product.update({
+      where: { id },
+      data: { isActive: !existing.isActive },
+      include: { group: true },
+    }),
+    getLanguages(),
+  ]);
+  res.json(await mapProduct(product, restaurantId!, languages));
 });
 
 router.put('/reorder/bulk', async (req, res) => {
@@ -281,16 +248,83 @@ router.post('/:id/image', upload.single('image'), async (req, res) => {
   if (!existing) return res.status(404).json({ message: 'Ürün bulunamadı' });
   if (!req.file) return res.status(400).json({ message: 'Görsel gerekli' });
 
-  const imageUrl = `/uploads/${req.file.filename}`;
-  const product = await prisma.product.update({
-    where: { id },
-    data: { imageUrl },
-    include: {
-      translations: { include: { language: true } },
-      group: { include: { translations: { include: { language: true } } } },
-    },
-  });
-  res.json(await mapProduct(product, restaurantId!));
+  const newUrl = `/uploads/${req.file.filename}`;
+  const images = [...parseProductImages(existing), newUrl];
+  const [product, languages] = await Promise.all([
+    prisma.product.update({
+      where: { id },
+      data: imagesPayload(images),
+      include: { group: true },
+    }),
+    getLanguages(),
+  ]);
+  res.json(await mapProduct(product, restaurantId!, languages));
+});
+
+router.post('/:id/images', upload.array('images', 12), async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const id = Number(req.params.id);
+  const existing = await prisma.product.findFirst({ where: { id, restaurantId: restaurantId! } });
+  if (!existing) return res.status(404).json({ message: 'Ürün bulunamadı' });
+  if (!req.files?.length) return res.status(400).json({ message: 'Görsel gerekli' });
+
+  const newUrls = (req.files as Express.Multer.File[]).map((f) => `/uploads/${f.filename}`);
+  const images = [...parseProductImages(existing), ...newUrls];
+  const [product, languages] = await Promise.all([
+    prisma.product.update({
+      where: { id },
+      data: imagesPayload(images),
+      include: { group: true },
+    }),
+    getLanguages(),
+  ]);
+  res.json(await mapProduct(product, restaurantId!, languages));
+});
+
+router.delete('/:id/images', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const id = Number(req.params.id);
+  const { url } = req.body as { url?: string };
+  if (!url) return res.status(400).json({ message: 'Silinecek görsel URL gerekli' });
+
+  const existing = await prisma.product.findFirst({ where: { id, restaurantId: restaurantId! } });
+  if (!existing) return res.status(404).json({ message: 'Ürün bulunamadı' });
+
+  const images = parseProductImages(existing).filter((u) => u !== url);
+  const [product, languages] = await Promise.all([
+    prisma.product.update({
+      where: { id },
+      data: imagesPayload(images),
+      include: { group: true },
+    }),
+    getLanguages(),
+  ]);
+  res.json(await mapProduct(product, restaurantId!, languages));
+});
+
+router.put('/:id/images/reorder', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const id = Number(req.params.id);
+  const { images } = req.body as { images?: string[] };
+
+  const existing = await prisma.product.findFirst({ where: { id, restaurantId: restaurantId! } });
+  if (!existing) return res.status(404).json({ message: 'Ürün bulunamadı' });
+
+  const current = parseProductImages(existing);
+  const ordered =
+    Array.isArray(images) && images.length > 0
+      ? images.filter((u) => current.includes(u))
+      : current;
+
+  const [product, languages] = await Promise.all([
+    prisma.product.update({
+      where: { id },
+      data: imagesPayload(ordered),
+      include: { group: true },
+    }),
+    getLanguages(),
+  ]);
+  res.json(await mapProduct(product, restaurantId!, languages));
 });
 
 router.delete('/:id', async (req, res) => {
@@ -317,49 +351,35 @@ async function mapProduct(
     isDiabetic: boolean;
     isRecommended: boolean;
     imageUrl: string | null;
+    images: unknown;
     sortOrder: number;
     isActive: boolean;
-    translations: {
-      languageId: number;
-      name: string;
-      description: string | null;
-      ingredients: string | null;
-      allergens: string | null;
-      language: { code: string };
-    }[];
-    group: {
-      translations: { language: { code: string }; name: string }[];
-    };
+    i18n: unknown;
+    group: { i18n: unknown };
   },
-  restaurantId: number
+  restaurantId: number,
+  languages: { id: number; code: string }[]
 ) {
-  const tr = product.translations.find((t) => t.language.code === 'tr');
-  const groupTr = product.group.translations.find((t) => t.language.code === 'tr');
   const validation = await validateProduct(product.id, restaurantId);
+  const images = parseProductImages(product);
 
   return {
     id: product.id,
-    name: tr?.name || product.translations[0]?.name || '',
+    name: getProductField(product.i18n, 'tr', 'name'),
     groupId: product.groupId,
-    groupName: groupTr?.name || product.group.translations[0]?.name || '',
+    groupName: getGroupName(product.group.i18n),
     price: Number(product.price),
     prepTimeMinutes: product.prepTimeMinutes,
     calories: product.calories,
     features: resolveFeatures(product),
     isRecommended: product.isRecommended,
-    imageUrl: product.imageUrl,
+    imageUrl: images[0] ?? null,
+    images,
     sortOrder: product.sortOrder,
     isActive: product.isActive,
     isValid: validation.valid,
     validationIssues: validation.issues,
-    translations: product.translations.map((t) => ({
-      languageId: t.languageId,
-      languageCode: t.language.code,
-      name: t.name,
-      description: t.description,
-      ingredients: t.ingredients,
-      allergens: t.allergens,
-    })),
+    translations: toProductTranslations(product.i18n, languages),
   };
 }
 

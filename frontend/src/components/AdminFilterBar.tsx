@@ -1,9 +1,8 @@
 import { type ReactNode } from 'react';
 import { ChevronDown, SlidersHorizontal } from 'lucide-react';
-import { Button } from '@/components/ui';
 
 interface AdminFilterBarProps {
-  search: ReactNode;
+  search?: ReactNode;
   filterOpen: boolean;
   onFilterToggle: () => void;
   activeFilterCount: number;
@@ -26,8 +25,12 @@ export function AdminFilterBar({
       className="p-4 sm:p-5 border-b flex flex-col gap-4"
       style={{ borderColor: 'var(--admin-card-border)' }}
     >
-      <div className="flex flex-col lg:flex-row lg:items-center gap-3 justify-between">
-        <div className="relative flex-1 max-w-md">{search}</div>
+      <div
+        className={`flex flex-col lg:flex-row lg:items-center gap-3 ${
+          search ? 'justify-between' : 'lg:justify-end'
+        }`}
+      >
+        {search && <div className="relative flex-1 max-w-md">{search}</div>}
         <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
@@ -69,18 +72,38 @@ export function AdminFilterBar({
       >
         <div className="overflow-hidden">
           <div
-            className="rounded-2xl p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4"
+            className="rounded-2xl px-5 py-4 flex flex-wrap items-end gap-y-5"
             style={{ background: 'var(--admin-input-bg)' }}
           >
-            {children}
-            <div className="flex items-end sm:col-span-2 lg:col-span-1 lg:col-start-3">
-              <Button variant="ghost" size="sm" onClick={onClear} className="w-full sm:w-auto">
-                Filtreleri Temizle
-              </Button>
+            <div className="flex flex-wrap items-end gap-y-5 flex-1 min-w-0">
+              {children}
             </div>
+            <button
+              type="button"
+              onClick={onClear}
+              className="text-xs font-semibold text-red-500 hover:text-red-600 transition shrink-0 pb-1.5"
+            >
+              Temizle
+            </button>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function FilterSection({
+  children,
+  className = '',
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`admin-filter-section shrink-0 ${className}`}
+    >
+      {children}
     </div>
   );
 }

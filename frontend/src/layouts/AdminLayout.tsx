@@ -9,7 +9,6 @@ import {
   Sun,
   Moon,
 } from 'lucide-react';
-import { Input } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoData } from '@/contexts/DemoDataContext';
@@ -22,7 +21,16 @@ const mainNav = [
   { to: '/admin/barcode', label: 'Barkod Yazdır' },
 ];
 
-const reportNav = [{ to: '/admin/stats', label: 'İstatistikler' }];
+const startupNav = [
+  { to: '/admin/startup/welcome', label: 'Karşılama Ekranı' },
+  { to: '/admin/startup/menu', label: 'Menü Ekranı' },
+];
+
+const reportNav = [
+  { to: '/admin/stats', label: 'İstatistikler' },
+  { to: '/admin/suggestions', label: 'Öneri Kutusu' },
+  { to: '/admin/complaints', label: 'Şikayet Kutusu' },
+];
 const managementNav = [
   { to: '/admin/users', label: 'Kullanıcılar' },
   { to: '/admin/settings', label: 'Ayarlar' },
@@ -94,7 +102,7 @@ export default function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(true);
   const [managementOpen, setManagementOpen] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [startupOpen, setStartupOpen] = useState(true);
 
   const closeMobile = () => setMobileOpen(false);
 
@@ -104,15 +112,17 @@ export default function AdminLayout() {
   }
 
   function openPublicMenu() {
-    if (user?.restaurant.slug) {
-      window.open(`/m/${user.restaurant.slug}`, '_blank');
-    }
+    window.open('/menu', '_blank');
   }
 
-  const reportsActive = location.pathname.startsWith('/admin/stats');
+  const reportsActive =
+    location.pathname.startsWith('/admin/stats') ||
+    location.pathname.startsWith('/admin/suggestions') ||
+    location.pathname.startsWith('/admin/complaints');
   const managementActive =
     location.pathname.startsWith('/admin/users') ||
     location.pathname.startsWith('/admin/settings');
+  const startupActive = location.pathname.startsWith('/admin/startup');
 
   useEffect(() => {
     if (reportsActive) setReportsOpen(true);
@@ -121,6 +131,10 @@ export default function AdminLayout() {
   useEffect(() => {
     if (managementActive) setManagementOpen(true);
   }, [managementActive]);
+
+  useEffect(() => {
+    if (startupActive) setStartupOpen(true);
+  }, [startupActive]);
 
   const sidebar = (
     <aside
@@ -154,6 +168,16 @@ export default function AdminLayout() {
         {mainNav.map(({ to, label, end }) => (
           <NavItem key={to} to={to} label={label} end={end} onNavigate={closeMobile} />
         ))}
+
+        <NavGroup
+          label="Başlangıç Ayarları"
+          open={startupOpen}
+          onToggle={() => setStartupOpen(!startupOpen)}
+        >
+          {startupNav.map(({ to, label }) => (
+            <NavItem key={to} to={to} label={label} sub onNavigate={closeMobile} />
+          ))}
+        </NavGroup>
 
         <NavGroup label="Raporlar" open={reportsOpen} onToggle={() => setReportsOpen(!reportsOpen)}>
           {reportNav.map(({ to, label }) => (
@@ -209,15 +233,6 @@ export default function AdminLayout() {
           >
             <Menu className="w-5 h-5" style={{ color: 'var(--admin-text)' }} />
           </button>
-
-          <div className="flex-1 max-w-md hidden sm:block">
-            <Input
-              label="Ara..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="[&_.float-field]:rounded-full"
-            />
-          </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
             <button
@@ -289,7 +304,7 @@ export default function AdminLayout() {
         </header>
 
         <main className="flex-1 p-5 sm:p-6 lg:p-8 overflow-auto admin-scroll">
-          <Outlet context={{ searchQuery }} />
+          <Outlet />
         </main>
       </div>
     </div>

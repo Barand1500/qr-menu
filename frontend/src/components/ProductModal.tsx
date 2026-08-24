@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, ImagePlus, UtensilsCrossed, Plus, Pencil, Trash2 } from 'lucide-react';
-import { Button, Input, Select, Textarea } from '@/components/ui';
+import { X, ImagePlus, UtensilsCrossed, Plus, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { imageUrl } from '@/lib/api';
+import { Button, Input, Select } from '@/components/ui';
 import LanguageTabs, { type Language } from '@/components/LanguageTabs';
+import { TranslatableInput, TranslatableTextarea } from '@/components/TranslatableField';
 
 export interface ProductTranslationFields {
   name: string;
@@ -33,7 +35,7 @@ type ModalTab = 'general' | 'translations' | 'image';
 const MODAL_TABS: { id: ModalTab; label: string }[] = [
   { id: 'general', label: 'Genel' },
   { id: 'translations', label: 'Çeviriler' },
-  { id: 'image', label: 'Görsel' },
+  { id: 'image', label: 'Görseller' },
 ];
 
 function ProductFeaturesEditor({
@@ -182,12 +184,16 @@ interface ProductModalProps {
   languages: Language[];
   groups: GroupOption[];
   form: ProductFormState;
-  imagePreview?: string | null;
+  productImages: string[];
+  pendingPreviews: { id: string; url: string }[];
   saving?: boolean;
   onClose: () => void;
   onSave: () => void;
   onFormChange: (form: ProductFormState) => void;
-  onImageChange: (file: File | null) => void;
+  onAddImages: (files: FileList | null) => void;
+  onRemoveImage: (url: string) => void;
+  onRemovePending: (id: string) => void;
+  onMoveImage: (url: string, direction: -1 | 1) => void;
 }
 
 export default function ProductModal({
@@ -196,12 +202,16 @@ export default function ProductModal({
   languages,
   groups,
   form,
-  imagePreview,
+  productImages,
+  pendingPreviews,
   saving,
   onClose,
   onSave,
   onFormChange,
-  onImageChange,
+  onAddImages,
+  onRemoveImage,
+  onRemovePending,
+  onMoveImage,
 }: ProductModalProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const sortedLangs = [...languages].sort((a, b) =>
@@ -215,17 +225,29 @@ export default function ProductModal({
     setActiveTab('general');
     const tr = languages.find((l) => l.code === 'tr');
     setActiveLang(tr?.code || languages[0]?.code || 'tr');
+    // Yalnızca modal açıldığında sıfırla — onClose/languages her render'da değişebilir
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose, languages]);
+  }, [open, onClose]);
 
   if (!open) return null;
 
   const currentLang = sortedLangs.find((l) => l.code === activeLang) || sortedLangs[0];
   const currentTranslation = form.translations[currentLang?.code || 'tr'] || {
+    name: '',
+    description: '',
+    ingredients: '',
+    allergens: '',
+  };
+  const trTranslation = form.translations.tr || {
     name: '',
     description: '',
     ingredients: '',
@@ -385,32 +407,40 @@ export default function ProductModal({
               />
               {currentLang && (
                 <div className="space-y-4 float-field-stack">
-                  <Input
+                  <TranslatableInput
                     key={`name-${currentLang.code}`}
                     label="Ürün adı"
+                    sourceText={trTranslation.name}
+                    targetLang={currentLang.code}
                     value={currentTranslation.name}
-                    onChange={(e) => updateTranslation('name', e.target.value)}
+                    onChange={(val) => updateTranslation('name', val)}
                   />
-                  <Textarea
+                  <TranslatableTextarea
                     key={`desc-${currentLang.code}`}
                     label="Açıklama"
                     rows={2}
+                    sourceText={trTranslation.description}
+                    targetLang={currentLang.code}
                     value={currentTranslation.description}
-                    onChange={(e) => updateTranslation('description', e.target.value)}
+                    onChange={(val) => updateTranslation('description', val)}
                   />
-                  <Textarea
+                  <TranslatableTextarea
                     key={`ing-${currentLang.code}`}
                     label="İçindekiler"
                     rows={2}
+                    sourceText={trTranslation.ingredients}
+                    targetLang={currentLang.code}
                     value={currentTranslation.ingredients}
-                    onChange={(e) => updateTranslation('ingredients', e.target.value)}
+                    onChange={(val) => updateTranslation('ingredients', val)}
                   />
-                  <Textarea
+                  <TranslatableTextarea
                     key={`all-${currentLang.code}`}
                     label="Alerjenler"
                     rows={2}
+                    sourceText={trTranslation.allergens}
+                    targetLang={currentLang.code}
                     value={currentTranslation.allergens}
-                    onChange={(e) => updateTranslation('allergens', e.target.value)}
+                    onChange={(val) => updateTranslation('allergens', val)}
                   />
                 </div>
               )}
@@ -418,9 +448,58 @@ export default function ProductModal({
           )}
 
           {activeTab === 'image' && (
-            <div className="pt-2">
+            <div className="pt-2 space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {productImages.map((url, index) => (
+                  <div key={url} className="product-images-item">
+                    <img src={imageUrl(url)} alt="" className="product-images-item__img" />
+                    <div className="product-images-item__actions">
+                      <button
+                        type="button"
+                        onClick={() => onMoveImage(url, -1)}
+                        disabled={index === 0}
+                        title="Yukarı taşı"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onMoveImage(url, 1)}
+                        disabled={index === productImages.length - 1}
+                        title="Aşağı taşı"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onRemoveImage(url)}
+                        className="text-red-500"
+                        title="Sil"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    {index === 0 && <span className="product-images-item__cover">Kapak</span>}
+                  </div>
+                ))}
+                {pendingPreviews.map((item) => (
+                  <div key={item.id} className="product-images-item product-images-item--pending">
+                    <img src={item.url} alt="" className="product-images-item__img" />
+                    <button
+                      type="button"
+                      className="product-images-item__remove-pending"
+                      onClick={() => onRemovePending(item.id)}
+                      title="Kaldır"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <span className="product-images-item__pending-label">Yeni</span>
+                  </div>
+                ))}
+              </div>
+
               <div
-                className="rounded-2xl border-2 border-dashed p-8 text-center transition hover:border-[var(--admin-accent)] cursor-pointer"
+                className="rounded-2xl border-2 border-dashed p-6 text-center transition hover:border-[var(--admin-accent)] cursor-pointer"
                 style={{ borderColor: 'var(--admin-card-border)' }}
                 onClick={() => fileRef.current?.click()}
               >
@@ -428,23 +507,19 @@ export default function ProductModal({
                   ref={fileRef}
                   type="file"
                   accept="image/*"
+                  multiple
                   className="hidden"
-                  onChange={(e) => onImageChange(e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    onAddImages(e.target.files);
+                    e.target.value = '';
+                  }}
                 />
-                {imagePreview ? (
-                  <img
-                    src={imagePreview}
-                    alt=""
-                    className="w-40 h-40 mx-auto rounded-2xl object-cover mb-3"
-                  />
-                ) : (
-                  <ImagePlus
-                    className="w-10 h-10 mx-auto mb-3"
-                    style={{ color: 'var(--admin-accent)' }}
-                  />
-                )}
+                <ImagePlus
+                  className="w-9 h-9 mx-auto mb-2"
+                  style={{ color: 'var(--admin-accent)' }}
+                />
                 <p className="text-sm font-medium text-[var(--admin-text)]">
-                  Görsel yüklemek için tıklayın
+                  Görsel ekle (birden fazla seçebilirsiniz)
                 </p>
                 <p className="text-xs admin-text-subtle mt-1">600 × 600 · PNG, JPG — 5 MB</p>
               </div>
