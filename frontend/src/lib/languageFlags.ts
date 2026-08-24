@@ -1,19 +1,5 @@
-const FLAGS: Record<string, string> = {
-  tr: '🇹🇷',
-  en: '🇬🇧',
-  ru: '🇷🇺',
-  de: '🇩🇪',
-  fr: '🇫🇷',
-  ar: '🇸🇦',
-  es: '🇪🇸',
-  it: '🇮🇹',
-  nl: '🇳🇱',
-  pt: '🇵🇹',
-  zh: '🇨🇳',
-  ja: '🇯🇵',
-  ko: '🇰🇷',
-};
+import { catalogByCode } from './languageCatalog';
 
 export function languageFlag(code: string) {
-  return FLAGS[code.toLowerCase()] || '🌐';
+  return catalogByCode(code)?.flag || '🌐';
 }

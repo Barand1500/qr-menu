@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Globe, Plug, MessageSquare, Building2, ImagePlus } from 'lucide-react';
+import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
 import { TranslatableTextarea } from '@/components/TranslatableField';
+import AddLanguageModal from '@/components/AddLanguageModal';
+import { languageFlag } from '@/lib/languageFlags';
+import { catalogByCode, type CatalogLanguage } from '@/lib/languageCatalog';
 
 interface Language {
   id: number;
@@ -18,16 +21,23 @@ interface SettingsData {
   settings: Record<string, string>;
 }
 
+interface TranslateStatus {
+  openaiConfigured: boolean;
+  freeFallback: boolean;
+}
+
 function SettingsSection({
   icon: Icon,
   title,
   children,
   className = '',
+  action,
 }: {
   icon: typeof Globe;
   title: string;
   children: React.ReactNode;
   className?: string;
+  action?: React.ReactNode;
 }) {
   return (
     <section className={`admin-card overflow-hidden flex flex-col ${className}`}>
@@ -39,9 +49,10 @@ function SettingsSection({
         }}
       >
         <Icon className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
-        <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--admin-text)]">
+        <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--admin-text)] flex-1">
           {title}
         </h3>
+        {action}
       </div>
       <div className="p-5 flex-1">{children}</div>
     </section>
@@ -60,10 +71,19 @@ export default function SettingsPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [addLangOpen, setAddLangOpen] = useState(false);
+  const [addingLang, setAddingLang] = useState(false);
+  const [translateStatus, setTranslateStatus] = useState<TranslateStatus | null>(null);
 
   useEffect(() => {
-    api<SettingsData>('/api/admin/settings')
-      .then((d) => {
+    Promise.all([
+      api<SettingsData>('/api/admin/settings'),
+      api<TranslateStatus>('/api/admin/translate/status').catch(() => ({
+        openaiConfigured: false,
+        freeFallback: true,
+      })),
+    ])
+      .then(([d, status]) => {
         setData(d);
         setCompanyName(d.restaurant.name);
         setCompanyAbout(d.settings.company_about || '');
@@ -71,6 +91,11 @@ export default function SettingsPage() {
         setIntegrationEnabled(d.settings.integration_enabled === 'true');
         setOpenaiApiKey(d.settings.openai_api_key || '');
         setLogoPreview(d.restaurant.logoUrl ? imageUrl(d.restaurant.logoUrl) : null);
+        setTranslateStatus({
+          openaiConfigured:
+            status.openaiConfigured || Boolean(d.settings.openai_api_key?.trim()),
+          freeFallback: status.freeFallback !== false,
+        });
       })
       .finally(() => setLoading(false));
   }, []);
@@ -81,6 +106,17 @@ export default function SettingsPage() {
     setLogoPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [logoFile]);
+
+  useEffect(() => {
+    setTranslateStatus((prev) =>
+      prev
+        ? { ...prev, openaiConfigured: Boolean(openaiApiKey.trim()) || prev.openaiConfigured }
+        : {
+            openaiConfigured: Boolean(openaiApiKey.trim()),
+            freeFallback: true,
+          }
+    );
+  }, [openaiApiKey]);
 
   async function saveLanguages() {
     if (!data) return;
@@ -141,6 +177,32 @@ export default function SettingsPage() {
     });
   }
 
+  async function handleAddLanguage(lang: CatalogLanguage) {
+    setAddingLang(true);
+    try {
+      const created = await api<Language>('/api/admin/languages', {
+        method: 'POST',
+        body: JSON.stringify({ code: lang.code, name: lang.name }),
+      });
+      setData((prev) => {
+        if (!prev) return prev;
+        const exists = prev.languages.some((l) => l.id === created.id);
+        return {
+          ...prev,
+          languages: exists
+            ? prev.languages.map((l) => (l.id === created.id ? created : l))
+            : [...prev.languages, created],
+        };
+      });
+      setMessages((prev) => ({ ...prev, [created.id]: prev[created.id] || '' }));
+      setAddLangOpen(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Dil eklenemedi');
+    } finally {
+      setAddingLang(false);
+    }
+  }
+
   if (loading || !data) return <Spinner />;
 
   const activeLanguages = [...data.languages.filter((l) => l.isActive)].sort((a, b) =>
@@ -148,6 +210,11 @@ export default function SettingsPage() {
   );
   const trLanguage = data.languages.find((l) => l.code === 'tr');
   const trWelcomeMessage = trLanguage ? messages[trLanguage.id] || '' : '';
+  const sortedLanguages = [...data.languages].sort((a, b) => {
+    if (a.code === 'tr') return -1;
+    if (b.code === 'tr') return 1;
+    return a.name.localeCompare(b.name, 'tr');
+  });
 
   return (
     <div className="space-y-5 w-full">
@@ -161,27 +228,70 @@ export default function SettingsPage() {
       />
 
       <div className="grid lg:grid-cols-2 gap-5">
-        <SettingsSection icon={Globe} title="Dil Ayarları">
+        <SettingsSection
+          icon={Globe}
+          title="Dil Ayarları"
+          action={
+            <button
+              type="button"
+              onClick={() => setAddLangOpen(true)}
+              className="inline-flex items-center gap-1 h-8 px-2.5 rounded-xl text-xs font-bold transition hover:opacity-90"
+              style={{
+                background: 'var(--admin-accent)',
+                color: '#fff',
+              }}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Dil Ekle
+            </button>
+          }
+        >
           <div className="space-y-1">
-            {data.languages.map((lang) => (
-              <label
-                key={lang.id}
-                className="flex items-center justify-between py-3 px-3 rounded-xl cursor-pointer transition hover:bg-[var(--admin-accent-soft)]/30"
-                style={{ borderBottom: '1px solid var(--admin-card-border)' }}
-              >
-                <span className="text-sm font-medium text-[var(--admin-text)]">{lang.name}</span>
-                <div className="flex items-center gap-2.5">
-                  <span className="text-xs admin-text-muted">Aktif</span>
-                  <input
-                    type="checkbox"
-                    checked={lang.isActive}
-                    onChange={() => toggleLanguage(lang.id)}
-                    className="w-4 h-4 rounded accent-[var(--admin-accent)]"
-                  />
-                </div>
-              </label>
-            ))}
+            {sortedLanguages.length === 0 ? (
+              <p className="text-sm admin-text-muted py-4 text-center">
+                Henüz dil yok. + Dil Ekle ile başla.
+              </p>
+            ) : (
+              sortedLanguages.map((lang) => {
+                const catalog = catalogByCode(lang.code);
+                return (
+                  <label
+                    key={lang.id}
+                    className="flex items-center justify-between py-3 px-3 rounded-xl cursor-pointer transition hover:bg-[var(--admin-accent-soft)]/30 gap-3"
+                    style={{ borderBottom: '1px solid var(--admin-card-border)' }}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-xl leading-none shrink-0">
+                        {languageFlag(lang.code)}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[var(--admin-text)] truncate">
+                          {lang.name}
+                        </p>
+                        <p className="text-[11px] admin-text-muted uppercase tracking-wide">
+                          {lang.code}
+                          {catalog?.nativeName ? ` · ${catalog.nativeName}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <span className="text-xs admin-text-muted">Aktif</span>
+                      <input
+                        type="checkbox"
+                        checked={lang.isActive}
+                        onChange={() => toggleLanguage(lang.id)}
+                        className="w-4 h-4 rounded accent-[var(--admin-accent)]"
+                      />
+                    </div>
+                  </label>
+                );
+              })
+            )}
           </div>
+          <p className="text-[11px] admin-text-muted mt-3 leading-relaxed">
+            Aktif diller menüde ve karşılama ekranında görünür. Dil ekleme anında kaydedilir;
+            aktif/pasif değişiklikleri için Kaydet’e bas.
+          </p>
         </SettingsSection>
 
         <SettingsSection icon={Plug} title="Entegrasyon Ayarları" className="flex flex-col">
@@ -298,6 +408,15 @@ export default function SettingsPage() {
           </div>
         </div>
       </SettingsSection>
+
+      <AddLanguageModal
+        open={addLangOpen}
+        existing={data.languages}
+        translateStatus={translateStatus}
+        saving={addingLang}
+        onClose={() => setAddLangOpen(false)}
+        onAdd={handleAddLanguage}
+      />
     </div>
   );
 }

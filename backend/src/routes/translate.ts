@@ -12,6 +12,29 @@ const MYMEMORY_LANG: Record<string, string> = {
   de: 'de',
   fr: 'fr',
   ar: 'ar',
+  es: 'es',
+  it: 'it',
+  nl: 'nl',
+  pt: 'pt',
+  zh: 'zh-CN',
+  ja: 'ja',
+  ko: 'ko',
+  fa: 'fa',
+  uk: 'uk',
+  pl: 'pl',
+  ro: 'ro',
+  bg: 'bg',
+  el: 'el',
+  he: 'he',
+  hi: 'hi',
+  th: 'th',
+  vi: 'vi',
+  sv: 'sv',
+  no: 'no',
+  da: 'da',
+  fi: 'fi',
+  cs: 'cs',
+  hu: 'hu',
 };
 
 const LANG_NAMES: Record<string, string> = {
@@ -21,6 +44,34 @@ const LANG_NAMES: Record<string, string> = {
   de: 'German',
   fr: 'French',
   ar: 'Arabic',
+  es: 'Spanish',
+  it: 'Italian',
+  nl: 'Dutch',
+  pt: 'Portuguese',
+  zh: 'Chinese',
+  ja: 'Japanese',
+  ko: 'Korean',
+  fa: 'Persian',
+  az: 'Azerbaijani',
+  ka: 'Georgian',
+  uk: 'Ukrainian',
+  pl: 'Polish',
+  ro: 'Romanian',
+  bg: 'Bulgarian',
+  el: 'Greek',
+  he: 'Hebrew',
+  hi: 'Hindi',
+  th: 'Thai',
+  vi: 'Vietnamese',
+  sv: 'Swedish',
+  no: 'Norwegian',
+  da: 'Danish',
+  fi: 'Finnish',
+  cs: 'Czech',
+  hu: 'Hungarian',
+  sr: 'Serbian',
+  hr: 'Croatian',
+  sq: 'Albanian',
 };
 
 function normalizeLang(code: string, map: Record<string, string>) {
@@ -204,6 +255,26 @@ async function translateText(
 
   return translateSegment(trimmed, source, target, openaiKey);
 }
+
+router.get('/status', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const openaiSetting = restaurantId
+    ? await prisma.setting.findUnique({
+        where: {
+          restaurantId_key: { restaurantId, key: 'openai_api_key' },
+        },
+      })
+    : null;
+
+  const openaiConfigured = Boolean(openaiSetting?.value?.trim());
+  res.json({
+    openaiConfigured,
+    freeFallback: true,
+    engines: openaiConfigured
+      ? ['openai', 'mymemory', 'libretranslate']
+      : ['mymemory', 'libretranslate'],
+  });
+});
 
 router.post('/', async (req, res) => {
   const { text, from = 'tr', to = 'en' } = req.body as {
