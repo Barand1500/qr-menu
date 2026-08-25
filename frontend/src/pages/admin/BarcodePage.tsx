@@ -426,7 +426,7 @@ export default function BarcodePage() {
                   }))}
                 />
               </div>
-              <div className="barcode-group-field">
+              <div className="barcode-group-field barcode-group-field--count">
                 <Input
                   label="Masa sayısı"
                   type="number"

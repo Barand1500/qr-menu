@@ -5333,6 +5333,12 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   max-width: 11rem;
 }
 
+.barcode-group-field--count {
+  flex-basis: 7.25rem;
+  width: 7.25rem;
+  max-width: 7.25rem;
+}
+
 .barcode-group-field .float-field {
   width: 100%;
   margin-bottom: 0;
