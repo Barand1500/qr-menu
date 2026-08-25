@@ -8,10 +8,12 @@ import {
   ChevronDown,
   Sun,
   Moon,
+  RotateCcw,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoData } from '@/contexts/DemoDataContext';
+import { api } from '@/lib/api';
 
 const mainNav = [
   { to: '/admin', label: 'Özet', end: true },
@@ -110,6 +112,7 @@ export default function AdminLayout() {
   const [managementOpen, setManagementOpen] = useState(false);
   const [startupOpen, setStartupOpen] = useState(false);
   const [extensionsOpen, setExtensionsOpen] = useState(false);
+  const [resettingAddons, setResettingAddons] = useState(false);
 
   const closeMobile = () => setMobileOpen(false);
 
@@ -120,6 +123,26 @@ export default function AdminLayout() {
 
   function openPublicMenu() {
     window.open('/menu', '_blank');
+  }
+
+  async function handleResetPurchases() {
+    if (
+      !confirm(
+        'Tüm eklenti satın alımları silinsin mi?\nTemalar ücretsiz haline döner. Test için kullanılır.'
+      )
+    ) {
+      return;
+    }
+    setResettingAddons(true);
+    try {
+      await api('/api/admin/addons/reset', { method: 'POST' });
+      alert('Satın alımlar geri yüklendi. Sayfa yenileniyor…');
+      window.location.reload();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Sıfırlanamadı');
+    } finally {
+      setResettingAddons(false);
+    }
   }
 
   const reportsActive =
@@ -287,6 +310,20 @@ export default function AdminLayout() {
               title="Test için sahte veri göster"
             >
               Sahte Veri
+            </button>
+
+            <button
+              onClick={handleResetPurchases}
+              disabled={resettingAddons}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition border border-[var(--admin-input-border)] hover:border-amber-400 hover:text-amber-700 disabled:opacity-50"
+              style={{
+                background: 'var(--admin-input-bg)',
+                color: 'var(--admin-text-muted)',
+              }}
+              title="Test: tüm eklenti satın alımlarını sıfırla"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 ${resettingAddons ? 'animate-spin' : ''}`} />
+              {resettingAddons ? 'Sıfırlanıyor…' : 'Satın alımları geri yükle'}
             </button>
 
             <button className="p-2 rounded-lg relative hover:bg-[var(--admin-accent-soft)] transition">

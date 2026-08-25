@@ -3,6 +3,7 @@ import { authRequired, getRestaurantId } from '../lib/auth.js';
 import {
   ADDON_PRODUCTS,
   getOwnedAddons,
+  resetOwnedAddons,
   unlockAddon,
   validateUnlockCode,
 } from '../lib/addons.js';
@@ -41,6 +42,16 @@ router.post('/unlock', async (req, res) => {
     productId: product.id,
     owned,
     message: `“${product.name}” açıldı!`,
+  });
+});
+
+router.post('/reset', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const owned = await resetOwnedAddons(restaurantId!);
+  res.json({
+    ok: true,
+    owned,
+    message: 'Tüm satın alımlar geri alındı. Temalar ücretsiz varsayılana döndü.',
   });
 });
 

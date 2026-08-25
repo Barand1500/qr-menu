@@ -130,6 +130,29 @@ export async function unlockAddon(restaurantId: number, productId: string) {
   return owned;
 }
 
+/** Test için: tüm satın alınan eklentileri sil + temaları ücretsiz varsayılana çek */
+export async function resetOwnedAddons(restaurantId: number) {
+  await prisma.setting.upsert({
+    where: { restaurantId_key: { restaurantId, key: OWNED_KEY } },
+    update: { value: '[]' },
+    create: { restaurantId, key: OWNED_KEY, value: '[]' },
+  });
+
+  await prisma.setting.upsert({
+    where: { restaurantId_key: { restaurantId, key: 'theme_welcome' } },
+    update: { value: 'vibrant' },
+    create: { restaurantId, key: 'theme_welcome', value: 'vibrant' },
+  });
+
+  await prisma.setting.upsert({
+    where: { restaurantId_key: { restaurantId, key: 'theme_menu' } },
+    update: { value: 'sade' },
+    create: { restaurantId, key: 'theme_menu', value: 'sade' },
+  });
+
+  return [] as string[];
+}
+
 export function themeIdToAddon(kind: 'welcome' | 'menu', themeId: string): AddonProductId | null {
   const found = ADDON_PRODUCTS.find(
     (p) => p.category === kind && p.themeId === themeId
