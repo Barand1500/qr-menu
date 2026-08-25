@@ -44,11 +44,11 @@ const QR_COLORS = [
 ];
 
 const QR_FRAMES = [
+  { id: 'yok', label: 'Yok' },
   { id: 'ince', label: 'İnce' },
   { id: 'kalin', label: 'Kalın' },
   { id: 'kelebek', label: 'Kelebek' },
   { id: 'kesik', label: 'Kesik' },
-  { id: 'kose', label: 'Köşe' },
   { id: 'halka', label: 'Halka' },
   { id: 'minimal', label: 'Minimal' },
   { id: 'sarma', label: 'Sarmaşık' },
@@ -84,7 +84,7 @@ function slugify(text: string) {
 }
 
 function defaultTableStyle(n: number): TableStyle {
-  return { name: `Masa ${n}`, colorId: 'black', withLogo: false, frameId: 'minimal' };
+  return { name: `Masa ${n}`, colorId: 'black', withLogo: false, frameId: 'yok' };
 }
 
 function normalizeHex(value: string): string | null {
@@ -120,7 +120,7 @@ export default function BarcodePage() {
   const [paperSize, setPaperSize] = useState('a4');
   const [colorId, setColorId] = useState('black');
   const [withLogo, setWithLogo] = useState(false);
-  const [frameId, setFrameId] = useState<FrameId>('minimal');
+  const [frameId, setFrameId] = useState<FrameId>('yok');
   const [tableCount, setTableCount] = useState(12);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
   const [editingTable, setEditingTable] = useState<number | null>(null);
@@ -322,7 +322,7 @@ export default function BarcodePage() {
               fg={qrPack ? color.fg : '#0f172a'}
               bg={qrPack ? color.bg : '#ffffff'}
               logo={qrPack && withLogo ? logoSrc : undefined}
-              frameId={qrPack ? frameId : 'minimal'}
+              frameId={qrPack ? frameId : 'yok'}
               size={200}
             />
           </>
@@ -518,7 +518,7 @@ export default function BarcodePage() {
                   fg={color.fg}
                   bg={color.bg}
                   logo={withLogo && logoSrc ? logoSrc : undefined}
-                  frameId={qrPack ? frameId : 'minimal'}
+                  frameId={qrPack ? frameId : 'yok'}
                   size={220}
                 />
                 <Button className="w-full mt-4" onClick={handlePrint}>
@@ -555,6 +555,10 @@ function FloralCorner({ variant }: { variant: FrameId }) {
     strokeLinecap: 'round' as const,
     strokeLinejoin: 'round' as const,
   };
+
+  if (variant === 'yok') {
+    return null;
+  }
 
   if (variant === 'ince') {
     return (
@@ -633,19 +637,6 @@ function FloralCorner({ variant }: { variant: FrameId }) {
     );
   }
 
-  if (variant === 'kose') {
-    return (
-      <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
-        <path {...common} strokeWidth="1.8" d="M6 26c1-14 8-20 20-20" />
-        <path {...common} strokeWidth="1.8" d="M10 10c8-2 14 3 16 10" />
-        <path {...common} strokeWidth="1.6" d="M8 16c6-8 14-8 18 0" />
-        <path fill="currentColor" d="M7 9c3-5 8-5 10 0-4 1-7 3-10 0z" />
-        <path fill="currentColor" d="M18 5c4-4 9-2 9 3-4-1-7 1-9-3z" />
-        <circle cx="8" cy="8" r="2" fill="currentColor" />
-      </svg>
-    );
-  }
-
   if (variant === 'halka') {
     return (
       <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
@@ -715,24 +706,29 @@ function QrFrameShell({
   children: ReactNode;
   thumb?: boolean;
 }) {
+  const bare = frameId === 'yok';
   return (
     <div
       className={`barcode-qr-frame barcode-qr-frame--${frameId}${thumb ? ' is-thumb' : ''}`}
       style={{ ['--qr-frame-color' as string]: color || '#0f172a' }}
     >
-      <span className="barcode-qr-frame-ring" aria-hidden />
-      <span className="barcode-qr-frame-c tl" aria-hidden>
-        <FloralCorner variant={frameId} />
-      </span>
-      <span className="barcode-qr-frame-c tr" aria-hidden>
-        <FloralCorner variant={frameId} />
-      </span>
-      <span className="barcode-qr-frame-c bl" aria-hidden>
-        <FloralCorner variant={frameId} />
-      </span>
-      <span className="barcode-qr-frame-c br" aria-hidden>
-        <FloralCorner variant={frameId} />
-      </span>
+      {!bare && <span className="barcode-qr-frame-ring" aria-hidden />}
+      {!bare && (
+        <>
+          <span className="barcode-qr-frame-c tl" aria-hidden>
+            <FloralCorner variant={frameId} />
+          </span>
+          <span className="barcode-qr-frame-c tr" aria-hidden>
+            <FloralCorner variant={frameId} />
+          </span>
+          <span className="barcode-qr-frame-c bl" aria-hidden>
+            <FloralCorner variant={frameId} />
+          </span>
+          <span className="barcode-qr-frame-c br" aria-hidden>
+            <FloralCorner variant={frameId} />
+          </span>
+        </>
+      )}
       <div className="barcode-qr-frame-inner">{children}</div>
     </div>
   );
@@ -941,7 +937,7 @@ function QrPreview({
   bg,
   logo,
   size,
-  frameId = 'minimal',
+  frameId = 'yok',
   titleEditable,
   titleEditing,
   onTitleEditStart,

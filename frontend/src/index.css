@@ -5232,6 +5232,20 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   transform: scale(-1);
 }
 
+.barcode-qr-frame--yok {
+  --qr-frame-pad: 0;
+  --qr-corner-size: 0;
+  --qr-ring-inset: 0;
+}
+
+.barcode-qr-frame--yok .barcode-qr-frame-inner {
+  box-shadow: none;
+}
+
+.barcode-qr-frame.is-thumb.barcode-qr-frame--yok {
+  --qr-frame-pad: 0.35rem;
+}
+
 .barcode-qr-frame--ince {
   --qr-frame-pad: 1.45rem;
 }
@@ -5266,15 +5280,6 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   border-style: dashed;
   border-width: 2px;
   border-radius: 0.55rem;
-}
-
-.barcode-qr-frame--kose .barcode-qr-frame-ring {
-  border: none;
-}
-
-.barcode-qr-frame--kose {
-  --qr-frame-pad: 1.8rem;
-  --qr-corner-size: 2.7rem;
 }
 
 .barcode-qr-frame--halka {
