@@ -30,6 +30,7 @@ export default function PublicWelcomePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tableNo = searchParams.get('masa');
+  const groupSlug = searchParams.get('grup');
   const campaignSlug = searchParams.get('kampanya');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [data, setData] = useState<WelcomeData | null>(null);
@@ -52,8 +53,9 @@ export default function PublicWelcomePage() {
 
   useEffect(() => {
     if (tableNo) sessionStorage.setItem('menu_masa', tableNo);
+    if (groupSlug) sessionStorage.setItem('menu_grup', groupSlug);
     if (campaignSlug) sessionStorage.setItem('menu_kampanya', campaignSlug);
-  }, [tableNo, campaignSlug]);
+  }, [tableNo, groupSlug, campaignSlug]);
 
   useEffect(() => {
     if (slugError) {
@@ -323,9 +325,17 @@ export default function PublicWelcomePage() {
           </div>
 
           <h1 className="welcome-card__title">{data.restaurant.name}</h1>
-          {(tableNo || campaignSlug) && (
+          {(tableNo || groupSlug || campaignSlug) && (
             <div className="welcome-card__context">
-              {tableNo && <span className="welcome-card__chip">Masa {tableNo}</span>}
+              {(tableNo || groupSlug) && (
+                <span className="welcome-card__chip">
+                  {groupSlug
+                    ? `${groupSlug.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase())}${
+                        tableNo ? ` · Masa ${tableNo}` : ''
+                      }`
+                    : `Masa ${tableNo}`}
+                </span>
+              )}
               {campaignSlug && (
                 <span className="welcome-card__chip welcome-card__chip--campaign">
                   {campaignSlug.replace(/-/g, ' ')}

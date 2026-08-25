@@ -5320,6 +5320,35 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   inset: 0.28rem;
 }
 
+.barcode-group-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.85rem 1rem;
+}
+
+.barcode-group-select {
+  flex: 1;
+  min-width: 12rem;
+  max-width: 18rem;
+}
+
+.barcode-group-create {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  border: 1px dashed var(--admin-card-border);
+  background: color-mix(in srgb, var(--admin-accent-soft) 35%, transparent);
+}
+
+.barcode-group-create > :first-child {
+  flex: 1;
+  min-width: 12rem;
+}
+
 .barcode-table-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));

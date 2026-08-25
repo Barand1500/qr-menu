@@ -90,8 +90,10 @@ export default function PublicMenuPage() {
 
   useEffect(() => {
     const masa = searchParams.get('masa');
+    const grup = searchParams.get('grup');
     const kampanya = searchParams.get('kampanya');
     if (masa) sessionStorage.setItem('menu_masa', masa);
+    if (grup) sessionStorage.setItem('menu_grup', grup);
     if (kampanya) sessionStorage.setItem('menu_kampanya', kampanya);
   }, [searchParams]);
 

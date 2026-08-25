@@ -63,6 +63,12 @@ interface CampaignItem {
   slug: string;
 }
 
+interface TableGroup {
+  id: string;
+  name: string;
+  count: number;
+}
+
 interface TableStyle {
   name: string;
   colorId: string;
@@ -84,8 +90,13 @@ function slugify(text: string) {
     .replace(/^-|-$/g, '');
 }
 
-function defaultTableStyle(n: number): TableStyle {
-  return { name: `Masa ${n}`, colorId: 'black', withLogo: false, frameId: 'yok' };
+function defaultTableStyle(n: number, groupName = 'Masa'): TableStyle {
+  return {
+    name: `${groupName} ${n}`,
+    colorId: 'black',
+    withLogo: false,
+    frameId: 'yok',
+  };
 }
 
 function normalizeHex(value: string): string | null {
@@ -122,10 +133,18 @@ export default function BarcodePage() {
   const [colorId, setColorId] = useState('black');
   const [withLogo, setWithLogo] = useState(false);
   const [frameId, setFrameId] = useState<FrameId>('yok');
-  const [tableCount, setTableCount] = useState(12);
+  const [groups, setGroups] = useState<TableGroup[]>([
+    { id: 'salon', name: 'Salon', count: 12 },
+    { id: 'teras', name: 'Teras', count: 8 },
+  ]);
+  const [activeGroupId, setActiveGroupId] = useState('salon');
+  const [groupStyles, setGroupStyles] = useState<
+    Record<string, Record<number, TableStyle>>
+  >({});
+  const [addingGroup, setAddingGroup] = useState(false);
+  const [groupDraft, setGroupDraft] = useState('');
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
   const [editingTable, setEditingTable] = useState<number | null>(null);
-  const [tableStyles, setTableStyles] = useState<Record<number, TableStyle>>({});
   const [campaigns, setCampaigns] = useState<CampaignItem[]>([
     { id: '1', label: 'İftar Menüsü', slug: 'iftar' },
     { id: '2', label: 'Happy Hour', slug: 'happy-hour' },
@@ -152,11 +171,14 @@ export default function BarcodePage() {
 
   const logoSrc = logoPath ? imageUrl(logoPath) : '';
   const origin = window.location.origin;
+  const activeGroup =
+    groups.find((g) => g.id === activeGroupId) || groups[0] || null;
 
   const classicUrl = `${origin}/menu`;
-  const tableUrl = selectedTable
-    ? `${origin}/menu?masa=${selectedTable}`
-    : classicUrl;
+  const tableUrl =
+    selectedTable && activeGroup
+      ? `${origin}/menu?masa=${selectedTable}&grup=${activeGroup.id}`
+      : classicUrl;
   const campaignUrl = selectedCampaign
     ? `${origin}/menu?kampanya=${selectedCampaign.slug}`
     : classicUrl;
@@ -171,14 +193,15 @@ export default function BarcodePage() {
         ? selectedCampaign.label
         : user?.restaurant.name || 'Menü';
 
-  const tables = useMemo(
-    () => Array.from({ length: Math.max(1, Math.min(60, tableCount)) }, (_, i) => i + 1),
-    [tableCount]
-  );
+  const tables = useMemo(() => {
+    const count = activeGroup ? Math.max(1, Math.min(60, activeGroup.count)) : 0;
+    return Array.from({ length: count }, (_, i) => i + 1);
+  }, [activeGroup]);
 
   function getTableStyle(n: number): TableStyle {
-    const base = defaultTableStyle(n);
-    const prev = tableStyles[n];
+    const groupName = activeGroup?.name || 'Masa';
+    const base = defaultTableStyle(n, groupName);
+    const prev = activeGroupId ? groupStyles[activeGroupId]?.[n] : undefined;
     if (!prev) return base;
     const frameOk = QR_FRAMES.some((f) => f.id === prev.frameId);
     return {
@@ -189,10 +212,54 @@ export default function BarcodePage() {
   }
 
   function patchTableStyle(n: number, patch: Partial<TableStyle>) {
-    setTableStyles((prev) => ({
+    if (!activeGroupId || !activeGroup) return;
+    setGroupStyles((prev) => ({
       ...prev,
-      [n]: { ...defaultTableStyle(n), ...prev[n], ...patch },
+      [activeGroupId]: {
+        ...prev[activeGroupId],
+        [n]: {
+          ...defaultTableStyle(n, activeGroup.name),
+          ...prev[activeGroupId]?.[n],
+          ...patch,
+        },
+      },
     }));
+  }
+
+  function setActiveGroupCount(count: number) {
+    const next = Math.max(1, Math.min(60, count || 1));
+    setGroups((prev) =>
+      prev.map((g) => (g.id === activeGroupId ? { ...g, count: next } : g))
+    );
+  }
+
+  function createGroup() {
+    const name = groupDraft.trim();
+    if (!name) return;
+    let id = slugify(name) || `grup-${Date.now()}`;
+    if (groups.some((g) => g.id === id)) id = `${id}-${Date.now()}`;
+    const item: TableGroup = { id, name, count: 8 };
+    setGroups((prev) => [...prev, item]);
+    setActiveGroupId(id);
+    setGroupDraft('');
+    setAddingGroup(false);
+    setSelectedTable(null);
+    setEditingTable(null);
+  }
+
+  function deleteActiveGroup() {
+    if (groups.length <= 1 || !activeGroup) return;
+    if (!confirm(`“${activeGroup.name}” grubunu silmek istiyor musun?`)) return;
+    const next = groups.filter((g) => g.id !== activeGroup.id);
+    setGroups(next);
+    setActiveGroupId(next[0].id);
+    setGroupStyles((prev) => {
+      const copy = { ...prev };
+      delete copy[activeGroup.id];
+      return copy;
+    });
+    setSelectedTable(null);
+    setEditingTable(null);
   }
 
   function handlePrint() {
@@ -229,9 +296,21 @@ export default function BarcodePage() {
       <PageHeader
         title="Barkod Yazdır"
         actions={
-          <Button onClick={handlePrint}>
-            <Printer className="w-4 h-4" /> Yazdır
-          </Button>
+          view === 'tables' ? (
+            <Button
+              type="button"
+              onClick={() => {
+                setAddingGroup(true);
+                setGroupDraft('');
+              }}
+            >
+              <Plus className="w-4 h-4" /> Grup Ekle
+            </Button>
+          ) : (
+            <Button onClick={handlePrint}>
+              <Printer className="w-4 h-4" /> Yazdır
+            </Button>
+          )
         }
       />
 
@@ -255,6 +334,7 @@ export default function BarcodePage() {
                 setSelectedTable(null);
                 setSelectedCampaign(null);
                 setEditingTable(null);
+                setAddingGroup(false);
               }}
               className={`barcode-mode-chip ${view === tab.id ? 'is-active' : ''} ${
                 locked ? 'is-locked' : ''
@@ -329,26 +409,97 @@ export default function BarcodePage() {
           </>
         )}
 
-        {view === 'tables' && (
+        {view === 'tables' && activeGroup && (
           <>
-            <div className="w-36">
-              <Input
-                label="Masa sayısı"
-                type="number"
-                min={1}
-                max={60}
-                value={String(tableCount)}
-                onChange={(e) => setTableCount(Number(e.target.value) || 1)}
-              />
+            {addingGroup && (
+              <div className="barcode-group-create">
+                <Input
+                  label="Yeni grup adı"
+                  value={groupDraft}
+                  onChange={(e) => setGroupDraft(e.target.value)}
+                  placeholder="Örn. Teras, Bahçe, VIP"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') createGroup();
+                  }}
+                />
+                <div className="flex gap-2 shrink-0 pb-0.5">
+                  <Button type="button" onClick={createGroup}>
+                    <Plus className="w-4 h-4" /> Ekle
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setAddingGroup(false);
+                      setGroupDraft('');
+                    }}
+                  >
+                    İptal
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="barcode-group-toolbar">
+              <div className="w-36">
+                <Input
+                  label="Masa sayısı"
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={String(activeGroup.count)}
+                  onChange={(e) =>
+                    setActiveGroupCount(Number(e.target.value) || 1)
+                  }
+                />
+              </div>
+              <div className="barcode-group-select">
+                <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
+                  Grup
+                </p>
+                <div className="flex gap-2 items-center">
+                  <select
+                    value={activeGroupId}
+                    onChange={(e) => {
+                      setActiveGroupId(e.target.value);
+                      setSelectedTable(null);
+                      setEditingTable(null);
+                    }}
+                    className="w-full min-w-[10rem] rounded-xl border px-4 py-2.5 text-sm"
+                    style={{
+                      borderColor: 'var(--admin-card-border)',
+                      background: 'var(--admin-input-bg)',
+                      color: 'var(--admin-text)',
+                    }}
+                  >
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name} ({g.count})
+                      </option>
+                    ))}
+                  </select>
+                  {groups.length > 1 && (
+                    <button
+                      type="button"
+                      className="p-2.5 rounded-xl text-red-500 hover:bg-red-50 shrink-0"
+                      title="Grubu sil"
+                      onClick={deleteActiveGroup}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="barcode-table-grid">
               {tables.map((n) => {
                 const style = getTableStyle(n);
                 const c = resolveColor(style.colorId);
+                const masaUrl = `${origin}/menu?masa=${n}&grup=${activeGroup.id}`;
                 return (
                   <button
-                    key={n}
+                    key={`${activeGroup.id}-${n}`}
                     type="button"
                     className={`barcode-table-card ${
                       selectedTable === n ? 'is-active' : ''
@@ -359,7 +510,7 @@ export default function BarcodePage() {
                     }}
                   >
                     <QRCodeSVG
-                      value={`${origin}/menu?masa=${n}`}
+                      value={masaUrl}
                       size={72}
                       level="M"
                       fgColor={c.fg}
