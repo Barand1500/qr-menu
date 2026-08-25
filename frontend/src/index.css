@@ -5139,22 +5139,10 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   white-space: nowrap;
 }
 
-.barcode-frame-thumb {
-  width: 2.2rem;
-  height: 2.2rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  position: relative;
-  padding: 0;
-}
-
 .barcode-frame-thumb-qr {
-  width: 1rem;
-  height: 1rem;
-  position: relative;
-  z-index: 1;
+  width: 1.05rem;
+  height: 1.05rem;
+  display: block;
   background:
     linear-gradient(#0f172a 0 0) 0 0 / 35% 35%,
     linear-gradient(#0f172a 0 0) 100% 0 / 35% 35%,
@@ -5162,17 +5150,30 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
     linear-gradient(#0f172a 0 0) 55% 55% / 18% 18%;
   background-repeat: no-repeat;
   background-color: #fff;
+  border-radius: 0.1rem;
 }
 
 .barcode-qr-frame {
   --qr-frame-color: #0f172a;
+  --qr-frame-pad: 1.65rem;
+  --qr-corner-size: 2.35rem;
+  --qr-ring-inset: 1.15rem;
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  position: relative;
   box-sizing: border-box;
-  background: transparent;
-  padding: 1.15rem;
+  padding: var(--qr-frame-pad);
+  color: var(--qr-frame-color);
+}
+
+.barcode-qr-frame.is-thumb {
+  --qr-frame-pad: 0.55rem;
+  --qr-corner-size: 0.85rem;
+  --qr-ring-inset: 0.38rem;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: var(--qr-frame-pad);
 }
 
 .barcode-qr-frame-inner {
@@ -5180,48 +5181,132 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   z-index: 1;
   display: inline-flex;
   line-height: 0;
+  background: #fff;
+  border-radius: 0.15rem;
+  box-shadow: 0 0 0 3px #fff;
 }
 
-.barcode-qr-frame-ornament {
+.barcode-qr-frame.is-thumb .barcode-qr-frame-inner {
+  box-shadow: 0 0 0 1px #fff;
+}
+
+.barcode-qr-frame-ring {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  inset: var(--qr-ring-inset);
   pointer-events: none;
-  overflow: visible;
+  z-index: 0;
+  border: 1.5px solid color-mix(in srgb, var(--qr-frame-color) 70%, transparent);
+  border-radius: 0.35rem;
+}
+
+.barcode-qr-frame-c {
+  position: absolute;
+  width: var(--qr-corner-size);
+  height: var(--qr-corner-size);
   z-index: 2;
+  color: var(--qr-frame-color);
+  pointer-events: none;
+  line-height: 0;
+}
+
+.barcode-qr-frame-c.tl {
+  top: 0.1rem;
+  left: 0.1rem;
+}
+
+.barcode-qr-frame-c.tr {
+  top: 0.1rem;
+  right: 0.1rem;
+  transform: scaleX(-1);
+}
+
+.barcode-qr-frame-c.bl {
+  bottom: 0.1rem;
+  left: 0.1rem;
+  transform: scaleY(-1);
+}
+
+.barcode-qr-frame-c.br {
+  bottom: 0.1rem;
+  right: 0.1rem;
+  transform: scale(-1);
 }
 
 .barcode-qr-frame--ince {
-  padding: 1.05rem;
+  --qr-frame-pad: 1.45rem;
+}
+
+.barcode-qr-frame--ince .barcode-qr-frame-ring {
+  border-width: 1px;
+  border-radius: 0.25rem;
 }
 
 .barcode-qr-frame--kalin {
-  padding: 1.2rem;
+  --qr-frame-pad: 1.75rem;
+  --qr-corner-size: 2.6rem;
+}
+
+.barcode-qr-frame--kalin .barcode-qr-frame-ring {
+  border-width: 3px;
+  border-radius: 0.2rem;
 }
 
 .barcode-qr-frame--soft {
-  padding: 1.15rem;
+  --qr-frame-pad: 1.7rem;
 }
 
-.barcode-qr-frame--kesik {
-  padding: 1.05rem;
+.barcode-qr-frame--soft .barcode-qr-frame-ring {
+  border-width: 2px;
+  border-radius: 1.1rem;
+}
+
+.barcode-qr-frame--kesik .barcode-qr-frame-ring {
+  border-style: dashed;
+  border-width: 2px;
+  border-radius: 0.55rem;
+}
+
+.barcode-qr-frame--kose .barcode-qr-frame-ring {
+  border: none;
 }
 
 .barcode-qr-frame--kose {
-  padding: 1.25rem;
+  --qr-frame-pad: 1.8rem;
+  --qr-corner-size: 2.7rem;
 }
 
 .barcode-qr-frame--halka {
-  padding: 1.35rem;
+  --qr-frame-pad: 1.85rem;
+}
+
+.barcode-qr-frame--halka .barcode-qr-frame-ring {
+  border-width: 2px;
+  border-radius: 9999px;
+  inset: 0.85rem;
 }
 
 .barcode-qr-frame--minimal {
-  padding: 0.85rem;
+  --qr-frame-pad: 1.15rem;
+  --qr-corner-size: 1.55rem;
+}
+
+.barcode-qr-frame--minimal .barcode-qr-frame-ring {
+  border: none;
 }
 
 .barcode-qr-frame--lux {
-  padding: 1.3rem;
+  --qr-frame-pad: 1.9rem;
+  --qr-corner-size: 2.75rem;
+}
+
+.barcode-qr-frame--lux .barcode-qr-frame-ring {
+  border-width: 1.5px;
+  border-radius: 0.45rem;
+  box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--qr-frame-color) 16%, transparent);
+}
+
+.barcode-qr-frame.is-thumb.barcode-qr-frame--halka .barcode-qr-frame-ring {
+  inset: 0.28rem;
 }
 
 .barcode-table-grid {

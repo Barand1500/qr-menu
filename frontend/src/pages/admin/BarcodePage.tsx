@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Printer,
@@ -548,135 +548,153 @@ export default function BarcodePage() {
   );
 }
 
-function FrameOrnament({ frameId, color }: { frameId: FrameId; color: string }) {
-  const c = color || '#0f172a';
+function FloralCorner({ variant }: { variant: FrameId }) {
+  const common = {
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
+
+  if (variant === 'ince') {
+    return (
+      <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
+        <path {...common} strokeWidth="1.6" d="M6 28V10h18" />
+        <path {...common} strokeWidth="1.4" d="M10 10c4-7 12-7 16 0" />
+        <circle cx="10" cy="10" r="2.2" fill="currentColor" />
+        <path fill="currentColor" d="M18 6c3-4 8-3 9 1-4 1-7 3-9-1z" />
+      </svg>
+    );
+  }
+
+  if (variant === 'kalin') {
+    return (
+      <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
+        <path {...common} strokeWidth="3.4" d="M5 30V8h22" />
+        <path {...common} strokeWidth="2.2" d="M12 8c5-8 14-7 18 1" />
+        <circle cx="8" cy="8" r="3" fill="currentColor" />
+        <path fill="currentColor" d="M20 4c4-5 10-4 11 2-5 0-9 3-11-2z" />
+        <path fill="currentColor" d="M4 20c-5 4-4 10 2 11 0-5 3-9-2-11z" />
+      </svg>
+    );
+  }
+
+  if (variant === 'soft') {
+    return (
+      <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
+        <path
+          fill="currentColor"
+          d="M8 22c0-10 8-16 18-14 1 7-4 13-11 15-4 1-7-1-7-1z"
+          opacity="0.92"
+        />
+        <path
+          fill="currentColor"
+          d="M22 8c10 0 16 8 14 18-7 1-13-4-15-11-1-4 1-7 1-7z"
+          opacity="0.75"
+        />
+        <circle cx="14" cy="14" r="2.4" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  if (variant === 'kesik') {
+    return (
+      <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
+        <path
+          {...common}
+          strokeWidth="2"
+          strokeDasharray="3.5 2.8"
+          d="M8 30V10h20"
+        />
+        <circle cx="10" cy="10" r="2.6" fill="currentColor" />
+        <circle cx="22" cy="8" r="1.5" fill="currentColor" />
+        <circle cx="8" cy="22" r="1.5" fill="currentColor" />
+        <path fill="currentColor" d="M16 5c2.5-3.5 7-3 8 1-3.5.5-6 2.5-8-1z" />
+      </svg>
+    );
+  }
+
+  if (variant === 'kose') {
+    return (
+      <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
+        <path {...common} strokeWidth="1.8" d="M6 26c1-14 8-20 20-20" />
+        <path {...common} strokeWidth="1.8" d="M10 10c8-2 14 3 16 10" />
+        <path {...common} strokeWidth="1.6" d="M8 16c6-8 14-8 18 0" />
+        <path fill="currentColor" d="M7 9c3-5 8-5 10 0-4 1-7 3-10 0z" />
+        <path fill="currentColor" d="M18 5c4-4 9-2 9 3-4-1-7 1-9-3z" />
+        <circle cx="8" cy="8" r="2" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  if (variant === 'halka') {
+    return (
+      <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
+        <path {...common} strokeWidth="2" d="M8 28a20 20 0 0 1 20-20" />
+        <path {...common} strokeWidth="1.3" opacity="0.45" d="M12 30a18 18 0 0 1 18-18" />
+        <path fill="currentColor" d="M24 6c3-4 8-3 9 2-4 0-7 2-9-2z" />
+        <path fill="currentColor" d="M6 24c-4 3-3 8 2 9 0-4 2-7-2-9z" />
+        <circle cx="12" cy="12" r="2.3" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  if (variant === 'minimal') {
+    return (
+      <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
+        <path {...common} strokeWidth="2.2" d="M8 24V10h14" />
+        <circle cx="10" cy="10" r="1.8" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  // lux
   return (
-    <svg
-      className="barcode-qr-frame-ornament"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="xMidYMid meet"
-      aria-hidden
-      style={{ color: c }}
-    >
-      {frameId === 'ince' && (
-        <g fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round">
-          <path d="M14 28c0-10 8-16 18-16M28 14c10 0 16 8 16 18" />
-          <path d="M72 14c10 0 16 8 16 18M86 28c0-10-8-16-18-16" />
-          <path d="M14 72c0 10 8 16 18 16M28 86c10 0 16-8 16-18" />
-          <path d="M72 86c10 0 16-8 16-18M86 72c0 10-8 16-18 16" />
-          <circle cx="18" cy="18" r="2.6" fill={c} stroke="none" />
-          <circle cx="82" cy="18" r="2.6" fill={c} stroke="none" />
-          <circle cx="18" cy="82" r="2.6" fill={c} stroke="none" />
-          <circle cx="82" cy="82" r="2.6" fill={c} stroke="none" />
-          <path d="M22 16c3-4 8-4 10-1M78 16c-3-4-8-4-10-1M22 84c3 4 8 4 10 1M78 84c-3 4-8 4-10 1" />
-        </g>
-      )}
-      {frameId === 'kalin' && (
-        <g fill="none" stroke={c} strokeWidth="3.2" strokeLinecap="round">
-          <path d="M12 30 V16 H30" />
-          <path d="M70 16 H88 V30" />
-          <path d="M12 70 V84 H30" />
-          <path d="M70 84 H88 V70" />
-          <path d="M20 20c6-8 14-8 18-2M80 20c-6-8-14-8-18-2M20 80c6 8 14 8 18 2M80 80c-6 8-14 8-18 2" />
-          <circle cx="16" cy="16" r="3.2" fill={c} stroke="none" />
-          <circle cx="84" cy="16" r="3.2" fill={c} stroke="none" />
-          <circle cx="16" cy="84" r="3.2" fill={c} stroke="none" />
-          <circle cx="84" cy="84" r="3.2" fill={c} stroke="none" />
-        </g>
-      )}
-      {frameId === 'soft' && (
-        <g fill={c} stroke="none">
-          <path d="M18 22c0-8 8-14 16-12 2 6-2 12-8 14-4 1-8-1-8-2z" opacity="0.9" />
-          <path d="M82 22c0-8-8-14-16-12-2 6 2 12 8 14 4 1 8-1 8-2z" opacity="0.9" />
-          <path d="M18 78c0 8 8 14 16 12 2-6-2-12-8-14-4-1-8 1-8 2z" opacity="0.9" />
-          <path d="M82 78c0 8-8 14-16 12-2-6 2-12 8-14 4-1 8 1 8 2z" opacity="0.9" />
-          <g fill="none" stroke={c} strokeWidth="1.4" opacity="0.55">
-            <rect x="22" y="22" width="56" height="56" rx="14" />
-          </g>
-        </g>
-      )}
-      {frameId === 'kesik' && (
-        <g fill="none" stroke={c} strokeWidth="1.6" strokeDasharray="3.5 3.5" strokeLinecap="round">
-          <rect x="16" y="16" width="68" height="68" rx="6" />
-          <g fill={c} stroke="none">
-            <circle cx="16" cy="16" r="2.4" />
-            <circle cx="84" cy="16" r="2.4" />
-            <circle cx="16" cy="84" r="2.4" />
-            <circle cx="84" cy="84" r="2.4" />
-            <circle cx="50" cy="14" r="1.6" />
-            <circle cx="50" cy="86" r="1.6" />
-            <circle cx="14" cy="50" r="1.6" />
-            <circle cx="86" cy="50" r="1.6" />
-          </g>
-        </g>
-      )}
-      {frameId === 'kose' && (
-        <g fill="none" stroke={c} strokeWidth="1.5" strokeLinecap="round">
-          <path d="M14 34c2-14 10-20 22-22M34 14c-4 6-2 12 2 16" />
-          <path d="M12 20c8-2 14 2 16 8M20 12c2 8-2 14-8 16" />
-          <path d="M86 34c-2-14-10-20-22-22M66 14c4 6 2 12-2 16" />
-          <path d="M88 20c-8-2-14 2-16 8M80 12c-2 8 2 14 8 16" />
-          <path d="M14 66c2 14 10 20 22 22M34 86c-4-6-2-12 2-16" />
-          <path d="M12 80c8 2 14-2 16-8M20 88c2-8-2-14-8-16" />
-          <path d="M86 66c-2 14-10 20-22 22M66 86c4-6 2-12-2-16" />
-          <path d="M88 80c-8 2-14-2-16-8M80 88c-2-8 2-14 8-16" />
-          <circle cx="18" cy="18" r="2" fill={c} stroke="none" />
-          <circle cx="82" cy="18" r="2" fill={c} stroke="none" />
-          <circle cx="18" cy="82" r="2" fill={c} stroke="none" />
-          <circle cx="82" cy="82" r="2" fill={c} stroke="none" />
-        </g>
-      )}
-      {frameId === 'halka' && (
-        <g fill="none" stroke={c} strokeWidth="1.5" strokeLinecap="round">
-          <circle cx="50" cy="50" r="42" opacity="0.35" />
-          <circle cx="50" cy="50" r="38" />
-          {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
-            const r = 40;
-            const a = (deg * Math.PI) / 180;
-            const x = 50 + r * Math.cos(a);
-            const y = 50 + r * Math.sin(a);
-            return (
-              <g key={deg} transform={`translate(${x} ${y}) rotate(${deg + 90})`}>
-                <path d="M0 0c2-5 6-6 8-3-3 2-5 5-8 3z" fill={c} stroke="none" />
-              </g>
-            );
-          })}
-        </g>
-      )}
-      {frameId === 'minimal' && (
-        <g fill={c} stroke="none">
-          <circle cx="14" cy="14" r="1.8" />
-          <circle cx="86" cy="14" r="1.8" />
-          <circle cx="14" cy="86" r="1.8" />
-          <circle cx="86" cy="86" r="1.8" />
-          <g fill="none" stroke={c} strokeWidth="1" opacity="0.45">
-            <path d="M20 14h10M14 20v10M70 14h10M86 20v10M20 86h10M14 70v10M70 86h10M86 70v10" />
-          </g>
-        </g>
-      )}
-      {frameId === 'lux' && (
-        <g fill="none" stroke={c} strokeLinecap="round">
-          <rect x="14" y="14" width="72" height="72" rx="4" strokeWidth="1.2" />
-          <rect x="18" y="18" width="64" height="64" rx="2" strokeWidth="0.8" opacity="0.45" />
-          <path
-            d="M26 18c6-8 14-8 20 0M74 18c-6-8-14-8-20 0M26 82c6 8 14 8 20 0M74 82c-6 8-14 8-20 0"
-            strokeWidth="1.4"
-          />
-          <path
-            d="M18 26c-8 6-8 14 0 20M18 74c-8-6-8-14 0-20M82 26c8 6 8 14 0 20M82 74c8-6 8-14 0-20"
-            strokeWidth="1.4"
-          />
-          <circle cx="50" cy="14" r="2.4" fill={c} stroke="none" />
-          <circle cx="50" cy="86" r="2.4" fill={c} stroke="none" />
-          <circle cx="14" cy="50" r="2.4" fill={c} stroke="none" />
-          <circle cx="86" cy="50" r="2.4" fill={c} stroke="none" />
-          <circle cx="22" cy="22" r="1.6" fill={c} stroke="none" />
-          <circle cx="78" cy="22" r="1.6" fill={c} stroke="none" />
-          <circle cx="22" cy="78" r="1.6" fill={c} stroke="none" />
-          <circle cx="78" cy="78" r="1.6" fill={c} stroke="none" />
-        </g>
-      )}
+    <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
+      <path {...common} strokeWidth="2.2" d="M6 28V8h20" />
+      <path {...common} strokeWidth="1.4" d="M10 12h12v12" />
+      <path {...common} strokeWidth="1.7" d="M10 8c5-8 14-7 18 2" />
+      <path {...common} strokeWidth="1.7" d="M8 10c-8 5-7 14 2 18" />
+      <circle cx="8" cy="8" r="2.6" fill="currentColor" />
+      <path fill="currentColor" d="M20 4c4-5 10-3 10 3-5-1-8 2-10-3z" />
+      <path fill="currentColor" d="M4 20c-5 4-3 10 3 10-1-5 2-8-3-10z" />
+      <circle cx="18" cy="8" r="1.4" fill="currentColor" />
+      <circle cx="8" cy="18" r="1.4" fill="currentColor" />
     </svg>
+  );
+}
+
+function QrFrameShell({
+  frameId,
+  color,
+  children,
+  thumb,
+}: {
+  frameId: FrameId;
+  color: string;
+  children: ReactNode;
+  thumb?: boolean;
+}) {
+  return (
+    <div
+      className={`barcode-qr-frame barcode-qr-frame--${frameId}${thumb ? ' is-thumb' : ''}`}
+      style={{ ['--qr-frame-color' as string]: color || '#0f172a' }}
+    >
+      <span className="barcode-qr-frame-ring" aria-hidden />
+      <span className="barcode-qr-frame-c tl" aria-hidden>
+        <FloralCorner variant={frameId} />
+      </span>
+      <span className="barcode-qr-frame-c tr" aria-hidden>
+        <FloralCorner variant={frameId} />
+      </span>
+      <span className="barcode-qr-frame-c bl" aria-hidden>
+        <FloralCorner variant={frameId} />
+      </span>
+      <span className="barcode-qr-frame-c br" aria-hidden>
+        <FloralCorner variant={frameId} />
+      </span>
+      <div className="barcode-qr-frame-inner">{children}</div>
+    </div>
   );
 }
 
@@ -718,10 +736,9 @@ function QrCustomizePanel({
               className={`barcode-frame-chip ${frameId === f.id ? 'is-active' : ''}`}
               onClick={() => onFrameChange(f.id)}
             >
-              <span className="barcode-frame-thumb">
-                <FrameOrnament frameId={f.id} color={accent} />
+              <QrFrameShell frameId={f.id} color={accent} thumb>
                 <span className="barcode-frame-thumb-qr" />
-              </span>
+              </QrFrameShell>
               <span className="barcode-frame-chip-label">{f.label}</span>
             </button>
           ))}
@@ -945,28 +962,25 @@ function QrPreview({
           {subtitle}
         </p>
       )}
-      <div className={`barcode-qr-frame barcode-qr-frame--${frameId}`}>
-        <FrameOrnament frameId={frameId} color={fg} />
-        <div className="barcode-qr-frame-inner">
-          <QRCodeSVG
-            value={url}
-            size={size}
-            level="H"
-            fgColor={fg}
-            bgColor={bg}
-            imageSettings={
-              logo
-                ? {
-                    src: logo,
-                    height: Math.round(size * 0.26),
-                    width: Math.round(size * 0.26),
-                    excavate: true,
-                  }
-                : undefined
-            }
-          />
-        </div>
-      </div>
+      <QrFrameShell frameId={frameId} color={fg}>
+        <QRCodeSVG
+          value={url}
+          size={size}
+          level="H"
+          fgColor={fg}
+          bgColor={bg}
+          imageSettings={
+            logo
+              ? {
+                  src: logo,
+                  height: Math.round(size * 0.26),
+                  width: Math.round(size * 0.26),
+                  excavate: true,
+                }
+              : undefined
+          }
+        />
+      </QrFrameShell>
       <p className="text-xs break-all text-center max-w-xs opacity-60" style={{ color: fg }}>
         {url}
       </p>
