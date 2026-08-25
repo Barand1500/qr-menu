@@ -106,10 +106,10 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [reportsOpen, setReportsOpen] = useState(true);
-  const [managementOpen, setManagementOpen] = useState(true);
-  const [startupOpen, setStartupOpen] = useState(true);
-  const [extensionsOpen, setExtensionsOpen] = useState(true);
+  const [reportsOpen, setReportsOpen] = useState(false);
+  const [managementOpen, setManagementOpen] = useState(false);
+  const [startupOpen, setStartupOpen] = useState(false);
+  const [extensionsOpen, setExtensionsOpen] = useState(false);
 
   const closeMobile = () => setMobileOpen(false);
 
@@ -212,7 +212,6 @@ export default function AdminLayout() {
           open={extensionsOpen}
           onToggle={() => setExtensionsOpen(!extensionsOpen)}
         >
-          <NavItem to="/admin/extensions" label="Tümü" sub onNavigate={closeMobile} />
           {extensionsNav.map(({ to, label }) => (
             <NavItem key={to} to={to} label={label} sub onNavigate={closeMobile} />
           ))}
