@@ -20,6 +20,7 @@ import { api, imageUrl } from '@/lib/api';
 import AddTableGroupModal from '@/components/AddTableGroupModal';
 import AddCampaignModal from '@/components/AddCampaignModal';
 import CampaignMenuModal from '@/components/CampaignMenuModal';
+import PrintDesignerModal from '@/components/PrintDesignerModal';
 
 type ViewMode = 'classic' | 'tables' | 'campaign';
 
@@ -187,6 +188,7 @@ export default function BarcodePage() {
   const [addingCampaign, setAddingCampaign] = useState(false);
   const [editingCampaignName, setEditingCampaignName] = useState(false);
   const [menuModalOpen, setMenuModalOpen] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
 
   const color = resolveColor(colorId);
   const [logoPath, setLogoPath] = useState<string | null>(
@@ -387,7 +389,7 @@ export default function BarcodePage() {
       alert('Yazdırmak için bir kampanya seç');
       return;
     }
-    window.print();
+    setPrintOpen(true);
   }
 
   async function addCampaign(name: string) {
@@ -894,6 +896,94 @@ export default function BarcodePage() {
           );
         }}
       />
+
+      <PrintDesignerModal
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
+        title={activeTitle}
+        subtitle={
+          view === 'classic'
+            ? 'Dijital menümüze QR kod ile ulaşın'
+            : user?.restaurant.name || ''
+        }
+        url={activeUrl}
+        fg={
+          view === 'tables' && selectedStyle
+            ? selectedColor.fg
+            : qrPack
+              ? color.fg
+              : '#0f172a'
+        }
+        bg={
+          view === 'tables' && selectedStyle
+            ? selectedColor.bg
+            : qrPack
+              ? color.bg
+              : '#ffffff'
+        }
+        logo={
+          view === 'tables' && selectedStyle
+            ? selectedStyle.withLogo && logoSrc
+              ? logoSrc
+              : undefined
+            : qrPack && withLogo && logoSrc
+              ? logoSrc
+              : undefined
+        }
+        size={220}
+        frameNode={
+          <QrFrameShell
+            frameId={
+              view === 'tables' && selectedStyle
+                ? selectedStyle.frameId
+                : qrPack
+                  ? frameId
+                  : 'yok'
+            }
+            color={
+              view === 'tables' && selectedStyle
+                ? selectedColor.fg
+                : qrPack
+                  ? color.fg
+                  : '#0f172a'
+            }
+          >
+            <QRCodeSVG
+              value={activeUrl}
+              size={220}
+              level="H"
+              fgColor={
+                view === 'tables' && selectedStyle
+                  ? selectedColor.fg
+                  : qrPack
+                    ? color.fg
+                    : '#0f172a'
+              }
+              bgColor={
+                view === 'tables' && selectedStyle
+                  ? selectedColor.bg
+                  : qrPack
+                    ? color.bg
+                    : '#ffffff'
+              }
+              imageSettings={
+                (
+                  view === 'tables' && selectedStyle
+                    ? selectedStyle.withLogo && logoSrc
+                    : qrPack && withLogo && logoSrc
+                )
+                  ? {
+                      src: logoSrc,
+                      height: Math.round(220 * 0.26),
+                      width: Math.round(220 * 0.26),
+                      excavate: true,
+                    }
+                  : undefined
+              }
+            />
+          </QrFrameShell>
+        }
+      />
     </div>
   );
 }
@@ -1350,74 +1440,68 @@ function QrPreview({
   onTitleEditEnd?: () => void;
 }) {
   return (
-    <div id="print-area" className="barcode-print-root">
-      <div className="barcode-print-cut" aria-hidden={false}>
-        <span className="barcode-cut-mark tl" aria-hidden />
-        <span className="barcode-cut-mark tr" aria-hidden />
-        <span className="barcode-cut-mark bl" aria-hidden />
-        <span className="barcode-cut-mark br" aria-hidden />
-        <p className="barcode-cut-hint">Kesim çizgisi</p>
-        <div
-          className="barcode-print-card"
-          style={{
-            background: bg,
-            color: fg,
-          }}
-        >
-          {titleEditable && titleEditing ? (
-            <input
-              autoFocus
-              className="barcode-qr-title-input"
-              value={title}
-              onChange={(e) => onTitleChange?.(e.target.value)}
-              onBlur={() => onTitleEditEnd?.()}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === 'Escape') {
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-              style={{ color: fg, borderColor: fg }}
-            />
-          ) : (
-            <h2
-              className={`barcode-print-title ${
-                titleEditable ? 'barcode-qr-title-editable' : ''
-              }`}
-              style={{ color: fg }}
-              title={titleEditable ? 'Tıkla — adı değiştir' : undefined}
-              onClick={titleEditable ? onTitleEditStart : undefined}
-            >
-              {title}
-            </h2>
-          )}
-          {subtitle && (
-            <p className="barcode-print-subtitle" style={{ color: fg }}>
-              {subtitle}
-            </p>
-          )}
-          <QrFrameShell frameId={frameId} color={fg}>
-            <QRCodeSVG
-              value={url}
-              size={size}
-              level="H"
-              fgColor={fg}
-              bgColor={bg}
-              imageSettings={
-                logo
-                  ? {
-                      src: logo,
-                      height: Math.round(size * 0.26),
-                      width: Math.round(size * 0.26),
-                      excavate: true,
-                    }
-                  : undefined
+    <div className="barcode-print-root barcode-preview-only">
+      <div
+        className="barcode-print-card"
+        style={{
+          background: bg,
+          color: fg,
+          width: 'min(100%, 22rem)',
+        }}
+      >
+        {titleEditable && titleEditing ? (
+          <input
+            autoFocus
+            className="barcode-qr-title-input"
+            value={title}
+            onChange={(e) => onTitleChange?.(e.target.value)}
+            onBlur={() => onTitleEditEnd?.()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === 'Escape') {
+                (e.target as HTMLInputElement).blur();
               }
-            />
-          </QrFrameShell>
-          <p className="barcode-print-url" style={{ color: fg }}>
-            {url}
+            }}
+            style={{ color: fg, borderColor: fg }}
+          />
+        ) : (
+          <h2
+            className={`barcode-print-title ${
+              titleEditable ? 'barcode-qr-title-editable' : ''
+            }`}
+            style={{ color: fg }}
+            title={titleEditable ? 'Tıkla — adı değiştir' : undefined}
+            onClick={titleEditable ? onTitleEditStart : undefined}
+          >
+            {title}
+          </h2>
+        )}
+        {subtitle && (
+          <p className="barcode-print-subtitle" style={{ color: fg }}>
+            {subtitle}
           </p>
-        </div>
+        )}
+        <QrFrameShell frameId={frameId} color={fg}>
+          <QRCodeSVG
+            value={url}
+            size={size}
+            level="H"
+            fgColor={fg}
+            bgColor={bg}
+            imageSettings={
+              logo
+                ? {
+                    src: logo,
+                    height: Math.round(size * 0.26),
+                    width: Math.round(size * 0.26),
+                    excavate: true,
+                  }
+                : undefined
+            }
+          />
+        </QrFrameShell>
+        <p className="barcode-print-url" style={{ color: fg }}>
+          {url}
+        </p>
       </div>
     </div>
   );

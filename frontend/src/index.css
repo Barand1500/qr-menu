@@ -5419,8 +5419,477 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 .barcode-print-root {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
   width: 100%;
+}
+
+.print-designer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 0;
+}
+
+.print-designer__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(15 23 42 / 0.55);
+  backdrop-filter: blur(8px);
+}
+
+.print-designer__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 68rem);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--admin-card);
+  border-left: 1px solid var(--admin-card-border);
+  border-right: 1px solid var(--admin-card-border);
+  box-shadow: 0 24px 80px rgb(15 23 42 / 0.28);
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .print-designer {
+    padding: 1.25rem;
+  }
+
+  .print-designer__panel {
+    border-radius: 1.5rem;
+    border: 1px solid var(--admin-card-border);
+    max-height: calc(100vh - 2.5rem);
+  }
+}
+
+.print-designer__chrome {
+  padding: 1.1rem 1.25rem 0.9rem;
+  border-bottom: 1px solid var(--admin-card-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  background: var(--admin-card);
+}
+
+.print-designer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.print-designer__head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: var(--admin-text);
+}
+
+.print-designer__head p {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: var(--admin-text-muted);
+  line-height: 1.4;
+}
+
+.print-designer__close {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--admin-text-muted);
+}
+
+.print-designer__close:hover {
+  background: var(--admin-accent-soft);
+}
+
+.print-designer__chrome .barcode-layout-toolbar {
+  width: 100%;
+}
+
+.print-designer__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.print-designer__stage {
+  flex: 1;
+  overflow: auto;
+  padding: 1.25rem;
+  background:
+    radial-gradient(circle at 20% 10%, color-mix(in srgb, var(--admin-accent) 10%, transparent), transparent 42%),
+    var(--admin-input-bg);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.print-designer__body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 15.5rem minmax(0, 1fr);
+  overflow: hidden;
+}
+
+@media (max-width: 860px) {
+  .print-designer__body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .print-layers {
+    max-height: 9.5rem;
+    border-right: none !important;
+    border-bottom: 1px solid var(--admin-card-border);
+  }
+}
+
+.print-layers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.85rem 0.75rem;
+  border-right: 1px solid var(--admin-card-border);
+  background: color-mix(in srgb, var(--admin-input-bg) 70%, var(--admin-card));
+  overflow: auto;
+}
+
+.print-layers__head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+  color: var(--admin-text);
+}
+
+.print-layers__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.print-layers__item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.35rem 0.35rem 0.45rem;
+  border-radius: 0.7rem;
+  border: 1px solid transparent;
+  background: #fff;
+}
+
+.print-layers__item.is-active {
+  border-color: color-mix(in srgb, var(--admin-accent) 45%, transparent);
+  background: var(--admin-accent-soft);
+}
+
+.print-layers__item.is-hidden {
+  opacity: 0.55;
+}
+
+.print-layers__item.is-qr {
+  border-color: color-mix(in srgb, var(--admin-accent) 25%, transparent);
+}
+
+.print-layers__select {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.print-layers__name {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--admin-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.print-layers__pin {
+  display: inline-block;
+  margin-right: 0.3rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 999px;
+  background: var(--admin-accent);
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 750;
+  vertical-align: middle;
+}
+
+.print-layers__ops {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.print-layers__ops button {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--admin-text-muted);
+}
+
+.print-layers__ops button:hover:not(:disabled) {
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent);
+}
+
+.print-layers__ops button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.print-layers__note {
+  margin: 0;
+  font-size: 0.65rem;
+  color: var(--admin-text-muted);
+  line-height: 1.35;
+}
+
+.print-designer__canvas {
+  width: 360px !important;
+  height: 480px !important;
+  min-height: 480px !important;
+  max-width: 100%;
+  margin: 0 auto;
+  box-shadow: 0 18px 50px rgb(15 23 42 / 0.12);
+  aspect-ratio: 3 / 4;
+}
+
+@media (max-width: 420px) {
+  .print-designer__canvas {
+    width: min(100%, 320px) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    aspect-ratio: 3 / 4;
+  }
+}
+
+.print-icon-panel {
+  border: 1px solid var(--admin-card-border);
+  border-radius: 1rem;
+  background: var(--admin-input-bg);
+  padding: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.print-icon-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.print-icon-cat {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--admin-card-border);
+  background: #fff;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--admin-text-muted);
+}
+
+.print-icon-cat.is-active {
+  border-color: var(--admin-accent);
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent);
+}
+
+.print-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: 0.4rem;
+}
+
+.print-icon-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.55rem 0.3rem;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.62rem;
+  font-weight: 650;
+}
+
+.print-icon-item:hover {
+  border-color: var(--admin-accent);
+  background: var(--admin-accent-soft);
+}
+
+.print-icon-item svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.print-cut-box {
+  position: absolute;
+  z-index: 0;
+  border: 2px dashed #64748b;
+  border-radius: 0.2rem;
+  background: color-mix(in srgb, #64748b 4%, transparent);
+  cursor: move;
+  touch-action: none;
+  box-sizing: border-box;
+}
+
+.print-cut-box.is-selected {
+  border-color: var(--admin-accent);
+  background: color-mix(in srgb, var(--admin-accent) 6%, transparent);
+}
+
+.print-cut-box__label {
+  position: absolute;
+  top: -0.7rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 0.45rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  background: var(--admin-card);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.print-cut-box .barcode-cut-mark {
+  display: block;
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.print-cut-box .barcode-cut-mark.tl {
+  top: -2px;
+  left: -2px;
+  border-top: 3px solid #334155;
+  border-left: 3px solid #334155;
+}
+
+.print-cut-box .barcode-cut-mark.tr {
+  top: -2px;
+  right: -2px;
+  border-top: 3px solid #334155;
+  border-right: 3px solid #334155;
+}
+
+.print-cut-box .barcode-cut-mark.bl {
+  bottom: -2px;
+  left: -2px;
+  border-bottom: 3px solid #334155;
+  border-left: 3px solid #334155;
+}
+
+.print-cut-box .barcode-cut-mark.br {
+  bottom: -2px;
+  right: -2px;
+  border-bottom: 3px solid #334155;
+  border-right: 3px solid #334155;
+}
+
+.print-cut-handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 0.25rem;
+  background: var(--admin-accent);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 5px rgb(15 23 42 / 0.25);
+  z-index: 4;
+}
+
+.print-cut-handle.tl {
+  top: -7px;
+  left: -7px;
+  cursor: nwse-resize;
+}
+
+.print-cut-handle.tr {
+  top: -7px;
+  right: -7px;
+  cursor: nesw-resize;
+}
+
+.print-cut-handle.bl {
+  bottom: -7px;
+  left: -7px;
+  cursor: nesw-resize;
+}
+
+.print-cut-handle.br {
+  bottom: -7px;
+  right: -7px;
+  cursor: nwse-resize;
+}
+
+.barcode-layout-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  width: min(100%, 22rem);
+}
+
+.barcode-layout-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--admin-card-border);
+  background: var(--admin-input-bg);
+  color: var(--admin-text-muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  transition: 0.15s ease;
+}
+
+.barcode-layout-chip:hover {
+  border-color: var(--admin-accent);
+  color: var(--admin-text);
+}
+
+.barcode-layout-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.barcode-layout-hint {
+  width: 100%;
+  font-size: 0.68rem;
+  color: var(--admin-text-muted);
 }
 
 .barcode-print-cut {
@@ -5429,6 +5898,66 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   padding: 0;
   border: none;
   background: transparent;
+}
+
+.barcode-print-cut.has-cut-marks {
+  padding: 0.85rem 0.7rem;
+  border: 1.5px dashed color-mix(in srgb, #64748b 55%, transparent);
+  border-radius: 0.35rem;
+}
+
+.barcode-print-cut.has-cut-marks .barcode-cut-hint {
+  display: block;
+  position: absolute;
+  top: -0.55rem;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  background: var(--admin-card);
+  white-space: nowrap;
+}
+
+.barcode-print-cut.has-cut-marks .barcode-cut-mark {
+  display: block;
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.barcode-print-cut.has-cut-marks .barcode-cut-mark.tl {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid #334155;
+  border-left: 2px solid #334155;
+}
+
+.barcode-print-cut.has-cut-marks .barcode-cut-mark.tr {
+  top: -1px;
+  right: -1px;
+  border-top: 2px solid #334155;
+  border-right: 2px solid #334155;
+}
+
+.barcode-print-cut.has-cut-marks .barcode-cut-mark.bl {
+  bottom: -1px;
+  left: -1px;
+  border-bottom: 2px solid #334155;
+  border-left: 2px solid #334155;
+}
+
+.barcode-print-cut.has-cut-marks .barcode-cut-mark.br {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid #334155;
+  border-right: 2px solid #334155;
 }
 
 .barcode-cut-hint,
@@ -5444,6 +5973,222 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   padding: 2rem;
   border-radius: 1rem;
   border: 1px dashed var(--admin-card-border);
+}
+
+.barcode-print-card--canvas {
+  position: relative;
+  width: 100%;
+  min-height: 26rem;
+  padding: 1rem;
+  overflow: hidden;
+  user-select: none;
+}
+
+.barcode-print-qr-slot {
+  display: none;
+}
+
+.barcode-layout-chip--keyed {
+  position: relative;
+  padding-right: 1.65rem;
+}
+
+.print-key-badge {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.2rem;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.28rem;
+  border-radius: 0.35rem;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 750;
+  line-height: 1.05rem;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  box-shadow: 0 2px 6px rgb(15 23 42 / 0.2);
+}
+
+.barcode-layout-chip.is-active .print-key-badge {
+  background: var(--admin-accent);
+}
+
+.print-shortcut-hint {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--admin-text-muted);
+  line-height: 1.45;
+}
+
+.print-shortcut-hint kbd {
+  display: inline-block;
+  min-width: 1.05rem;
+  padding: 0.05rem 0.3rem;
+  margin: 0 0.1rem;
+  border-radius: 0.3rem;
+  border: 1px solid var(--admin-card-border);
+  background: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--admin-text);
+}
+
+.barcode-print-layer {
+  position: absolute;
+  z-index: 2;
+  width: max-content;
+  max-width: 88%;
+  cursor: grab;
+  touch-action: none;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.45rem;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transform-origin: center center;
+}
+
+.barcode-print-layer--qr,
+.barcode-print-layer--icon {
+  width: auto;
+  max-width: none;
+  padding: 0.25rem;
+  white-space: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.barcode-print-layer--qr svg,
+.barcode-print-layer--icon svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.barcode-print-layer.is-locked {
+  cursor: default;
+}
+
+.barcode-print-layer:active:not(.is-locked) {
+  cursor: grabbing;
+}
+
+.barcode-print-layer.is-selected {
+  border-color: color-mix(in srgb, var(--admin-accent) 55%, transparent);
+  background: color-mix(in srgb, #fff 55%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-accent) 18%, transparent);
+}
+
+.barcode-print-layer .barcode-print-title,
+.barcode-print-layer .barcode-print-subtitle,
+.barcode-print-layer .barcode-print-url,
+.barcode-print-layer .barcode-print-custom {
+  margin: 0;
+  text-align: center;
+  line-height: 1.25;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.barcode-print-layer .barcode-print-subtitle {
+  opacity: 0.75;
+}
+
+.barcode-print-layer .barcode-print-url {
+  opacity: 0.6;
+  font-weight: 500;
+  max-width: none;
+}
+
+.barcode-print-layer--wrap {
+  white-space: normal;
+  max-width: 85%;
+}
+
+.barcode-print-layer--wrap .barcode-print-url {
+  white-space: normal;
+  word-break: break-all;
+}
+
+.barcode-print-layer__tools {
+  position: absolute;
+  top: -1.7rem;
+  right: -0.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  z-index: 6;
+}
+
+.barcode-print-layer__tools button {
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--admin-card-border);
+  background: #fff;
+  color: var(--admin-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 0.08);
+}
+
+.barcode-print-layer__tools button:hover {
+  border-color: var(--admin-accent);
+  color: var(--admin-accent);
+}
+
+.print-text-handle {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: var(--admin-accent);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgb(15 23 42 / 0.22);
+  z-index: 5;
+}
+
+.print-text-handle.tl {
+  top: -6px;
+  left: -6px;
+  cursor: nwse-resize;
+}
+
+.print-text-handle.tr {
+  top: -6px;
+  right: -6px;
+  cursor: nesw-resize;
+}
+
+.print-text-handle.bl {
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize;
+}
+
+.print-text-handle.br {
+  bottom: -6px;
+  right: -6px;
+  cursor: nwse-resize;
+}
+
+.barcode-print-custom {
+  margin: 0;
+  text-align: center;
+  line-height: 1.25;
+  word-break: break-word;
+  font-weight: 650;
+}
+
+.barcode-print-resize {
+  display: none;
 }
 
 .barcode-print-title {
@@ -5497,97 +6242,152 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
     position: fixed !important;
     left: 50% !important;
     top: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    width: 90mm !important;
-    max-width: 90mm !important;
+    /* Aynı 360×480 tuval — yazıcıda ölçekle, tasarım birebir kalsın */
+    width: 360px !important;
+    max-width: 360px !important;
+    height: 480px !important;
+    transform: translate(-50%, -50%) scale(0.9) !important;
+    transform-origin: center center !important;
     margin: 0 !important;
     z-index: 99999 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  .print-designer,
+  .print-designer__panel,
+  .print-designer__body,
+  .print-designer__stage {
+    position: static !important;
+    inset: auto !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+    display: block !important;
+  }
+
+  .print-layers {
+    display: none !important;
+  }
+
+  .barcode-no-print,
+  #print-area .barcode-no-print,
+  #print-area .barcode-no-print *,
+  .print-designer__backdrop,
+  .print-designer__chrome {
+    display: none !important;
+    visibility: hidden !important;
   }
 
   .barcode-print-root {
     width: 100%;
+    gap: 0;
   }
 
-  .barcode-print-cut {
-    width: 100%;
-    padding: 12mm 10mm;
-    border: 1.5px dashed #64748b !important;
-    border-radius: 0;
-    background: #fff !important;
+  .barcode-print-card--canvas,
+  .print-designer__canvas {
+    width: 360px !important;
+    height: 480px !important;
+    min-height: 480px !important;
+    max-width: 360px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    aspect-ratio: auto !important;
   }
 
-  .barcode-cut-hint {
-    display: block;
-    position: absolute;
-    top: -0.55rem;
-    left: 50%;
-    transform: translateX(-50%);
-    margin: 0;
-    padding: 0 0.4rem;
-    font-size: 8pt;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: #64748b;
-    background: #fff;
-    white-space: nowrap;
+  .barcode-print-layer {
+    white-space: nowrap !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
   }
 
-  .barcode-cut-mark {
-    display: block;
-    position: absolute;
-    width: 12px;
-    height: 12px;
-    pointer-events: none;
-    z-index: 2;
+  .barcode-print-layer--qr,
+  .barcode-print-layer--icon {
+    padding: 0 !important;
   }
 
-  .barcode-cut-mark.tl {
+  .print-cut-box {
+    border: 1.6px dashed #64748b !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+  }
+
+  .print-cut-box .barcode-cut-mark {
+    display: block !important;
+    visibility: visible !important;
+    width: 14px;
+    height: 14px;
+  }
+
+  .print-cut-box .barcode-cut-mark.tl {
     top: -1px;
     left: -1px;
-    border-top: 2px solid #334155;
-    border-left: 2px solid #334155;
+    border-top: 2.5px solid #334155;
+    border-left: 2.5px solid #334155;
   }
 
-  .barcode-cut-mark.tr {
+  .print-cut-box .barcode-cut-mark.tr {
     top: -1px;
     right: -1px;
-    border-top: 2px solid #334155;
-    border-right: 2px solid #334155;
+    border-top: 2.5px solid #334155;
+    border-right: 2.5px solid #334155;
   }
 
-  .barcode-cut-mark.bl {
+  .print-cut-box .barcode-cut-mark.bl {
     bottom: -1px;
     left: -1px;
-    border-bottom: 2px solid #334155;
-    border-left: 2px solid #334155;
+    border-bottom: 2.5px solid #334155;
+    border-left: 2.5px solid #334155;
   }
 
-  .barcode-cut-mark.br {
+  .print-cut-box .barcode-cut-mark.br {
     bottom: -1px;
     right: -1px;
-    border-bottom: 2px solid #334155;
-    border-right: 2px solid #334155;
+    border-bottom: 2.5px solid #334155;
+    border-right: 2.5px solid #334155;
   }
 
   .barcode-print-card {
     border: none;
-    padding: 8mm 6mm;
-    gap: 4mm;
+    padding: 0;
+    gap: 0;
     border-radius: 0;
   }
 
-  .barcode-print-title {
-    font-size: 16pt;
+  .barcode-print-layer {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0;
+    cursor: default;
   }
 
-  .barcode-print-subtitle {
-    font-size: 10pt;
+  .barcode-print-layer__tools,
+  .barcode-print-resize,
+  .print-cut-handle,
+  .print-text-handle {
+    display: none !important;
+  }
+
+  .barcode-print-title,
+  .barcode-print-subtitle,
+  .barcode-print-url {
+    font-size: inherit;
   }
 
   .barcode-print-url {
-    font-size: 7pt;
-    max-width: 70mm;
+    max-width: 80mm;
   }
 }
 
