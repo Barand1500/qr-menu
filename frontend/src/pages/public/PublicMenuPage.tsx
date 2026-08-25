@@ -18,6 +18,7 @@ import {
   mapDemoStoriesToGroups,
 } from '@/lib/demoData';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
+import { usePublicRtl } from '@/hooks/usePublicRtl';
 import {
   enteredKey,
   menuGroupPath,
@@ -84,6 +85,8 @@ export default function PublicMenuPage() {
   const [menuError, setMenuError] = useState<string | null>(null);
   const [menuLoading, setMenuLoading] = useState(true);
   const sessionId = getSessionId();
+
+  usePublicRtl(lang);
 
   useEffect(() => {
     if (!slug) return;

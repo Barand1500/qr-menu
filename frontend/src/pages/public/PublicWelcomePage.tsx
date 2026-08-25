@@ -8,6 +8,7 @@ import { languageFlag } from '@/lib/languageFlags';
 import ComplaintBoxModal from '@/components/public/ComplaintBoxModal';
 import SuggestionBoxModal from '@/components/public/SuggestionBoxModal';
 import WelcomeSceneBackground from '@/components/public/WelcomeSceneBackground';
+import { usePublicRtl } from '@/hooks/usePublicRtl';
 
 interface WelcomeData {
   restaurant: { id: number; name: string; slug: string; logoUrl?: string | null };
@@ -43,6 +44,8 @@ export default function PublicWelcomePage() {
   const [suggestionOpen, setSuggestionOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  usePublicRtl(selectedLang);
 
   useEffect(() => {
     if (slugError) {

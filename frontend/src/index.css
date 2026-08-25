@@ -526,6 +526,21 @@ body {
   padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
 }
 
+/* Arapça / Farsça / İbranice vb. — müşteri menüsü RTL */
+html.public-rtl .public-menu-page,
+html.public-rtl .welcome-scene,
+html[dir='rtl'] .public-menu-page,
+html[dir='rtl'] .welcome-scene {
+  text-align: start;
+}
+
+html.public-rtl .public-product-hero__top svg,
+html.public-rtl .public-menu-page .rtl-mirror,
+html[dir='rtl'] .public-product-hero__top svg,
+html[dir='rtl'] .public-menu-page .rtl-mirror {
+  transform: scaleX(-1);
+}
+
 @media (min-width: 768px) {
   .public-menu-page {
     padding-bottom: 0;

@@ -19,6 +19,7 @@ import ProductImageGallery, {
 } from '@/components/public/ProductImageGallery';
 import BrushPanel from '@/components/public/BrushPanel';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
+import { usePublicRtl } from '@/hooks/usePublicRtl';
 import { menuGroupPath, menuProductPath } from '@/lib/menuPaths';
 import { useEffect, useState } from 'react';
 
@@ -57,6 +58,8 @@ export default function PublicProductPage() {
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [related, setRelated] = useState<RelatedProduct[]>([]);
   const sessionId = getSessionId();
+
+  usePublicRtl(lang);
 
   useEffect(() => {
     if (!slug || !productId) return;
