@@ -5251,13 +5251,15 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   border-radius: 0.2rem;
 }
 
-.barcode-qr-frame--soft {
-  --qr-frame-pad: 1.7rem;
+.barcode-qr-frame--kelebek {
+  --qr-frame-pad: 1.85rem;
+  --qr-corner-size: 2.85rem;
 }
 
-.barcode-qr-frame--soft .barcode-qr-frame-ring {
-  border-width: 2px;
-  border-radius: 1.1rem;
+.barcode-qr-frame--kelebek .barcode-qr-frame-ring {
+  border-width: 1.5px;
+  border-style: dotted;
+  border-radius: 1.25rem;
 }
 
 .barcode-qr-frame--kesik .barcode-qr-frame-ring {

@@ -46,7 +46,7 @@ const QR_COLORS = [
 const QR_FRAMES = [
   { id: 'ince', label: 'İnce' },
   { id: 'kalin', label: 'Kalın' },
-  { id: 'soft', label: 'Soft' },
+  { id: 'kelebek', label: 'Kelebek' },
   { id: 'kesik', label: 'Kesik' },
   { id: 'kose', label: 'Köşe' },
   { id: 'halka', label: 'Halka' },
@@ -579,20 +579,39 @@ function FloralCorner({ variant }: { variant: FrameId }) {
     );
   }
 
-  if (variant === 'soft') {
+  if (variant === 'kelebek') {
     return (
       <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
+        {/* Sol kanat */}
         <path
           fill="currentColor"
-          d="M8 22c0-10 8-16 18-14 1 7-4 13-11 15-4 1-7-1-7-1z"
-          opacity="0.92"
+          d="M18 20c-9-2-14-9-12-15 5 1 10 5 12 11z"
+          opacity="0.9"
         />
         <path
           fill="currentColor"
-          d="M22 8c10 0 16 8 14 18-7 1-13-4-15-11-1-4 1-7 1-7z"
+          d="M18 21c-8 3-12 10-9 15 5-2 9-7 9-12z"
           opacity="0.75"
         />
-        <circle cx="14" cy="14" r="2.4" fill="currentColor" />
+        {/* Sağ kanat (üst-köşe motifi için kısmi) */}
+        <path
+          fill="currentColor"
+          d="M19 19c2-7 8-12 14-11-2 6-7 10-14 11z"
+          opacity="0.85"
+        />
+        {/* Gövde */}
+        <ellipse cx="18.5" cy="20" rx="1.4" ry="4.2" fill="currentColor" />
+        <circle cx="18.5" cy="16.2" r="1.3" fill="currentColor" />
+        <path
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+          d="M17.2 14.5c-1.5-2.5-0.5-4.5 0.5-5M19.8 14.5c1.5-2.5 0.5-4.5-0.5-5"
+        />
+        {/* Nokta detay */}
+        <circle cx="12" cy="12" r="1.1" fill="currentColor" opacity="0.55" />
+        <circle cx="11" cy="26" r="1" fill="currentColor" opacity="0.45" />
       </svg>
     );
   }
