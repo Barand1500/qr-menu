@@ -354,10 +354,6 @@ export default function SettingsPage() {
               })
             )}
           </div>
-          <p className="text-[11px] admin-text-muted mt-3 leading-relaxed">
-            Aktif diller menüde ve karşılama ekranında görünür. Dil ekleme anında kaydedilir;
-            aktif/pasif için Kaydet’e bas.
-          </p>
         </SettingsSection>
 
         <SettingsSection
@@ -416,10 +412,6 @@ export default function SettingsPage() {
               })
             )}
           </div>
-          <p className="text-[11px] admin-text-muted mt-3 leading-relaxed">
-            Kur yok: ürün fiyatına yazdığın rakam, seçtiğin birimle menüde görünür. Ekleme anında
-            kaydolur; aktif/pasif için Kaydet.
-          </p>
         </SettingsSection>
       </div>
 
