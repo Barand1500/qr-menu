@@ -28,15 +28,32 @@ const PAPER_SIZES = [
 const QR_COLORS = [
   { id: 'black', fg: '#0f172a', bg: '#ffffff', label: 'Siyah' },
   { id: 'navy', fg: '#1e3a5f', bg: '#f8fafc', label: 'Lacivert' },
+  { id: 'ocean', fg: '#0369a1', bg: '#f0f9ff', label: 'Okyanus' },
+  { id: 'sky', fg: '#0284c7', bg: '#e0f2fe', label: 'Gök mavisi' },
+  { id: 'teal', fg: '#0f766e', bg: '#f0fdfa', label: 'Turkuaz' },
   { id: 'forest', fg: '#14532d', bg: '#f0fdf4', label: 'Yeşil' },
+  { id: 'emerald', fg: '#047857', bg: '#ecfdf5', label: 'Zümrüt' },
+  { id: 'olive', fg: '#3f6212', bg: '#f7fee7', label: 'Zeytin' },
   { id: 'wine', fg: '#7f1d1d', bg: '#fff1f2', label: 'Bordo' },
+  { id: 'rose', fg: '#be123c', bg: '#fff1f2', label: 'Gül' },
+  { id: 'coral', fg: '#c2410c', bg: '#fff7ed', label: 'Mercan' },
   { id: 'gold', fg: '#78350f', bg: '#fffbeb', label: 'Altın' },
+  { id: 'amber', fg: '#b45309', bg: '#fffbeb', label: 'Amber' },
+  { id: 'purple', fg: '#5b21b6', bg: '#f5f3ff', label: 'Mor' },
+  { id: 'plum', fg: '#86198f', bg: '#fdf4ff', label: 'Erik' },
+  { id: 'slate', fg: '#475569', bg: '#f8fafc', label: 'Gri' },
 ];
 
 interface CampaignItem {
   id: string;
   label: string;
   slug: string;
+}
+
+interface TableStyle {
+  name: string;
+  colorId: string;
+  withLogo: boolean;
 }
 
 function slugify(text: string) {
@@ -53,6 +70,14 @@ function slugify(text: string) {
     .replace(/^-|-$/g, '');
 }
 
+function defaultTableStyle(n: number): TableStyle {
+  return { name: `Masa ${n}`, colorId: 'black', withLogo: false };
+}
+
+function resolveColor(colorId: string) {
+  return QR_COLORS.find((c) => c.id === colorId) || QR_COLORS[0];
+}
+
 export default function BarcodePage() {
   const { user } = useAuth();
   const { isOwned, loading: addonsLoading } = useAddons();
@@ -64,6 +89,8 @@ export default function BarcodePage() {
   const [withLogo, setWithLogo] = useState(false);
   const [tableCount, setTableCount] = useState(12);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
+  const [editingTable, setEditingTable] = useState<number | null>(null);
+  const [tableStyles, setTableStyles] = useState<Record<number, TableStyle>>({});
   const [campaigns, setCampaigns] = useState<CampaignItem[]>([
     { id: '1', label: 'İftar Menüsü', slug: 'iftar' },
     { id: '2', label: 'Happy Hour', slug: 'happy-hour' },
@@ -71,7 +98,7 @@ export default function BarcodePage() {
   const [campaignDraft, setCampaignDraft] = useState('');
   const [selectedCampaign, setSelectedCampaign] = useState<CampaignItem | null>(null);
 
-  const color = QR_COLORS.find((c) => c.id === colorId) || QR_COLORS[0];
+  const color = resolveColor(colorId);
   const logoSrc = user?.restaurant.logoUrl ? imageUrl(user.restaurant.logoUrl) : '';
   const origin = window.location.origin;
 
@@ -88,7 +115,7 @@ export default function BarcodePage() {
 
   const activeTitle =
     view === 'tables' && selectedTable
-      ? `Masa ${selectedTable}`
+      ? getTableStyle(selectedTable).name
       : view === 'campaign' && selectedCampaign
         ? selectedCampaign.label
         : user?.restaurant.name || 'Menü';
@@ -97,6 +124,17 @@ export default function BarcodePage() {
     () => Array.from({ length: Math.max(1, Math.min(60, tableCount)) }, (_, i) => i + 1),
     [tableCount]
   );
+
+  function getTableStyle(n: number): TableStyle {
+    return tableStyles[n] || defaultTableStyle(n);
+  }
+
+  function patchTableStyle(n: number, patch: Partial<TableStyle>) {
+    setTableStyles((prev) => ({
+      ...prev,
+      [n]: { ...defaultTableStyle(n), ...prev[n], ...patch },
+    }));
+  }
 
   function handlePrint() {
     if (view === 'tables' && !selectedTable) {
@@ -121,6 +159,11 @@ export default function BarcodePage() {
   }
 
   if (addonsLoading) return <Spinner />;
+
+  const selectedStyle = selectedTable ? getTableStyle(selectedTable) : null;
+  const selectedColor = selectedStyle
+    ? resolveColor(selectedStyle.colorId)
+    : color;
 
   return (
     <div className="barcode-page">
@@ -152,6 +195,7 @@ export default function BarcodePage() {
                 setView(tab.id);
                 setSelectedTable(null);
                 setSelectedCampaign(null);
+                setEditingTable(null);
               }}
               className={`barcode-mode-chip ${view === tab.id ? 'is-active' : ''} ${
                 locked ? 'is-locked' : ''
@@ -175,233 +219,248 @@ export default function BarcodePage() {
         </div>
       )}
 
-      <div className="grid lg:grid-cols-[1fr_320px] gap-5 items-start">
-        <Card className="p-5 space-y-5">
-          {view === 'classic' && (
-            <>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
-                  Kağıt boyutu
-                </p>
-                <select
-                  value={paperSize}
-                  onChange={(e) => setPaperSize(e.target.value)}
-                  className="w-full max-w-xs rounded-xl border px-4 py-2.5 text-sm"
-                  style={{
-                    borderColor: 'var(--admin-card-border)',
-                    background: 'var(--admin-input-bg)',
-                    color: 'var(--admin-text)',
-                  }}
-                >
-                  {PAPER_SIZES.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+      <Card className="p-5 space-y-5">
+        {view === 'classic' && (
+          <>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
+                Kağıt boyutu
+              </p>
+              <select
+                value={paperSize}
+                onChange={(e) => setPaperSize(e.target.value)}
+                className="w-full max-w-xs rounded-xl border px-4 py-2.5 text-sm"
+                style={{
+                  borderColor: 'var(--admin-card-border)',
+                  background: 'var(--admin-input-bg)',
+                  color: 'var(--admin-text)',
+                }}
+              >
+                {PAPER_SIZES.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-              {qrPack && (
-                <>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
-                      Renk
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {QR_COLORS.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => setColorId(c.id)}
-                          className={`barcode-color-swatch ${
-                            colorId === c.id ? 'is-active' : ''
-                          }`}
-                          style={{ background: c.fg }}
-                          title={c.label}
-                        />
-                      ))}
-                    </div>
-                  </div>
+            {qrPack && (
+              <>
+                <ColorPicker value={colorId} onChange={setColorId} />
+                <LogoToggle
+                  checked={withLogo}
+                  onChange={setWithLogo}
+                  hasLogo={!!logoSrc}
+                />
+              </>
+            )}
 
-                  <label className="flex items-center gap-2.5 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={withLogo}
-                      onChange={(e) => setWithLogo(e.target.checked)}
-                      disabled={!logoSrc}
-                      className="rounded accent-[var(--admin-accent)]"
-                    />
-                    Logo ortalı QR
-                    {!logoSrc && (
-                      <span className="text-xs admin-text-muted">(önce Ayarlar’dan logo yükle)</span>
-                    )}
-                  </label>
-                </>
-              )}
+            <QrPreview
+              title={activeTitle}
+              subtitle="Dijital menümüze QR kod ile ulaşın"
+              url={activeUrl}
+              fg={qrPack ? color.fg : '#0f172a'}
+              bg={qrPack ? color.bg : '#ffffff'}
+              logo={qrPack && withLogo ? logoSrc : undefined}
+              size={200}
+            />
+          </>
+        )}
 
-              <QrPreview
-                title={activeTitle}
-                subtitle="Dijital menümüze QR kod ile ulaşın"
-                url={activeUrl}
-                fg={qrPack ? color.fg : '#0f172a'}
-                bg={qrPack ? color.bg : '#ffffff'}
-                logo={qrPack && withLogo ? logoSrc : undefined}
-                size={200}
+        {view === 'tables' && (
+          <>
+            <div className="w-36">
+              <Input
+                label="Masa sayısı"
+                type="number"
+                min={1}
+                max={60}
+                value={String(tableCount)}
+                onChange={(e) => setTableCount(Number(e.target.value) || 1)}
               />
-            </>
-          )}
+            </div>
 
-          {view === 'tables' && (
-            <>
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="w-36">
-                  <Input
-                    label="Masa sayısı"
-                    type="number"
-                    min={1}
-                    max={60}
-                    value={String(tableCount)}
-                    onChange={(e) => setTableCount(Number(e.target.value) || 1)}
-                  />
-                </div>
-                <p className="text-xs admin-text-muted pb-2">
-                  Link örneği: <code className="text-[11px]">/menu?masa=5</code>
-                </p>
-              </div>
-
-              <div className="barcode-table-grid">
-                {tables.map((n) => (
+            <div className="barcode-table-grid">
+              {tables.map((n) => {
+                const style = getTableStyle(n);
+                const c = resolveColor(style.colorId);
+                return (
                   <button
                     key={n}
                     type="button"
                     className={`barcode-table-card ${
                       selectedTable === n ? 'is-active' : ''
                     }`}
-                    onClick={() => setSelectedTable(n)}
+                    onClick={() => {
+                      setSelectedTable(n);
+                      setEditingTable(null);
+                    }}
                   >
                     <QRCodeSVG
                       value={`${origin}/menu?masa=${n}`}
                       size={72}
                       level="M"
-                      fgColor={color.fg}
-                      bgColor={color.bg}
+                      fgColor={c.fg}
+                      bgColor={c.bg}
+                      imageSettings={
+                        style.withLogo && logoSrc
+                          ? {
+                              src: logoSrc,
+                              height: 14,
+                              width: 14,
+                              excavate: true,
+                            }
+                          : undefined
+                      }
                     />
-                    <span>Masa {n}</span>
+                    <span>{style.name}</span>
                   </button>
-                ))}
-              </div>
+                );
+              })}
+            </div>
 
-              {selectedTable && (
-                <div className="barcode-enlarge">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-bold text-[var(--admin-text)]">Masa {selectedTable}</h3>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedTable(null)}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--admin-accent-soft)]"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <QrPreview
-                    title={`Masa ${selectedTable}`}
-                    subtitle={user?.restaurant.name || ''}
-                    url={tableUrl}
-                    fg={color.fg}
-                    bg={color.bg}
-                    logo={withLogo && logoSrc ? logoSrc : undefined}
-                    size={220}
-                  />
-                  <Button className="w-full mt-4" onClick={handlePrint}>
-                    <Printer className="w-4 h-4" /> Bu masayı yazdır
-                  </Button>
+            {selectedTable && selectedStyle && (
+              <div className="barcode-enlarge">
+                <div className="flex items-start justify-end mb-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTable(null);
+                      setEditingTable(null);
+                    }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--admin-accent-soft)] shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-              )}
-            </>
-          )}
 
-          {view === 'campaign' && (
-            <>
-              <div className="flex flex-wrap gap-2 items-end">
-                <div className="flex-1 min-w-[180px]">
-                  <Input
-                    label="Yeni kampanya adı"
-                    value={campaignDraft}
-                    onChange={(e) => setCampaignDraft(e.target.value)}
-                    placeholder="Örn. Yaz Menüsü"
+                <div className="space-y-4 mb-5">
+                  <ColorPicker
+                    value={selectedStyle.colorId}
+                    onChange={(id) =>
+                      patchTableStyle(selectedTable, { colorId: id })
+                    }
+                  />
+                  <LogoToggle
+                    checked={selectedStyle.withLogo}
+                    onChange={(v) =>
+                      patchTableStyle(selectedTable, { withLogo: v })
+                    }
+                    hasLogo={!!logoSrc}
                   />
                 </div>
-                <Button type="button" onClick={addCampaign}>
-                  <Plus className="w-4 h-4" /> Ekle
+
+                <QrPreview
+                  title={selectedStyle.name}
+                  subtitle={user?.restaurant.name || ''}
+                  url={tableUrl}
+                  fg={selectedColor.fg}
+                  bg={selectedColor.bg}
+                  logo={
+                    selectedStyle.withLogo && logoSrc ? logoSrc : undefined
+                  }
+                  size={220}
+                  titleEditable
+                  titleEditing={editingTable === selectedTable}
+                  onTitleEditStart={() => setEditingTable(selectedTable)}
+                  onTitleChange={(name) =>
+                    patchTableStyle(selectedTable, { name })
+                  }
+                  onTitleEditEnd={() => {
+                    const trimmed =
+                      selectedStyle.name.trim() || `Masa ${selectedTable}`;
+                    patchTableStyle(selectedTable, { name: trimmed });
+                    setEditingTable(null);
+                  }}
+                />
+                <Button className="w-full mt-4" onClick={handlePrint}>
+                  <Printer className="w-4 h-4" /> Bu masayı yazdır
                 </Button>
               </div>
+            )}
+          </>
+        )}
 
-              <div className="space-y-2">
-                {campaigns.map((c) => (
-                  <div
-                    key={c.id}
-                    className={`barcode-campaign-row ${
-                      selectedCampaign?.id === c.id ? 'is-active' : ''
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      className="flex-1 text-left min-w-0"
-                      onClick={() => setSelectedCampaign(c)}
-                    >
-                      <p className="font-semibold text-[var(--admin-text)] truncate">{c.label}</p>
-                      <p className="text-xs admin-text-muted truncate">
-                        /menu?kampanya={c.slug}
-                      </p>
-                    </button>
-                    <button
-                      type="button"
-                      className="p-2 rounded-lg text-red-500 hover:bg-red-50"
-                      onClick={() => {
-                        setCampaigns((prev) => prev.filter((x) => x.id !== c.id));
-                        if (selectedCampaign?.id === c.id) setSelectedCampaign(null);
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+        {view === 'campaign' && (
+          <>
+            <div className="flex flex-wrap gap-2 items-end">
+              <div className="flex-1 min-w-[180px]">
+                <Input
+                  label="Yeni kampanya adı"
+                  value={campaignDraft}
+                  onChange={(e) => setCampaignDraft(e.target.value)}
+                  placeholder="Örn. Yaz Menüsü"
+                />
               </div>
+              <Button type="button" onClick={addCampaign}>
+                <Plus className="w-4 h-4" /> Ekle
+              </Button>
+            </div>
 
-              {selectedCampaign && (
-                <div className="barcode-enlarge">
-                  <QrPreview
-                    title={selectedCampaign.label}
-                    subtitle={user?.restaurant.name || ''}
-                    url={campaignUrl}
-                    fg={color.fg}
-                    bg={color.bg}
-                    logo={withLogo && logoSrc ? logoSrc : undefined}
-                    size={220}
-                  />
-                  <Button className="w-full mt-4" onClick={handlePrint}>
-                    <Printer className="w-4 h-4" /> Kampanya QR yazdır
-                  </Button>
+            {qrPack && selectedCampaign && (
+              <div className="space-y-4">
+                <ColorPicker value={colorId} onChange={setColorId} />
+                <LogoToggle
+                  checked={withLogo}
+                  onChange={setWithLogo}
+                  hasLogo={!!logoSrc}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {campaigns.map((c) => (
+                <div
+                  key={c.id}
+                  className={`barcode-campaign-row ${
+                    selectedCampaign?.id === c.id ? 'is-active' : ''
+                  }`}
+                >
+                  <button
+                    type="button"
+                    className="flex-1 text-left min-w-0"
+                    onClick={() => setSelectedCampaign(c)}
+                  >
+                    <p className="font-semibold text-[var(--admin-text)] truncate">
+                      {c.label}
+                    </p>
+                    <p className="text-xs admin-text-muted truncate">
+                      /menu?kampanya={c.slug}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    className="p-2 rounded-lg text-red-500 hover:bg-red-50"
+                    onClick={() => {
+                      setCampaigns((prev) => prev.filter((x) => x.id !== c.id));
+                      if (selectedCampaign?.id === c.id) setSelectedCampaign(null);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
-              )}
-            </>
-          )}
-        </Card>
+              ))}
+            </div>
 
-        <Card className="p-5 space-y-3">
-          <h3 className="text-sm font-bold text-[var(--admin-text)]">Özet</h3>
-          <p className="text-xs admin-text-muted leading-relaxed">
-            Klasik QR her zaman ücretsiz. Masa ve kampanya linkleri istatistik / karşılama için
-            URL’de taşınır.
-          </p>
-          <div
-            className="rounded-xl p-3 text-xs break-all"
-            style={{ background: 'var(--admin-input-bg)' }}
-          >
-            {activeUrl}
-          </div>
-        </Card>
-      </div>
+            {selectedCampaign && (
+              <div className="barcode-enlarge">
+                <QrPreview
+                  title={selectedCampaign.label}
+                  subtitle={user?.restaurant.name || ''}
+                  url={campaignUrl}
+                  fg={color.fg}
+                  bg={color.bg}
+                  logo={withLogo && logoSrc ? logoSrc : undefined}
+                  size={220}
+                />
+                <Button className="w-full mt-4" onClick={handlePrint}>
+                  <Printer className="w-4 h-4" /> Kampanya QR yazdır
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </Card>
 
       <style>{`
         @media print {
@@ -421,6 +480,60 @@ export default function BarcodePage() {
   );
 }
 
+function ColorPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
+        Renk
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {QR_COLORS.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => onChange(c.id)}
+            className={`barcode-color-swatch ${value === c.id ? 'is-active' : ''}`}
+            style={{ background: c.fg }}
+            title={c.label}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LogoToggle({
+  checked,
+  onChange,
+  hasLogo,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  hasLogo: boolean;
+}) {
+  return (
+    <label className="flex items-center gap-2.5 text-sm cursor-pointer">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        disabled={!hasLogo}
+        className="rounded accent-[var(--admin-accent)]"
+      />
+      Logo ortalı QR
+      {!hasLogo && (
+        <span className="text-xs admin-text-muted">(önce Ayarlar’dan logo yükle)</span>
+      )}
+    </label>
+  );
+}
+
 function QrPreview({
   title,
   subtitle,
@@ -429,6 +542,11 @@ function QrPreview({
   bg,
   logo,
   size,
+  titleEditable,
+  titleEditing,
+  onTitleEditStart,
+  onTitleChange,
+  onTitleEditEnd,
 }: {
   title: string;
   subtitle: string;
@@ -437,6 +555,11 @@ function QrPreview({
   bg: string;
   logo?: string;
   size: number;
+  titleEditable?: boolean;
+  titleEditing?: boolean;
+  onTitleEditStart?: () => void;
+  onTitleChange?: (name: string) => void;
+  onTitleEditEnd?: () => void;
 }) {
   return (
     <div
@@ -447,9 +570,32 @@ function QrPreview({
         background: bg,
       }}
     >
-      <h2 className="text-xl font-bold text-center" style={{ color: fg }}>
-        {title}
-      </h2>
+      {titleEditable && titleEditing ? (
+        <input
+          autoFocus
+          className="barcode-qr-title-input"
+          value={title}
+          onChange={(e) => onTitleChange?.(e.target.value)}
+          onBlur={() => onTitleEditEnd?.()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === 'Escape') {
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          style={{ color: fg, borderColor: fg }}
+        />
+      ) : (
+        <h2
+          className={`text-xl font-bold text-center ${
+            titleEditable ? 'barcode-qr-title-editable' : ''
+          }`}
+          style={{ color: fg }}
+          title={titleEditable ? 'Tıkla — adı değiştir' : undefined}
+          onClick={titleEditable ? onTitleEditStart : undefined}
+        >
+          {title}
+        </h2>
+      )}
       {subtitle && (
         <p className="text-sm text-center opacity-70" style={{ color: fg }}>
           {subtitle}
