@@ -411,42 +411,30 @@ export default function BarcodePage() {
         {view === 'tables' && activeGroup && (
           <>
             <div className="barcode-group-toolbar">
-              <div className="barcode-group-field barcode-group-select">
+              <div className="barcode-group-field">
                 <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
                   Grup
                 </p>
-                <div className="flex gap-2 items-center">
-                  <select
-                    value={activeGroupId}
-                    onChange={(e) => {
-                      setActiveGroupId(e.target.value);
-                      setSelectedTable(null);
-                      setEditingTable(null);
-                    }}
-                    className="barcode-group-control"
-                    style={{
-                      borderColor: 'var(--admin-card-border)',
-                      background: 'var(--admin-input-bg)',
-                      color: 'var(--admin-text)',
-                    }}
-                  >
-                    {groups.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.name} ({g.count})
-                      </option>
-                    ))}
-                  </select>
-                  {groups.length > 1 && (
-                    <button
-                      type="button"
-                      className="p-2.5 rounded-xl text-red-500 hover:bg-red-50 shrink-0"
-                      title="Grubu sil"
-                      onClick={deleteActiveGroup}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
+                <select
+                  value={activeGroupId}
+                  onChange={(e) => {
+                    setActiveGroupId(e.target.value);
+                    setSelectedTable(null);
+                    setEditingTable(null);
+                  }}
+                  className="barcode-group-control"
+                  style={{
+                    borderColor: 'var(--admin-card-border)',
+                    background: 'var(--admin-input-bg)',
+                    color: 'var(--admin-text)',
+                  }}
+                >
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name} ({g.count})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="barcode-group-field">
                 <Input
@@ -460,6 +448,16 @@ export default function BarcodePage() {
                   }
                 />
               </div>
+              {groups.length > 1 && (
+                <button
+                  type="button"
+                  className="barcode-group-delete"
+                  title="Grubu sil"
+                  onClick={deleteActiveGroup}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
 
             <div className="barcode-table-grid">

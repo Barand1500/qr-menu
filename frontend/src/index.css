@@ -5324,13 +5324,17 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 .barcode-group-field {
-  flex: 1 1 10rem;
-  min-width: 10rem;
-  max-width: 14rem;
+  flex: 0 0 11rem;
+  width: 11rem;
+  max-width: 11rem;
+}
+
+.barcode-group-field .float-field {
+  width: 100%;
 }
 
 .barcode-group-control {
@@ -5340,6 +5344,22 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   border: 1px solid;
   padding: 0 1rem;
   font-size: 0.875rem;
+  box-sizing: border-box;
+}
+
+.barcode-group-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  color: #ef4444;
+  flex-shrink: 0;
+}
+
+.barcode-group-delete:hover {
+  background: #fef2f2;
 }
 
 .barcode-table-grid {
