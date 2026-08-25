@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAddons } from '@/hooks/useAddons';
 import { Button, Card, Input, PageHeader, Spinner } from '@/components/ui';
 import { api, imageUrl } from '@/lib/api';
+import AddTableGroupModal from '@/components/AddTableGroupModal';
 
 type ViewMode = 'classic' | 'tables' | 'campaign';
 
@@ -142,7 +143,6 @@ export default function BarcodePage() {
     Record<string, Record<number, TableStyle>>
   >({});
   const [addingGroup, setAddingGroup] = useState(false);
-  const [groupDraft, setGroupDraft] = useState('');
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
   const [editingTable, setEditingTable] = useState<number | null>(null);
   const [campaigns, setCampaigns] = useState<CampaignItem[]>([
@@ -233,16 +233,18 @@ export default function BarcodePage() {
     );
   }
 
-  function createGroup() {
-    const name = groupDraft.trim();
+  function createGroup(data: { name: string; count: number }) {
+    const name = data.name.trim();
     if (!name) return;
     let id = slugify(name) || `grup-${Date.now()}`;
     if (groups.some((g) => g.id === id)) id = `${id}-${Date.now()}`;
-    const item: TableGroup = { id, name, count: 8 };
+    const item: TableGroup = {
+      id,
+      name,
+      count: Math.max(1, Math.min(60, data.count || 8)),
+    };
     setGroups((prev) => [...prev, item]);
     setActiveGroupId(id);
-    setGroupDraft('');
-    setAddingGroup(false);
     setSelectedTable(null);
     setEditingTable(null);
   }
@@ -299,10 +301,7 @@ export default function BarcodePage() {
           view === 'tables' ? (
             <Button
               type="button"
-              onClick={() => {
-                setAddingGroup(true);
-                setGroupDraft('');
-              }}
+              onClick={() => setAddingGroup(true)}
             >
               <Plus className="w-4 h-4" /> Grup Ekle
             </Button>
@@ -411,49 +410,8 @@ export default function BarcodePage() {
 
         {view === 'tables' && activeGroup && (
           <>
-            {addingGroup && (
-              <div className="barcode-group-create">
-                <Input
-                  label="Yeni grup adı"
-                  value={groupDraft}
-                  onChange={(e) => setGroupDraft(e.target.value)}
-                  placeholder="Örn. Teras, Bahçe, VIP"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') createGroup();
-                  }}
-                />
-                <div className="flex gap-2 shrink-0 pb-0.5">
-                  <Button type="button" onClick={createGroup}>
-                    <Plus className="w-4 h-4" /> Ekle
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      setAddingGroup(false);
-                      setGroupDraft('');
-                    }}
-                  >
-                    İptal
-                  </Button>
-                </div>
-              </div>
-            )}
-
             <div className="barcode-group-toolbar">
-              <div className="w-36">
-                <Input
-                  label="Masa sayısı"
-                  type="number"
-                  min={1}
-                  max={60}
-                  value={String(activeGroup.count)}
-                  onChange={(e) =>
-                    setActiveGroupCount(Number(e.target.value) || 1)
-                  }
-                />
-              </div>
-              <div className="barcode-group-select">
+              <div className="barcode-group-field barcode-group-select">
                 <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
                   Grup
                 </p>
@@ -465,7 +423,7 @@ export default function BarcodePage() {
                       setSelectedTable(null);
                       setEditingTable(null);
                     }}
-                    className="w-full min-w-[10rem] rounded-xl border px-4 py-2.5 text-sm"
+                    className="barcode-group-control"
                     style={{
                       borderColor: 'var(--admin-card-border)',
                       background: 'var(--admin-input-bg)',
@@ -489,6 +447,18 @@ export default function BarcodePage() {
                     </button>
                   )}
                 </div>
+              </div>
+              <div className="barcode-group-field">
+                <Input
+                  label="Masa sayısı"
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={String(activeGroup.count)}
+                  onChange={(e) =>
+                    setActiveGroupCount(Number(e.target.value) || 1)
+                  }
+                />
               </div>
             </div>
 
@@ -681,6 +651,12 @@ export default function BarcodePage() {
           </>
         )}
       </Card>
+
+      <AddTableGroupModal
+        open={addingGroup}
+        onClose={() => setAddingGroup(false)}
+        onAdd={createGroup}
+      />
 
       <style>{`
         @media print {
