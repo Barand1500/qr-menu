@@ -124,6 +124,39 @@ function resolveColor(colorId: string) {
   return { id: 'custom', fg, bg: softBgFromFg(fg), label: 'Özel' };
 }
 
+const TABLE_GROUPS_KEY = 'menu-qr-barcode-table-groups';
+
+function loadTableGroupsState(): {
+  groups: TableGroup[];
+  activeGroupId: string;
+  groupStyles: Record<string, Record<number, TableStyle>>;
+} {
+  const fallback = {
+    groups: [
+      { id: 'salon', name: 'Salon', count: 12 },
+      { id: 'teras', name: 'Teras', count: 8 },
+    ],
+    activeGroupId: 'salon',
+    groupStyles: {} as Record<string, Record<number, TableStyle>>,
+  };
+  try {
+    const raw = localStorage.getItem(TABLE_GROUPS_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as Partial<typeof fallback>;
+    if (!parsed.groups?.length) return fallback;
+    return {
+      groups: parsed.groups,
+      activeGroupId:
+        parsed.groups.some((g) => g.id === parsed.activeGroupId)
+          ? (parsed.activeGroupId as string)
+          : parsed.groups[0].id,
+      groupStyles: parsed.groupStyles || {},
+    };
+  } catch {
+    return fallback;
+  }
+}
+
 export default function BarcodePage() {
   const { user } = useAuth();
   const { isOwned, loading: addonsLoading } = useAddons();
@@ -134,14 +167,12 @@ export default function BarcodePage() {
   const [colorId, setColorId] = useState('black');
   const [withLogo, setWithLogo] = useState(false);
   const [frameId, setFrameId] = useState<FrameId>('yok');
-  const [groups, setGroups] = useState<TableGroup[]>([
-    { id: 'salon', name: 'Salon', count: 12 },
-    { id: 'teras', name: 'Teras', count: 8 },
-  ]);
-  const [activeGroupId, setActiveGroupId] = useState('salon');
+  const initialGroups = useMemo(() => loadTableGroupsState(), []);
+  const [groups, setGroups] = useState<TableGroup[]>(initialGroups.groups);
+  const [activeGroupId, setActiveGroupId] = useState(initialGroups.activeGroupId);
   const [groupStyles, setGroupStyles] = useState<
     Record<string, Record<number, TableStyle>>
-  >({});
+  >(initialGroups.groupStyles);
   const [addingGroup, setAddingGroup] = useState(false);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
   const [editingTable, setEditingTable] = useState<number | null>(null);
@@ -160,6 +191,13 @@ export default function BarcodePage() {
   useEffect(() => {
     setLogoPath(user?.restaurant.logoUrl ?? null);
   }, [user?.restaurant.logoUrl]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      TABLE_GROUPS_KEY,
+      JSON.stringify({ groups, activeGroupId, groupStyles })
+    );
+  }, [groups, activeGroupId, groupStyles]);
 
   useEffect(() => {
     api<{ restaurant: { logoUrl?: string | null } }>('/api/admin/settings')
@@ -645,21 +683,6 @@ export default function BarcodePage() {
         onClose={() => setAddingGroup(false)}
         onAdd={createGroup}
       />
-
-      <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          #print-area, #print-area * { visibility: visible; }
-          #print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            border: none !important;
-            box-shadow: none !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }
@@ -1116,67 +1139,75 @@ function QrPreview({
   onTitleEditEnd?: () => void;
 }) {
   return (
-    <div
-      id="print-area"
-      className="flex flex-col items-center gap-4 p-8 border border-dashed rounded-2xl"
-      style={{
-        borderColor: 'var(--admin-card-border)',
-        background: bg,
-      }}
-    >
-      {titleEditable && titleEditing ? (
-        <input
-          autoFocus
-          className="barcode-qr-title-input"
-          value={title}
-          onChange={(e) => onTitleChange?.(e.target.value)}
-          onBlur={() => onTitleEditEnd?.()}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === 'Escape') {
-              (e.target as HTMLInputElement).blur();
-            }
+    <div id="print-area" className="barcode-print-root">
+      <div className="barcode-print-cut" aria-hidden={false}>
+        <span className="barcode-cut-mark tl" aria-hidden />
+        <span className="barcode-cut-mark tr" aria-hidden />
+        <span className="barcode-cut-mark bl" aria-hidden />
+        <span className="barcode-cut-mark br" aria-hidden />
+        <p className="barcode-cut-hint">Kesim çizgisi</p>
+        <div
+          className="barcode-print-card"
+          style={{
+            background: bg,
+            color: fg,
           }}
-          style={{ color: fg, borderColor: fg }}
-        />
-      ) : (
-        <h2
-          className={`text-xl font-bold text-center ${
-            titleEditable ? 'barcode-qr-title-editable' : ''
-          }`}
-          style={{ color: fg }}
-          title={titleEditable ? 'Tıkla — adı değiştir' : undefined}
-          onClick={titleEditable ? onTitleEditStart : undefined}
         >
-          {title}
-        </h2>
-      )}
-      {subtitle && (
-        <p className="text-sm text-center opacity-70" style={{ color: fg }}>
-          {subtitle}
-        </p>
-      )}
-      <QrFrameShell frameId={frameId} color={fg}>
-        <QRCodeSVG
-          value={url}
-          size={size}
-          level="H"
-          fgColor={fg}
-          bgColor={bg}
-          imageSettings={
-            logo
-              ? {
-                  src: logo,
-                  height: Math.round(size * 0.26),
-                  width: Math.round(size * 0.26),
-                  excavate: true,
+          {titleEditable && titleEditing ? (
+            <input
+              autoFocus
+              className="barcode-qr-title-input"
+              value={title}
+              onChange={(e) => onTitleChange?.(e.target.value)}
+              onBlur={() => onTitleEditEnd?.()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === 'Escape') {
+                  (e.target as HTMLInputElement).blur();
                 }
-              : undefined
-          }
-        />
-      </QrFrameShell>
-      <p className="text-xs break-all text-center max-w-xs opacity-60" style={{ color: fg }}>
-        {url}
-      </p>
+              }}
+              style={{ color: fg, borderColor: fg }}
+            />
+          ) : (
+            <h2
+              className={`barcode-print-title ${
+                titleEditable ? 'barcode-qr-title-editable' : ''
+              }`}
+              style={{ color: fg }}
+              title={titleEditable ? 'Tıkla — adı değiştir' : undefined}
+              onClick={titleEditable ? onTitleEditStart : undefined}
+            >
+              {title}
+            </h2>
+          )}
+          {subtitle && (
+            <p className="barcode-print-subtitle" style={{ color: fg }}>
+              {subtitle}
+            </p>
+          )}
+          <QrFrameShell frameId={frameId} color={fg}>
+            <QRCodeSVG
+              value={url}
+              size={size}
+              level="H"
+              fgColor={fg}
+              bgColor={bg}
+              imageSettings={
+                logo
+                  ? {
+                      src: logo,
+                      height: Math.round(size * 0.26),
+                      width: Math.round(size * 0.26),
+                      excavate: true,
+                    }
+                  : undefined
+              }
+            />
+          </QrFrameShell>
+          <p className="barcode-print-url" style={{ color: fg }}>
+            {url}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
