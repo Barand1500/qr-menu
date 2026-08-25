@@ -74,8 +74,28 @@ function defaultTableStyle(n: number): TableStyle {
   return { name: `Masa ${n}`, colorId: 'black', withLogo: false };
 }
 
+function normalizeHex(value: string): string | null {
+  const v = value.trim().toLowerCase();
+  if (/^#[0-9a-f]{6}$/.test(v)) return v;
+  if (/^#[0-9a-f]{3}$/.test(v)) {
+    return `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`;
+  }
+  return null;
+}
+
+function softBgFromFg(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const mix = (c: number) => Math.round(c * 0.1 + 255 * 0.9);
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+}
+
 function resolveColor(colorId: string) {
-  return QR_COLORS.find((c) => c.id === colorId) || QR_COLORS[0];
+  const preset = QR_COLORS.find((c) => c.id === colorId);
+  if (preset) return preset;
+  const fg = normalizeHex(colorId) || '#0f172a';
+  return { id: 'custom', fg, bg: softBgFromFg(fg), label: 'Özel' };
 }
 
 export default function BarcodePage() {
@@ -487,12 +507,15 @@ function ColorPicker({
   value: string;
   onChange: (id: string) => void;
 }) {
+  const isCustom = !QR_COLORS.some((c) => c.id === value);
+  const customHex = normalizeHex(value) || '#2563eb';
+
   return (
     <div>
       <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
         Renk
       </p>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         {QR_COLORS.map((c) => (
           <button
             key={c.id}
@@ -503,6 +526,28 @@ function ColorPicker({
             title={c.label}
           />
         ))}
+        <label
+          className={`barcode-color-swatch barcode-color-custom ${
+            isCustom ? 'is-active' : ''
+          }`}
+          title="Özel renk seç"
+        >
+          <span
+            className="barcode-color-custom-face"
+            style={isCustom ? { background: customHex } : undefined}
+          />
+          <input
+            type="color"
+            value={customHex}
+            aria-label="Özel renk seç"
+            onChange={(e) => onChange(e.target.value.toLowerCase())}
+            onClick={(e) => {
+              // Preset seçiliyken tıklanınca mevcut özel rengi uygula
+              if (!isCustom) onChange(customHex);
+              e.stopPropagation();
+            }}
+          />
+        </label>
       </div>
     </div>
   );
