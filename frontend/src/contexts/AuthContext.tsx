@@ -21,6 +21,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string, remember?: boolean) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -29,15 +30,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  async function refreshUser() {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (!token) {
+      setUser(null);
+      return;
+    }
+    const me = await api<User>('/api/auth/me');
+    setUser(me);
+  }
+
   useEffect(() => {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (!token) {
       setLoading(false);
       return;
     }
-    api<User>('/api/auth/me')
-      .then(setUser)
-      .catch(() => localStorage.removeItem('token'))
+    refreshUser()
+      .catch(() => {
+        localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
+        setUser(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -58,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

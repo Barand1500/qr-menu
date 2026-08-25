@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
 import { TranslatableTextarea } from '@/components/TranslatableField';
 import AddLanguageModal from '@/components/AddLanguageModal';
@@ -71,6 +72,7 @@ function SettingsSection({
 }
 
 export default function SettingsPage() {
+  const { refreshUser } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [data, setData] = useState<SettingsData | null>(null);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
@@ -181,12 +183,17 @@ export default function SettingsPage() {
       if (logoFile) {
         const fd = new FormData();
         fd.append('logo', logoFile);
-        await fetch('/api/admin/settings/logo', {
+        const token =
+          localStorage.getItem('token') || sessionStorage.getItem('token');
+        const logoRes = await fetch('/api/admin/settings/logo', {
           method: 'POST',
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+          headers: { Authorization: `Bearer ${token}` },
           body: fd,
         });
+        if (!logoRes.ok) throw new Error('Logo yüklenemedi');
+        setLogoFile(null);
       }
+      await refreshUser();
       alert('Ayarlar kaydedildi');
     } finally {
       setSaving(false);

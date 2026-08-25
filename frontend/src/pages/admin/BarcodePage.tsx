@@ -15,7 +15,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAddons } from '@/hooks/useAddons';
 import { Button, Card, Input, PageHeader, Spinner } from '@/components/ui';
-import { imageUrl } from '@/lib/api';
+import { api, imageUrl } from '@/lib/api';
 
 type ViewMode = 'classic' | 'tables' | 'campaign';
 
@@ -120,7 +120,23 @@ export default function BarcodePage() {
   const [selectedCampaign, setSelectedCampaign] = useState<CampaignItem | null>(null);
 
   const color = resolveColor(colorId);
-  const logoSrc = user?.restaurant.logoUrl ? imageUrl(user.restaurant.logoUrl) : '';
+  const [logoPath, setLogoPath] = useState<string | null>(
+    user?.restaurant.logoUrl ?? null
+  );
+
+  useEffect(() => {
+    setLogoPath(user?.restaurant.logoUrl ?? null);
+  }, [user?.restaurant.logoUrl]);
+
+  useEffect(() => {
+    api<{ restaurant: { logoUrl?: string | null } }>('/api/admin/settings')
+      .then((d) => {
+        if (d.restaurant.logoUrl) setLogoPath(d.restaurant.logoUrl);
+      })
+      .catch(() => {});
+  }, []);
+
+  const logoSrc = logoPath ? imageUrl(logoPath) : '';
   const origin = window.location.origin;
 
   const classicUrl = `${origin}/menu`;
@@ -626,10 +642,14 @@ function LogoToggle({
   hasLogo: boolean;
 }) {
   return (
-    <label className="flex items-center gap-2.5 text-sm cursor-pointer">
+    <label
+      className={`flex items-center gap-2.5 text-sm select-none ${
+        hasLogo ? 'cursor-pointer text-[var(--admin-text)]' : 'cursor-not-allowed opacity-60'
+      }`}
+    >
       <input
         type="checkbox"
-        checked={checked}
+        checked={checked && hasLogo}
         onChange={(e) => onChange(e.target.checked)}
         disabled={!hasLogo}
         className="rounded accent-[var(--admin-accent)]"
