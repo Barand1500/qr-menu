@@ -15,7 +15,7 @@ import { HexColorPicker, HexColorInput } from 'react-colorful';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAddons } from '@/hooks/useAddons';
-import { Button, Card, Input, PageHeader, Spinner } from '@/components/ui';
+import { Button, Card, Input, PageHeader, Select, Spinner } from '@/components/ui';
 import { api, imageUrl } from '@/lib/api';
 import AddTableGroupModal from '@/components/AddTableGroupModal';
 
@@ -412,29 +412,19 @@ export default function BarcodePage() {
           <>
             <div className="barcode-group-toolbar">
               <div className="barcode-group-field">
-                <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
-                  Grup
-                </p>
-                <select
+                <Select
+                  label="Grup"
                   value={activeGroupId}
                   onChange={(e) => {
                     setActiveGroupId(e.target.value);
                     setSelectedTable(null);
                     setEditingTable(null);
                   }}
-                  className="barcode-group-control"
-                  style={{
-                    borderColor: 'var(--admin-card-border)',
-                    background: 'var(--admin-input-bg)',
-                    color: 'var(--admin-text)',
-                  }}
-                >
-                  {groups.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name} ({g.count})
-                    </option>
-                  ))}
-                </select>
+                  options={groups.map((g) => ({
+                    value: g.id,
+                    label: `${g.name} (${g.count})`,
+                  }))}
+                />
               </div>
               <div className="barcode-group-field">
                 <Input

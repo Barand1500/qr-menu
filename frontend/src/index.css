@@ -5335,27 +5335,34 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 .barcode-group-field .float-field {
   width: 100%;
+  margin-bottom: 0;
+  border-radius: 12px;
 }
 
-.barcode-group-control {
-  width: 100%;
-  height: 2.75rem;
-  border-radius: 0.75rem;
-  border: 1px solid;
-  padding: 0 1rem;
+.barcode-group-field .float-field__input {
+  padding: 10px 12px;
   font-size: 0.875rem;
+  line-height: 1.25;
+  min-height: 2.5rem;
   box-sizing: border-box;
+}
+
+.barcode-group-field .float-field.is-floated .float-field__input,
+.barcode-group-field .float-field:focus-within .float-field__input {
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .barcode-group-delete {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 0.75rem;
   color: #ef4444;
   flex-shrink: 0;
+  margin-bottom: 0.15rem;
 }
 
 .barcode-group-delete:hover {
