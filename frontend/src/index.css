@@ -4876,9 +4876,19 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   cursor: not-allowed;
 }
 
+.barcode-color-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.1rem;
+  scrollbar-width: thin;
+}
+
 .barcode-color-swatch {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.55rem;
+  height: 1.55rem;
   border-radius: 9999px;
   border: 2px solid transparent;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
@@ -5097,21 +5107,27 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   min-width: 3.1rem;
   padding: 0.4rem 0.2rem 0.35rem;
   border-radius: 0.85rem;
-  border: 1px solid var(--admin-card-border);
+  border: none;
   background: var(--admin-input-bg);
   color: var(--admin-text);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  box-shadow: inset 0 0 0 1px var(--admin-card-border);
+  transition: box-shadow 0.15s ease, background 0.15s ease, transform 0.15s ease;
 }
 
-.barcode-frame-chip:hover {
-  border-color: var(--admin-accent);
+.barcode-frame-chip:hover,
+.barcode-frame-chip:focus-visible {
   transform: translateY(-1px);
+  box-shadow: inset 0 0 0 1.5px var(--admin-accent);
+  background: var(--admin-input-bg);
+  outline: none;
 }
 
-.barcode-frame-chip.is-active {
-  border-color: var(--admin-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-accent) 25%, transparent);
+.barcode-frame-chip.is-active,
+.barcode-frame-chip.is-active:hover {
   background: color-mix(in srgb, var(--admin-accent-soft) 55%, transparent);
+  box-shadow:
+    inset 0 0 0 2px var(--admin-accent),
+    0 0 0 2px color-mix(in srgb, var(--admin-accent) 22%, transparent);
 }
 
 .barcode-frame-chip-label {
@@ -5173,7 +5189,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   height: 100%;
   pointer-events: none;
   overflow: visible;
-  z-index: 0;
+  z-index: 2;
 }
 
 .barcode-qr-frame--ince {

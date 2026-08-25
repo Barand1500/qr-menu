@@ -34,14 +34,12 @@ const QR_COLORS = [
   { id: 'teal', fg: '#0f766e', bg: '#f0fdfa', label: 'Turkuaz' },
   { id: 'forest', fg: '#14532d', bg: '#f0fdf4', label: 'Yeşil' },
   { id: 'emerald', fg: '#047857', bg: '#ecfdf5', label: 'Zümrüt' },
-  { id: 'olive', fg: '#3f6212', bg: '#f7fee7', label: 'Zeytin' },
   { id: 'wine', fg: '#7f1d1d', bg: '#fff1f2', label: 'Bordo' },
   { id: 'rose', fg: '#be123c', bg: '#fff1f2', label: 'Gül' },
   { id: 'coral', fg: '#c2410c', bg: '#fff7ed', label: 'Mercan' },
   { id: 'gold', fg: '#78350f', bg: '#fffbeb', label: 'Altın' },
   { id: 'amber', fg: '#b45309', bg: '#fffbeb', label: 'Amber' },
   { id: 'purple', fg: '#5b21b6', bg: '#f5f3ff', label: 'Mor' },
-  { id: 'plum', fg: '#86198f', bg: '#fdf4ff', label: 'Erik' },
   { id: 'slate', fg: '#475569', bg: '#f8fafc', label: 'Gri' },
 ];
 
@@ -178,7 +176,15 @@ export default function BarcodePage() {
   );
 
   function getTableStyle(n: number): TableStyle {
-    return tableStyles[n] || defaultTableStyle(n);
+    const base = defaultTableStyle(n);
+    const prev = tableStyles[n];
+    if (!prev) return base;
+    const frameOk = QR_FRAMES.some((f) => f.id === prev.frameId);
+    return {
+      ...base,
+      ...prev,
+      frameId: frameOk ? prev.frameId : base.frameId,
+    };
   }
 
   function patchTableStyle(n: number, patch: Partial<TableStyle>) {
@@ -542,30 +548,31 @@ export default function BarcodePage() {
   );
 }
 
-function FrameOrnament({ frameId }: { frameId: FrameId }) {
-  const c = 'var(--qr-frame-color)';
+function FrameOrnament({ frameId, color }: { frameId: FrameId; color: string }) {
+  const c = color || '#0f172a';
   return (
     <svg
       className="barcode-qr-frame-ornament"
       viewBox="0 0 100 100"
-      preserveAspectRatio="none"
+      preserveAspectRatio="xMidYMid meet"
       aria-hidden
+      style={{ color: c }}
     >
       {frameId === 'ince' && (
-        <g fill="none" stroke={c} strokeWidth="1.2" strokeLinecap="round">
+        <g fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round">
           <path d="M14 28c0-10 8-16 18-16M28 14c10 0 16 8 16 18" />
           <path d="M72 14c10 0 16 8 16 18M86 28c0-10-8-16-18-16" />
           <path d="M14 72c0 10 8 16 18 16M28 86c10 0 16-8 16-18" />
           <path d="M72 86c10 0 16-8 16-18M86 72c0 10-8 16-18 16" />
-          <circle cx="18" cy="18" r="2.2" fill={c} stroke="none" />
-          <circle cx="82" cy="18" r="2.2" fill={c} stroke="none" />
-          <circle cx="18" cy="82" r="2.2" fill={c} stroke="none" />
-          <circle cx="82" cy="82" r="2.2" fill={c} stroke="none" />
+          <circle cx="18" cy="18" r="2.6" fill={c} stroke="none" />
+          <circle cx="82" cy="18" r="2.6" fill={c} stroke="none" />
+          <circle cx="18" cy="82" r="2.6" fill={c} stroke="none" />
+          <circle cx="82" cy="82" r="2.6" fill={c} stroke="none" />
           <path d="M22 16c3-4 8-4 10-1M78 16c-3-4-8-4-10-1M22 84c3 4 8 4 10 1M78 84c-3 4-8 4-10 1" />
         </g>
       )}
       {frameId === 'kalin' && (
-        <g fill="none" stroke={c} strokeWidth="2.4" strokeLinecap="round">
+        <g fill="none" stroke={c} strokeWidth="3.2" strokeLinecap="round">
           <path d="M12 30 V16 H30" />
           <path d="M70 16 H88 V30" />
           <path d="M12 70 V84 H30" />
@@ -710,13 +717,9 @@ function QrCustomizePanel({
               type="button"
               className={`barcode-frame-chip ${frameId === f.id ? 'is-active' : ''}`}
               onClick={() => onFrameChange(f.id)}
-              title={f.label}
             >
-              <span
-                className="barcode-frame-thumb"
-                style={{ ['--qr-frame-color' as string]: accent }}
-              >
-                <FrameOrnament frameId={f.id} />
+              <span className="barcode-frame-thumb">
+                <FrameOrnament frameId={f.id} color={accent} />
                 <span className="barcode-frame-thumb-qr" />
               </span>
               <span className="barcode-frame-chip-label">{f.label}</span>
@@ -773,7 +776,7 @@ function ColorPicker({
       <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
         Renk
       </p>
-      <div className="flex flex-wrap gap-2 items-center">
+      <div className="barcode-color-row">
         {QR_COLORS.map((c) => (
           <button
             key={c.id}
@@ -942,11 +945,8 @@ function QrPreview({
           {subtitle}
         </p>
       )}
-      <div
-        className={`barcode-qr-frame barcode-qr-frame--${frameId}`}
-        style={{ ['--qr-frame-color' as string]: fg }}
-      >
-        <FrameOrnament frameId={frameId} />
+      <div className={`barcode-qr-frame barcode-qr-frame--${frameId}`}>
+        <FrameOrnament frameId={frameId} color={fg} />
         <div className="barcode-qr-frame-inner">
           <QRCodeSVG
             value={url}
