@@ -343,8 +343,8 @@ export default function BarcodePage() {
                         style.withLogo && logoSrc
                           ? {
                               src: logoSrc,
-                              height: 14,
-                              width: 14,
+                              height: 22,
+                              width: 22,
                               excavate: true,
                             }
                           : undefined
@@ -739,8 +739,8 @@ function QrPreview({
           logo
             ? {
                 src: logo,
-                height: Math.round(size * 0.18),
-                width: Math.round(size * 0.18),
+                height: Math.round(size * 0.26),
+                width: Math.round(size * 0.26),
                 excavate: true,
               }
             : undefined
