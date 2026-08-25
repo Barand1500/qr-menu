@@ -422,7 +422,7 @@ export default function BarcodePage() {
                   }}
                   options={groups.map((g) => ({
                     value: g.id,
-                    label: `${g.name} (${g.count})`,
+                    label: g.name,
                   }))}
                 />
               </div>
