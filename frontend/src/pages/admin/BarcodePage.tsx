@@ -51,7 +51,7 @@ const QR_FRAMES = [
   { id: 'kose', label: 'Köşe' },
   { id: 'halka', label: 'Halka' },
   { id: 'minimal', label: 'Minimal' },
-  { id: 'lux', label: 'Lüks' },
+  { id: 'sarma', label: 'Sarmaşık' },
 ] as const;
 
 type FrameId = (typeof QR_FRAMES)[number]['id'];
@@ -667,18 +667,39 @@ function FloralCorner({ variant }: { variant: FrameId }) {
     );
   }
 
-  // lux
+  // sarmaşık + çiçek
   return (
     <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
-      <path {...common} strokeWidth="2.2" d="M6 28V8h20" />
-      <path {...common} strokeWidth="1.4" d="M10 12h12v12" />
-      <path {...common} strokeWidth="1.7" d="M10 8c5-8 14-7 18 2" />
-      <path {...common} strokeWidth="1.7" d="M8 10c-8 5-7 14 2 18" />
-      <circle cx="8" cy="8" r="2.6" fill="currentColor" />
-      <path fill="currentColor" d="M20 4c4-5 10-3 10 3-5-1-8 2-10-3z" />
-      <path fill="currentColor" d="M4 20c-5 4-3 10 3 10-1-5 2-8-3-10z" />
-      <circle cx="18" cy="8" r="1.4" fill="currentColor" />
-      <circle cx="8" cy="18" r="1.4" fill="currentColor" />
+      {/* Sarmaşık gövdesi */}
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        d="M8 32C8 20 10 14 18 10c6-3 10-2 14 2"
+      />
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        opacity="0.7"
+        d="M10 28c4-6 8-8 14-8"
+      />
+      {/* Yapraklar */}
+      <path fill="currentColor" d="M14 18c-4-5-2-9 2-10 1 4-1 8-2 10z" />
+      <path fill="currentColor" d="M20 12c3-5 8-5 10-1-4 2-7 4-10 1z" opacity="0.9" />
+      <path fill="currentColor" d="M12 24c-5-2-7 2-5 6 3-1 5-3 5-6z" opacity="0.85" />
+      {/* Çiçek */}
+      <circle cx="28" cy="10" r="2.2" fill="currentColor" />
+      <circle cx="25.2" cy="8.2" r="1.5" fill="currentColor" opacity="0.8" />
+      <circle cx="30.8" cy="8.2" r="1.5" fill="currentColor" opacity="0.8" />
+      <circle cx="25.2" cy="11.8" r="1.5" fill="currentColor" opacity="0.8" />
+      <circle cx="30.8" cy="11.8" r="1.5" fill="currentColor" opacity="0.8" />
+      <circle cx="28" cy="10" r="1" fill="#fff" opacity="0.9" />
+      {/* Küçük tomurcuk */}
+      <circle cx="10" cy="14" r="1.4" fill="currentColor" />
+      <circle cx="16" cy="28" r="1.2" fill="currentColor" opacity="0.7" />
     </svg>
   );
 }

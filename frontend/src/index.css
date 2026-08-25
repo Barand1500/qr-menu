@@ -5296,15 +5296,21 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   border: none;
 }
 
-.barcode-qr-frame--lux {
-  --qr-frame-pad: 1.9rem;
-  --qr-corner-size: 2.75rem;
+.barcode-qr-frame--sarma {
+  --qr-frame-pad: 1.95rem;
+  --qr-corner-size: 2.9rem;
 }
 
-.barcode-qr-frame--lux .barcode-qr-frame-ring {
+.barcode-qr-frame--sarma .barcode-qr-frame-ring {
   border-width: 1.5px;
-  border-radius: 0.45rem;
-  box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--qr-frame-color) 16%, transparent);
+  border-style: solid;
+  border-radius: 1rem;
+  border-color: color-mix(in srgb, var(--qr-frame-color) 45%, transparent);
+  background:
+    radial-gradient(circle at 12% 12%, color-mix(in srgb, var(--qr-frame-color) 14%, transparent) 0 7%, transparent 8%),
+    radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--qr-frame-color) 14%, transparent) 0 7%, transparent 8%),
+    radial-gradient(circle at 12% 88%, color-mix(in srgb, var(--qr-frame-color) 14%, transparent) 0 7%, transparent 8%),
+    radial-gradient(circle at 88% 88%, color-mix(in srgb, var(--qr-frame-color) 14%, transparent) 0 7%, transparent 8%);
 }
 
 .barcode-qr-frame.is-thumb.barcode-qr-frame--halka .barcode-qr-frame-ring {
