@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Printer,
@@ -10,6 +10,7 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react';
+import { HexColorPicker, HexColorInput } from 'react-colorful';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAddons } from '@/hooks/useAddons';
@@ -507,8 +508,38 @@ function ColorPicker({
   value: string;
   onChange: (id: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState('#2563eb');
+  const wrapRef = useRef<HTMLDivElement>(null);
   const isCustom = !QR_COLORS.some((c) => c.id === value);
-  const customHex = normalizeHex(value) || '#2563eb';
+  const customHex = normalizeHex(value) || draft;
+
+  useEffect(() => {
+    const hex = normalizeHex(value);
+    if (hex) setDraft(hex);
+  }, [value]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  function applyCustom(hex: string) {
+    const next = normalizeHex(hex) || hex;
+    setDraft(next);
+    onChange(next.toLowerCase());
+  }
 
   return (
     <div>
@@ -520,34 +551,66 @@ function ColorPicker({
           <button
             key={c.id}
             type="button"
-            onClick={() => onChange(c.id)}
+            onClick={() => {
+              setOpen(false);
+              onChange(c.id);
+            }}
             className={`barcode-color-swatch ${value === c.id ? 'is-active' : ''}`}
             style={{ background: c.fg }}
             title={c.label}
           />
         ))}
-        <label
-          className={`barcode-color-swatch barcode-color-custom ${
-            isCustom ? 'is-active' : ''
-          }`}
-          title="Özel renk seç"
-        >
-          <span
-            className="barcode-color-custom-face"
-            style={isCustom ? { background: customHex } : undefined}
-          />
-          <input
-            type="color"
-            value={customHex}
-            aria-label="Özel renk seç"
-            onChange={(e) => onChange(e.target.value.toLowerCase())}
-            onClick={(e) => {
-              // Preset seçiliyken tıklanınca mevcut özel rengi uygula
-              if (!isCustom) onChange(customHex);
-              e.stopPropagation();
+        <div className="barcode-color-custom-wrap" ref={wrapRef}>
+          <button
+            type="button"
+            className={`barcode-color-swatch barcode-color-custom ${
+              isCustom || open ? 'is-active' : ''
+            }`}
+            title="Özel renk"
+            aria-expanded={open}
+            aria-haspopup="dialog"
+            onClick={() => {
+              const next = !open;
+              setOpen(next);
+              if (next && !isCustom) applyCustom(draft);
             }}
-          />
-        </label>
+          >
+            <span
+              className="barcode-color-custom-face"
+              style={isCustom ? { background: customHex } : undefined}
+            />
+          </button>
+
+          {open && (
+            <div className="barcode-color-popover" role="dialog" aria-label="Özel renk seç">
+              <div className="barcode-color-popover-head">
+                <span>Özel renk</span>
+                <button
+                  type="button"
+                  className="barcode-color-popover-close"
+                  onClick={() => setOpen(false)}
+                  aria-label="Kapat"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <HexColorPicker color={customHex} onChange={applyCustom} />
+              <div className="barcode-color-popover-foot">
+                <span
+                  className="barcode-color-popover-preview"
+                  style={{ background: customHex }}
+                />
+                <HexColorInput
+                  color={customHex}
+                  onChange={applyCustom}
+                  prefixed
+                  className="barcode-color-hex-input"
+                  aria-label="Hex renk kodu"
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

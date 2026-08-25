@@ -4924,29 +4924,133 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
 }
 
-.barcode-color-custom input[type='color'] {
+.barcode-color-custom-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.barcode-color-popover {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  opacity: 0;
-  cursor: pointer;
-  /* Safari / iOS: keep hit area usable */
-  -webkit-appearance: none;
-  appearance: none;
-  background: transparent;
+  z-index: 40;
+  top: calc(100% + 0.65rem);
+  right: 0;
+  width: 220px;
+  padding: 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid var(--admin-card-border);
+  background: var(--admin-card-bg, #fff);
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.14),
+    0 2px 8px rgba(15, 23, 42, 0.06);
+  animation: barcode-color-pop 0.18s ease-out;
 }
 
-.barcode-color-custom input[type='color']::-webkit-color-swatch-wrapper {
-  padding: 0;
+@keyframes barcode-color-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-.barcode-color-custom input[type='color']::-webkit-color-swatch {
-  border: none;
+@media (prefers-reduced-motion: reduce) {
+  .barcode-color-popover {
+    animation: none;
+  }
+}
+
+.barcode-color-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--admin-text-muted, #64748b);
+}
+
+.barcode-color-popover-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.45rem;
+  color: var(--admin-text-muted, #64748b);
+}
+
+.barcode-color-popover-close:hover {
+  background: var(--admin-accent-soft, #eff6ff);
+  color: var(--admin-text);
+}
+
+.barcode-color-popover .react-colorful {
+  width: 100% !important;
+  height: 160px !important;
+}
+
+.barcode-color-popover .react-colorful__saturation {
+  border-radius: 0.75rem;
+  border-bottom: none;
+}
+
+.barcode-color-popover .react-colorful__hue {
+  height: 12px;
+  margin-top: 0.75rem;
   border-radius: 9999px;
+}
+
+.barcode-color-popover .react-colorful__pointer {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35);
+}
+
+.barcode-color-popover .react-colorful__hue-pointer {
+  width: 14px;
+  height: 14px;
+}
+
+.barcode-color-popover-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.barcode-color-popover-preview {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.55rem;
+  flex-shrink: 0;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.barcode-color-hex-input {
+  flex: 1;
+  min-width: 0;
+  height: 2.25rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--admin-card-border);
+  background: var(--admin-input-bg, #f8fafc);
+  color: var(--admin-text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  padding: 0 0.75rem;
+  outline: none;
+}
+
+.barcode-color-hex-input:focus {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-accent) 22%, transparent);
 }
 
 .barcode-table-grid {
