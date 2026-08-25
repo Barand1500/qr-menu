@@ -16,6 +16,7 @@ interface WelcomeData {
   welcomeByLang: Record<string, string>;
   welcomeMusicUrl?: string | null;
   theme?: string;
+  campaign?: { name: string; slug: string; itemCount: number } | null;
 }
 
 const MUSIC_SOURCES = (custom?: string | null) =>
@@ -69,7 +70,11 @@ export default function PublicWelcomePage() {
     setLoading(true);
     setLoadError(null);
 
-    api<WelcomeData>(`/api/menu/${slug}/welcome`)
+    const welcomeParams = new URLSearchParams();
+    if (campaignSlug) welcomeParams.set('kampanya', campaignSlug);
+    const welcomeQs = welcomeParams.toString();
+
+    api<WelcomeData>(`/api/menu/${slug}/welcome${welcomeQs ? `?${welcomeQs}` : ''}`)
       .then((res) => {
         if (!cancelled) {
           setData(res);
@@ -86,13 +91,16 @@ export default function PublicWelcomePage() {
     return () => {
       cancelled = true;
     };
-  }, [slug, navigate]);
+  }, [slug, navigate, campaignSlug]);
 
   function retryLoad() {
     if (!slug) return;
     setLoading(true);
     setLoadError(null);
-    api<WelcomeData>(`/api/menu/${slug}/welcome`)
+    const welcomeParams = new URLSearchParams();
+    if (campaignSlug) welcomeParams.set('kampanya', campaignSlug);
+    const welcomeQs = welcomeParams.toString();
+    api<WelcomeData>(`/api/menu/${slug}/welcome${welcomeQs ? `?${welcomeQs}` : ''}`)
       .then((res) => {
         setData(res);
         setLoading(false);
@@ -338,7 +346,7 @@ export default function PublicWelcomePage() {
               )}
               {campaignSlug && (
                 <span className="welcome-card__chip welcome-card__chip--campaign">
-                  {campaignSlug.replace(/-/g, ' ')}
+                  {data?.campaign?.name || 'Kampanya'}
                 </span>
               )}
             </div>

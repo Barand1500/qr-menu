@@ -18,6 +18,8 @@ import { useAddons } from '@/hooks/useAddons';
 import { Button, Card, Input, PageHeader, Select, Spinner } from '@/components/ui';
 import { api, imageUrl } from '@/lib/api';
 import AddTableGroupModal from '@/components/AddTableGroupModal';
+import AddCampaignModal from '@/components/AddCampaignModal';
+import CampaignMenuModal from '@/components/CampaignMenuModal';
 
 type ViewMode = 'classic' | 'tables' | 'campaign';
 
@@ -58,10 +60,11 @@ const QR_FRAMES = [
 
 type FrameId = (typeof QR_FRAMES)[number]['id'];
 
-interface CampaignItem {
-  id: string;
-  label: string;
+interface CampaignRow {
+  id: number;
+  name: string;
   slug: string;
+  itemCount: number;
 }
 
 interface TableGroup {
@@ -177,12 +180,13 @@ export default function BarcodePage() {
   const [addingGroup, setAddingGroup] = useState(false);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
   const [editingTable, setEditingTable] = useState<number | null>(null);
-  const [campaigns, setCampaigns] = useState<CampaignItem[]>([
-    { id: '1', label: 'İftar Menüsü', slug: 'iftar' },
-    { id: '2', label: 'Happy Hour', slug: 'happy-hour' },
-  ]);
-  const [campaignDraft, setCampaignDraft] = useState('');
-  const [selectedCampaign, setSelectedCampaign] = useState<CampaignItem | null>(null);
+  const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
+  const [campaignsLoading, setCampaignsLoading] = useState(false);
+  const [campaignSaving, setCampaignSaving] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState<CampaignRow | null>(null);
+  const [addingCampaign, setAddingCampaign] = useState(false);
+  const [editingCampaignName, setEditingCampaignName] = useState(false);
+  const [menuModalOpen, setMenuModalOpen] = useState(false);
 
   const color = resolveColor(colorId);
   const [logoPath, setLogoPath] = useState<string | null>(
@@ -269,6 +273,16 @@ export default function BarcodePage() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    setCampaignsLoading(true);
+    api<{ campaigns: CampaignRow[] }>('/api/admin/campaigns')
+      .then((d) => {
+        setCampaigns(d.campaigns || []);
+      })
+      .catch(() => setCampaigns([]))
+      .finally(() => setCampaignsLoading(false));
+  }, []);
+
   const logoSrc = logoPath ? imageUrl(logoPath) : '';
   const origin = window.location.origin;
   const activeGroup =
@@ -290,7 +304,7 @@ export default function BarcodePage() {
     view === 'tables' && selectedTable
       ? getTableStyle(selectedTable).name
       : view === 'campaign' && selectedCampaign
-        ? selectedCampaign.label
+        ? selectedCampaign.name
         : user?.restaurant.name || 'Menü';
 
   const tables = useMemo(() => {
@@ -376,14 +390,72 @@ export default function BarcodePage() {
     window.print();
   }
 
-  function addCampaign() {
-    const label = campaignDraft.trim();
-    if (!label) return;
-    const slug = slugify(label) || `kampanya-${Date.now()}`;
-    const item = { id: String(Date.now()), label, slug };
-    setCampaigns((prev) => [...prev, item]);
-    setCampaignDraft('');
-    setSelectedCampaign(item);
+  async function addCampaign(name: string) {
+    if (!name.trim() || campaignSaving) return;
+    setCampaignSaving(true);
+    try {
+      const created = await api<CampaignRow>('/api/admin/campaigns', {
+        method: 'POST',
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      setCampaigns((prev) => [...prev, created]);
+      setSelectedCampaign(created);
+      setAddingCampaign(false);
+      setMenuModalOpen(true);
+    } catch {
+      alert('Kampanya eklenemedi');
+    } finally {
+      setCampaignSaving(false);
+    }
+  }
+
+  async function deleteCampaign(id: number) {
+    try {
+      await api(`/api/admin/campaigns/${id}`, { method: 'DELETE' });
+      setCampaigns((prev) => prev.filter((x) => x.id !== id));
+      if (selectedCampaign?.id === id) {
+        setSelectedCampaign(null);
+        setMenuModalOpen(false);
+      }
+    } catch {
+      alert('Kampanya silinemedi');
+    }
+  }
+
+  function patchSelectedCampaignName(name: string) {
+    setSelectedCampaign((prev) => (prev ? { ...prev, name } : prev));
+    setCampaigns((prev) =>
+      prev.map((c) => (c.id === selectedCampaign?.id ? { ...c, name } : c))
+    );
+  }
+
+  async function commitCampaignName() {
+    if (!selectedCampaign) return;
+    const trimmed = selectedCampaign.name.trim();
+    if (!trimmed) {
+      patchSelectedCampaignName('Kampanya');
+      setEditingCampaignName(false);
+      return;
+    }
+    try {
+      const updated = await api<CampaignRow>(
+        `/api/admin/campaigns/${selectedCampaign.id}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({ name: trimmed }),
+        }
+      );
+      setCampaigns((prev) =>
+        prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c))
+      );
+      setSelectedCampaign((prev) =>
+        prev && prev.id === updated.id ? { ...prev, ...updated } : prev
+      );
+    } catch {
+      alert('Kampanya adı güncellenemedi');
+    } finally {
+      setEditingCampaignName(false);
+    }
   }
 
   if (addonsLoading) return <Spinner />;
@@ -399,12 +471,25 @@ export default function BarcodePage() {
         title="Barkod Yazdır"
         actions={
           view === 'tables' ? (
-            <Button
-              type="button"
-              onClick={() => setAddingGroup(true)}
-            >
+            <Button type="button" onClick={() => setAddingGroup(true)}>
               <Plus className="w-4 h-4" /> Grup Ekle
             </Button>
+          ) : view === 'campaign' ? (
+            <div className="flex flex-wrap gap-2 justify-end">
+              <Button type="button" onClick={() => setAddingCampaign(true)}>
+                <Plus className="w-4 h-4" /> Kampanya Ekle
+              </Button>
+              {selectedCampaign && (
+                <>
+                  <Button type="button" onClick={() => setMenuModalOpen(true)}>
+                    <Megaphone className="w-4 h-4" /> Özel menü
+                  </Button>
+                  <Button type="button" onClick={handlePrint}>
+                    <Printer className="w-4 h-4" /> Yazdır
+                  </Button>
+                </>
+              )}
+            </div>
           ) : (
             <Button onClick={handlePrint}>
               <Printer className="w-4 h-4" /> Yazdır
@@ -433,7 +518,9 @@ export default function BarcodePage() {
                 setSelectedTable(null);
                 setSelectedCampaign(null);
                 setEditingTable(null);
+                setEditingCampaignName(false);
                 setAddingGroup(false);
+                setAddingCampaign(false);
               }}
               className={`barcode-mode-chip ${view === tab.id ? 'is-active' : ''} ${
                 locked ? 'is-locked' : ''
@@ -658,71 +745,106 @@ export default function BarcodePage() {
 
         {view === 'campaign' && (
           <>
-            <div className="flex flex-wrap gap-2 items-end">
-              <div className="flex-1 min-w-[180px]">
-                <Input
-                  label="Yeni kampanya adı"
-                  value={campaignDraft}
-                  onChange={(e) => setCampaignDraft(e.target.value)}
-                  placeholder="Örn. Yaz Menüsü"
-                />
+            {campaignsLoading ? (
+              <Spinner />
+            ) : campaigns.length === 0 ? (
+              <p className="text-sm admin-text-muted py-6 text-center">
+                Henüz kampanya yok. Yukarıdan <strong>Kampanya Ekle</strong> ile başla.
+              </p>
+            ) : (
+              <div className="barcode-campaign-grid">
+                {campaigns.map((c) => {
+                  const url = `${origin}/menu?kampanya=${c.slug}`;
+                  return (
+                    <div
+                      key={c.id}
+                      className={`barcode-campaign-card ${
+                        selectedCampaign?.id === c.id ? 'is-active' : ''
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        className="barcode-campaign-card__body"
+                        onClick={() => {
+                          setSelectedCampaign((prev) =>
+                            prev?.id === c.id ? null : c
+                          );
+                          setEditingCampaignName(false);
+                        }}
+                      >
+                        <QRCodeSVG
+                          value={url}
+                          size={72}
+                          level="M"
+                          fgColor={
+                            selectedCampaign?.id === c.id ? color.fg : '#0f172a'
+                          }
+                          bgColor={
+                            selectedCampaign?.id === c.id ? color.bg : '#ffffff'
+                          }
+                          imageSettings={
+                            selectedCampaign?.id === c.id && withLogo && logoSrc
+                              ? {
+                                  src: logoSrc,
+                                  height: 22,
+                                  width: 22,
+                                  excavate: true,
+                                }
+                              : undefined
+                          }
+                        />
+                        <span className="barcode-campaign-card__name">{c.name}</span>
+                        <span className="barcode-campaign-card__meta">
+                          {c.itemCount > 0 ? `${c.itemCount} ürün` : 'Menü yok'}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="barcode-campaign-card__delete"
+                        onClick={() => void deleteCampaign(c.id)}
+                        aria-label="Kampanyayı sil"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
-              <Button type="button" onClick={addCampaign}>
-                <Plus className="w-4 h-4" /> Ekle
-              </Button>
-            </div>
-
-            {qrPack && selectedCampaign && (
-              <QrCustomizePanel
-                colorId={colorId}
-                onColorChange={setColorId}
-                withLogo={withLogo}
-                onLogoChange={setWithLogo}
-                hasLogo={!!logoSrc}
-                frameId={frameId}
-                onFrameChange={setFrameId}
-                accent={color.fg}
-              />
             )}
-
-            <div className="space-y-2">
-              {campaigns.map((c) => (
-                <div
-                  key={c.id}
-                  className={`barcode-campaign-row ${
-                    selectedCampaign?.id === c.id ? 'is-active' : ''
-                  }`}
-                >
-                  <button
-                    type="button"
-                    className="flex-1 text-left min-w-0"
-                    onClick={() => setSelectedCampaign(c)}
-                  >
-                    <p className="font-semibold text-[var(--admin-text)] truncate">
-                      {c.label}
-                    </p>
-                    <p className="text-xs admin-text-muted truncate">
-                      /menu?kampanya={c.slug}
-                    </p>
-                  </button>
-                  <button
-                    type="button"
-                    className="p-2 rounded-lg text-red-500 hover:bg-red-50"
-                    onClick={() => {
-                      setCampaigns((prev) => prev.filter((x) => x.id !== c.id));
-                      if (selectedCampaign?.id === c.id) setSelectedCampaign(null);
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
 
             {selectedCampaign && (
               <div className="barcode-enlarge">
+                <div className="flex items-start justify-end mb-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCampaign(null);
+                      setEditingCampaignName(false);
+                    }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--admin-accent-soft)] shrink-0"
+                    aria-label="Kapat"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {qrPack && (
+                  <div className="mb-5">
+                    <QrCustomizePanel
+                      colorId={colorId}
+                      onColorChange={setColorId}
+                      withLogo={withLogo}
+                      onLogoChange={setWithLogo}
+                      hasLogo={!!logoSrc}
+                      frameId={frameId}
+                      onFrameChange={setFrameId}
+                      accent={color.fg}
+                    />
+                  </div>
+                )}
+
                 <QrPreview
-                  title={selectedCampaign.label}
+                  title={selectedCampaign.name}
                   subtitle={user?.restaurant.name || ''}
                   url={campaignUrl}
                   fg={color.fg}
@@ -730,10 +852,12 @@ export default function BarcodePage() {
                   logo={withLogo && logoSrc ? logoSrc : undefined}
                   frameId={qrPack ? frameId : 'yok'}
                   size={220}
+                  titleEditable
+                  titleEditing={editingCampaignName}
+                  onTitleEditStart={() => setEditingCampaignName(true)}
+                  onTitleChange={patchSelectedCampaignName}
+                  onTitleEditEnd={() => void commitCampaignName()}
                 />
-                <Button className="w-full mt-4" onClick={handlePrint}>
-                  <Printer className="w-4 h-4" /> Kampanya QR yazdır
-                </Button>
               </div>
             )}
           </>
@@ -744,6 +868,31 @@ export default function BarcodePage() {
         open={addingGroup}
         onClose={() => setAddingGroup(false)}
         onAdd={createGroup}
+      />
+
+      <AddCampaignModal
+        open={addingCampaign}
+        saving={campaignSaving}
+        onClose={() => setAddingCampaign(false)}
+        onAdd={addCampaign}
+      />
+
+      <CampaignMenuModal
+        open={menuModalOpen}
+        campaignId={selectedCampaign?.id ?? null}
+        campaignName={selectedCampaign?.name ?? ''}
+        onClose={() => setMenuModalOpen(false)}
+        onSaved={(itemCount) => {
+          if (!selectedCampaign) return;
+          setCampaigns((prev) =>
+            prev.map((c) =>
+              c.id === selectedCampaign.id ? { ...c, itemCount } : c
+            )
+          );
+          setSelectedCampaign((prev) =>
+            prev ? { ...prev, itemCount } : prev
+          );
+        }}
       />
     </div>
   );

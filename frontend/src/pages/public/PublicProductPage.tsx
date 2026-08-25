@@ -58,6 +58,10 @@ export default function PublicProductPage() {
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [related, setRelated] = useState<RelatedProduct[]>([]);
   const sessionId = getSessionId();
+  const campaignSlug =
+    (typeof sessionStorage !== 'undefined'
+      ? sessionStorage.getItem('menu_kampanya')
+      : null) || '';
 
   usePublicRtl(lang);
 
@@ -68,8 +72,9 @@ export default function PublicProductPage() {
       return;
     }
     const params = new URLSearchParams({ lang, sessionId });
+    if (campaignSlug) params.set('kampanya', campaignSlug);
     api<ProductDetail>(`/api/menu/${slug}/products/${productId}?${params}`).then(setProduct);
-  }, [slug, productId, lang, sessionId, demoEnabled]);
+  }, [slug, productId, lang, sessionId, demoEnabled, campaignSlug]);
 
   useEffect(() => {
     if (!product || !slug) return;
@@ -88,12 +93,13 @@ export default function PublicProductPage() {
     }
 
     const params = new URLSearchParams({ lang, sessionId });
+    if (campaignSlug) params.set('kampanya', campaignSlug);
     api<{ products: RelatedProduct[] }>(
       `/api/menu/${slug}/groups/${product.group.id}/products?${params}`
     ).then((data) => {
       setRelated(data.products.filter((p) => p.id !== product.id).slice(0, 8));
     });
-  }, [product, slug, lang, sessionId, demoEnabled]);
+  }, [product, slug, lang, sessionId, demoEnabled, campaignSlug]);
 
   const galleryImageCount = product
     ? product.images && product.images.length > 0

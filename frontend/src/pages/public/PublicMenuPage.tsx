@@ -43,6 +43,7 @@ interface MenuData {
   stories?: MenuStory[];
   groups: { id: number; name: string; imageUrl?: string | null; productCount?: number }[];
   theme?: string;
+  campaign?: { name: string; slug: string; itemCount: number } | null;
 }
 
 interface ProductData {
@@ -97,12 +98,20 @@ export default function PublicMenuPage() {
     if (kampanya) sessionStorage.setItem('menu_kampanya', kampanya);
   }, [searchParams]);
 
+  const campaignSlug =
+    searchParams.get('kampanya') ||
+    (typeof sessionStorage !== 'undefined'
+      ? sessionStorage.getItem('menu_kampanya')
+      : null) ||
+    '';
+
   useEffect(() => {
     if (!slug) return;
     let cancelled = false;
     setMenuLoading(true);
     setMenuError(null);
     const params = new URLSearchParams({ lang, sessionId });
+    if (campaignSlug) params.set('kampanya', campaignSlug);
     api<MenuData>(`/api/menu/${slug}?${params}`)
       .then((res) => {
         if (!cancelled) {
@@ -112,14 +121,18 @@ export default function PublicMenuPage() {
       })
       .catch(() => {
         if (!cancelled) {
-          setMenuError('Menü yüklenemedi. Backend sunucusu çalışmıyor olabilir.');
+          setMenuError(
+            campaignSlug
+              ? 'Kampanya menüsü yüklenemedi. Linki kontrol edin veya backend’i çalıştırın.'
+              : 'Menü yüklenemedi. Backend sunucusu çalışmıyor olabilir.'
+          );
           setMenuLoading(false);
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [slug, lang, sessionId]);
+  }, [slug, lang, sessionId, campaignSlug]);
 
   useEffect(() => {
     if (!slug || !groupId) {
@@ -127,8 +140,9 @@ export default function PublicMenuPage() {
       return;
     }
     const params = new URLSearchParams({ lang, sessionId });
+    if (campaignSlug) params.set('kampanya', campaignSlug);
     api<ProductData>(`/api/menu/${slug}/groups/${groupId}/products?${params}`).then(setProducts);
-  }, [slug, groupId, lang, sessionId]);
+  }, [slug, groupId, lang, sessionId, campaignSlug]);
 
   useEffect(() => {
     if (!slug || !search.trim()) {
@@ -136,12 +150,15 @@ export default function PublicMenuPage() {
       return;
     }
     const t = setTimeout(() => {
-      api<typeof searchResults>(
-        `/api/menu/${slug}/search?q=${encodeURIComponent(search)}&lang=${lang}`
-      ).then(setSearchResults);
+      const params = new URLSearchParams({
+        q: search,
+        lang,
+      });
+      if (campaignSlug) params.set('kampanya', campaignSlug);
+      api<typeof searchResults>(`/api/menu/${slug}/search?${params}`).then(setSearchResults);
     }, 300);
     return () => clearTimeout(t);
-  }, [search, slug, lang]);
+  }, [search, slug, lang, campaignSlug]);
 
   useEffect(() => {
     if (!highlightProductId || !slug) return;
@@ -154,10 +171,12 @@ export default function PublicMenuPage() {
       setPopularProducts(DEMO_POPULAR_PRODUCTS);
       return;
     }
-    api<PopularProduct[]>(`/api/menu/${slug}/popular-products?lang=${lang}&limit=5`).then(
+    const params = new URLSearchParams({ lang, limit: '5' });
+    if (campaignSlug) params.set('kampanya', campaignSlug);
+    api<PopularProduct[]>(`/api/menu/${slug}/popular-products?${params}`).then(
       setPopularProducts
     );
-  }, [slug, lang, demoEnabled]);
+  }, [slug, lang, demoEnabled, campaignSlug]);
 
   function changeLang(code: string) {
     setLang(code);
@@ -195,6 +214,7 @@ export default function PublicMenuPage() {
             setMenuError(null);
             if (!slug) return;
             const params = new URLSearchParams({ lang, sessionId });
+            if (campaignSlug) params.set('kampanya', campaignSlug);
             api<MenuData>(`/api/menu/${slug}?${params}`)
               .then(setMenu)
               .catch(() => setMenuError('Hâlâ bağlanamıyoruz.'))
@@ -427,6 +447,17 @@ export default function PublicMenuPage() {
                     </BrushCaptionBlock>
                   </div>
                 )}
+              </div>
+            )}
+
+            {menu.campaign && (
+              <div className="mx-4 mb-3 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 public-menu-reveal public-menu-reveal--2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-800/80">
+                  Kampanya menüsü
+                </p>
+                <p className="text-sm font-semibold text-amber-950 mt-0.5">
+                  {menu.campaign.name}
+                </p>
               </div>
             )}
 

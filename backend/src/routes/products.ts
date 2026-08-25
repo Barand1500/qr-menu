@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   const { search, groupId, active, page = '1', limit = '10' } = req.query;
   const pageNum = Math.max(1, parseInt(String(page), 10));
-  const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10)));
+  const limitNum = Math.min(500, Math.max(1, parseInt(String(limit), 10)));
   const skip = (pageNum - 1) * limitNum;
 
   const where: Record<string, unknown> = { restaurantId };

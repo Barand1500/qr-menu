@@ -43,6 +43,7 @@ model Restaurant {
   complaints     Complaint[]
   suggestions    Suggestion[]
   qrTableGroups  QrTableGroup[]
+  campaigns      Campaign[]
 
   @@map("restoranlar")
 }
@@ -83,6 +84,7 @@ model Currency {
   isActive Boolean @default(true) @map("aktif")
 
   products Product[]
+  campaignItems CampaignItem[]
 
   @@map("para_birimleri")
 }
@@ -136,6 +138,7 @@ model Product {
   group          Group           @relation(fields: [groupId], references: [id], onDelete: Restrict)
   currency       Currency?       @relation(fields: [currencyId], references: [id], onDelete: SetNull)
   showcaseImages ShowcaseImage[]
+  campaignItems  CampaignItem[]
 
   @@index([restaurantId, groupId, sortOrder])
   @@index([currencyId])
@@ -243,4 +246,42 @@ model QrTableGroup {
   @@unique([restaurantId, slug])
   @@index([restaurantId, sortOrder])
   @@map("qr_masa_gruplari")
+}
+
+/// Kampanya (özel menü) — slug QR linkinde: ?kampanya=iftar
+model Campaign {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int      @map("restoran_id")
+  name         String   @db.VarChar(150)
+  slug         String   @db.VarChar(100)
+  isActive     Boolean  @default(true) @map("aktif")
+  sortOrder    Int      @default(0) @map("sira")
+  createdAt    DateTime @default(now()) @map("olusturma")
+  updatedAt    DateTime @updatedAt @map("guncelleme")
+
+  restaurant Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items      CampaignItem[]
+
+  @@unique([restaurantId, slug])
+  @@index([restaurantId, sortOrder])
+  @@map("kampanyalar")
+}
+
+/// Kampanyaya seçilen ürün + özel fiyat / para birimi
+model CampaignItem {
+  id         Int     @id @default(autoincrement())
+  campaignId Int     @map("kampanya_id")
+  productId  Int     @map("urun_id")
+  price      Decimal @db.Decimal(10, 2)
+  currencyId Int?    @map("para_birimi_id")
+  sortOrder  Int     @default(0) @map("sira")
+
+  campaign Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  product  Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  currency Currency? @relation(fields: [currencyId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, productId])
+  @@index([campaignId, sortOrder])
+  @@index([productId])
+  @@map("kampanya_urunleri")
 }
