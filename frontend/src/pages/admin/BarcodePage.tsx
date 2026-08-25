@@ -45,6 +45,27 @@ const QR_COLORS = [
   { id: 'slate', fg: '#475569', bg: '#f8fafc', label: 'Gri' },
 ];
 
+const QR_FRAMES = [
+  { id: 'none', label: 'Yok' },
+  { id: 'ince', label: 'İnce' },
+  { id: 'kalin', label: 'Kalın' },
+  { id: 'cift', label: 'Çift' },
+  { id: 'soft', label: 'Soft' },
+  { id: 'kesik', label: 'Kesik' },
+  { id: 'kose', label: 'Köşe' },
+  { id: 'halka', label: 'Halka' },
+  { id: 'serit', label: 'Şerit' },
+  { id: 'golge', label: 'Gölge' },
+  { id: 'bilet', label: 'Bilet' },
+  { id: 'muhur', label: 'Mühür' },
+  { id: 'defter', label: 'Defter' },
+  { id: 'neon', label: 'Neon' },
+  { id: 'lux', label: 'Lüks' },
+  { id: 'minimal', label: 'Minimal' },
+] as const;
+
+type FrameId = (typeof QR_FRAMES)[number]['id'];
+
 interface CampaignItem {
   id: string;
   label: string;
@@ -55,6 +76,7 @@ interface TableStyle {
   name: string;
   colorId: string;
   withLogo: boolean;
+  frameId: FrameId;
 }
 
 function slugify(text: string) {
@@ -72,7 +94,7 @@ function slugify(text: string) {
 }
 
 function defaultTableStyle(n: number): TableStyle {
-  return { name: `Masa ${n}`, colorId: 'black', withLogo: false };
+  return { name: `Masa ${n}`, colorId: 'black', withLogo: false, frameId: 'none' };
 }
 
 function normalizeHex(value: string): string | null {
@@ -108,6 +130,7 @@ export default function BarcodePage() {
   const [paperSize, setPaperSize] = useState('a4');
   const [colorId, setColorId] = useState('black');
   const [withLogo, setWithLogo] = useState(false);
+  const [frameId, setFrameId] = useState<FrameId>('none');
   const [tableCount, setTableCount] = useState(12);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
   const [editingTable, setEditingTable] = useState<number | null>(null);
@@ -282,14 +305,16 @@ export default function BarcodePage() {
             </div>
 
             {qrPack && (
-              <>
-                <ColorPicker value={colorId} onChange={setColorId} />
-                <LogoToggle
-                  checked={withLogo}
-                  onChange={setWithLogo}
-                  hasLogo={!!logoSrc}
-                />
-              </>
+              <QrCustomizePanel
+                colorId={colorId}
+                onColorChange={setColorId}
+                withLogo={withLogo}
+                onLogoChange={setWithLogo}
+                hasLogo={!!logoSrc}
+                frameId={frameId}
+                onFrameChange={setFrameId}
+                accent={color.fg}
+              />
             )}
 
             <QrPreview
@@ -299,6 +324,7 @@ export default function BarcodePage() {
               fg={qrPack ? color.fg : '#0f172a'}
               bg={qrPack ? color.bg : '#ffffff'}
               logo={qrPack && withLogo ? logoSrc : undefined}
+              frameId={qrPack ? frameId : 'none'}
               size={200}
             />
           </>
@@ -371,19 +397,22 @@ export default function BarcodePage() {
                   </button>
                 </div>
 
-                <div className="space-y-4 mb-5">
-                  <ColorPicker
-                    value={selectedStyle.colorId}
-                    onChange={(id) =>
+                <div className="mb-5">
+                  <QrCustomizePanel
+                    colorId={selectedStyle.colorId}
+                    onColorChange={(id) =>
                       patchTableStyle(selectedTable, { colorId: id })
                     }
-                  />
-                  <LogoToggle
-                    checked={selectedStyle.withLogo}
-                    onChange={(v) =>
+                    withLogo={selectedStyle.withLogo}
+                    onLogoChange={(v) =>
                       patchTableStyle(selectedTable, { withLogo: v })
                     }
                     hasLogo={!!logoSrc}
+                    frameId={selectedStyle.frameId}
+                    onFrameChange={(id) =>
+                      patchTableStyle(selectedTable, { frameId: id })
+                    }
+                    accent={selectedColor.fg}
                   />
                 </div>
 
@@ -396,6 +425,7 @@ export default function BarcodePage() {
                   logo={
                     selectedStyle.withLogo && logoSrc ? logoSrc : undefined
                   }
+                  frameId={selectedStyle.frameId}
                   size={220}
                   titleEditable
                   titleEditing={editingTable === selectedTable}
@@ -435,14 +465,16 @@ export default function BarcodePage() {
             </div>
 
             {qrPack && selectedCampaign && (
-              <div className="space-y-4">
-                <ColorPicker value={colorId} onChange={setColorId} />
-                <LogoToggle
-                  checked={withLogo}
-                  onChange={setWithLogo}
-                  hasLogo={!!logoSrc}
-                />
-              </div>
+              <QrCustomizePanel
+                colorId={colorId}
+                onColorChange={setColorId}
+                withLogo={withLogo}
+                onLogoChange={setWithLogo}
+                hasLogo={!!logoSrc}
+                frameId={frameId}
+                onFrameChange={setFrameId}
+                accent={color.fg}
+              />
             )}
 
             <div className="space-y-2">
@@ -488,6 +520,7 @@ export default function BarcodePage() {
                   fg={color.fg}
                   bg={color.bg}
                   logo={withLogo && logoSrc ? logoSrc : undefined}
+                  frameId={qrPack ? frameId : 'none'}
                   size={220}
                 />
                 <Button className="w-full mt-4" onClick={handlePrint}>
@@ -513,6 +546,60 @@ export default function BarcodePage() {
           }
         }
       `}</style>
+    </div>
+  );
+}
+
+function QrCustomizePanel({
+  colorId,
+  onColorChange,
+  withLogo,
+  onLogoChange,
+  hasLogo,
+  frameId,
+  onFrameChange,
+  accent,
+}: {
+  colorId: string;
+  onColorChange: (id: string) => void;
+  withLogo: boolean;
+  onLogoChange: (v: boolean) => void;
+  hasLogo: boolean;
+  frameId: FrameId;
+  onFrameChange: (id: FrameId) => void;
+  accent: string;
+}) {
+  return (
+    <div className="barcode-customize">
+      <div className="barcode-customize-left space-y-4">
+        <ColorPicker value={colorId} onChange={onColorChange} />
+        <LogoToggle checked={withLogo} onChange={onLogoChange} hasLogo={hasLogo} />
+      </div>
+      <div className="barcode-customize-divider" aria-hidden />
+      <div className="barcode-customize-right">
+        <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
+          QR Çerçevesi
+        </p>
+        <div className="barcode-frame-grid">
+          {QR_FRAMES.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              className={`barcode-frame-chip ${frameId === f.id ? 'is-active' : ''}`}
+              onClick={() => onFrameChange(f.id)}
+              title={f.label}
+            >
+              <span
+                className={`barcode-frame-thumb barcode-qr-frame barcode-qr-frame--${f.id}`}
+                style={{ ['--qr-frame-color' as string]: accent }}
+              >
+                <span className="barcode-frame-thumb-qr" />
+              </span>
+              <span className="barcode-frame-chip-label">{f.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -670,6 +757,7 @@ function QrPreview({
   bg,
   logo,
   size,
+  frameId = 'none',
   titleEditable,
   titleEditing,
   onTitleEditStart,
@@ -683,6 +771,7 @@ function QrPreview({
   bg: string;
   logo?: string;
   size: number;
+  frameId?: FrameId;
   titleEditable?: boolean;
   titleEditing?: boolean;
   onTitleEditStart?: () => void;
@@ -729,23 +818,28 @@ function QrPreview({
           {subtitle}
         </p>
       )}
-      <QRCodeSVG
-        value={url}
-        size={size}
-        level="H"
-        fgColor={fg}
-        bgColor={bg}
-        imageSettings={
-          logo
-            ? {
-                src: logo,
-                height: Math.round(size * 0.26),
-                width: Math.round(size * 0.26),
-                excavate: true,
-              }
-            : undefined
-        }
-      />
+      <div
+        className={`barcode-qr-frame barcode-qr-frame--${frameId}`}
+        style={{ ['--qr-frame-color' as string]: fg }}
+      >
+        <QRCodeSVG
+          value={url}
+          size={size}
+          level="H"
+          fgColor={fg}
+          bgColor={bg}
+          imageSettings={
+            logo
+              ? {
+                  src: logo,
+                  height: Math.round(size * 0.26),
+                  width: Math.round(size * 0.26),
+                  excavate: true,
+                }
+              : undefined
+          }
+        />
+      </div>
       <p className="text-xs break-all text-center max-w-xs opacity-60" style={{ color: fg }}>
         {url}
       </p>
