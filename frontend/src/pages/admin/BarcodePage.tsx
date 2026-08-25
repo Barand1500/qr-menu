@@ -173,6 +173,7 @@ export default function BarcodePage() {
   const [groupStyles, setGroupStyles] = useState<
     Record<string, Record<number, TableStyle>>
   >(initialGroups.groupStyles);
+  const [groupsReady, setGroupsReady] = useState(false);
   const [addingGroup, setAddingGroup] = useState(false);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
   const [editingTable, setEditingTable] = useState<number | null>(null);
@@ -193,11 +194,72 @@ export default function BarcodePage() {
   }, [user?.restaurant.logoUrl]);
 
   useEffect(() => {
-    localStorage.setItem(
-      TABLE_GROUPS_KEY,
-      JSON.stringify({ groups, activeGroupId, groupStyles })
-    );
-  }, [groups, activeGroupId, groupStyles]);
+    api<{
+      groups: {
+        id: string;
+        name: string;
+        count: number;
+        styles?: Record<string, Partial<TableStyle>>;
+      }[];
+      activeGroupId: string;
+    }>('/api/admin/barcode/table-groups')
+      .then((d) => {
+        if (!d.groups?.length) return;
+        setGroups(
+          d.groups.map((g) => ({
+            id: g.id,
+            name: g.name,
+            count: g.count,
+          }))
+        );
+        const nextStyles: Record<string, Record<number, TableStyle>> = {};
+        for (const g of d.groups) {
+          nextStyles[g.id] = {};
+          for (const [key, style] of Object.entries(g.styles || {})) {
+            const n = Number(key);
+            if (!Number.isFinite(n)) continue;
+            nextStyles[g.id][n] = {
+              ...defaultTableStyle(n, g.name),
+              ...style,
+              frameId: (QR_FRAMES.some((f) => f.id === style.frameId)
+                ? style.frameId
+                : 'yok') as FrameId,
+            };
+          }
+        }
+        setGroupStyles(nextStyles);
+        setActiveGroupId(
+          d.groups.some((g) => g.id === d.activeGroupId)
+            ? d.activeGroupId
+            : d.groups[0].id
+        );
+      })
+      .catch(() => {})
+      .finally(() => setGroupsReady(true));
+  }, []);
+
+  useEffect(() => {
+    if (!groupsReady) return;
+    const payload = {
+      activeGroupId,
+      groups: groups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        count: g.count,
+        styles: Object.fromEntries(
+          Object.entries(groupStyles[g.id] || {}).map(([k, v]) => [k, v])
+        ),
+      })),
+    };
+    localStorage.setItem(TABLE_GROUPS_KEY, JSON.stringify({ groups, activeGroupId, groupStyles }));
+    const timer = window.setTimeout(() => {
+      api('/api/admin/barcode/table-groups', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [groups, activeGroupId, groupStyles, groupsReady]);
 
   useEffect(() => {
     api<{ restaurant: { logoUrl?: string | null } }>('/api/admin/settings')

@@ -5426,76 +5426,29 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 .barcode-print-cut {
   position: relative;
   width: min(100%, 22rem);
-  padding: 1.15rem;
-  border: 1.5px dashed #94a3b8;
-  border-radius: 0.35rem;
+  padding: 0;
+  border: none;
   background: transparent;
 }
 
-.barcode-cut-hint {
-  position: absolute;
-  top: -0.55rem;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  padding: 0 0.4rem;
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #94a3b8;
-  background: var(--admin-card, #fff);
-  white-space: nowrap;
-}
-
+.barcode-cut-hint,
 .barcode-cut-mark {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  pointer-events: none;
-  z-index: 2;
-}
-
-.barcode-cut-mark.tl {
-  top: -1px;
-  left: -1px;
-  border-top: 2px solid #64748b;
-  border-left: 2px solid #64748b;
-}
-
-.barcode-cut-mark.tr {
-  top: -1px;
-  right: -1px;
-  border-top: 2px solid #64748b;
-  border-right: 2px solid #64748b;
-}
-
-.barcode-cut-mark.bl {
-  bottom: -1px;
-  left: -1px;
-  border-bottom: 2px solid #64748b;
-  border-left: 2px solid #64748b;
-}
-
-.barcode-cut-mark.br {
-  bottom: -1px;
-  right: -1px;
-  border-bottom: 2px solid #64748b;
-  border-right: 2px solid #64748b;
+  display: none;
 }
 
 .barcode-print-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1.35rem 1.1rem 1.1rem;
-  border-radius: 0.75rem;
+  gap: 1rem;
+  padding: 2rem;
+  border-radius: 1rem;
+  border: 1px dashed var(--admin-card-border);
 }
 
 .barcode-print-title {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: 700;
   text-align: center;
   line-height: 1.25;
@@ -5503,17 +5456,17 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 .barcode-print-subtitle {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   text-align: center;
   opacity: 0.7;
 }
 
 .barcode-print-url {
   margin: 0;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   text-align: center;
   word-break: break-all;
-  max-width: 16rem;
+  max-width: 18rem;
   opacity: 0.55;
   line-height: 1.35;
 }
@@ -5564,26 +5517,64 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   }
 
   .barcode-cut-hint {
-    background: #fff;
-    color: #64748b;
+    display: block;
+    position: absolute;
+    top: -0.55rem;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    padding: 0 0.4rem;
     font-size: 8pt;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    background: #fff;
+    white-space: nowrap;
   }
 
   .barcode-cut-mark {
+    display: block;
+    position: absolute;
     width: 12px;
     height: 12px;
+    pointer-events: none;
+    z-index: 2;
   }
 
-  .barcode-cut-mark.tl,
-  .barcode-cut-mark.tr,
-  .barcode-cut-mark.bl,
+  .barcode-cut-mark.tl {
+    top: -1px;
+    left: -1px;
+    border-top: 2px solid #334155;
+    border-left: 2px solid #334155;
+  }
+
+  .barcode-cut-mark.tr {
+    top: -1px;
+    right: -1px;
+    border-top: 2px solid #334155;
+    border-right: 2px solid #334155;
+  }
+
+  .barcode-cut-mark.bl {
+    bottom: -1px;
+    left: -1px;
+    border-bottom: 2px solid #334155;
+    border-left: 2px solid #334155;
+  }
+
   .barcode-cut-mark.br {
-    border-color: #334155 !important;
+    bottom: -1px;
+    right: -1px;
+    border-bottom: 2px solid #334155;
+    border-right: 2px solid #334155;
   }
 
   .barcode-print-card {
+    border: none;
     padding: 8mm 6mm;
     gap: 4mm;
+    border-radius: 0;
   }
 
   .barcode-print-title {
@@ -5597,10 +5588,6 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   .barcode-print-url {
     font-size: 7pt;
     max-width: 70mm;
-  }
-
-  .barcode-qr-frame.is-thumb {
-    display: none !important;
   }
 }
 

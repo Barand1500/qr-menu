@@ -18,6 +18,7 @@ import complaintsRouter from './routes/complaints.js';
 import suggestionsRouter from './routes/suggestions.js';
 import currenciesRouter from './routes/currencies.js';
 import addonsRouter from './routes/addons.js';
+import barcodeRouter from './routes/barcode.js';
 
 export function createApp() {
   const app = express();
@@ -51,6 +52,7 @@ export function createApp() {
   app.use('/api/admin/suggestions', suggestionsRouter);
   app.use('/api/admin/currencies', currenciesRouter);
   app.use('/api/admin/addons', addonsRouter);
+  app.use('/api/admin/barcode', barcodeRouter);
   app.use('/api/menu', publicMenuRouter);
 
   const publicDir = path.resolve(process.env.PUBLIC_DIR || './public');

@@ -42,6 +42,7 @@ model Restaurant {
   viewEvents     ViewEvent[]
   complaints     Complaint[]
   suggestions    Suggestion[]
+  qrTableGroups  QrTableGroup[]
 
   @@map("restoranlar")
 }
@@ -222,4 +223,24 @@ model Suggestion {
 
   @@index([restaurantId, createdAt])
   @@map("oneriler")
+}
+
+/// Barkod / masa QR grupları (Salon, Teras vb.)
+model QrTableGroup {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int      @map("restoran_id")
+  name         String   @db.VarChar(100)
+  slug         String   @db.VarChar(100)
+  tableCount   Int      @default(8) @map("masa_sayisi")
+  sortOrder    Int      @default(0) @map("sira")
+  /// { "1": { "name", "colorId", "withLogo", "frameId" }, ... }
+  tableStyles  Json     @default("{}") @map("masa_stilleri")
+  createdAt    DateTime @default(now()) @map("olusturma")
+  updatedAt    DateTime @updatedAt @map("guncelleme")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, slug])
+  @@index([restaurantId, sortOrder])
+  @@map("qr_masa_gruplari")
 }
