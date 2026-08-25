@@ -13,6 +13,7 @@ import {
   FREE_MENU_THEMES,
   FREE_WELCOME_THEMES,
 } from '../lib/menu-themes.js';
+import { ownsAddon, themeIdToAddon } from '../lib/addons.js';
 
 const router = Router();
 router.use(authRequired);
@@ -184,7 +185,13 @@ router.put('/themes', async (req, res) => {
 
   if (welcome !== undefined) {
     if (!FREE_WELCOME_THEMES.has(welcome)) {
-      return res.status(403).json({ message: 'Bu karşılama teması kilitli. Satın almanız gerekir.' });
+      const addonId = themeIdToAddon('welcome', welcome);
+      const allowed = addonId ? await ownsAddon(restaurantId!, addonId) : false;
+      if (!allowed) {
+        return res.status(403).json({
+          message: 'Bu karşılama teması kilitli. Eklentiler’den kod ile açın.',
+        });
+      }
     }
     await prisma.setting.upsert({
       where: { restaurantId_key: { restaurantId: restaurantId!, key: 'theme_welcome' } },
@@ -199,7 +206,13 @@ router.put('/themes', async (req, res) => {
 
   if (menu !== undefined) {
     if (!FREE_MENU_THEMES.has(menu)) {
-      return res.status(403).json({ message: 'Bu menü teması kilitli. Satın almanız gerekir.' });
+      const addonId = themeIdToAddon('menu', menu);
+      const allowed = addonId ? await ownsAddon(restaurantId!, addonId) : false;
+      if (!allowed) {
+        return res.status(403).json({
+          message: 'Bu menü teması kilitli. Eklentiler’den kod ile açın.',
+        });
+      }
     }
     await prisma.setting.upsert({
       where: { restaurantId_key: { restaurantId: restaurantId!, key: 'theme_menu' } },

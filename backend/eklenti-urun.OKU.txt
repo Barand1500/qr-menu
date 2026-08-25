@@ -1,0 +1,24 @@
+====================================================
+  EKLENTİ ÜRÜN KODLARI — NASIL DEĞİŞTİRİLİR?
+====================================================
+
+Dosya: backend/eklenti-urun.json
+
+1) masterKod
+   - Şu an tüm eklentiler bu kodla açılır.
+   - Örnek: "241016"
+
+2) urunKodlari
+   - İleride her eklentiye ayrı kod vermek istersen buraya yaz.
+   - Boş ("") bırakırsan masterKod geçerli olur.
+
+Ürün id'leri (silme):
+  welcome-cinema  → Sinematik karşılama teması
+  welcome-neon    → Neon Gece karşılama teması
+  menu-alive      → Canlı menü teması
+  menu-luxury     → Lüks menü teması
+  qr-pack         → Renkli / logo / masa / kampanya QR paketi
+
+Değişiklikten sonra sunucuda backend'i yeniden başlat.
+
+====================================================

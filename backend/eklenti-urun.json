@@ -1,0 +1,16 @@
+{
+  "aciklama": "Bu dosyayı düzenlemen yeterli. Kodları değiştirdikten sonra backend'i yeniden başlat (veya bir iki dakika bekle).",
+  "masterKod": "241016",
+  "urunKodlari": {
+    "welcome-cinema": "",
+    "welcome-neon": "",
+    "menu-alive": "",
+    "menu-luxury": "",
+    "qr-pack": ""
+  },
+  "notlar": [
+    "masterKod: Şimdilik tüm eklentiler için geçerli tek kod. Boş bırakma.",
+    "urunKodlari: İleride her ürün için ayrı kod yazabilirsin. Boş bırakırsan masterKod kullanılır.",
+    "Ürün id'lerini silme; sadece kod alanlarını değiştir."
+  ]
+}

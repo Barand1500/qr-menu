@@ -89,6 +89,13 @@ export default function PublicMenuPage() {
   usePublicRtl(lang);
 
   useEffect(() => {
+    const masa = searchParams.get('masa');
+    const kampanya = searchParams.get('kampanya');
+    if (masa) sessionStorage.setItem('menu_masa', masa);
+    if (kampanya) sessionStorage.setItem('menu_kampanya', kampanya);
+  }, [searchParams]);
+
+  useEffect(() => {
     if (!slug) return;
     let cancelled = false;
     setMenuLoading(true);

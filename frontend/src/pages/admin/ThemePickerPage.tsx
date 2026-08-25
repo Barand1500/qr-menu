@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Check, Lock, ShoppingBag } from 'lucide-react';
+import { Check, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { Button, Card, PageHeader } from '@/components/ui';
+import { useAddons } from '@/hooks/useAddons';
+import { themeAddonId } from '@/lib/addons';
 import {
   DEFAULT_MENU_THEME,
   DEFAULT_WELCOME_THEME,
@@ -20,6 +23,7 @@ interface ThemePickerPageProps {
 export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPageProps) {
   const themes = kind === 'welcome' ? WELCOME_THEMES : MENU_THEMES;
   const defaultId = kind === 'welcome' ? DEFAULT_WELCOME_THEME : DEFAULT_MENU_THEME;
+  const { isOwned, loading: addonsLoading } = useAddons();
   const [selected, setSelected] = useState(defaultId);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -44,16 +48,22 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
     };
   }, [kind, defaultId]);
 
+  function isThemeLocked(theme: MenuThemeOption) {
+    if (!theme.locked) return false;
+    const addonId = themeAddonId(kind, theme.id);
+    if (!addonId) return true;
+    return !isOwned(addonId);
+  }
+
   async function selectTheme(theme: MenuThemeOption) {
-    if (theme.locked) {
-      setMessage(`“${theme.name}” teması kilitli. Satın Al ile açılacak.`);
+    if (isThemeLocked(theme)) {
+      setMessage(`“${theme.name}” kilitli. Eklentiler’den Kod Gir ile aç.`);
       return;
     }
     setSaving(true);
     setMessage(null);
     try {
-      const body =
-        kind === 'welcome' ? { welcome: theme.id } : { menu: theme.id };
+      const body = kind === 'welcome' ? { welcome: theme.id } : { menu: theme.id };
       const res = await api<{ welcome: string; menu: string }>('/api/admin/settings/themes', {
         method: 'PUT',
         body: JSON.stringify(body),
@@ -74,34 +84,45 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
 
       {message && (
         <div className="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
-          {message}
+          {message}{' '}
+          {message.includes('Eklentiler') && (
+            <Link
+              to={
+                kind === 'welcome' ? '/admin/extensions/welcome' : '/admin/extensions/menu'
+              }
+              className="underline font-semibold"
+            >
+              Eklentiler’e git
+            </Link>
+          )}
         </div>
       )}
 
-      {loading ? (
+      {loading || addonsLoading ? (
         <div className="py-16 flex justify-center">
           <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {themes.map((theme) => {
+            const locked = isThemeLocked(theme);
             const isActive = selected === theme.id;
             return (
               <Card
                 key={theme.id}
                 className={`theme-pick-card overflow-hidden ${
                   isActive ? 'theme-pick-card--active' : ''
-                } ${theme.locked ? 'theme-pick-card--locked' : ''}`}
+                } ${locked ? 'theme-pick-card--locked' : ''}`}
               >
                 <div className={`theme-preview ${theme.previewClass}`}>
                   <div className="theme-preview__shine" />
-                  {theme.locked && (
+                  {locked && (
                     <div className="theme-preview__lock">
                       <Lock className="w-5 h-5" />
-                      <span>Satın Al</span>
+                      <span>Eklentiler</span>
                     </div>
                   )}
-                  {isActive && !theme.locked && (
+                  {isActive && !locked && (
                     <div className="theme-preview__active">
                       <Check className="w-4 h-4" />
                       Aktif
@@ -114,16 +135,18 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
                     {theme.description}
                   </p>
                   <div className="mt-4">
-                    {theme.locked ? (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="w-full"
-                        onClick={() => selectTheme(theme)}
+                    {locked ? (
+                      <Link
+                        to={
+                          kind === 'welcome'
+                            ? '/admin/extensions/welcome'
+                            : '/admin/extensions/menu'
+                        }
                       >
-                        <ShoppingBag className="w-4 h-4" />
-                        Satın Al
-                      </Button>
+                        <Button type="button" variant="secondary" className="w-full">
+                          Eklentiler’de aç
+                        </Button>
+                      </Link>
                     ) : (
                       <Button
                         type="button"

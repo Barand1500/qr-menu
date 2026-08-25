@@ -15,6 +15,8 @@ import SuggestionsPage from '@/pages/admin/SuggestionsPage';
 import SettingsPage from '@/pages/admin/SettingsPage';
 import WelcomeThemePage from '@/pages/admin/WelcomeThemePage';
 import MenuThemePage from '@/pages/admin/MenuThemePage';
+import ExtensionsHubPage from '@/pages/admin/ExtensionsHubPage';
+import ExtensionsCategoryPage from '@/pages/admin/ExtensionsCategoryPage';
 import PublicWelcomePage from '@/pages/public/PublicWelcomePage';
 import PublicMenuPage from '@/pages/public/PublicMenuPage';
 import PublicProductPage from '@/pages/public/PublicProductPage';
@@ -63,6 +65,37 @@ export default function App() {
               <Route path="suggestions" element={<SuggestionsPage />} />
               <Route path="users" element={<UsersPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="extensions" element={<ExtensionsHubPage />} />
+              <Route
+                path="extensions/welcome"
+                element={
+                  <ExtensionsCategoryPage
+                    category="welcome"
+                    title="Karşılama ekranları"
+                    subtitle="Satın Al yakında. Şimdilik Kod Gir ile temayı aç; sonra Başlangıç Ayarları’nda kullan."
+                  />
+                }
+              />
+              <Route
+                path="extensions/menu"
+                element={
+                  <ExtensionsCategoryPage
+                    category="menu"
+                    title="Menü ekranları"
+                    subtitle="Satın Al yakında. Kod ile açılan temalar Menü Ekranı’nda seçilebilir."
+                  />
+                }
+              />
+              <Route
+                path="extensions/qr"
+                element={
+                  <ExtensionsCategoryPage
+                    category="qr"
+                    title="QR"
+                    subtitle="Renkli, logolu, masa ve kampanya QR paketi. Açılınca Barkod Yazdır sayfasında kullanılır."
+                  />
+                }
+              />
             </Route>
           </Route>
 

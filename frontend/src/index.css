@@ -4750,6 +4750,10 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   background: linear-gradient(135deg, #111827, #92400e 50%, #fbbf24);
 }
 
+.theme-preview--qr {
+  background: linear-gradient(135deg, #0f172a, #1e3a5f 45%, #38bdf8);
+}
+
 .theme-preview__lock,
 .theme-preview__active {
   position: absolute;
@@ -4781,6 +4785,159 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   .theme-preview__shine {
     animation: none;
   }
+}
+
+/* Eklenti unlock confetti */
+.addon-confetti-root {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.addon-confetti-piece {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  animation-name: addon-confetti-fall;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+  animation-fill-mode: forwards;
+}
+
+@keyframes addon-confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(720deg);
+    opacity: 0.85;
+  }
+}
+
+.welcome-card__context {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: -0.25rem 0 0.85rem;
+}
+
+.welcome-card__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.7rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(56, 189, 248, 0.22);
+  border: 1px solid rgba(125, 211, 252, 0.45);
+  color: #e0f2fe;
+  text-transform: capitalize;
+}
+
+.welcome-card__chip--campaign {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: rgba(252, 211, 77, 0.45);
+  color: #fef3c7;
+}
+
+/* Barkod Yazdır */
+.barcode-mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1px solid var(--admin-card-border);
+  background: var(--admin-card);
+  color: var(--admin-text);
+  transition: 0.15s ease;
+}
+
+.barcode-mode-chip:hover:not(:disabled) {
+  border-color: var(--admin-accent);
+}
+
+.barcode-mode-chip.is-active {
+  background: var(--admin-accent-soft);
+  border-color: var(--admin-accent);
+  color: var(--admin-accent);
+}
+
+.barcode-mode-chip.is-locked,
+.barcode-mode-chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.barcode-color-swatch {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.barcode-color-swatch.is-active {
+  border-color: var(--admin-accent);
+  outline: 2px solid color-mix(in srgb, var(--admin-accent) 35%, transparent);
+}
+
+.barcode-table-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.75rem;
+}
+
+.barcode-table-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 0.5rem;
+  border-radius: 1rem;
+  border: 1px solid var(--admin-card-border);
+  background: var(--admin-input-bg);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--admin-text);
+  transition: 0.15s ease;
+}
+
+.barcode-table-card:hover {
+  border-color: var(--admin-accent);
+}
+
+.barcode-table-card.is-active {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-accent) 25%, transparent);
+}
+
+.barcode-campaign-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--admin-card-border);
+  background: var(--admin-input-bg);
+}
+
+.barcode-campaign-row.is-active {
+  border-color: var(--admin-accent);
+  background: color-mix(in srgb, var(--admin-accent-soft) 55%, transparent);
+}
+
+.barcode-enlarge {
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--admin-card-border);
 }
 
 

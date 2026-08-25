@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { enteredKey, menuHomePath } from '@/lib/menuPaths';
 import { Volume2, VolumeX, Sparkles, Music2, MessageCircleHeart, Lightbulb } from 'lucide-react';
@@ -28,6 +28,9 @@ const MUSIC_SOURCES = (custom?: string | null) =>
 export default function PublicWelcomePage() {
   const { slug, error: slugError } = useMenuSlug();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tableNo = searchParams.get('masa');
+  const campaignSlug = searchParams.get('kampanya');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [data, setData] = useState<WelcomeData | null>(null);
   const [selectedLang, setSelectedLang] = useState(
@@ -46,6 +49,11 @@ export default function PublicWelcomePage() {
   const [loading, setLoading] = useState(true);
 
   usePublicRtl(selectedLang);
+
+  useEffect(() => {
+    if (tableNo) sessionStorage.setItem('menu_masa', tableNo);
+    if (campaignSlug) sessionStorage.setItem('menu_kampanya', campaignSlug);
+  }, [tableNo, campaignSlug]);
 
   useEffect(() => {
     if (slugError) {
@@ -190,8 +198,9 @@ export default function PublicWelcomePage() {
     localStorage.setItem('menu_lang', lang);
     sessionStorage.setItem(enteredKey(slug), '1');
     audioRef.current?.pause();
+    const qs = searchParams.toString();
     setTimeout(() => {
-      navigate(menuHomePath());
+      navigate(qs ? `${menuHomePath()}?${qs}` : menuHomePath());
     }, 450);
   }
 
@@ -314,6 +323,16 @@ export default function PublicWelcomePage() {
           </div>
 
           <h1 className="welcome-card__title">{data.restaurant.name}</h1>
+          {(tableNo || campaignSlug) && (
+            <div className="welcome-card__context">
+              {tableNo && <span className="welcome-card__chip">Masa {tableNo}</span>}
+              {campaignSlug && (
+                <span className="welcome-card__chip welcome-card__chip--campaign">
+                  {campaignSlug.replace(/-/g, ' ')}
+                </span>
+              )}
+            </div>
+          )}
           <p className="welcome-card__message">{welcomeText}</p>
 
           <div className="welcome-card__langs">

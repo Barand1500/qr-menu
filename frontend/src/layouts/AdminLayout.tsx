@@ -36,6 +36,12 @@ const managementNav = [
   { to: '/admin/settings', label: 'Ayarlar' },
 ];
 
+const extensionsNav = [
+  { to: '/admin/extensions/welcome', label: 'Karşılama ekranları' },
+  { to: '/admin/extensions/menu', label: 'Menü ekranları' },
+  { to: '/admin/extensions/qr', label: 'QR' },
+];
+
 function NavGroup({
   label,
   open,
@@ -103,6 +109,7 @@ export default function AdminLayout() {
   const [reportsOpen, setReportsOpen] = useState(true);
   const [managementOpen, setManagementOpen] = useState(true);
   const [startupOpen, setStartupOpen] = useState(true);
+  const [extensionsOpen, setExtensionsOpen] = useState(true);
 
   const closeMobile = () => setMobileOpen(false);
 
@@ -123,6 +130,7 @@ export default function AdminLayout() {
     location.pathname.startsWith('/admin/users') ||
     location.pathname.startsWith('/admin/settings');
   const startupActive = location.pathname.startsWith('/admin/startup');
+  const extensionsActive = location.pathname.startsWith('/admin/extensions');
 
   useEffect(() => {
     if (reportsActive) setReportsOpen(true);
@@ -135,6 +143,10 @@ export default function AdminLayout() {
   useEffect(() => {
     if (startupActive) setStartupOpen(true);
   }, [startupActive]);
+
+  useEffect(() => {
+    if (extensionsActive) setExtensionsOpen(true);
+  }, [extensionsActive]);
 
   const sidebar = (
     <aside
@@ -191,6 +203,17 @@ export default function AdminLayout() {
           onToggle={() => setManagementOpen(!managementOpen)}
         >
           {managementNav.map(({ to, label }) => (
+            <NavItem key={to} to={to} label={label} sub onNavigate={closeMobile} />
+          ))}
+        </NavGroup>
+
+        <NavGroup
+          label="Eklentiler"
+          open={extensionsOpen}
+          onToggle={() => setExtensionsOpen(!extensionsOpen)}
+        >
+          <NavItem to="/admin/extensions" label="Tümü" sub onNavigate={closeMobile} />
+          {extensionsNav.map(({ to, label }) => (
             <NavItem key={to} to={to} label={label} sub onNavigate={closeMobile} />
           ))}
         </NavGroup>
