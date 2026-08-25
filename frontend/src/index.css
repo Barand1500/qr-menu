@@ -4940,10 +4940,8 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 }
 
 .barcode-color-popover {
-  position: absolute;
-  z-index: 40;
-  top: calc(100% + 0.65rem);
-  right: 0;
+  position: fixed;
+  z-index: 9999;
   width: 220px;
   padding: 0.75rem;
   border-radius: 1rem;

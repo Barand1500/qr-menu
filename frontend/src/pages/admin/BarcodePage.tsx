@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import {
   Printer,
@@ -793,7 +794,10 @@ function ColorPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('#2563eb');
+  const [pos, setPos] = useState({ top: 0, left: 0 });
   const wrapRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const isCustom = !QR_COLORS.some((c) => c.id === value);
   const customHex = normalizeHex(value) || draft;
 
@@ -803,18 +807,46 @@ function ColorPicker({
   }, [value]);
 
   useEffect(() => {
-    if (!open) return;
-    function onDoc(e: MouseEvent) {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    if (!open || !btnRef.current) return;
+    function place() {
+      const r = btnRef.current!.getBoundingClientRect();
+      const width = 220;
+      let left = r.right - width;
+      left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
+      const top = Math.min(r.bottom + 8, window.innerHeight - 320);
+      setPos({ top, left });
     }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
     return () => {
-      document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    let remove: (() => void) | undefined;
+    const timer = window.setTimeout(() => {
+      function onDoc(e: MouseEvent) {
+        const t = e.target as Node;
+        if (wrapRef.current?.contains(t) || popoverRef.current?.contains(t)) return;
+        setOpen(false);
+      }
+      function onKey(e: KeyboardEvent) {
+        if (e.key === 'Escape') setOpen(false);
+      }
+      document.addEventListener('mousedown', onDoc);
+      document.addEventListener('keydown', onKey);
+      remove = () => {
+        document.removeEventListener('mousedown', onDoc);
+        document.removeEventListener('keydown', onKey);
+      };
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+      remove?.();
     };
   }, [open]);
 
@@ -845,6 +877,7 @@ function ColorPicker({
         ))}
         <div className="barcode-color-custom-wrap" ref={wrapRef}>
           <button
+            ref={btnRef}
             type="button"
             className={`barcode-color-swatch barcode-color-custom ${
               isCustom || open ? 'is-active' : ''
@@ -852,7 +885,8 @@ function ColorPicker({
             title="Özel renk"
             aria-expanded={open}
             aria-haspopup="dialog"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               const next = !open;
               setOpen(next);
               if (next && !isCustom) applyCustom(draft);
@@ -864,35 +898,43 @@ function ColorPicker({
             />
           </button>
 
-          {open && (
-            <div className="barcode-color-popover" role="dialog" aria-label="Özel renk seç">
-              <div className="barcode-color-popover-head">
-                <span>Özel renk</span>
-                <button
-                  type="button"
-                  className="barcode-color-popover-close"
-                  onClick={() => setOpen(false)}
-                  aria-label="Kapat"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <HexColorPicker color={customHex} onChange={applyCustom} />
-              <div className="barcode-color-popover-foot">
-                <span
-                  className="barcode-color-popover-preview"
-                  style={{ background: customHex }}
-                />
-                <HexColorInput
-                  color={customHex}
-                  onChange={applyCustom}
-                  prefixed
-                  className="barcode-color-hex-input"
-                  aria-label="Hex renk kodu"
-                />
-              </div>
-            </div>
-          )}
+          {open &&
+            createPortal(
+              <div
+                ref={popoverRef}
+                className="barcode-color-popover"
+                role="dialog"
+                aria-label="Özel renk seç"
+                style={{ top: pos.top, left: pos.left }}
+              >
+                <div className="barcode-color-popover-head">
+                  <span>Özel renk</span>
+                  <button
+                    type="button"
+                    className="barcode-color-popover-close"
+                    onClick={() => setOpen(false)}
+                    aria-label="Kapat"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <HexColorPicker color={customHex} onChange={applyCustom} />
+                <div className="barcode-color-popover-foot">
+                  <span
+                    className="barcode-color-popover-preview"
+                    style={{ background: customHex }}
+                  />
+                  <HexColorInput
+                    color={customHex}
+                    onChange={applyCustom}
+                    prefixed
+                    className="barcode-color-hex-input"
+                    aria-label="Hex renk kodu"
+                  />
+                </div>
+              </div>,
+              document.body
+            )}
         </div>
       </div>
     </div>
