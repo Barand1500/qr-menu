@@ -55,7 +55,8 @@ const deployPkg = {
     'db:generate': 'prisma generate',
     'db:push': 'prisma db push',
     'db:seed': 'tsx prisma/seed.ts',
-    setup: 'prisma generate && prisma db push && tsx prisma/seed.ts',
+    /** Güncellemede seed YOK — sadece şema senkron */
+    setup: 'prisma generate && prisma db push',
   },
   dependencies: {
     ...pkg.dependencies,
@@ -65,65 +66,51 @@ const deployPkg = {
 };
 fs.writeFileSync(path.join(deployDir, 'package.json'), JSON.stringify(deployPkg, null, 2));
 
-fs.writeFileSync(
-  path.join(deployDir, '.env.example'),
-  `DATABASE_URL="mysql://guzelteknoloji-menu-user:SIFRE@127.0.0.1:3306/guzelteknoloji-menu-db"
+const envContent = `DATABASE_URL="mysql://guzelteknoloji-menu-user:bRn241016%21@127.0.0.1:3306/guzelteknoloji-menu-db"
 JWT_SECRET="uzun-rastgele-bir-metin-yaz"
 PORT=3008
 CORS_ORIGIN=https://menu.guzelteknoloji.com,http://menu.guzelteknoloji.com
 UPLOAD_DIR=./uploads
 PUBLIC_DIR=./public
-`
-);
+`;
+fs.writeFileSync(path.join(deployDir, '.env'), envContent);
+fs.writeFileSync(path.join(deployDir, '.env.example'), envContent);
 
-const readme = `MENU QR — SUNUCU KURULUM (CloudPanel)
-=====================================
+const readme = `MENU QR — GÜNCELLEME (CloudPanel)
+================================
 
 Domain: https://menu.guzelteknoloji.com
-Port: 3008 (Node.js Ayarları ile aynı olmalı)
+Port: 3008
 
-0) .env OLUŞTUR
-   .env.example dosyasını kopyala → .env yap.
-   SIFRE yerine veritabanı şifreni yaz.
-   Şifrede ! varsa URL’de %21 yaz.
-
-1) Bu ZIP içeriğinin TAMAMINI şuraya aç:
+1) ZIP’i Dosya Yöneticisi’nde şuraya atıp AÇ:
    htdocs/menu.guzelteknoloji.com/
-   (içinde dist, public, prisma, package.json olmalı)
+   (içerik doğrudan bu klasöre çıksın; ara klasör olmasın)
 
-2) CloudPanel → SSH ile bağlan:
+2) KORU:
+   - uploads/  (görseller)
+   - .env      (zaten doğruysa dokunma; ZIP’teki .env ile aynı)
+
+3) SSH’de SADECE şunlar:
    cd ~/htdocs/menu.guzelteknoloji.com
-
-3) Komutlar:
-   cp .env.example .env
-   # .env içindeki SIFRE’yi düzenle (nano .env)
    npm install --omit=dev
-   npm run setup
-   npm start
+   npx prisma generate
+   npx prisma db push
 
-4) CloudPanel Node.js Ayarları:
-   - Node 22 LTS
-   - Uygulama Portu: 3008
-   - Start: npm start
+4) CloudPanel → Node.js → Uygulamayı Yeniden Başlat (Restart)
 
 5) Test:
    https://menu.guzelteknoloji.com/api/health
-   https://menu.guzelteknoloji.com/menu
-   https://menu.guzelteknoloji.com/login
 
-NOTLAR
-- node_modules ZIP’te yok; sunucuda npm install şart.
-- uploads klasörü boş gelir; görseller buraya yazılır.
+ÖNEMLİ
+- npm run setup / db:seed ÇALIŞTIRMA — veriyi siler.
+- node_modules ZIP’te yok; npm install şart.
 `;
 fs.writeFileSync(path.join(deployDir, 'OKU-BENI.txt'), readme);
 
 console.log('\n4) ZIP oluşturuluyor...');
 const zipPath = path.join(root, 'menu-qr-deploy.zip');
 rimraf(zipPath);
-run(
-  `powershell -NoProfile -Command "Compress-Archive -Path '${deployDir}\\*' -DestinationPath '${zipPath}' -Force"`,
-  root
-);
+run(`tar -a -c -f "${zipPath}" -C "${deployDir}" .`, root);
 
 console.log('\nHazır!');
 console.log(`  Klasör: ${deployDir}`);
