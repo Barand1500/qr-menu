@@ -172,7 +172,7 @@ export default function AdminLayout() {
 
   const sidebar = (
     <aside
-      className="flex flex-col w-full h-full min-h-screen overflow-hidden"
+      className="flex flex-col w-full h-full overflow-hidden"
       style={{ background: 'var(--admin-sidebar)' }}
     >
       <div className="px-6 pt-8 pb-6">
@@ -252,7 +252,7 @@ export default function AdminLayout() {
   );
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'var(--admin-bg)' }}>
+    <div className="h-dvh flex overflow-hidden" style={{ background: 'var(--admin-bg)' }}>
       {mobileOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -261,16 +261,16 @@ export default function AdminLayout() {
       )}
 
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-[260px] transform transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto ${
+        className={`fixed inset-y-0 left-0 z-50 w-[260px] transform transition-transform duration-300 lg:static lg:translate-x-0 lg:z-auto lg:shrink-0 lg:h-full ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {sidebar}
       </div>
 
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full overflow-hidden">
         <header
-          className="sticky top-0 z-30 px-4 sm:px-6 h-16 flex items-center gap-4 shrink-0"
+          className="shrink-0 z-30 px-4 sm:px-6 h-16 flex items-center gap-4"
           style={{
             background: 'var(--admin-header-bg)',
             borderBottom: '1px solid var(--admin-header-border)',
@@ -366,7 +366,7 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        <main className="flex-1 p-5 sm:p-6 lg:p-8 overflow-auto admin-scroll">
+        <main className="flex-1 min-h-0 p-5 sm:p-6 lg:p-8 overflow-y-auto admin-scroll">
           <Outlet />
         </main>
       </div>

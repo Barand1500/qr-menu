@@ -129,7 +129,8 @@ export function toGroupTranslations(
   return languages.map((lang) => ({
     languageId: lang.id,
     languageCode: lang.code,
-    name: getGroupName(json, lang.code),
+    // Admin formunda fallback gösterme — boş dil boş kalsın
+    name: getRawField<GroupI18nEntry>(json, lang.code, 'name'),
   }));
 }
 
@@ -140,10 +141,10 @@ export function toProductTranslations(
   return languages.map((lang) => ({
     languageId: lang.id,
     languageCode: lang.code,
-    name: getProductField(json, lang.code, 'name'),
-    description: getProductField(json, lang.code, 'description') || null,
-    ingredients: getProductField(json, lang.code, 'ingredients') || null,
-    allergens: getProductField(json, lang.code, 'allergens') || null,
+    name: getRawField<ProductI18nEntry>(json, lang.code, 'name'),
+    description: getRawField<ProductI18nEntry>(json, lang.code, 'description') || null,
+    ingredients: getRawField<ProductI18nEntry>(json, lang.code, 'ingredients') || null,
+    allergens: getRawField<ProductI18nEntry>(json, lang.code, 'allergens') || null,
   }));
 }
 
@@ -151,15 +152,12 @@ export function toShowcaseTranslations(
   json: unknown,
   languages: LangRow[]
 ) {
-  return languages.map((lang) => {
-    const { title1, title2 } = getShowcaseTitles(json, lang.code);
-    return {
-      languageId: lang.id,
-      languageCode: lang.code,
-      title1: title1 || null,
-      title2: title2 || null,
-    };
-  });
+  return languages.map((lang) => ({
+    languageId: lang.id,
+    languageCode: lang.code,
+    title1: getRawField<ShowcaseI18nEntry>(json, lang.code, 'title1') || null,
+    title2: getRawField<ShowcaseI18nEntry>(json, lang.code, 'title2') || null,
+  }));
 }
 
 export function mergeGroupI18n(

@@ -15,6 +15,7 @@ import {
   loadCampaignContext,
   type CampaignCtx,
 } from '../lib/campaigns.js';
+import { parseSocialLinks, publicSocialLinks } from '../lib/social.js';
 
 const router = Router();
 
@@ -78,11 +79,16 @@ router.get('/:slug/welcome', async (req, res) => {
   const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
   if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
 
-  const [languages, musicSetting, themes, campaign] = await Promise.all([
+  const [languages, musicSetting, socialSetting, themes, campaign] = await Promise.all([
     prisma.language.findMany({ where: { isActive: true }, orderBy: { id: 'asc' } }),
     prisma.setting.findUnique({
       where: {
         restaurantId_key: { restaurantId: restaurant.id, key: 'welcome_music_url' },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurant.id, key: 'social_links' },
       },
     }),
     getRestaurantThemes(restaurant.id),
@@ -106,6 +112,7 @@ router.get('/:slug/welcome', async (req, res) => {
     welcomeMusicUrl: musicSetting?.value || null,
     theme: themes.welcome,
     campaign: campaignMeta(campaign),
+    socialLinks: publicSocialLinks(parseSocialLinks(socialSetting?.value), 'welcome'),
   });
 });
 
@@ -202,7 +209,7 @@ router.get('/:slug', async (req, res) => {
     return res.status(404).json({ message: 'Kampanya bulunamadı' });
   }
 
-  const [groups, bannerShowcase, storyShowcase, languages, aboutSetting, themes] =
+  const [groups, bannerShowcase, storyShowcase, languages, aboutSetting, socialSetting, themes] =
     await Promise.all([
     prisma.group.findMany({
       where: { restaurantId: restaurant.id, isActive: true, parentId: null },
@@ -232,6 +239,11 @@ router.get('/:slug', async (req, res) => {
     prisma.setting.findUnique({
       where: {
         restaurantId_key: { restaurantId: restaurant.id, key: 'company_about' },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurant.id, key: 'social_links' },
       },
     }),
     getRestaurantThemes(restaurant.id),
@@ -302,6 +314,7 @@ router.get('/:slug', async (req, res) => {
     languages: languages.map((l) => ({ code: l.code, name: l.name })),
     theme: themes.menu,
     campaign: campaignMeta(campaign),
+    socialLinks: publicSocialLinks(parseSocialLinks(socialSetting?.value), 'menu'),
     showcase: bannerShowcase.map((s) => {
       const { title1, title2 } = getShowcaseTitles(s.i18n, activeLang);
       return {

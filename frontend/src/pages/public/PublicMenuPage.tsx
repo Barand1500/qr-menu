@@ -26,6 +26,8 @@ import {
   menuProductPath,
   menuWelcomePath,
 } from '@/lib/menuPaths';
+import PublicSocialLinks from '@/components/public/PublicSocialLinks';
+import type { PublicSocialLink } from '@/lib/socialCatalog';
 
 interface ShowcaseItem {
   id: number;
@@ -44,6 +46,7 @@ interface MenuData {
   groups: { id: number; name: string; imageUrl?: string | null; productCount?: number }[];
   theme?: string;
   campaign?: { name: string; slug: string; itemCount: number } | null;
+  socialLinks?: PublicSocialLink[];
 }
 
 interface ProductData {
@@ -356,6 +359,7 @@ export default function PublicMenuPage() {
           restaurantName={menu.restaurant.name}
           languages={menu.languages}
           activeLang={lang}
+          socialLinks={menu.socialLinks}
           onClose={() => setSideMenuOpen(false)}
           onTab={(t) => {
             setTab(t);
@@ -503,6 +507,12 @@ export default function PublicMenuPage() {
                 <PopularSearchProducts products={popularProducts} />
               </section>
             )}
+
+            {menu.socialLinks && menu.socialLinks.length > 0 && (
+              <div className="flex justify-center mt-6 pb-2 public-menu-reveal public-menu-reveal--9">
+                <PublicSocialLinks links={menu.socialLinks} />
+              </div>
+            )}
           </div>
         )}
 
@@ -512,6 +522,9 @@ export default function PublicMenuPage() {
             <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
               {menu.about || menu.welcomeMessage || 'Dijital menümüze hoş geldiniz.'}
             </p>
+            {menu.socialLinks && menu.socialLinks.length > 0 && (
+              <PublicSocialLinks links={menu.socialLinks} className="mt-5" />
+            )}
           </div>
         )}
 
@@ -551,6 +564,7 @@ export default function PublicMenuPage() {
         restaurantName={menu.restaurant.name}
         languages={menu.languages}
         activeLang={lang}
+        socialLinks={menu.socialLinks}
         onClose={() => setSideMenuOpen(false)}
         onTab={setTab}
         onLangChange={changeLang}

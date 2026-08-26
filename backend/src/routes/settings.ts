@@ -14,6 +14,7 @@ import {
   FREE_WELCOME_THEMES,
 } from '../lib/menu-themes.js';
 import { ownsAddon, themeIdToAddon } from '../lib/addons.js';
+import { parseSocialLinks, serializeSocialLinks, type SocialLinkConfig } from '../lib/social.js';
 
 const router = Router();
 router.use(authRequired);
@@ -177,6 +178,26 @@ router.put('/integration', async (req, res) => {
   }
 
   res.json({ ok: true });
+});
+
+router.put('/social', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const { links } = req.body as { links?: SocialLinkConfig[] };
+
+  const value = serializeSocialLinks(Array.isArray(links) ? links : []);
+  await prisma.setting.upsert({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: 'social_links' } },
+    update: { value },
+    create: { restaurantId: restaurantId!, key: 'social_links', value },
+  });
+
+  res.json({ ok: true, links: parseSocialLinks(value) });
+});
+
+router.post('/social-icon', upload.single('icon'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'İkon gerekli' });
+  const iconUrl = `/uploads/${req.file.filename}`;
+  res.json({ iconUrl });
 });
 
 router.put('/themes', async (req, res) => {

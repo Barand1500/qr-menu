@@ -1,15 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins } from 'lucide-react';
+import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, ChevronDown, Trash2 } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
 import { TranslatableTextarea } from '@/components/TranslatableField';
 import AddLanguageModal from '@/components/AddLanguageModal';
 import AddCurrencyModal from '@/components/AddCurrencyModal';
+import SocialBrandIcon from '@/components/SocialBrandIcon';
+import { SocialDisplayIcon, CUSTOM_ICONS } from '@/components/SocialDisplayIcon';
 import { languageFlag } from '@/lib/languageFlags';
 import { catalogByCode, type CatalogLanguage } from '@/lib/languageCatalog';
 import { currencyCatalogByCode, type CatalogCurrency } from '@/lib/currencyCatalog';
+import {
+  CUSTOM_ICON_OPTIONS,
+  mergeSocialConfigs,
+  newCustomSocialLink,
+  SOCIAL_PLATFORMS,
+  splitSocialConfigs,
+  type SocialLinkConfig,
+} from '@/lib/socialCatalog';
 
 interface Language {
   id: number;
@@ -102,6 +113,15 @@ export default function SettingsPage() {
   const [addingCurrency, setAddingCurrency] = useState(false);
   const [translateStatus, setTranslateStatus] = useState<TranslateStatus | null>(null);
   const [languagesHighlight, setLanguagesHighlight] = useState(false);
+  const [socialLinks, setSocialLinks] = useState<SocialLinkConfig[]>(mergeSocialConfigs([]));
+  const [socialOpen, setSocialOpen] = useState(false);
+  const [iconPickerFor, setIconPickerFor] = useState<string | null>(null);
+  const [iconPickerPos, setIconPickerPos] = useState<{ left: number; bottom: number } | null>(
+    null
+  );
+  const customIconInputRef = useRef<HTMLInputElement>(null);
+  const pendingCustomIconIdRef = useRef<string | null>(null);
+  const [uploadingIconFor, setUploadingIconFor] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -121,6 +141,15 @@ export default function SettingsPage() {
         setIntegrationEnabled(d.settings.integration_enabled === 'true');
         setOpenaiApiKey(d.settings.openai_api_key || '');
         setLogoPreview(d.restaurant.logoUrl ? imageUrl(d.restaurant.logoUrl) : null);
+        try {
+          setSocialLinks(
+            mergeSocialConfigs(
+              d.settings.social_links ? JSON.parse(d.settings.social_links) : []
+            )
+          );
+        } catch {
+          setSocialLinks(mergeSocialConfigs([]));
+        }
         setTranslateStatus({
           openaiConfigured:
             status.openaiConfigured || Boolean(d.settings.openai_api_key?.trim()),
@@ -161,6 +190,28 @@ export default function SettingsPage() {
           }
     );
   }, [openaiApiKey]);
+
+  useEffect(() => {
+    if (!iconPickerFor) return;
+    const onScrollOrResize = () => {
+      setIconPickerFor(null);
+      setIconPickerPos(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIconPickerFor(null);
+        setIconPickerPos(null);
+      }
+    };
+    window.addEventListener('scroll', onScrollOrResize, true);
+    window.addEventListener('resize', onScrollOrResize);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize, true);
+      window.removeEventListener('resize', onScrollOrResize);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [iconPickerFor]);
 
   async function saveLanguages() {
     if (!data) return;
@@ -205,6 +256,10 @@ export default function SettingsPage() {
           enabled: integrationEnabled,
           openaiApiKey,
         }),
+      });
+      await api('/api/admin/settings/social', {
+        method: 'PUT',
+        body: JSON.stringify({ links: socialLinks }),
       });
       if (logoFile) {
         const fd = new FormData();
@@ -310,6 +365,62 @@ export default function SettingsPage() {
     if (b.code === 'TRY') return 1;
     return a.name.localeCompare(b.name, 'tr');
   });
+
+  const { platforms: platformSocial, customs: customSocial } = splitSocialConfigs(socialLinks);
+  const filledSocialCount = socialLinks.filter((s) => s.value.trim()).length;
+
+  function updateSocial(id: string, patch: Partial<SocialLinkConfig>) {
+    setSocialLinks((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  }
+
+  function addCustomSocial() {
+    setSocialLinks((prev) => [...prev, newCustomSocialLink()]);
+    setSocialOpen(true);
+  }
+
+  function removeCustomSocial(id: string) {
+    setSocialLinks((prev) => prev.filter((s) => s.id !== id));
+    if (iconPickerFor === id) {
+      setIconPickerFor(null);
+      setIconPickerPos(null);
+    }
+  }
+
+  function closeIconPicker() {
+    setIconPickerFor(null);
+    setIconPickerPos(null);
+  }
+
+  function openIconPicker(id: string, anchor: HTMLElement) {
+    if (iconPickerFor === id) {
+      closeIconPicker();
+      return;
+    }
+    const rect = anchor.getBoundingClientRect();
+    setIconPickerPos({
+      left: Math.min(rect.left, window.innerWidth - 220),
+      bottom: window.innerHeight - rect.top + 8,
+    });
+    setIconPickerFor(id);
+  }
+
+  async function uploadCustomIcon(id: string, file: File) {
+    setUploadingIconFor(id);
+    try {
+      const body = new FormData();
+      body.append('icon', file);
+      const res = await api<{ iconUrl: string }>('/api/admin/settings/social-icon', {
+        method: 'POST',
+        body,
+      });
+      updateSocial(id, { iconUrl: res.iconUrl, iconKey: 'link' });
+      closeIconPicker();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'İkon yüklenemedi');
+    } finally {
+      setUploadingIconFor(null);
+    }
+  }
 
   return (
     <div className="space-y-5 w-full">
@@ -558,6 +669,229 @@ export default function SettingsPage() {
           )}
         </div>
       </SettingsSection>
+
+      <section className="admin-card overflow-hidden flex flex-col">
+        <button
+          type="button"
+          className="w-full flex items-center gap-2.5 px-5 py-3.5 text-left shrink-0 transition hover:bg-[var(--admin-accent-soft)]/25"
+          style={{
+            background: 'var(--admin-input-bg)',
+            borderBottom: socialOpen ? '1px solid var(--admin-card-border)' : undefined,
+          }}
+          onClick={() => setSocialOpen((v) => !v)}
+          aria-expanded={socialOpen}
+        >
+          <Share2 className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
+          <span className="text-sm font-bold uppercase tracking-wide text-[var(--admin-text)] flex-1">
+            Sosyal Medya
+          </span>
+          <span className="text-[11px] font-semibold admin-text-muted mr-1">
+            {filledSocialCount} dolu
+          </span>
+          <ChevronDown
+            className={`w-4 h-4 admin-text-muted transition-transform duration-200 ${
+              socialOpen ? 'rotate-180' : ''
+            }`}
+          />
+        </button>
+
+        {socialOpen && (
+          <div className="p-5 space-y-3">
+            <div className="space-y-2">
+              {SOCIAL_PLATFORMS.map((platform) => {
+                const row = platformSocial.find((s) => s.id === platform.id) || {
+                  id: platform.id,
+                  value: '',
+                  showWelcome: false,
+                  showMenu: false,
+                };
+                return (
+                  <div key={platform.id} className="social-settings-row">
+                    <span
+                      className="social-settings-row__icon"
+                      style={{
+                        background:
+                          platform.id === 'instagram'
+                            ? 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)'
+                            : platform.color,
+                      }}
+                      title={platform.name}
+                    >
+                      <SocialBrandIcon id={platform.id} className="w-4 h-4 text-white" />
+                    </span>
+                    <input
+                      type={platform.kind === 'phone' ? 'tel' : 'url'}
+                      className="social-settings-row__input"
+                      placeholder={platform.placeholder}
+                      value={row.value}
+                      onChange={(e) => updateSocial(platform.id, { value: e.target.value })}
+                      aria-label={platform.name}
+                    />
+                    <label className="social-settings-row__toggle" title="Karşılamada göster">
+                      <input
+                        type="checkbox"
+                        checked={row.showWelcome}
+                        onChange={(e) =>
+                          updateSocial(platform.id, { showWelcome: e.target.checked })
+                        }
+                      />
+                      <span>Karşılama</span>
+                    </label>
+                    <label className="social-settings-row__toggle" title="Menüde göster">
+                      <input
+                        type="checkbox"
+                        checked={row.showMenu}
+                        onChange={(e) => updateSocial(platform.id, { showMenu: e.target.checked })}
+                      />
+                      <span>Menü</span>
+                    </label>
+                  </div>
+                );
+              })}
+
+              {customSocial.map((row) => (
+                <div key={row.id} className="social-settings-row social-settings-row--custom">
+                  <button
+                    type="button"
+                    className="social-settings-row__icon social-settings-row__icon--btn"
+                    style={{
+                      background: row.iconUrl ? 'transparent' : '#475569',
+                      overflow: 'hidden',
+                      padding: row.iconUrl ? 0 : undefined,
+                    }}
+                    title="İkon seç"
+                    onClick={(e) => openIconPicker(row.id, e.currentTarget)}
+                  >
+                    <SocialDisplayIcon
+                      id={row.id}
+                      iconKey={row.iconKey}
+                      iconUrl={row.iconUrl}
+                      className="w-4 h-4 text-white"
+                    />
+                  </button>
+                  <input
+                    type="text"
+                    className="social-settings-row__input social-settings-row__input--label"
+                    placeholder="İsim (opsiyonel)"
+                    value={row.label || ''}
+                    onChange={(e) => updateSocial(row.id, { label: e.target.value })}
+                    aria-label="Özel link adı"
+                  />
+                  <input
+                    type="url"
+                    className="social-settings-row__input"
+                    placeholder="https://..."
+                    value={row.value}
+                    onChange={(e) => updateSocial(row.id, { value: e.target.value })}
+                    aria-label="Özel link"
+                  />
+                  <label className="social-settings-row__toggle" title="Karşılamada göster">
+                    <input
+                      type="checkbox"
+                      checked={row.showWelcome}
+                      onChange={(e) => updateSocial(row.id, { showWelcome: e.target.checked })}
+                    />
+                    <span>Karşılama</span>
+                  </label>
+                  <label className="social-settings-row__toggle" title="Menüde göster">
+                    <input
+                      type="checkbox"
+                      checked={row.showMenu}
+                      onChange={(e) => updateSocial(row.id, { showMenu: e.target.checked })}
+                    />
+                    <span>Menü</span>
+                  </label>
+                  <button
+                    type="button"
+                    className="social-settings-row__remove"
+                    title="Sil"
+                    onClick={() => removeCustomSocial(row.id)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                className="social-settings-add"
+                onClick={addCustomSocial}
+              >
+                <Plus className="w-4 h-4" />
+                Kendi linkini ekle
+              </button>
+
+              <input
+                ref={customIconInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  const id = pendingCustomIconIdRef.current;
+                  pendingCustomIconIdRef.current = null;
+                  e.target.value = '';
+                  if (!file || !id) return;
+                  void uploadCustomIcon(id, file);
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </section>
+
+      {iconPickerFor &&
+        iconPickerPos &&
+        createPortal(
+          <>
+            <button
+              type="button"
+              className="social-icon-picker-backdrop"
+              aria-label="İkon seçiciyi kapat"
+              onClick={closeIconPicker}
+            />
+            <div
+              className="social-icon-picker social-icon-picker--portal"
+              style={{ left: iconPickerPos.left, bottom: iconPickerPos.bottom }}
+              role="dialog"
+              aria-label="İkon seç"
+            >
+              <div className="social-icon-picker__grid">
+                {CUSTOM_ICON_OPTIONS.map((opt) => {
+                  const Icon = CUSTOM_ICONS[opt.id];
+                  const row = customSocial.find((c) => c.id === iconPickerFor);
+                  const active = row?.iconKey === opt.id && !row?.iconUrl;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      title={opt.label}
+                      className={`social-icon-picker__item ${active ? 'is-active' : ''}`}
+                      onClick={() => {
+                        updateSocial(iconPickerFor, { iconKey: opt.id, iconUrl: null });
+                        closeIconPicker();
+                      }}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                className="social-icon-picker__upload"
+                disabled={uploadingIconFor === iconPickerFor}
+                onClick={() => {
+                  pendingCustomIconIdRef.current = iconPickerFor;
+                  customIconInputRef.current?.click();
+                }}
+              >
+                {uploadingIconFor === iconPickerFor ? 'Yükleniyor…' : 'Kendi görselini yükle'}
+              </button>
+            </div>
+          </>,
+          document.body
+        )}
 
       <AddLanguageModal
         open={addLangOpen}

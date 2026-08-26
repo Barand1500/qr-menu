@@ -1,4 +1,6 @@
 import { X, Home, Info, Globe } from 'lucide-react';
+import PublicSocialLinks from '@/components/public/PublicSocialLinks';
+import type { PublicSocialLink } from '@/lib/socialCatalog';
 
 export type PublicTab = 'home' | 'about' | 'settings';
 
@@ -13,6 +15,7 @@ interface PublicSideMenuProps {
   restaurantName: string;
   languages: Language[];
   activeLang: string;
+  socialLinks?: PublicSocialLink[];
   onClose: () => void;
   onTab: (tab: PublicTab) => void;
   onLangChange: (code: string) => void;
@@ -24,6 +27,7 @@ export default function PublicSideMenu({
   restaurantName,
   languages,
   activeLang,
+  socialLinks = [],
   onClose,
   onTab,
   onLangChange,
@@ -75,7 +79,7 @@ export default function PublicSideMenu({
           </button>
         </nav>
 
-        <div className="public-side-menu__section">
+        <div className="public-side-menu__section flex-1">
           <p className="public-side-menu__section-title">
             <Globe className="w-4 h-4" />
             Dil Seçimi
@@ -96,6 +100,12 @@ export default function PublicSideMenu({
             ))}
           </div>
         </div>
+
+        {socialLinks.length > 0 && (
+          <div className="public-side-menu__social mt-auto px-4 pb-5 pt-3">
+            <PublicSocialLinks links={socialLinks} size="sm" />
+          </div>
+        )}
       </aside>
     </>
   );

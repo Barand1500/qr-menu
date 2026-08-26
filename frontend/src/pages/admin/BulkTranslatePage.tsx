@@ -30,13 +30,14 @@ interface GapItem {
   id: string;
   entityType: 'group' | 'product' | 'showcase';
   entityId: number;
-  field: 'name' | 'description' | 'title1' | 'title2';
+  field: 'name' | 'description' | 'ingredients' | 'allergens' | 'title1' | 'title2';
   category: 'groups' | 'products' | 'showcase' | 'stories';
   label: string;
   fieldLabel: string;
   sourceLang: string;
   sourceText: string;
   targetLang: string;
+  reason?: 'empty' | 'same_as_source';
 }
 
 interface PreviewItem extends GapItem {
@@ -665,6 +666,7 @@ export default function BulkTranslatePage() {
                         </span>
                         <span className="text-[11px] admin-text-muted">
                           {item.fieldLabel} · {item.sourceLang} → {item.targetLang}
+                          {item.reason === 'same_as_source' ? ' · kopya metin' : ''}
                         </span>
                       </span>
                     </label>

@@ -8,7 +8,9 @@ import { languageFlag } from '@/lib/languageFlags';
 import ComplaintBoxModal from '@/components/public/ComplaintBoxModal';
 import SuggestionBoxModal from '@/components/public/SuggestionBoxModal';
 import WelcomeSceneBackground from '@/components/public/WelcomeSceneBackground';
+import PublicSocialLinks from '@/components/public/PublicSocialLinks';
 import { usePublicRtl } from '@/hooks/usePublicRtl';
+import type { PublicSocialLink } from '@/lib/socialCatalog';
 
 interface WelcomeData {
   restaurant: { id: number; name: string; slug: string; logoUrl?: string | null };
@@ -17,6 +19,7 @@ interface WelcomeData {
   welcomeMusicUrl?: string | null;
   theme?: string;
   campaign?: { name: string; slug: string; itemCount: number } | null;
+  socialLinks?: PublicSocialLink[];
 }
 
 const MUSIC_SOURCES = (custom?: string | null) =>
@@ -379,6 +382,10 @@ export default function PublicWelcomePage() {
           >
             Menüye Gir
           </button>
+
+          {data.socialLinks && data.socialLinks.length > 0 && (
+            <PublicSocialLinks links={data.socialLinks} className="welcome-card__social" />
+          )}
 
           <p className="welcome-card__hint">Deneyiminizi kişiselleştirmek için dil seçimi yapın</p>
 

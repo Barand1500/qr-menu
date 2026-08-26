@@ -19,7 +19,7 @@ const router = Router();
 router.use(authRequired);
 
 type GapCategory = 'groups' | 'products' | 'showcase' | 'stories';
-type GapField = 'name' | 'description' | 'title1' | 'title2';
+type GapField = 'name' | 'description' | 'ingredients' | 'allergens' | 'title1' | 'title2';
 type EntityType = 'group' | 'product' | 'showcase';
 
 export interface BulkGapItem {
@@ -33,14 +33,19 @@ export interface BulkGapItem {
   sourceLang: string;
   sourceText: string;
   targetLang: string;
+  reason: 'empty' | 'same_as_source';
 }
 
 const FIELD_LABELS: Record<GapField, string> = {
   name: 'Ad',
   description: 'Açıklama',
+  ingredients: 'İçindekiler',
+  allergens: 'Alerjenler',
   title1: 'Başlık 1',
   title2: 'Başlık 2',
 };
+
+const PRODUCT_FIELDS: GapField[] = ['name', 'description', 'ingredients', 'allergens'];
 
 async function requireLangPack(req: Parameters<typeof getRestaurantId>[0], res: import('express').Response) {
   const restaurantId = await getRestaurantId(req);
@@ -63,6 +68,34 @@ async function getOpenAiKey(restaurantId: number) {
   return row?.value?.trim() || null;
 }
 
+/** Boş veya kaynak dille birebir aynı (çevrilmemiş kopya) → eksik say */
+function needsTranslation(
+  json: unknown,
+  targetLang: string,
+  field: string,
+  preferred: string[]
+): { sourceLang: string; sourceText: string; reason: 'empty' | 'same_as_source' } | null {
+  const source = findSourceField<Record<string, unknown>>(
+    json,
+    targetLang,
+    field,
+    preferred
+  );
+  if (!source) return null;
+
+  const raw = getRawField<Record<string, unknown>>(json, targetLang, field);
+  if (!raw) {
+    return { sourceLang: source.lang, sourceText: source.text, reason: 'empty' };
+  }
+
+  // Başka dildeki kaynakla birebir aynıysa muhtemelen çevrilmemiş kopya
+  if (raw === source.text && source.lang !== targetLang) {
+    return { sourceLang: source.lang, sourceText: source.text, reason: 'same_as_source' };
+  }
+
+  return null;
+}
+
 async function collectGaps(restaurantId: number, targetLang: string): Promise<BulkGapItem[]> {
   const languages = await prisma.language.findMany({
     where: { isActive: true },
@@ -81,21 +114,20 @@ async function collectGaps(restaurantId: number, targetLang: string): Promise<Bu
   });
 
   for (const group of groups) {
-    const empty = !getRawField<GroupI18nEntry>(group.i18n, targetLang, 'name');
-    if (!empty) continue;
-    const source = findSourceField<GroupI18nEntry>(group.i18n, targetLang, 'name', preferred);
-    if (!source) continue;
+    const need = needsTranslation(group.i18n, targetLang, 'name', preferred);
+    if (!need) continue;
     gaps.push({
       id: `group:${group.id}:name`,
       entityType: 'group',
       entityId: group.id,
       field: 'name',
       category: 'groups',
-      label: getGroupName(group.i18n, source.lang) || `Grup #${group.id}`,
+      label: getGroupName(group.i18n, need.sourceLang) || `Grup #${group.id}`,
       fieldLabel: FIELD_LABELS.name,
-      sourceLang: source.lang,
-      sourceText: source.text,
+      sourceLang: need.sourceLang,
+      sourceText: need.sourceText,
       targetLang,
+      reason: need.reason,
     });
   }
 
@@ -110,16 +142,9 @@ async function collectGaps(restaurantId: number, targetLang: string): Promise<Bu
       getProductField(product.i18n, preferred[0] || 'tr', 'name') ||
       `Ürün #${product.id}`;
 
-    for (const field of ['name', 'description'] as const) {
-      const empty = !getRawField<ProductI18nEntry>(product.i18n, targetLang, field);
-      if (!empty) continue;
-      const source = findSourceField<ProductI18nEntry>(
-        product.i18n,
-        targetLang,
-        field,
-        preferred
-      );
-      if (!source) continue;
+    for (const field of PRODUCT_FIELDS) {
+      const need = needsTranslation(product.i18n, targetLang, field, preferred);
+      if (!need) continue;
       gaps.push({
         id: `product:${product.id}:${field}`,
         entityType: 'product',
@@ -128,9 +153,10 @@ async function collectGaps(restaurantId: number, targetLang: string): Promise<Bu
         category: 'products',
         label: display,
         fieldLabel: FIELD_LABELS[field],
-        sourceLang: source.lang,
-        sourceText: source.text,
+        sourceLang: need.sourceLang,
+        sourceText: need.sourceText,
         targetLang,
+        reason: need.reason,
       });
     }
   }
@@ -147,15 +173,8 @@ async function collectGaps(restaurantId: number, targetLang: string): Promise<Bu
     const display = titles.title1 || titles.title2 || item.name || `Vitrin #${item.id}`;
 
     for (const field of ['title1', 'title2'] as const) {
-      const empty = !getRawField<ShowcaseI18nEntry>(item.i18n, targetLang, field);
-      if (!empty) continue;
-      const source = findSourceField<ShowcaseI18nEntry>(
-        item.i18n,
-        targetLang,
-        field,
-        preferred
-      );
-      if (!source) continue;
+      const need = needsTranslation(item.i18n, targetLang, field, preferred);
+      if (!need) continue;
       gaps.push({
         id: `showcase:${item.id}:${field}`,
         entityType: 'showcase',
@@ -164,9 +183,10 @@ async function collectGaps(restaurantId: number, targetLang: string): Promise<Bu
         category,
         label: display,
         fieldLabel: FIELD_LABELS[field],
-        sourceLang: source.lang,
-        sourceText: source.text,
+        sourceLang: need.sourceLang,
+        sourceText: need.sourceText,
         targetLang,
+        reason: need.reason,
       });
     }
   }
@@ -298,13 +318,12 @@ router.post('/apply', async (req, res) => {
   for (const item of items) {
     const text = String(item.translatedText || '').trim();
     if (!text) continue;
+
     if (item.entityType === 'group' && item.field === 'name') {
       const row = await prisma.group.findFirst({
         where: { id: item.entityId, restaurantId },
       });
       if (!row) continue;
-      const existing = getRawField<GroupI18nEntry>(row.i18n, targetLang, 'name');
-      if (existing) continue;
       await prisma.group.update({
         where: { id: row.id },
         data: {
@@ -315,17 +334,23 @@ router.post('/apply', async (req, res) => {
       continue;
     }
 
-    if (item.entityType === 'product' && (item.field === 'name' || item.field === 'description')) {
+    if (
+      item.entityType === 'product' &&
+      PRODUCT_FIELDS.includes(item.field)
+    ) {
       const row = await prisma.product.findFirst({
         where: { id: item.entityId, restaurantId },
       });
       if (!row) continue;
-      const existing = getRawField<ProductI18nEntry>(row.i18n, targetLang, item.field);
-      if (existing) continue;
       await prisma.product.update({
         where: { id: row.id },
         data: {
-          i18n: patchI18nField<ProductI18nEntry>(row.i18n, targetLang, item.field, text),
+          i18n: patchI18nField<ProductI18nEntry>(
+            row.i18n,
+            targetLang,
+            item.field as keyof ProductI18nEntry,
+            text
+          ),
         },
       });
       saved += 1;
@@ -340,8 +365,6 @@ router.post('/apply', async (req, res) => {
         where: { id: item.entityId, restaurantId },
       });
       if (!row) continue;
-      const existing = getRawField<ShowcaseI18nEntry>(row.i18n, targetLang, item.field);
-      if (existing) continue;
       await prisma.showcaseImage.update({
         where: { id: row.id },
         data: {
