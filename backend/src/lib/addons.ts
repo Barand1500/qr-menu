@@ -11,11 +11,12 @@ export type AddonProductId =
   | 'welcome-neon'
   | 'menu-alive'
   | 'menu-luxury'
-  | 'qr-pack';
+  | 'qr-pack'
+  | 'lang-pack';
 
 export const ADDON_PRODUCTS: {
   id: AddonProductId;
-  category: 'welcome' | 'menu' | 'qr';
+  category: 'welcome' | 'menu' | 'qr' | 'lang';
   name: string;
   description: string;
   themeId?: string;
@@ -54,6 +55,13 @@ export const ADDON_PRODUCTS: {
     name: 'QR Paketi',
     description:
       'Renkli QR, logo ortalı QR, masa bazlı QR, kampanyalı link ve gelişmiş yazdırma.',
+  },
+  {
+    id: 'lang-pack',
+    category: 'lang',
+    name: 'Dil Paketi',
+    description:
+      'Toplu çeviri: ürün, kategori, vitrin ve hikaye boş alanlarını seçtiğin dile doldur.',
   },
 ];
 

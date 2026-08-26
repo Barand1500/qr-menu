@@ -9,13 +9,15 @@ import {
   Sun,
   Moon,
   RotateCcw,
+  Puzzle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoData } from '@/contexts/DemoDataContext';
 import { api } from '@/lib/api';
+import { useAddons } from '@/hooks/useAddons';
 
-const mainNav = [
+const mainNavBase = [
   { to: '/admin', label: 'Özet', end: true },
   { to: '/admin/groups', label: 'Gruplar' },
   { to: '/admin/products', label: 'Ürünler' },
@@ -36,12 +38,6 @@ const reportNav = [
 const managementNav = [
   { to: '/admin/users', label: 'Kullanıcılar' },
   { to: '/admin/settings', label: 'Ayarlar' },
-];
-
-const extensionsNav = [
-  { to: '/admin/extensions/welcome', label: 'Karşılama ekranları' },
-  { to: '/admin/extensions/menu', label: 'Menü ekranları' },
-  { to: '/admin/extensions/qr', label: 'QR' },
 ];
 
 function NavGroup({
@@ -105,14 +101,21 @@ export default function AdminLayout() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { demoEnabled, toggleDemo } = useDemoData();
+  const { isOwned } = useAddons();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
   const [managementOpen, setManagementOpen] = useState(false);
   const [startupOpen, setStartupOpen] = useState(false);
-  const [extensionsOpen, setExtensionsOpen] = useState(false);
   const [resettingAddons, setResettingAddons] = useState(false);
+
+  const mainNav = [
+    ...mainNavBase,
+    ...(isOwned('lang-pack')
+      ? [{ to: '/admin/bulk-translate', label: 'Toplu Çeviri' }]
+      : []),
+  ];
 
   const closeMobile = () => setMobileOpen(false);
 
@@ -166,10 +169,6 @@ export default function AdminLayout() {
   useEffect(() => {
     if (startupActive) setStartupOpen(true);
   }, [startupActive]);
-
-  useEffect(() => {
-    if (extensionsActive) setExtensionsOpen(true);
-  }, [extensionsActive]);
 
   const sidebar = (
     <aside
@@ -229,20 +228,25 @@ export default function AdminLayout() {
             <NavItem key={to} to={to} label={label} sub onNavigate={closeMobile} />
           ))}
         </NavGroup>
-
-        <NavGroup
-          label="Eklentiler"
-          open={extensionsOpen}
-          onToggle={() => setExtensionsOpen(!extensionsOpen)}
-        >
-          {extensionsNav.map(({ to, label }) => (
-            <NavItem key={to} to={to} label={label} sub onNavigate={closeMobile} />
-          ))}
-        </NavGroup>
       </nav>
 
-      <div className="px-6 py-5 border-t border-white/10 mt-auto">
-        <p className="text-xs text-white/40 truncate">{user?.restaurant.name}</p>
+      <div className="px-5 py-4 border-t border-white/10 mt-auto">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <p className="text-xs text-white/45 truncate flex-1 min-w-0">
+            {user?.restaurant.name}
+          </p>
+          <NavLink
+            to="/admin/extensions"
+            onClick={closeMobile}
+            title="Eklentiler"
+            aria-label="Eklentiler"
+            className={`sidebar-extensions-btn shrink-0 ${
+              extensionsActive ? 'sidebar-extensions-btn--active' : ''
+            }`}
+          >
+            <Puzzle className="w-[18px] h-[18px]" strokeWidth={1.75} />
+          </NavLink>
+        </div>
       </div>
     </aside>
   );

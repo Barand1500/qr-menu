@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,15 +45,24 @@ function SettingsSection({
   children,
   className = '',
   action,
+  sectionId,
+  highlight,
 }: {
   icon: typeof Globe;
   title: string;
   children: React.ReactNode;
   className?: string;
   action?: React.ReactNode;
+  sectionId?: string;
+  highlight?: boolean;
 }) {
   return (
-    <section className={`admin-card overflow-hidden flex flex-col ${className}`}>
+    <section
+      id={sectionId}
+      className={`admin-card overflow-hidden flex flex-col ${className}${
+        highlight ? ' settings-section--pulse' : ''
+      }`}
+    >
       <div
         className="flex items-center gap-2.5 px-5 py-3.5 shrink-0"
         style={{
@@ -73,6 +83,7 @@ function SettingsSection({
 
 export default function SettingsPage() {
   const { refreshUser } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const fileRef = useRef<HTMLInputElement>(null);
   const [data, setData] = useState<SettingsData | null>(null);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
@@ -90,6 +101,7 @@ export default function SettingsPage() {
   const [addCurrencyOpen, setAddCurrencyOpen] = useState(false);
   const [addingCurrency, setAddingCurrency] = useState(false);
   const [translateStatus, setTranslateStatus] = useState<TranslateStatus | null>(null);
+  const [languagesHighlight, setLanguagesHighlight] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -117,6 +129,20 @@ export default function SettingsPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (loading || searchParams.get('focus') !== 'languages') return;
+    const timer = window.setTimeout(() => {
+      const el = document.getElementById('settings-languages');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setLanguagesHighlight(true);
+      window.setTimeout(() => setLanguagesHighlight(false), 2200);
+      const next = new URLSearchParams(searchParams);
+      next.delete('focus');
+      setSearchParams(next, { replace: true });
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [loading, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!logoFile) return;
@@ -298,6 +324,8 @@ export default function SettingsPage() {
 
       <div className="grid lg:grid-cols-2 gap-5">
         <SettingsSection
+          sectionId="settings-languages"
+          highlight={languagesHighlight}
           icon={Globe}
           title="Dil Ayarları"
           action={

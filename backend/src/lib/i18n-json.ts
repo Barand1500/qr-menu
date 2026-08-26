@@ -48,6 +48,54 @@ export function getByLang<T extends Record<string, unknown>>(
   return typeof first?.[field] === 'string' ? (first[field] as string) : '';
 }
 
+/** Dil kodundaki alan — başka dile düşmeden */
+export function getRawField<T extends Record<string, unknown>>(
+  json: unknown,
+  lang: string,
+  field: keyof T
+): string {
+  const map = asMap<T>(json);
+  const value = map[lang]?.[field];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+/** Hedef dil boşken çeviri kaynağı bul (önce tercih sırası, sonra herhangi bir dolu dil) */
+export function findSourceField<T extends Record<string, unknown>>(
+  json: unknown,
+  targetLang: string,
+  field: keyof T,
+  preferredLangs: string[] = ['tr']
+): { lang: string; text: string } | null {
+  const map = asMap<T>(json);
+  const tried = new Set<string>();
+
+  for (const lang of preferredLangs) {
+    if (!lang || lang === targetLang || tried.has(lang)) continue;
+    tried.add(lang);
+    const text = getRawField<T>(json, lang, field);
+    if (text) return { lang, text };
+  }
+
+  for (const lang of Object.keys(map)) {
+    if (lang === targetLang || tried.has(lang)) continue;
+    const text = getRawField<T>(json, lang, field);
+    if (text) return { lang, text };
+  }
+
+  return null;
+}
+
+export function patchI18nField<T extends Record<string, unknown>>(
+  existing: unknown,
+  lang: string,
+  field: keyof T,
+  value: string
+): I18nMap<T> {
+  const map = { ...asMap<T>(existing) };
+  map[lang] = { ...(map[lang] || ({} as T)), [field]: value } as T;
+  return map;
+}
+
 export function getGroupName(json: unknown, lang = 'tr') {
   return getByLang<GroupI18nEntry>(json, lang, 'name');
 }

@@ -71,8 +71,7 @@ export default function AddCurrencyModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
     >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[6px]" />
 

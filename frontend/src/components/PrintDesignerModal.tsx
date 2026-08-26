@@ -849,21 +849,21 @@ export default function PrintDesignerModal({
           <div className="barcode-layout-toolbar">
             <button
               type="button"
-              className="barcode-layout-chip is-active barcode-layout-chip--keyed"
+              className="barcode-layout-chip is-active"
               onClick={addCustomText}
+              title="Kısayol: 1"
             >
               <Plus className="w-3.5 h-3.5" />
               Yazı Ekle
-              <kbd className="print-key-badge">1</kbd>
             </button>
             <button
               type="button"
-              className={`barcode-layout-chip barcode-layout-chip--keyed ${iconPanel ? 'is-active' : ''}`}
+              className={`barcode-layout-chip ${iconPanel ? 'is-active' : ''}`}
               onClick={() => setIconPanel((v) => !v)}
+              title="Kısayol: 2"
             >
               <Star className="w-3.5 h-3.5" />
               İkon Ekle
-              <kbd className="print-key-badge">2</kbd>
             </button>
             <button
               type="button"
@@ -880,12 +880,12 @@ export default function PrintDesignerModal({
             </button>
             <button
               type="button"
-              className="barcode-layout-chip barcode-layout-chip--keyed"
+              className="barcode-layout-chip"
               onClick={resetLayout}
+              title="Kısayol: 0"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Sıfırla
-              <kbd className="print-key-badge">0</kbd>
             </button>
             <button
               type="button"

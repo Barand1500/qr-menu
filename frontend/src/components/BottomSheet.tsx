@@ -37,6 +37,15 @@ export default function BottomSheet({
     };
   }, [open, minimized]);
 
+  useEffect(() => {
+    if (!open || minimized) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, minimized, onClose]);
+
   if (!open) return null;
 
   if (minimized) {
@@ -63,7 +72,6 @@ export default function BottomSheet({
     <>
       <div
         className="fixed inset-0 z-[199] bg-black/30 backdrop-blur-[2px]"
-        onClick={onClose}
       />
       <div
         className="fixed bottom-0 inset-x-0 z-[200] flex flex-col animate-slide-up"

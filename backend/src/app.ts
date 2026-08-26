@@ -20,6 +20,7 @@ import currenciesRouter from './routes/currencies.js';
 import addonsRouter from './routes/addons.js';
 import barcodeRouter from './routes/barcode.js';
 import campaignsRouter from './routes/campaigns.js';
+import bulkTranslateRouter from './routes/bulk-translate.js';
 
 export function createApp() {
   const app = express();
@@ -55,6 +56,7 @@ export function createApp() {
   app.use('/api/admin/addons', addonsRouter);
   app.use('/api/admin/barcode', barcodeRouter);
   app.use('/api/admin/campaigns', campaignsRouter);
+  app.use('/api/admin/bulk-translate', bulkTranslateRouter);
   app.use('/api/menu', publicMenuRouter);
 
   const publicDir = path.resolve(process.env.PUBLIC_DIR || './public');

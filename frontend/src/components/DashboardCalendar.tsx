@@ -41,6 +41,15 @@ export default function DashboardCalendar() {
   const [editMode, setEditMode] = useState(false);
   const [noteText, setNoteText] = useState('');
 
+  useEffect(() => {
+    if (!modalOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setModalOpen(false);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [modalOpen]);
+
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
 
@@ -198,7 +207,6 @@ export default function DashboardCalendar() {
       {modalOpen && selectedDay !== null && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40"
-          onClick={() => setModalOpen(false)}
         >
           <div
             className="admin-card w-full max-w-sm p-5"

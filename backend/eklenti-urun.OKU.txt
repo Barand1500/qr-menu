@@ -18,6 +18,7 @@ Dosya: backend/eklenti-urun.json
   menu-alive      → Canlı menü teması
   menu-luxury     → Lüks menü teması
   qr-pack         → Renkli / logo / masa / kampanya QR paketi
+  lang-pack       → Toplu çeviri (Dil Paketi)
 
 Değişiklikten sonra sunucuda backend'i yeniden başlat.
 

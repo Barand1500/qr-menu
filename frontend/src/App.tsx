@@ -16,7 +16,7 @@ import SettingsPage from '@/pages/admin/SettingsPage';
 import WelcomeThemePage from '@/pages/admin/WelcomeThemePage';
 import MenuThemePage from '@/pages/admin/MenuThemePage';
 import ExtensionsHubPage from '@/pages/admin/ExtensionsHubPage';
-import ExtensionsCategoryPage from '@/pages/admin/ExtensionsCategoryPage';
+import BulkTranslatePage from '@/pages/admin/BulkTranslatePage';
 import PublicWelcomePage from '@/pages/public/PublicWelcomePage';
 import PublicMenuPage from '@/pages/public/PublicMenuPage';
 import PublicProductPage from '@/pages/public/PublicProductPage';
@@ -58,6 +58,7 @@ export default function App() {
               <Route path="products" element={<ProductsPage />} />
               <Route path="showcase" element={<ShowcasePage />} />
               <Route path="barcode" element={<BarcodePage />} />
+              <Route path="bulk-translate" element={<BulkTranslatePage />} />
               <Route path="startup/welcome" element={<WelcomeThemePage />} />
               <Route path="startup/menu" element={<MenuThemePage />} />
               <Route path="stats" element={<StatsPage />} />
@@ -68,33 +69,19 @@ export default function App() {
               <Route path="extensions" element={<ExtensionsHubPage />} />
               <Route
                 path="extensions/welcome"
-                element={
-                  <ExtensionsCategoryPage
-                    category="welcome"
-                    title="Karşılama ekranları"
-                    subtitle="Satın Al yakında. Şimdilik Kod Gir ile temayı aç; sonra Başlangıç Ayarları’nda kullan."
-                  />
-                }
+                element={<Navigate to="/admin/extensions?tab=startup" replace />}
               />
               <Route
                 path="extensions/menu"
-                element={
-                  <ExtensionsCategoryPage
-                    category="menu"
-                    title="Menü ekranları"
-                    subtitle="Satın Al yakında. Kod ile açılan temalar Menü Ekranı’nda seçilebilir."
-                  />
-                }
+                element={<Navigate to="/admin/extensions?tab=startup" replace />}
               />
               <Route
                 path="extensions/qr"
-                element={
-                  <ExtensionsCategoryPage
-                    category="qr"
-                    title="QR"
-                    subtitle="Renkli, logolu, masa ve kampanya QR paketi. Açılınca Barkod Yazdır sayfasında kullanılır."
-                  />
-                }
+                element={<Navigate to="/admin/extensions?tab=qr" replace />}
+              />
+              <Route
+                path="extensions/lang"
+                element={<Navigate to="/admin/extensions?tab=lang" replace />}
               />
             </Route>
           </Route>

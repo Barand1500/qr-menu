@@ -1,6 +1,6 @@
 /** Frontend katalog — kilit durumu API'deki owned listesine göre hesaplanır */
 
-export type AddonCategory = 'welcome' | 'menu' | 'qr';
+export type AddonCategory = 'welcome' | 'menu' | 'qr' | 'lang';
 
 export interface AddonProduct {
   id: string;
@@ -52,6 +52,14 @@ export const ADDON_CATALOG: AddonProduct[] = [
     description:
       'Renkli QR, logo ortalı, masa bazlı linkler, kampanya QR ve gelişmiş yazdırma.',
     previewClass: 'theme-preview--qr',
+  },
+  {
+    id: 'lang-pack',
+    category: 'lang',
+    name: 'Dil Paketi',
+    description:
+      'Toplu çeviri: ürün, kategori, vitrin ve hikaye boş alanlarını seçtiğin dile doldur.',
+    previewClass: 'theme-preview--lang',
   },
 ];
 

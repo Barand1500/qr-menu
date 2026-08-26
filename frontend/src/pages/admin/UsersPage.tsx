@@ -37,6 +37,15 @@ export default function UsersPage() {
     load().finally(() => setLoading(false));
   }, [search]);
 
+  useEffect(() => {
+    if (!modalOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setModalOpen(false);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [modalOpen]);
+
   function openCreate() {
     setEditing(null);
     setForm({ email: '', password: '', fullName: '', phone: '', role: 'staff', isActive: true });
@@ -212,7 +221,6 @@ export default function UsersPage() {
       {modalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-          onClick={() => setModalOpen(false)}
         >
           <div className="absolute inset-0 bg-black/35 backdrop-blur-[6px]" />
           <div
