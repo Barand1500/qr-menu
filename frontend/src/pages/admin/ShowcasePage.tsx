@@ -14,6 +14,7 @@ import { api, imageUrl } from '@/lib/api';
 import { getActiveLanguages, type AdminLanguage } from '@/lib/languages';
 import { useDemoData } from '@/contexts/DemoDataContext';
 import { Badge, Button, Card, EmptyState, PageHeader, Spinner } from '@/components/ui';
+import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import ShowcaseModal, {
   type ShowcaseFormState,
   type ShowcaseTranslationFields,
@@ -425,7 +426,9 @@ export default function ShowcasePage() {
                               className="w-24 h-14 rounded-xl object-cover"
                             />
                           ) : (
-                            <div className="w-24 h-14 rounded-xl bg-[var(--admin-accent-soft)]" />
+                            <div className="w-24 h-14 rounded-xl overflow-hidden shrink-0">
+                              <MenuMediaPlaceholder kind="product" size="sm" label={item.name} />
+                            </div>
                           )}
                         </td>
                         <td className="py-3.5 px-4 font-semibold">{item.name}</td>
@@ -494,7 +497,7 @@ export default function ShowcasePage() {
                       {story.imageUrl ? (
                         <img src={imageUrl(story.imageUrl)} alt={story.name} />
                       ) : (
-                        <div className="admin-stories-card__empty" />
+                        <MenuMediaPlaceholder kind="product" size="sm" label={story.name} />
                       )}
                     </div>
 

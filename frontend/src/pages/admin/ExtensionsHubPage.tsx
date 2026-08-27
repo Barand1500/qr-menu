@@ -13,15 +13,16 @@ import { Button, Card, PageHeader, Spinner } from '@/components/ui';
 import UnlockAddonModal from '@/components/UnlockAddonModal';
 import SupportContactModal from '@/components/SupportContactModal';
 import { useAddons } from '@/hooks/useAddons';
-import type { AddonCategory, AddonProduct } from '@/lib/addons';
+import type { AddonCategory, AddonProduct } from '@/addons';
 
-type TabId = 'all' | 'startup' | 'qr' | 'lang';
+type TabId = 'all' | 'startup' | 'qr' | 'lang' | 'feature';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'all', label: 'Tümü' },
   { id: 'startup', label: 'Başlangıç' },
   { id: 'qr', label: 'QR' },
   { id: 'lang', label: 'Dil' },
+  { id: 'feature', label: 'Özellik' },
 ];
 
 function matchesTab(product: AddonProduct, tab: TabId) {
@@ -34,55 +35,25 @@ function categoryBadge(category: AddonCategory) {
   if (category === 'welcome') return 'Karşılama';
   if (category === 'menu') return 'Menü';
   if (category === 'qr') return 'QR';
+  if (category === 'feature') return 'Özellik';
   return 'Dil';
 }
 
-function ownedAction(product: AddonProduct) {
-  if (product.category === 'qr') {
-    return (
-      <Link to="/admin/barcode" className="w-full">
-        <Button type="button" className="w-full">
-          <QrCode className="w-4 h-4" />
-          Barkod’a git
-        </Button>
-      </Link>
-    );
-  }
-  if (product.category === 'lang') {
-    return (
-      <Link to="/admin/bulk-translate" className="w-full">
-        <Button type="button" className="w-full">
-          <Languages className="w-4 h-4" />
-          Toplu Çeviri’ye git
-        </Button>
-      </Link>
-    );
-  }
-  return (
-    <Link
-      to={product.category === 'welcome' ? '/admin/startup/welcome' : '/admin/startup/menu'}
-      className="w-full"
-    >
-      <Button type="button" className="w-full">
-        <Sparkles className="w-4 h-4" />
-        Temalarda kullan
-      </Button>
-    </Link>
-  );
-}
-
 function parseTab(raw: string | null): TabId {
-  if (raw === 'startup' || raw === 'qr' || raw === 'lang' || raw === 'all') return raw;
+  if (raw === 'startup' || raw === 'qr' || raw === 'lang' || raw === 'feature' || raw === 'all') {
+    return raw;
+  }
   if (raw === 'welcome' || raw === 'menu') return 'startup';
   return 'all';
 }
 
 export default function ExtensionsHubPage() {
-  const { products, loading, unlock } = useAddons();
+  const { products, loading, unlock, setEnabled } = useAddons();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = parseTab(searchParams.get('tab'));
   const [selected, setSelected] = useState<AddonProduct | null>(null);
   const [unlocking, setUnlocking] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [supportOpen, setSupportOpen] = useState(false);
 
   const list = useMemo(
@@ -105,6 +76,67 @@ export default function ExtensionsHubPage() {
     } finally {
       setUnlocking(false);
     }
+  }
+
+  async function handleToggle(product: AddonProduct) {
+    if (!product.toggleable) return;
+    setTogglingId(product.id);
+    try {
+      await setEnabled(product.id, !product.enabled);
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
+  function ownedAction(product: AddonProduct) {
+    if (product.toggleable) {
+      const on = Boolean(product.enabled);
+      return (
+        <button
+          type="button"
+          className="addon-toggle"
+          onClick={() => void handleToggle(product)}
+          disabled={togglingId === product.id}
+          aria-pressed={on}
+        >
+          <span>{on ? 'Menüde açık' : 'Menüde kapalı'}</span>
+          <span className={`addon-toggle__switch${on ? ' is-on' : ''}`} aria-hidden>
+            <span className="addon-toggle__knob" />
+          </span>
+        </button>
+      );
+    }
+    if (product.category === 'qr') {
+      return (
+        <Link to="/admin/barcode" className="w-full">
+          <Button type="button" className="w-full">
+            <QrCode className="w-4 h-4" />
+            Barkod’a git
+          </Button>
+        </Link>
+      );
+    }
+    if (product.category === 'lang') {
+      return (
+        <Link to="/admin/bulk-translate" className="w-full">
+          <Button type="button" className="w-full">
+            <Languages className="w-4 h-4" />
+            Toplu Çeviri’ye git
+          </Button>
+        </Link>
+      );
+    }
+    return (
+      <Link
+        to={product.category === 'welcome' ? '/admin/startup/welcome' : '/admin/startup/menu'}
+        className="w-full"
+      >
+        <Button type="button" className="w-full">
+          <Sparkles className="w-4 h-4" />
+          Temalarda kullan
+        </Button>
+      </Link>
+    );
   }
 
   if (loading) return <Spinner />;

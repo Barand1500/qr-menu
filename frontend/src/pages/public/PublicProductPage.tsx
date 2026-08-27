@@ -18,6 +18,7 @@ import ProductImageGallery, {
   useProductGalleryIndex,
 } from '@/components/public/ProductImageGallery';
 import BrushPanel from '@/components/public/BrushPanel';
+import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { usePublicRtl } from '@/hooks/usePublicRtl';
 import { menuGroupPath, menuProductPath } from '@/lib/menuPaths';
@@ -37,6 +38,7 @@ interface ProductDetail {
   calories?: number | null;
   isRecommended?: boolean;
   features: string[];
+  theme?: string;
   group: { id: number; name: string };
   restaurant: { name: string; slug: string; logoUrl?: string | null };
 }
@@ -113,7 +115,7 @@ export default function PublicProductPage() {
 
   if (!product) {
     return (
-      <div className="public-menu-page min-h-screen flex items-center justify-center">
+      <div className="public-menu-page min-h-screen flex items-center justify-center" data-theme-menu="sade">
         <div className="w-9 h-9 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -133,7 +135,10 @@ export default function PublicProductPage() {
     (product.calories != null && product.calories > 0);
 
   return (
-    <div className="public-menu-page public-product-page">
+    <div
+      className={`public-menu-page public-product-page public-product-page--${product.theme || 'sade'}`}
+      data-theme-menu={product.theme || 'sade'}
+    >
       <header className="public-product-hero">
         <ProductImageGallery
           images={galleryImages}
@@ -310,7 +315,9 @@ export default function PublicProductPage() {
                           loading="lazy"
                         />
                       ) : (
-                        <div className="public-product-related__img public-product-related__img--empty" />
+                        <div className="public-product-related__img public-product-related__img--empty">
+                          <MenuMediaPlaceholder kind="product" size="md" label={item.name} />
+                        </div>
                       )}
                       <div className="public-product-related__info">
                         <p className="public-product-related__name">{item.name}</p>

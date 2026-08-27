@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authRequired, getRestaurantId } from '../lib/auth.js';
-import { ownsAddon } from '../lib/addons.js';
+import { ownsAddon } from '../addons/ownership.js';
 import { prisma } from '../lib/prisma.js';
 import {
   findSourceField,

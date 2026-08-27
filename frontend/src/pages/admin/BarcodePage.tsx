@@ -72,6 +72,7 @@ interface TableGroup {
   id: string;
   name: string;
   count: number;
+  prefix: string;
 }
 
 interface TableStyle {
@@ -95,9 +96,19 @@ function slugify(text: string) {
     .replace(/^-|-$/g, '');
 }
 
-function defaultTableStyle(n: number, groupName = 'Masa'): TableStyle {
+function normalizePrefix(value: string) {
+  return value.trim().slice(0, 20);
+}
+
+function tableCode(n: number, prefix = '') {
+  const p = normalizePrefix(prefix);
+  return p ? `${p}-${n}` : String(n);
+}
+
+function defaultTableStyle(n: number, groupName = 'Masa', prefix = ''): TableStyle {
+  const p = normalizePrefix(prefix);
   return {
-    name: `${groupName} ${n}`,
+    name: p ? `${p}-${n}` : `${groupName} ${n}`,
     colorId: 'black',
     withLogo: false,
     frameId: 'yok',
@@ -137,8 +148,8 @@ function loadTableGroupsState(): {
 } {
   const fallback = {
     groups: [
-      { id: 'salon', name: 'Salon', count: 12 },
-      { id: 'teras', name: 'Teras', count: 8 },
+      { id: 'salon', name: 'Salon', count: 12, prefix: '' },
+      { id: 'teras', name: 'Teras', count: 8, prefix: '' },
     ],
     activeGroupId: 'salon',
     groupStyles: {} as Record<string, Record<number, TableStyle>>,
@@ -149,7 +160,12 @@ function loadTableGroupsState(): {
     const parsed = JSON.parse(raw) as Partial<typeof fallback>;
     if (!parsed.groups?.length) return fallback;
     return {
-      groups: parsed.groups,
+      groups: parsed.groups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        count: g.count,
+        prefix: normalizePrefix(g.prefix || ''),
+      })),
       activeGroupId:
         parsed.groups.some((g) => g.id === parsed.activeGroupId)
           ? (parsed.activeGroupId as string)
@@ -205,6 +221,7 @@ export default function BarcodePage() {
         id: string;
         name: string;
         count: number;
+        prefix?: string;
         styles?: Record<string, Partial<TableStyle>>;
       }[];
       activeGroupId: string;
@@ -216,6 +233,7 @@ export default function BarcodePage() {
             id: g.id,
             name: g.name,
             count: g.count,
+            prefix: normalizePrefix(g.prefix || ''),
           }))
         );
         const nextStyles: Record<string, Record<number, TableStyle>> = {};
@@ -225,7 +243,7 @@ export default function BarcodePage() {
             const n = Number(key);
             if (!Number.isFinite(n)) continue;
             nextStyles[g.id][n] = {
-              ...defaultTableStyle(n, g.name),
+              ...defaultTableStyle(n, g.name, g.prefix || ''),
               ...style,
               frameId: (QR_FRAMES.some((f) => f.id === style.frameId)
                 ? style.frameId
@@ -252,6 +270,7 @@ export default function BarcodePage() {
         id: g.id,
         name: g.name,
         count: g.count,
+        prefix: g.prefix || '',
         styles: Object.fromEntries(
           Object.entries(groupStyles[g.id] || {}).map(([k, v]) => [k, v])
         ),
@@ -293,7 +312,7 @@ export default function BarcodePage() {
   const classicUrl = `${origin}/menu`;
   const tableUrl =
     selectedTable && activeGroup
-      ? `${origin}/menu?masa=${selectedTable}&grup=${activeGroup.id}`
+      ? `${origin}/menu?masa=${encodeURIComponent(tableCode(selectedTable, activeGroup.prefix))}&grup=${activeGroup.id}`
       : classicUrl;
   const campaignUrl = selectedCampaign
     ? `${origin}/menu?kampanya=${selectedCampaign.slug}`
@@ -316,13 +335,21 @@ export default function BarcodePage() {
 
   function getTableStyle(n: number): TableStyle {
     const groupName = activeGroup?.name || 'Masa';
-    const base = defaultTableStyle(n, groupName);
+    const prefix = activeGroup?.prefix || '';
+    const base = defaultTableStyle(n, groupName, prefix);
     const prev = activeGroupId ? groupStyles[activeGroupId]?.[n] : undefined;
     if (!prev) return base;
     const frameOk = QR_FRAMES.some((f) => f.id === prev.frameId);
+    const autoName =
+      !prev.name ||
+      prev.name === String(n) ||
+      prev.name === `${groupName} ${n}` ||
+      prev.name.endsWith(`-${n}`) ||
+      prev.name.endsWith(` ${n}`);
     return {
       ...base,
       ...prev,
+      name: autoName ? base.name : prev.name,
       frameId: frameOk ? prev.frameId : base.frameId,
     };
   }
@@ -334,7 +361,7 @@ export default function BarcodePage() {
       [activeGroupId]: {
         ...prev[activeGroupId],
         [n]: {
-          ...defaultTableStyle(n, activeGroup.name),
+          ...defaultTableStyle(n, activeGroup.name, activeGroup.prefix),
           ...prev[activeGroupId]?.[n],
           ...patch,
         },
@@ -349,15 +376,24 @@ export default function BarcodePage() {
     );
   }
 
-  function createGroup(data: { name: string; count: number }) {
+  function setActiveGroupPrefix(prefix: string) {
+    const next = normalizePrefix(prefix);
+    setGroups((prev) =>
+      prev.map((g) => (g.id === activeGroupId ? { ...g, prefix: next } : g))
+    );
+  }
+
+  function createGroup(data: { name: string; count: number; prefix: string }) {
     const name = data.name.trim();
     if (!name) return;
     let id = slugify(name) || `grup-${Date.now()}`;
     if (groups.some((g) => g.id === id)) id = `${id}-${Date.now()}`;
+    const prefix = normalizePrefix(data.prefix || '');
     const item: TableGroup = {
       id,
       name,
       count: Math.max(1, Math.min(60, data.count || 8)),
+      prefix,
     };
     setGroups((prev) => [...prev, item]);
     setActiveGroupId(id);
@@ -627,6 +663,14 @@ export default function BarcodePage() {
                   }
                 />
               </div>
+              <div className="barcode-group-field barcode-group-field--prefix">
+                <Input
+                  label="Prefix"
+                  value={activeGroup.prefix || ''}
+                  onChange={(e) => setActiveGroupPrefix(e.target.value)}
+                  placeholder="örn. a"
+                />
+              </div>
               {groups.length > 1 && (
                 <button
                   type="button"
@@ -643,7 +687,7 @@ export default function BarcodePage() {
               {tables.map((n) => {
                 const style = getTableStyle(n);
                 const c = resolveColor(style.colorId);
-                const masaUrl = `${origin}/menu?masa=${n}&grup=${activeGroup.id}`;
+                const masaUrl = `${origin}/menu?masa=${encodeURIComponent(tableCode(n, activeGroup.prefix))}&grup=${activeGroup.id}`;
                 return (
                   <button
                     key={`${activeGroup.id}-${n}`}

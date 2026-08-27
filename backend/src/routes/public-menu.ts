@@ -7,15 +7,17 @@ import {
   getWelcomeMessage,
   textMatchesI18n,
 } from '../lib/i18n-json.js';
+import { parseSocialLinks, publicSocialLinks } from '../lib/social.js';
+import { isAddonActive } from '../addons/ownership.js';
 import { parseProductImages } from '../lib/product-images.js';
-import { getRestaurantThemes } from '../lib/menu-themes.js';
+import { parseAllergenTags } from '../lib/diet-allergens.js';
+import { getRestaurantThemes } from '../addons/themes.js';
 import {
   applyCampaignPrice,
   getCampaignSlug,
   loadCampaignContext,
   type CampaignCtx,
 } from '../lib/campaigns.js';
-import { parseSocialLinks, publicSocialLinks } from '../lib/social.js';
 
 const router = Router();
 
@@ -164,6 +166,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
     campaign,
     mapCurrency
   );
+  const themes = await getRestaurantThemes(restaurant.id);
 
   res.json({
     id: product.id,
@@ -171,6 +174,11 @@ router.get('/:slug/products/:productId', async (req, res) => {
     description: getProductField(product.i18n, activeLang, 'description'),
     ingredients: getProductField(product.i18n, activeLang, 'ingredients'),
     allergens: getProductField(product.i18n, activeLang, 'allergens'),
+    allergenTags: parseAllergenTags(product.allergenTags),
+    isVegan: product.isVegan,
+    isVegetarian: product.isVegetarian,
+    isGlutenFree: product.isGlutenFree,
+    isDiabetic: product.isDiabetic,
     price: priced.price,
     currency: priced.currency,
     imageUrl: images[0] ?? null,
@@ -180,6 +188,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
     isRecommended: product.isRecommended,
     features: features.length > 0 ? features : legacyFeatures,
     campaign: campaignMeta(campaign),
+    theme: themes.menu,
     group: {
       id: product.group.id,
       name: getGroupName(product.group.i18n, activeLang),
@@ -209,7 +218,7 @@ router.get('/:slug', async (req, res) => {
     return res.status(404).json({ message: 'Kampanya bulunamadı' });
   }
 
-  const [groups, bannerShowcase, storyShowcase, languages, aboutSetting, socialSetting, themes] =
+  const [groups, bannerShowcase, storyShowcase, languages, aboutSetting, socialSetting, themes, menuAssistant] =
     await Promise.all([
     prisma.group.findMany({
       where: { restaurantId: restaurant.id, isActive: true, parentId: null },
@@ -247,6 +256,7 @@ router.get('/:slug', async (req, res) => {
       },
     }),
     getRestaurantThemes(restaurant.id),
+    isAddonActive(restaurant.id, 'menu-assistant'),
   ]);
 
   await trackView(restaurant.id, 'menu', restaurant.id, sessionId);
@@ -314,6 +324,7 @@ router.get('/:slug', async (req, res) => {
     languages: languages.map((l) => ({ code: l.code, name: l.name })),
     theme: themes.menu,
     campaign: campaignMeta(campaign),
+    features: { menuAssistant },
     socialLinks: publicSocialLinks(parseSocialLinks(socialSetting?.value), 'menu'),
     showcase: bannerShowcase.map((s) => {
       const { title1, title2 } = getShowcaseTitles(s.i18n, activeLang);
@@ -328,6 +339,110 @@ router.get('/:slug', async (req, res) => {
     stories,
     groups: mappedGroups,
   });
+});
+
+router.get('/:slug/assistant-suggest', async (req, res) => {
+  const slug = req.params.slug;
+  const lang = getLangCode(req);
+  const hunger = String(req.query.hunger || 'hungry'); // light | hungry | stuffed
+  const taste = String(req.query.taste || 'savory'); // sweet | savory | fresh
+  const budget = String(req.query.budget || 'mid'); // low | mid | high
+  const campaignSlug = getCampaignSlug(req.query);
+
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
+  if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
+
+  const active = await isAddonActive(restaurant.id, 'menu-assistant');
+  if (!active) {
+    return res.status(403).json({ message: 'Menü asistanı aktif değil' });
+  }
+
+  const language = await prisma.language.findFirst({ where: { code: lang, isActive: true } });
+  const activeLang = language?.code || 'tr';
+  const campaign = await loadCampaignContext(restaurant.id, campaignSlug);
+
+  const products = await prisma.product.findMany({
+    where: { restaurantId: restaurant.id, isActive: true },
+    include: { group: true, currency: true },
+    take: 200,
+  });
+
+  const scored = products
+    .filter((p) => !campaign || campaign.itemByProductId.has(p.id))
+    .map((p) => {
+      const name = getProductField(p.i18n, activeLang, 'name') || '';
+      const description = getProductField(p.i18n, activeLang, 'description') || '';
+      const hay = `${name} ${description}`.toLocaleLowerCase('tr-TR');
+      const priced = applyCampaignPrice(
+        p.id,
+        { price: Number(p.price), currency: mapCurrency(p.currency) },
+        campaign,
+        mapCurrency
+      );
+      const price = priced.price;
+      const cal = p.calories ?? 0;
+      let score = 10;
+
+      if (hunger === 'light') {
+        if (cal > 0 && cal <= 400) score += 25;
+        else if (cal > 600) score -= 15;
+        if (/salata|corba|çorba|smoothie|meyve|hafif|salad|soup/.test(hay)) score += 18;
+        if (/burger|pizza|tatli|tatlı|dessert|sufle/.test(hay)) score -= 10;
+      } else if (hunger === 'stuffed') {
+        if (cal >= 600) score += 20;
+        if (/burger|pizza|kebap|tabak|menu|menü|serpme|paylaş|paylas/.test(hay)) score += 18;
+        if (/salata|çorba|corba|smoothie/.test(hay)) score -= 8;
+      } else {
+        if (cal > 0 && cal >= 350 && cal <= 750) score += 15;
+        score += 5;
+      }
+
+      if (taste === 'sweet') {
+        if (/tatli|tatlı|dessert|cikolata|çikolata|tiramisu|sufle|pasta|dondurma|bal|waffle/.test(hay))
+          score += 28;
+        else score -= 8;
+      } else if (taste === 'fresh') {
+        if (/salata|meyve|smoothie|avokado|yogurt|yoğurt|detox|taze|portakal/.test(hay)) score += 24;
+        if (/kızart|kizart|burger|sucuk/.test(hay)) score -= 6;
+      } else {
+        if (/burger|pizza|tavuk|et |kebap|makarna|tost|kahvalti|kahvaltı|main|ana/.test(hay))
+          score += 18;
+        if (/tatli|tatlı|dessert|sufle/.test(hay)) score -= 10;
+      }
+
+      if (budget === 'low') {
+        if (price <= 120) score += 22;
+        else if (price <= 180) score += 8;
+        else score -= 12;
+      } else if (budget === 'high') {
+        if (price >= 220) score += 18;
+        else if (price < 120) score -= 6;
+        if (p.isRecommended) score += 8;
+      } else {
+        if (price >= 100 && price <= 260) score += 14;
+      }
+
+      if (p.isRecommended) score += 6;
+      if (p.isVegan && taste === 'fresh') score += 6;
+
+      return {
+        id: p.id,
+        name,
+        description,
+        price,
+        currency: priced.currency,
+        imageUrl: parseProductImages(p)[0] ?? null,
+        calories: p.calories,
+        groupId: p.groupId,
+        groupName: getGroupName(p.group.i18n, activeLang),
+        score,
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map(({ score: _s, ...rest }) => rest);
+
+  res.json({ products: scored });
 });
 
 router.get('/:slug/groups/:groupId/products', async (req, res) => {
@@ -385,6 +500,12 @@ router.get('/:slug/groups/:groupId/products', async (req, res) => {
         price: priced.price,
         currency: priced.currency,
         imageUrl: images[0] ?? null,
+        allergens: getProductField(p.i18n, activeLang, 'allergens'),
+        allergenTags: parseAllergenTags(p.allergenTags),
+        isVegan: p.isVegan,
+        isVegetarian: p.isVegetarian,
+        isGlutenFree: p.isGlutenFree,
+        isDiabetic: p.isDiabetic,
         sortOrder: campaign?.itemByProductId.get(p.id)?.sortOrder ?? p.sortOrder,
       };
     })
@@ -497,7 +618,13 @@ router.get('/:slug/popular-products', async (req, res) => {
         name: getProductField(p!.i18n, activeLang, 'name'),
         price: priced.price,
         currency: priced.currency,
-        imageUrl: p!.imageUrl,
+        imageUrl: parseProductImages(p!)[0] ?? null,
+        allergens: getProductField(p!.i18n, activeLang, 'allergens'),
+        allergenTags: parseAllergenTags(p!.allergenTags),
+        isVegan: p!.isVegan,
+        isVegetarian: p!.isVegetarian,
+        isGlutenFree: p!.isGlutenFree,
+        isDiabetic: p!.isDiabetic,
         groupId: p!.groupId,
         groupName: getGroupName(p!.group.i18n, activeLang),
       };
@@ -555,7 +682,13 @@ router.get('/:slug/search', async (req, res) => {
         name: getProductField(p.i18n, activeLang, 'name'),
         price: priced.price,
         currency: priced.currency,
-        imageUrl: p.imageUrl,
+        imageUrl: parseProductImages(p)[0] ?? null,
+        allergens: getProductField(p.i18n, activeLang, 'allergens'),
+        allergenTags: parseAllergenTags(p.allergenTags),
+        isVegan: p.isVegan,
+        isVegetarian: p.isVegetarian,
+        isGlutenFree: p.isGlutenFree,
+        isDiabetic: p.isDiabetic,
         groupName: getGroupName(p.group.i18n, activeLang),
         groupId: p.groupId,
       };

@@ -4,15 +4,15 @@ import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { Button, Card, PageHeader } from '@/components/ui';
 import { useAddons } from '@/hooks/useAddons';
-import { themeAddonId } from '@/lib/addons';
 import {
+  themeAddonId,
   DEFAULT_MENU_THEME,
   DEFAULT_WELCOME_THEME,
   MENU_THEMES,
   WELCOME_THEMES,
   type MenuThemeOption,
   type ThemeKind,
-} from '@/lib/menuThemes';
+} from '@/addons';
 
 interface ThemePickerPageProps {
   kind: ThemeKind;

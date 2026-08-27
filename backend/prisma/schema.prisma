@@ -128,6 +128,7 @@ model Product {
   isRecommended   Boolean  @default(false) @map("onerilen")
   imageUrl        String?  @map("gorsel_url") @db.VarChar(500)
   images          Json     @default("[]") @map("gorseller")
+  allergenTags    Json     @default("[]") @map("alerjen_etiketleri")
   sortOrder       Int      @default(0) @map("sira")
   isActive        Boolean  @default(true) @map("aktif")
   i18n            Json     @default("{}") @map("ceviriler")
@@ -235,6 +236,8 @@ model QrTableGroup {
   name         String   @db.VarChar(100)
   slug         String   @db.VarChar(100)
   tableCount   Int      @default(8) @map("masa_sayisi")
+  /// Masa numarası öneki — örn. "a" → a-1, a-2
+  prefix       String   @default("") @map("oneki") @db.VarChar(20)
   sortOrder    Int      @default(0) @map("sira")
   /// { "1": { "name", "colorId", "withLogo", "frameId" }, ... }
   tableStyles  Json     @default("{}") @map("masa_stilleri")

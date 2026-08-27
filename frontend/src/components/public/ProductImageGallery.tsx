@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { imageUrl } from '@/lib/api';
+import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 
 interface ProductImageGalleryProps {
   images: string[];
@@ -89,7 +90,11 @@ export default function ProductImageGallery({
   }
 
   if (slides.length === 0) {
-    return <div className="public-product-hero__placeholder" />;
+    return (
+      <div className="public-product-hero__placeholder">
+        <MenuMediaPlaceholder kind="product" size="hero" label={alt} />
+      </div>
+    );
   }
 
   const showNav = slides.length > 1;

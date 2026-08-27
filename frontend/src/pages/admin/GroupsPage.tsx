@@ -6,7 +6,6 @@ import {
   Eye,
   GripVertical,
   FolderTree,
-  Layers,
   X,
   Package,
   CornerDownRight,
@@ -31,6 +30,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { api, imageUrl } from '@/lib/api';
 import { getActiveLanguages, type AdminLanguage } from '@/lib/languages';
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Spinner } from '@/components/ui';
+import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import GroupModal, { type GroupFormState } from '@/components/GroupModal';
 import GroupProductsModal from '@/components/GroupProductsModal';
 import {
@@ -185,14 +185,9 @@ function SortableRow({
             />
           ) : (
             <div
-              className={`${isSub ? 'w-10 h-10' : 'w-12 h-12'} rounded-xl flex items-center justify-center`}
-              style={{ background: 'var(--admin-accent-soft)' }}
+              className={`${isSub ? 'w-10 h-10' : 'w-12 h-12'} rounded-xl overflow-hidden shrink-0`}
             >
-              {group.isSubGroup ? (
-                <FolderTree className={`${isSub ? 'w-4 h-4' : 'w-5 h-5'}`} style={{ color: 'var(--admin-accent)' }} />
-              ) : (
-                <Layers className="w-5 h-5" style={{ color: 'var(--admin-accent)' }} />
-              )}
+              <MenuMediaPlaceholder kind="group" size="sm" label={group.name} />
             </div>
           )}
         </div>

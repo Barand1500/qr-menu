@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, X, UtensilsCrossed } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 import { api, formatMoney, getSessionId, imageUrl } from '@/lib/api';
-import { Input } from '@/components/ui';
 import PublicMenuHeader from '@/components/public/PublicMenuHeader';
 import PublicMobileNav from '@/components/public/PublicMobileNav';
 import PublicSideMenu, { type PublicTab } from '@/components/public/PublicSideMenu';
@@ -27,7 +26,18 @@ import {
   menuWelcomePath,
 } from '@/lib/menuPaths';
 import PublicSocialLinks from '@/components/public/PublicSocialLinks';
+import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
+import MenuAssistantModal from '@/components/public/MenuAssistantModal';
+import MenuMascot from '@/components/public/MenuMascot';
 import type { PublicSocialLink } from '@/lib/socialCatalog';
+import {
+  loadDietaryPrefs,
+  preferenceUi,
+  prefsActive,
+  productMatchesPrefs,
+  saveDietaryPrefs,
+  type DietaryPrefs,
+} from '@/lib/dietAllergens';
 
 interface ShowcaseItem {
   id: number;
@@ -47,6 +57,7 @@ interface MenuData {
   theme?: string;
   campaign?: { name: string; slug: string; itemCount: number } | null;
   socialLinks?: PublicSocialLink[];
+  features?: { menuAssistant?: boolean };
 }
 
 interface ProductData {
@@ -58,6 +69,12 @@ interface ProductData {
     price: number;
     currency?: { code?: string; symbol?: string } | null;
     imageUrl?: string | null;
+    allergens?: string | null;
+    allergenTags?: string[];
+    isVegan?: boolean;
+    isVegetarian?: boolean;
+    isGlutenFree?: boolean;
+    isDiabetic?: boolean;
   }[];
 }
 
@@ -78,14 +95,23 @@ export default function PublicMenuPage() {
       name: string;
       price: number;
       currency?: { code?: string; symbol?: string } | null;
+      imageUrl?: string | null;
       groupName: string;
       groupId: number;
+      allergens?: string | null;
+      allergenTags?: string[];
+      isVegan?: boolean;
+      isVegetarian?: boolean;
+      isGlutenFree?: boolean;
+      isDiabetic?: boolean;
     }[]
   >([]);
   const [tab, setTab] = useState<PublicTab>('home');
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [popularProducts, setPopularProducts] = useState<PopularProduct[]>([]);
+  const [dietaryPrefs, setDietaryPrefs] = useState<DietaryPrefs>(() => loadDietaryPrefs());
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
   const [menuLoading, setMenuLoading] = useState(true);
   const sessionId = getSessionId();
@@ -186,6 +212,11 @@ export default function PublicMenuPage() {
     localStorage.setItem('menu_lang', code);
   }
 
+  function changeDietaryPrefs(prefs: DietaryPrefs) {
+    setDietaryPrefs(prefs);
+    saveDietaryPrefs(prefs);
+  }
+
   function toggleSearch() {
     setSearchOpen((v) => !v);
   }
@@ -244,18 +275,40 @@ export default function PublicMenuPage() {
 
   if (!menu) return null;
 
+  const allergyCopy = preferenceUi(lang);
+  const filteredPopular = popularProducts.filter((p) => productMatchesPrefs(p, dietaryPrefs));
+  const filteredSearchResults = searchResults.filter((r) => productMatchesPrefs(r, dietaryPrefs));
+  const filteredGroupProducts =
+    products?.products.filter((p) => productMatchesPrefs(p, dietaryPrefs)) ?? [];
+  const allergyActive = prefsActive(dietaryPrefs);
+
+  const allergyBanner = allergyActive ? (
+    <div className="public-allergy-banner" role="status">
+      <p className="public-allergy-banner__text">{allergyCopy.banner}</p>
+      <button
+        type="button"
+        className="public-allergy-banner__clear"
+        onClick={() => changeDietaryPrefs({ allergens: [], diets: [] })}
+      >
+        {allergyCopy.clear}
+      </button>
+    </div>
+  ) : null;
+
   const displayShowcase =
     demoEnabled && menu ? DEMO_MENU_BANNERS : menu?.showcase;
   const displayStories =
     demoEnabled && menu ? mapDemoStoriesToGroups(menu.groups) : menu?.stories;
 
   const searchField = (
-    <Input
-      variant="public"
-      label="Ürün ara..."
+    <input
+      type="search"
+      className="public-search-input"
+      placeholder="Ürün ara..."
       value={search}
       onChange={(e) => setSearch(e.target.value)}
-      className="[&_.float-field]:rounded-full [&_.float-field]:border-0 [&_.float-field]:bg-white/95"
+      aria-label="Ürün ara"
+      autoComplete="off"
     />
   );
 
@@ -265,39 +318,115 @@ export default function PublicMenuPage() {
   }
 
   const searchResultsList =
-    searchResults.length > 0 ? (
-      <div className="mt-2 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-        {searchResults.map((r) => (
-          <Link
-            key={r.id}
-            to={menuProductPath(r.id)}
-            className="block px-4 py-3 hover:bg-slate-50 border-b border-slate-50 last:border-0"
-            onClick={handleSearchNavigate}
-          >
-            <div className="font-medium text-sm text-slate-900">{r.name}</div>
-            <div className="text-xs text-slate-500">
-              {r.groupName} · {formatMoney(r.price, r.currency)}
-            </div>
-          </Link>
-        ))}
+    filteredSearchResults.length > 0 ? (
+      <div className="public-search-results">
+        <div className="public-popular-search__head">
+          <span>Arama sonuçları</span>
+        </div>
+        <div className="public-popular-search__list">
+          {filteredSearchResults.map((r) => (
+            <Link
+              key={r.id}
+              to={menuProductPath(r.id)}
+              className="public-popular-search__item"
+              onClick={handleSearchNavigate}
+            >
+              {r.imageUrl ? (
+                <img
+                  src={imageUrl(r.imageUrl)}
+                  alt=""
+                  className="public-popular-search__thumb"
+                />
+              ) : (
+                <div className="public-popular-search__thumb public-popular-search__thumb--empty">
+                  <MenuMediaPlaceholder kind="product" size="sm" label={r.name} />
+                </div>
+              )}
+              <div className="public-popular-search__meta">
+                <span className="public-popular-search__name">{r.name}</span>
+                <span className="public-popular-search__group">{r.groupName}</span>
+              </div>
+              <span className="public-popular-search__price">
+                {formatMoney(r.price, r.currency)}
+              </span>
+            </Link>
+          ))}
+        </div>
       </div>
     ) : search.trim() ? (
-      <p className="text-sm text-slate-500 mt-3 px-1">Sonuç bulunamadı</p>
+      <p className="public-search-empty">
+        {allergyActive ? allergyCopy.empty : 'Sonuç bulunamadı'}
+      </p>
     ) : null;
 
   const popularList = !search.trim() ? (
     <PopularSearchProducts
-      products={popularProducts}
+      products={filteredPopular}
       onNavigate={handleSearchNavigate}
     />
   ) : null;
 
   const searchPanelExtra = search.trim() ? searchResultsList : popularList;
+  const menuTheme = menu.theme || 'sade';
+  const isAlive = menuTheme === 'alive';
+  const isLuxury = menuTheme === 'luxury';
+  const menuAssistantOn = Boolean(menu.features?.menuAssistant);
+  const assistantLabel =
+    (lang || 'tr').split('-')[0] === 'en'
+      ? { title: 'What to eat?', sub: 'Ask me' }
+      : { title: 'Ne yesem?', sub: 'Sana öneriyim' };
+
+  const sideMenu = (
+    <PublicSideMenu
+      open={sideMenuOpen}
+      tab={tab}
+      restaurantName={menu.restaurant.name}
+      languages={menu.languages}
+      activeLang={lang}
+      socialLinks={menu.socialLinks}
+      dietaryPrefs={dietaryPrefs}
+      onClose={() => setSideMenuOpen(false)}
+      onTab={(t) => {
+        setTab(t);
+        if (groupId) navigate(menuHomePath());
+      }}
+      onLangChange={changeLang}
+      onDietaryPrefsChange={changeDietaryPrefs}
+    />
+  );
+
+  const assistantUi = menuAssistantOn && slug ? (
+    <>
+      {!searchOpen && (
+        <button
+          type="button"
+          className="menu-assistant-launcher"
+          onClick={() => setAssistantOpen(true)}
+          aria-label={assistantLabel.title}
+        >
+          <span className="menu-assistant-launcher__face" aria-hidden>
+            <MenuMascot mood="happy" size="sm" />
+          </span>
+          <span className="menu-assistant-launcher__copy">
+            <strong>{assistantLabel.title}</strong>
+            <span>{assistantLabel.sub}</span>
+          </span>
+        </button>
+      )}
+      <MenuAssistantModal
+        open={assistantOpen}
+        slug={slug}
+        lang={lang}
+        campaignSlug={campaignSlug}
+        onClose={() => setAssistantOpen(false)}
+      />
+    </>
+  ) : null;
 
   /* ── Ürün listesi ── */
   if (groupId && products) {
     return (
-      <div className="public-menu-page" data-theme-menu={menu.theme || 'sade'}>
+      <div className="public-menu-page" data-theme-menu={menuTheme}>
         <PublicMenuHeader
           restaurant={menu.restaurant}
           title={products.group.name}
@@ -315,32 +444,98 @@ export default function PublicMenuPage() {
         />
 
         <main className="public-menu-main">
-          <div className="public-product-list">
-            {products.products.map((p) => (
-              <Link
-                key={p.id}
-                to={menuProductPath(p.id)}
-                className="public-product-card public-product-card--link"
-              >
-                {p.imageUrl ? (
-                  <img
-                    src={imageUrl(p.imageUrl)}
-                    alt=""
-                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover shrink-0"
-                  />
-                ) : (
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-slate-100 shrink-0" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-slate-900 text-base">{p.name}</h3>
-                  {p.description && (
-                    <p className="text-sm text-slate-500 mt-1 line-clamp-2">{p.description}</p>
+          {allergyBanner}
+          {filteredGroupProducts.length === 0 ? (
+            <p className="public-allergy-empty">
+              {allergyActive ? allergyCopy.empty : 'Bu grupta ürün yok'}
+            </p>
+          ) : isAlive ? (
+            <div className="alive-product-grid">
+              {filteredGroupProducts.map((p) => (
+                <Link
+                  key={p.id}
+                  to={menuProductPath(p.id)}
+                  className="alive-product-tile"
+                >
+                  <div className="alive-product-tile__media">
+                    {p.imageUrl ? (
+                      <img src={imageUrl(p.imageUrl)} alt="" />
+                    ) : (
+                      <MenuMediaPlaceholder kind="product" size="lg" label={p.name} />
+                    )}
+                    <span className="alive-product-tile__price">
+                      {formatMoney(p.price, p.currency)}
+                    </span>
+                  </div>
+                  <div className="alive-product-tile__body">
+                    <h3>{p.name}</h3>
+                    {p.description ? <p>{p.description}</p> : null}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : isLuxury ? (
+            <div className="luxury-product-list">
+              <header className="luxury-product-list__head">
+                <p className="luxury-eyebrow">Menü</p>
+                <h1>{products.group.name}</h1>
+                <span className="luxury-rule" aria-hidden />
+              </header>
+              {filteredGroupProducts.map((p) => (
+                <Link
+                  key={p.id}
+                  to={menuProductPath(p.id)}
+                  className="luxury-product-row"
+                >
+                  <div className="luxury-product-row__media">
+                    {p.imageUrl ? (
+                      <img src={imageUrl(p.imageUrl)} alt="" />
+                    ) : (
+                      <MenuMediaPlaceholder kind="product" size="lg" label={p.name} />
+                    )}
+                  </div>
+                  <div className="luxury-product-row__body">
+                    <h3>{p.name}</h3>
+                    {p.description ? <p>{p.description}</p> : null}
+                    <span className="luxury-product-row__price">
+                      {formatMoney(p.price, p.currency)}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="public-product-list">
+              {filteredGroupProducts.map((p) => (
+                <Link
+                  key={p.id}
+                  to={menuProductPath(p.id)}
+                  className="public-product-card public-product-card--link"
+                >
+                  {p.imageUrl ? (
+                    <img
+                      src={imageUrl(p.imageUrl)}
+                      alt=""
+                      className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl shrink-0 overflow-hidden">
+                      <MenuMediaPlaceholder kind="product" size="md" label={p.name} />
+                    </div>
                   )}
-                  <p className="text-sky-600 font-bold mt-2 text-lg">{formatMoney(p.price, p.currency)}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-slate-900 text-base">{p.name}</h3>
+                    {p.description && (
+                      <p className="text-sm text-slate-500 mt-1 line-clamp-2">{p.description}</p>
+                    )}
+                    <p className="text-sky-600 font-bold mt-2 text-lg">
+                      {formatMoney(p.price, p.currency)}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </main>
 
         <PublicMobileNav
@@ -353,20 +548,8 @@ export default function PublicMenuPage() {
           onMenuOpen={() => setSideMenuOpen(true)}
         />
 
-        <PublicSideMenu
-          open={sideMenuOpen}
-          tab={tab}
-          restaurantName={menu.restaurant.name}
-          languages={menu.languages}
-          activeLang={lang}
-          socialLinks={menu.socialLinks}
-          onClose={() => setSideMenuOpen(false)}
-          onTab={(t) => {
-            setTab(t);
-            navigate(menuHomePath());
-          }}
-          onLangChange={changeLang}
-        />
+        {sideMenu}
+        {assistantUi}
 
         {searchOpen && (
           <SearchOverlay
@@ -382,7 +565,7 @@ export default function PublicMenuPage() {
 
   /* ── Ana menü ── */
   return (
-    <div className="public-menu-page" data-theme-menu={menu.theme || 'sade'}>
+    <div className="public-menu-page" data-theme-menu={menuTheme}>
       <PublicMenuHeader
         restaurant={menu.restaurant}
         onMenuOpen={() => setSideMenuOpen(true)}
@@ -421,105 +604,124 @@ export default function PublicMenuPage() {
           </button>
         </div>
 
-        {tab === 'home' && (
-          <div className="public-menu-home">
-            <div className="public-menu-home__orbs" aria-hidden>
-              <span className="public-menu-home__orb public-menu-home__orb--1" />
-              <span className="public-menu-home__orb public-menu-home__orb--2" />
-              <span className="public-menu-home__orb public-menu-home__orb--3" />
-            </div>
-
-            {displayShowcase?.[0]?.imageUrl && (
-              <div className="public-showcase public-menu-reveal public-menu-reveal--1">
-                <img
-                  src={imageUrl(displayShowcase[0].imageUrl)}
-                  alt={displayShowcase[0].title1 || ''}
-                  className="w-full h-full object-cover"
-                />
-                <div className="public-showcase__fade" aria-hidden />
-                {(displayShowcase[0].title1 || displayShowcase[0].title2) && (
-                  <div className="public-showcase__caption">
-                    <BrushCaptionBlock>
-                      {displayShowcase[0].title1 && (
-                        <BrushCaption size="lg">{displayShowcase[0].title1}</BrushCaption>
-                      )}
-                      {displayShowcase[0].title2 && (
-                        <BrushCaption size="sm" tone="warm">
-                          {displayShowcase[0].title2}
-                        </BrushCaption>
-                      )}
-                    </BrushCaptionBlock>
-                  </div>
-                )}
+        {tab === 'home' &&
+          (isAlive ? (
+            <AliveHome
+              menu={menu}
+              displayShowcase={displayShowcase}
+              displayStories={displayStories}
+              popularProducts={filteredPopular}
+              allergyBanner={allergyBanner}
+            />
+          ) : isLuxury ? (
+            <LuxuryHome
+              menu={menu}
+              displayShowcase={displayShowcase}
+              displayStories={displayStories}
+              popularProducts={filteredPopular}
+              allergyBanner={allergyBanner}
+            />
+          ) : (
+            <div className="public-menu-home">
+              <div className="public-menu-home__orbs" aria-hidden>
+                <span className="public-menu-home__orb public-menu-home__orb--1" />
+                <span className="public-menu-home__orb public-menu-home__orb--2" />
+                <span className="public-menu-home__orb public-menu-home__orb--3" />
               </div>
-            )}
 
-            {menu.campaign && (
-              <div className="mx-4 mb-3 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 public-menu-reveal public-menu-reveal--2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-amber-800/80">
-                  Kampanya menüsü
+              {allergyBanner}
+
+              {displayShowcase?.[0]?.imageUrl && (
+                <div className="public-showcase public-menu-reveal public-menu-reveal--1">
+                  <img
+                    src={imageUrl(displayShowcase[0].imageUrl)}
+                    alt={displayShowcase[0].title1 || ''}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="public-showcase__fade" aria-hidden />
+                  {(displayShowcase[0].title1 || displayShowcase[0].title2) && (
+                    <div className="public-showcase__caption">
+                      <BrushCaptionBlock>
+                        {displayShowcase[0].title1 && (
+                          <BrushCaption size="lg">{displayShowcase[0].title1}</BrushCaption>
+                        )}
+                        {displayShowcase[0].title2 && (
+                          <BrushCaption size="sm" tone="warm">
+                            {displayShowcase[0].title2}
+                          </BrushCaption>
+                        )}
+                      </BrushCaptionBlock>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {menu.campaign && (
+                <div className="mx-4 mb-3 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 public-menu-reveal public-menu-reveal--2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-800/80">
+                    Kampanya menüsü
+                  </p>
+                  <p className="text-sm font-semibold text-amber-950 mt-0.5">
+                    {menu.campaign.name}
+                  </p>
+                </div>
+              )}
+
+              {menu.welcomeMessage && (
+                <p className="public-welcome public-menu-reveal public-menu-reveal--2">
+                  {menu.welcomeMessage}
                 </p>
-                <p className="text-sm font-semibold text-amber-950 mt-0.5">
-                  {menu.campaign.name}
-                </p>
+              )}
+
+              <div className="public-menu-divider public-menu-reveal public-menu-reveal--2" aria-hidden>
+                <span />
               </div>
-            )}
 
-            {menu.welcomeMessage && (
-              <p className="public-welcome public-menu-reveal public-menu-reveal--2">
-                {menu.welcomeMessage}
-              </p>
-            )}
+              {displayStories && displayStories.length > 0 && (
+                <div className="public-menu-reveal public-menu-reveal--3">
+                  <MobileStoriesStrip stories={displayStories} />
+                </div>
+              )}
 
-            <div className="public-menu-divider public-menu-reveal public-menu-reveal--2" aria-hidden>
-              <span />
-            </div>
+              {filteredPopular.length > 0 && (
+                <section className="public-home-popular md:hidden public-menu-reveal public-menu-reveal--3">
+                  <PopularSearchProducts products={filteredPopular} />
+                </section>
+              )}
 
-            {displayStories && displayStories.length > 0 && (
-              <div className="public-menu-reveal public-menu-reveal--3">
-                <MobileStoriesStrip stories={displayStories} />
+              <div className="public-section-head public-menu-reveal public-menu-reveal--4">
+                <h2 className="public-section-title">Kategoriler</h2>
+                <span className="public-section-accent" aria-hidden />
               </div>
-            )}
 
-            {popularProducts.length > 0 && (
-              <section className="public-home-popular md:hidden public-menu-reveal public-menu-reveal--3">
-                <PopularSearchProducts products={popularProducts} />
-              </section>
-            )}
-
-            <div className="public-section-head public-menu-reveal public-menu-reveal--4">
-              <h2 className="public-section-title">Kategoriler</h2>
-              <span className="public-section-accent" aria-hidden />
-            </div>
-
-            <div className="public-group-grid">
-              {menu.groups.map((group, index) => (
-                <GroupCard
-                  key={group.id}
-                  group={group}
-                  reveal={Math.min(index + 5, 9)}
-                />
-              ))}
-            </div>
-
-            {popularProducts.length > 0 && (
-              <section className="public-home-popular hidden md:block mt-4 public-menu-reveal public-menu-reveal--8">
-                <PopularSearchProducts products={popularProducts} />
-              </section>
-            )}
-
-            {menu.socialLinks && menu.socialLinks.length > 0 && (
-              <div className="flex justify-center mt-6 pb-2 public-menu-reveal public-menu-reveal--9">
-                <PublicSocialLinks links={menu.socialLinks} />
+              <div className="public-group-grid">
+                {menu.groups.map((group, index) => (
+                  <GroupCard
+                    key={group.id}
+                    group={group}
+                    reveal={Math.min(index + 5, 9)}
+                  />
+                ))}
               </div>
-            )}
-          </div>
-        )}
+
+              {filteredPopular.length > 0 && (
+                <section className="public-home-popular hidden md:block mt-4 public-menu-reveal public-menu-reveal--8">
+                  <PopularSearchProducts products={filteredPopular} />
+                </section>
+              )}
+
+              {menu.socialLinks && menu.socialLinks.length > 0 && (
+                <div className="flex justify-center mt-6 pb-2 public-menu-reveal public-menu-reveal--9">
+                  <PublicSocialLinks links={menu.socialLinks} />
+                </div>
+              )}
+            </div>
+          ))}
 
         {tab === 'about' && (
           <div className="public-content-card max-w-2xl mx-auto">
-            <h2 className="text-xl font-bold text-slate-900 mb-3">{menu.restaurant.name}</h2>
-            <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+            <h2 className="public-content-card__title">{menu.restaurant.name}</h2>
+            <p className="public-content-card__text">
               {menu.about || menu.welcomeMessage || 'Dijital menümüze hoş geldiniz.'}
             </p>
             {menu.socialLinks && menu.socialLinks.length > 0 && (
@@ -530,18 +732,14 @@ export default function PublicMenuPage() {
 
         {tab === 'settings' && (
           <div className="public-content-card max-w-md mx-auto md:max-w-lg">
-            <h2 className="font-semibold text-slate-900 mb-4">Dil Seçimi</h2>
-            <div className="space-y-2">
+            <h2 className="public-content-card__title">Dil Seçimi</h2>
+            <div className="public-lang-list">
               {menu.languages.map((l) => (
                 <button
                   key={l.code}
                   type="button"
                   onClick={() => changeLang(l.code)}
-                  className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-medium transition ${
-                    lang === l.code
-                      ? 'bg-sky-50 text-sky-700 ring-1 ring-sky-200'
-                      : 'hover:bg-slate-50 text-slate-700'
-                  }`}
+                  className={`public-lang-btn${lang === l.code ? ' is-active' : ''}`}
                 >
                   {l.name}
                 </button>
@@ -558,17 +756,8 @@ export default function PublicMenuPage() {
         onMenuOpen={() => setSideMenuOpen(true)}
       />
 
-      <PublicSideMenu
-        open={sideMenuOpen}
-        tab={tab}
-        restaurantName={menu.restaurant.name}
-        languages={menu.languages}
-        activeLang={lang}
-        socialLinks={menu.socialLinks}
-        onClose={() => setSideMenuOpen(false)}
-        onTab={setTab}
-        onLangChange={changeLang}
-      />
+      {sideMenu}
+      {assistantUi}
 
       {searchOpen && (
         <SearchOverlay
@@ -577,6 +766,275 @@ export default function PublicMenuPage() {
           onClose={closeSearch}
           results={searchPanelExtra}
         />
+      )}
+    </div>
+  );
+}
+
+function AliveHome({
+  menu,
+  displayShowcase,
+  displayStories,
+  popularProducts,
+  allergyBanner,
+}: {
+  menu: MenuData;
+  displayShowcase?: ShowcaseItem[] | null;
+  displayStories?: MenuStory[] | null;
+  popularProducts: PopularProduct[];
+  allergyBanner?: ReactNode;
+}) {
+  const featured = menu.groups[0];
+  const rest = menu.groups.slice(1);
+
+  return (
+    <div className="alive-home">
+      {allergyBanner}
+
+      {displayShowcase?.[0]?.imageUrl && (
+        <section className="alive-hero">
+          <img
+            src={imageUrl(displayShowcase[0].imageUrl)}
+            alt={displayShowcase[0].title1 || ''}
+          />
+          <div className="alive-hero__veil" aria-hidden />
+          <div className="alive-hero__copy">
+            {menu.campaign ? (
+              <span className="alive-hero__badge">{menu.campaign.name}</span>
+            ) : (
+              <span className="alive-hero__badge">Menü</span>
+            )}
+            <h1>{displayShowcase[0].title1 || menu.restaurant.name}</h1>
+            {(displayShowcase[0].title2 || menu.welcomeMessage) && (
+              <p>{displayShowcase[0].title2 || menu.welcomeMessage}</p>
+            )}
+          </div>
+        </section>
+      )}
+
+      {!displayShowcase?.[0]?.imageUrl && menu.welcomeMessage && (
+        <p className="alive-welcome">{menu.welcomeMessage}</p>
+      )}
+
+      {popularProducts.length > 0 && (
+        <section className="alive-rail">
+          <div className="alive-rail__head">
+            <h2>Öne çıkanlar</h2>
+            <span>Kaydır</span>
+          </div>
+          <div className="alive-rail__track">
+            {popularProducts.map((p) => (
+              <Link
+                key={p.id}
+                to={menuProductPath(p.id)}
+                className="alive-rail__card"
+              >
+                {p.imageUrl ? (
+                  <img src={imageUrl(p.imageUrl)} alt="" />
+                ) : (
+                  <MenuMediaPlaceholder kind="product" size="md" label={p.name} className="alive-rail__ph" />
+                )}
+                <div className="alive-rail__meta">
+                  <strong>{p.name}</strong>
+                  <span>{formatMoney(p.price, p.currency)}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {displayStories && displayStories.length > 0 && (
+        <div className="alive-stories">
+          <MobileStoriesStrip stories={displayStories} />
+        </div>
+      )}
+
+      <section className="alive-categories">
+        <div className="alive-categories__head">
+          <h2>Kategoriler</h2>
+          <p>{menu.groups.length} bölüm</p>
+        </div>
+
+        {featured && (
+          <Link to={menuGroupPath(featured.id)} className="alive-category-feature">
+            {featured.imageUrl ? (
+              <img src={imageUrl(featured.imageUrl)} alt={featured.name} />
+            ) : (
+              <MenuMediaPlaceholder
+                kind="group"
+                size="hero"
+                label={featured.name}
+                className="alive-category-feature__ph"
+              />
+            )}
+            <div className="alive-category-feature__copy">
+              <span>Öne çıkan</span>
+              <h3>{featured.name}</h3>
+              {typeof featured.productCount === 'number' && featured.productCount > 0 && (
+                <p>{featured.productCount} ürün</p>
+              )}
+            </div>
+          </Link>
+        )}
+
+        <div className="alive-category-stack">
+          {rest.map((group) => (
+            <Link
+              key={group.id}
+              to={menuGroupPath(group.id)}
+              className="alive-category-row"
+            >
+              <div className="alive-category-row__media">
+                {group.imageUrl ? (
+                  <img src={imageUrl(group.imageUrl)} alt="" />
+                ) : (
+                  <MenuMediaPlaceholder kind="group" size="sm" label={group.name} />
+                )}
+              </div>
+              <div className="alive-category-row__body">
+                <h3>{group.name}</h3>
+                {typeof group.productCount === 'number' && group.productCount > 0 && (
+                  <p>{group.productCount} ürün</p>
+                )}
+              </div>
+              <span className="alive-category-row__go" aria-hidden>
+                →
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {menu.socialLinks && menu.socialLinks.length > 0 && (
+        <div className="alive-social">
+          <PublicSocialLinks links={menu.socialLinks} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LuxuryHome({
+  menu,
+  displayShowcase,
+  displayStories,
+  popularProducts,
+  allergyBanner,
+}: {
+  menu: MenuData;
+  displayShowcase?: ShowcaseItem[] | null;
+  displayStories?: MenuStory[] | null;
+  popularProducts: PopularProduct[];
+  allergyBanner?: ReactNode;
+}) {
+  const banner = displayShowcase?.[0];
+  const tagline = banner?.title2 || menu.welcomeMessage;
+
+  return (
+    <div className="luxury-home">
+      {allergyBanner}
+      <header className="luxury-masthead">
+        <p className="luxury-eyebrow">
+          {menu.campaign?.name || 'Fine Dining'}
+        </p>
+        <h1 className="luxury-masthead__brand">{menu.restaurant.name}</h1>
+        <span className="luxury-rule luxury-rule--anim" aria-hidden />
+        {tagline ? <p className="luxury-masthead__tagline">{tagline}</p> : null}
+      </header>
+
+      {banner?.imageUrl && (
+        <section className="luxury-banner">
+          <img src={imageUrl(banner.imageUrl)} alt={banner.title1 || ''} />
+          <div className="luxury-banner__veil" aria-hidden />
+          <div className="luxury-banner__copy">
+            <p className="luxury-eyebrow">Vitrin</p>
+            {banner.title1 ? <h2>{banner.title1}</h2> : null}
+          </div>
+        </section>
+      )}
+
+      {popularProducts.length > 0 && (
+        <section className="luxury-signature">
+          <div className="luxury-signature__head">
+            <p className="luxury-eyebrow">İmza seçimler</p>
+            <h2>Öne çıkanlar</h2>
+            <span className="luxury-rule" aria-hidden />
+          </div>
+          <div className="luxury-signature__track">
+            {popularProducts.map((p) => (
+              <Link
+                key={p.id}
+                to={menuProductPath(p.id)}
+                className="luxury-signature__item"
+              >
+                <div className="luxury-signature__media">
+                  {p.imageUrl ? (
+                    <img src={imageUrl(p.imageUrl)} alt="" />
+                  ) : (
+                    <MenuMediaPlaceholder kind="product" size="md" label={p.name} />
+                  )}
+                </div>
+                <strong>{p.name}</strong>
+                <span>{formatMoney(p.price, p.currency)}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {displayStories && displayStories.length > 0 && (
+        <div className="luxury-stories">
+          <MobileStoriesStrip stories={displayStories} />
+        </div>
+      )}
+
+      <section className="luxury-chapters">
+        <div className="luxury-chapters__head">
+          <p className="luxury-eyebrow">Menü</p>
+          <h2>Bölümler</h2>
+          <span className="luxury-rule" aria-hidden />
+        </div>
+
+        <div className="luxury-chapters__stack">
+          {menu.groups.map((group, index) => (
+            <Link
+              key={group.id}
+              to={menuGroupPath(group.id)}
+              className="luxury-chapter"
+              style={{ animationDelay: `${Math.min(index, 8) * 70}ms` }}
+            >
+              <div className="luxury-chapter__media">
+                {group.imageUrl ? (
+                  <img src={imageUrl(group.imageUrl)} alt="" />
+                ) : (
+                  <MenuMediaPlaceholder
+                    kind="group"
+                    size="hero"
+                    label={group.name}
+                  />
+                )}
+              </div>
+              <div className="luxury-chapter__veil" aria-hidden />
+              <div className="luxury-chapter__copy">
+                <span className="luxury-chapter__index">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <h3>{group.name}</h3>
+                {typeof group.productCount === 'number' && group.productCount > 0 && (
+                  <p>{group.productCount} ürün</p>
+                )}
+                <span className="luxury-chapter__cta">Keşfet</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {menu.socialLinks && menu.socialLinks.length > 0 && (
+        <div className="luxury-social">
+          <PublicSocialLinks links={menu.socialLinks} />
+        </div>
       )}
     </div>
   );
@@ -605,10 +1063,12 @@ function GroupCard({
           onError={() => setBroken(true)}
         />
       ) : (
-        <div className="public-group-card__placeholder">
-          <UtensilsCrossed className="w-8 h-8" />
-          <span>{group.name}</span>
-        </div>
+        <MenuMediaPlaceholder
+          kind="group"
+          size="lg"
+          label={group.name}
+          className="public-group-card__placeholder"
+        />
       )}
       <div className="public-group-card__shade" aria-hidden />
       <div className="public-group-card__caption">
@@ -638,13 +1098,16 @@ function SearchOverlay({
         <button type="button" onClick={onClose} className="public-menu-header__icon-btn" aria-label="Kapat">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div className="flex-1">
-          <Input
-            variant="public"
-            label="Ürün ara..."
+        <div className="flex-1 min-w-0">
+          <input
+            type="search"
+            className="public-search-input"
+            placeholder="Ürün ara..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="[&_.float-field]:rounded-full [&_.float-field]:border-0 [&_.float-field]:bg-white/95"
+            aria-label="Ürün ara"
+            autoComplete="off"
+            autoFocus
           />
         </div>
         {search && (

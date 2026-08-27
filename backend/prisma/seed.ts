@@ -105,6 +105,7 @@ async function main() {
           prepTimeMinutes: p.prepTimeMinutes ?? null,
           calories: p.calories ?? null,
           features: p.features ?? [],
+          allergenTags: [],
           i18n: p.i18n,
         },
       });

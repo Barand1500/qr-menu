@@ -114,11 +114,13 @@ export function Input({
   const id = externalId ?? autoId;
   const displayLabel = label ?? placeholder ?? '';
   const { setFocused, floated } = useFloatedState(value, defaultValue);
+  // Select ile aynı: label varsa çerçeve her zaman floated — boş alanlar boy kırmaz
+  const effectiveFloated = floated || Boolean(label);
 
   return (
     <FloatFieldShell
       variant={variant}
-      floated={floated}
+      floated={effectiveFloated}
       className={className}
       displayLabel={displayLabel}
     >
@@ -128,6 +130,7 @@ export function Input({
         className="float-field__input"
         value={value}
         defaultValue={defaultValue}
+        placeholder={label ? placeholder : undefined}
         onFocus={(e) => {
           setFocused(true);
           onFocus?.(e);

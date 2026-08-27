@@ -17,6 +17,7 @@ type GroupPayload = {
   id?: string;
   name?: string;
   count?: number;
+  prefix?: string;
   styles?: Record<string, TableStylePayload>;
 };
 
@@ -34,11 +35,18 @@ function slugify(text: string) {
     .replace(/^-|-$/g, '');
 }
 
+function normalizePrefix(value: unknown) {
+  return String(value ?? '')
+    .trim()
+    .slice(0, 20);
+}
+
 function mapGroup(row: {
   id: number;
   name: string;
   slug: string;
   tableCount: number;
+  prefix: string;
   sortOrder: number;
   tableStyles: Prisma.JsonValue;
 }) {
@@ -47,6 +55,7 @@ function mapGroup(row: {
     dbId: row.id,
     name: row.name,
     count: row.tableCount,
+    prefix: row.prefix || '',
     sortOrder: row.sortOrder,
     styles: (row.tableStyles && typeof row.tableStyles === 'object'
       ? row.tableStyles
@@ -124,6 +133,7 @@ router.put('/table-groups', async (req, res) => {
       name,
       slug,
       tableCount: Math.max(1, Math.min(60, Number(g.count) || 8)),
+      prefix: normalizePrefix(g.prefix),
       sortOrder: index,
       tableStyles: (g.styles && typeof g.styles === 'object' ? g.styles : {}) as Prisma.InputJsonValue,
     };
@@ -166,12 +176,14 @@ router.put('/table-groups', async (req, res) => {
           name: g.name,
           slug: g.slug,
           tableCount: g.tableCount,
+          prefix: g.prefix,
           sortOrder: g.sortOrder,
           tableStyles: g.tableStyles,
         },
         update: {
           name: g.name,
           tableCount: g.tableCount,
+          prefix: g.prefix,
           sortOrder: g.sortOrder,
           tableStyles: g.tableStyles,
         },

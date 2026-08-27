@@ -5,15 +5,16 @@ import fs from 'fs';
 import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId } from '../lib/auth.js';
 import { config } from '../config.js';
-import { getLanguages, mergeWelcomeI18n } from '../lib/i18n-json.js';
+import { getLanguages, mergeWelcomeI18n, clearLanguageCache } from '../lib/i18n-json.js';
 import { listCurrencies } from '../lib/currencies.js';
 import {
   DEFAULT_MENU_THEME,
   DEFAULT_WELCOME_THEME,
   FREE_MENU_THEMES,
   FREE_WELCOME_THEMES,
-} from '../lib/menu-themes.js';
-import { ownsAddon, themeIdToAddon } from '../lib/addons.js';
+  ownsAddon,
+  themeIdToAddon,
+} from '../addons/index.js';
 import { parseSocialLinks, serializeSocialLinks, type SocialLinkConfig } from '../lib/social.js';
 
 const router = Router();
@@ -36,7 +37,8 @@ router.get('/', async (req, res) => {
 
   const [restaurant, languages, currencies, settings] = await Promise.all([
     prisma.restaurant.findUnique({ where: { id: restaurantId! } }),
-    getLanguages(),
+    // Admin listesi her zaman taze — process cache UI'da "DB'de var ama görünmüyor" yaratıyordu
+    prisma.language.findMany({ orderBy: { id: 'asc' } }),
     listCurrencies(),
     prisma.setting.findMany({ where: { restaurantId: restaurantId! } }),
   ]);
@@ -62,12 +64,25 @@ router.put('/languages', async (req, res) => {
   const { languages } = req.body as { languages: { id: number; isActive: boolean }[] };
 
   for (const lang of languages || []) {
+    const existing = await prisma.language.findUnique({ where: { id: lang.id } });
+    if (!existing) continue;
+    // Türkçe her zaman aktif kalır; pasife alınamaz
+    if (existing.code === 'tr') {
+      if (!existing.isActive) {
+        await prisma.language.update({
+          where: { id: existing.id },
+          data: { isActive: true },
+        });
+      }
+      continue;
+    }
     await prisma.language.update({
       where: { id: lang.id },
       data: { isActive: lang.isActive },
     });
   }
 
+  clearLanguageCache();
   const updated = await prisma.language.findMany({ orderBy: { id: 'asc' } });
   res.json(updated);
 });
@@ -76,6 +91,18 @@ router.put('/currencies', async (req, res) => {
   const { currencies } = req.body as { currencies: { id: number; isActive: boolean }[] };
 
   for (const currency of currencies || []) {
+    const existing = await prisma.currency.findUnique({ where: { id: currency.id } });
+    if (!existing) continue;
+    // Türk Lirası her zaman aktif kalır; pasife alınamaz
+    if (existing.code === 'TRY') {
+      if (!existing.isActive) {
+        await prisma.currency.update({
+          where: { id: existing.id },
+          data: { isActive: true },
+        });
+      }
+      continue;
+    }
     await prisma.currency.update({
       where: { id: currency.id },
       data: { isActive: currency.isActive },
@@ -192,6 +219,26 @@ router.put('/social', async (req, res) => {
   });
 
   res.json({ ok: true, links: parseSocialLinks(value) });
+});
+
+router.put('/welcome-music', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const { url } = req.body as { url?: string };
+  const value = typeof url === 'string' ? url.trim() : '';
+
+  if (value) {
+    await prisma.setting.upsert({
+      where: { restaurantId_key: { restaurantId: restaurantId!, key: 'welcome_music_url' } },
+      update: { value },
+      create: { restaurantId: restaurantId!, key: 'welcome_music_url', value },
+    });
+  } else {
+    await prisma.setting.deleteMany({
+      where: { restaurantId: restaurantId!, key: 'welcome_music_url' },
+    });
+  }
+
+  res.json({ ok: true, url: value || null });
 });
 
 router.post('/social-icon', upload.single('icon'), async (req, res) => {

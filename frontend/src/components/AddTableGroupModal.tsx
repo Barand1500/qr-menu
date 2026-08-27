@@ -5,7 +5,7 @@ import { Button, Input } from '@/components/ui';
 interface AddTableGroupModalProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (data: { name: string; count: number }) => void;
+  onAdd: (data: { name: string; count: number; prefix: string }) => void;
 }
 
 export default function AddTableGroupModal({
@@ -15,11 +15,13 @@ export default function AddTableGroupModal({
 }: AddTableGroupModalProps) {
   const [name, setName] = useState('');
   const [count, setCount] = useState('8');
+  const [prefix, setPrefix] = useState('');
 
   useEffect(() => {
     if (!open) return;
     setName('');
     setCount('8');
+    setPrefix('');
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
@@ -34,14 +36,16 @@ export default function AddTableGroupModal({
     const trimmed = name.trim();
     if (!trimmed) return;
     const n = Math.max(1, Math.min(60, Number(count) || 8));
-    onAdd({ name: trimmed, count: n });
+    onAdd({
+      name: trimmed,
+      count: n,
+      prefix: prefix.trim().slice(0, 20),
+    });
     onClose();
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-    >
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[6px]" />
 
       <div
@@ -64,11 +68,8 @@ export default function AddTableGroupModal({
               >
                 <LayoutGrid className="w-5 h-5" />
               </div>
-              <div>
+              <div className="flex items-center min-h-11">
                 <h2 className="text-base font-bold text-[var(--admin-text)]">Grup Ekle</h2>
-                <p className="text-xs admin-text-muted mt-0.5 leading-relaxed">
-                  Teras, salon, bahçe gibi alanlar için masa grubu oluştur.
-                </p>
               </div>
             </div>
             <button
@@ -90,14 +91,22 @@ export default function AddTableGroupModal({
             placeholder="Örn. Teras, Bahçe, VIP"
             autoFocus
           />
-          <Input
-            label="Başlangıç masa sayısı"
-            type="number"
-            min={1}
-            max={60}
-            value={count}
-            onChange={(e) => setCount(e.target.value)}
-          />
+          <div className="table-group-dual">
+            <Input
+              label="Masa sayısı"
+              type="number"
+              min={1}
+              max={60}
+              value={count}
+              onChange={(e) => setCount(e.target.value)}
+            />
+            <Input
+              label="Prefix"
+              value={prefix}
+              onChange={(e) => setPrefix(e.target.value.slice(0, 20))}
+              placeholder="örn. a"
+            />
+          </div>
           <div className="flex gap-2 pt-1">
             <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>
               İptal

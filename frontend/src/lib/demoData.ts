@@ -270,6 +270,7 @@ export interface DemoPopularProduct {
   groupId: number;
   groupName: string;
   imageUrl?: string | null;
+  allergens?: string | null;
 }
 
 export const DEMO_POPULAR_PRODUCTS: DemoPopularProduct[] = DEMO_TOP_PRODUCTS.slice(0, 5).map(
@@ -280,6 +281,7 @@ export const DEMO_POPULAR_PRODUCTS: DemoPopularProduct[] = DEMO_TOP_PRODUCTS.sli
     groupId: DEMO_TOP_GROUPS[i % DEMO_TOP_GROUPS.length].id,
     groupName: DEMO_TOP_GROUPS[i % DEMO_TOP_GROUPS.length].name,
     imageUrl: DEMO_SHOWCASE_STORIES[i]?.imageUrl || null,
+    allergens: ['Gluten, süt, yumurta', 'Gluten, süt', 'Süt, gluten', 'Balık', 'Kuruyemiş'][i] || null,
   })
 );
 

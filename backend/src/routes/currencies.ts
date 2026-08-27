@@ -6,6 +6,8 @@ import { listCurrencies } from '../lib/currencies.js';
 const router = Router();
 router.use(authRequired);
 
+const PROTECTED_CURRENCY_CODE = 'TRY';
+
 router.get('/', async (_req, res) => {
   const currencies = await listCurrencies();
   res.json(currencies);
@@ -46,7 +48,10 @@ router.post('/', async (req, res) => {
       });
       return res.json(reactivated);
     }
-    return res.status(409).json({ message: 'Bu para birimi zaten ekli' });
+    return res.status(409).json({
+      message: 'Bu para birimi zaten ekli',
+      currency: existing,
+    });
   }
 
   const created = await prisma.currency.create({
@@ -58,6 +63,24 @@ router.post('/', async (req, res) => {
     },
   });
   res.status(201).json(created);
+});
+
+router.delete('/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ message: 'Geçersiz para birimi' });
+  }
+
+  const existing = await prisma.currency.findUnique({ where: { id } });
+  if (!existing) {
+    return res.status(404).json({ message: 'Para birimi bulunamadı' });
+  }
+  if (existing.code === PROTECTED_CURRENCY_CODE) {
+    return res.status(400).json({ message: 'Türk Lirası silinemez' });
+  }
+
+  await prisma.currency.delete({ where: { id } });
+  res.json({ ok: true });
 });
 
 export default router;

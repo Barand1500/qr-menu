@@ -4,6 +4,12 @@ import { imageUrl } from '@/lib/api';
 import { Button, Input, Select } from '@/components/ui';
 import LanguageTabs, { type Language } from '@/components/LanguageTabs';
 import { TranslatableInput, TranslatableTextarea } from '@/components/TranslatableField';
+import {
+  ALLERGEN_CATALOG,
+  DIET_CATALOG,
+  dietIdsFromFlags,
+  flagsFromDietIds,
+} from '@/lib/dietAllergens';
 
 export interface ProductTranslationFields {
   name: string;
@@ -19,6 +25,11 @@ export interface ProductFormState {
   prepTimeMinutes: string;
   calories: string;
   features: string[];
+  allergenTags: string[];
+  isVegan: boolean;
+  isVegetarian: boolean;
+  isGlutenFree: boolean;
+  isDiabetic: boolean;
   isRecommended: boolean;
   translations: Record<string, ProductTranslationFields>;
   isActive: boolean;
@@ -31,14 +42,64 @@ interface GroupOption {
   parentName?: string | null;
 }
 
-type ModalTab = 'general' | 'translations' | 'image';
+type ModalTab = 'general' | 'diet' | 'translations' | 'image';
 
 const MODAL_TABS: { id: ModalTab; label: string }[] = [
   { id: 'general', label: 'Genel' },
+  { id: 'diet', label: 'Alerjen' },
   { id: 'translations', label: 'Çeviriler' },
   { id: 'image', label: 'Görseller' },
 ];
 
+function TagPillGroup({
+  title,
+  hint,
+  options,
+  selected,
+  onChange,
+}: {
+  title: string;
+  hint?: string;
+  options: { id: string; label: string }[];
+  selected: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  function toggle(id: string) {
+    onChange(
+      selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div>
+        <p className="text-sm font-semibold text-[var(--admin-text)]">{title}</p>
+        {hint ? <p className="text-xs admin-text-muted mt-0.5">{hint}</p> : null}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {options.map((opt) => {
+          const active = selected.includes(opt.id);
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => toggle(opt.id)}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold border transition"
+              style={{
+                background: active ? 'var(--admin-accent)' : 'var(--admin-input-bg)',
+                color: active ? 'var(--admin-btn-primary-text)' : 'var(--admin-text)',
+                borderColor: active ? 'var(--admin-accent)' : 'var(--admin-card-border)',
+              }}
+              aria-pressed={active}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 function ProductFeaturesEditor({
   features,
   onChange,
@@ -222,10 +283,14 @@ export default function ProductModal({
   );
   const [activeTab, setActiveTab] = useState<ModalTab>('general');
   const [activeLang, setActiveLang] = useState(sortedLangs[0]?.code || 'tr');
+  const [emptyDietWarned, setEmptyDietWarned] = useState(false);
+  const [dietTabPulse, setDietTabPulse] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setActiveTab('general');
+    setEmptyDietWarned(false);
+    setDietTabPulse(false);
     const tr = languages.find((l) => l.code === 'tr');
     setActiveLang(tr?.code || languages[0]?.code || 'tr');
     // Yalnızca modal açıldığında sıfırla — onClose/languages her render'da değişebilir
@@ -240,6 +305,30 @@ export default function ProductModal({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
+
+  function hasAnyDietSelection() {
+    return (
+      form.allergenTags.length > 0 ||
+      form.isVegan ||
+      form.isVegetarian ||
+      form.isGlutenFree ||
+      form.isDiabetic
+    );
+  }
+
+  function handleSaveClick() {
+    if (!hasAnyDietSelection() && !emptyDietWarned) {
+      setActiveTab('diet');
+      setDietTabPulse(true);
+      window.setTimeout(() => setDietTabPulse(false), 2000);
+      setEmptyDietWarned(true);
+      const ok = window.confirm(
+        'Emin misiniz? Hiçbir alerjen veya diyet tercihi seçmediniz.\n\nBu ürün menü filtrelerinde eşleşmez. Yine de kaydedilsin mi?'
+      );
+      if (!ok) return;
+    }
+    onSave();
+  }
 
   if (!open) return null;
 
@@ -275,7 +364,7 @@ export default function ProductModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
     >
       <div className="absolute inset-0 bg-black/35 backdrop-blur-[6px]" />
 
@@ -322,7 +411,9 @@ export default function ProductModal({
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className="flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all"
+                className={`flex-1 py-2 px-2 sm:px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all${
+                  tab.id === 'diet' && dietTabPulse ? ' product-modal-tab--pulse' : ''
+                }`}
                 style={{
                   background: activeTab === tab.id ? 'var(--admin-accent)' : 'transparent',
                   color:
@@ -412,6 +503,38 @@ export default function ProductModal({
             </div>
           )}
 
+          {activeTab === 'diet' && (
+            <div className="space-y-5 pt-2">
+              <p
+                className="text-xs admin-text-muted rounded-xl px-3 py-2.5 leading-relaxed"
+                style={{ background: 'var(--admin-input-bg)' }}
+              >
+                Burada seçtiğiniz pill’ler menü filtreleriyle birebir bağlanır. Alerjen metni
+                otomatik olarak TR / EN / RU / AR dillerinde üretilir — çeviri sekmesinde ayrıca
+                yazmanız gerekmez.
+              </p>
+
+              <TagPillGroup
+                title="Alerjenler"
+                hint="Üründe bulunan maddeleri seçin"
+                options={ALLERGEN_CATALOG.map((t) => ({ id: t.id, label: t.label.tr }))}
+                selected={form.allergenTags}
+                onChange={(allergenTags) => onFormChange({ ...form, allergenTags })}
+              />
+
+              <TagPillGroup
+                title="Diyet / yaşam tarzı"
+                hint="Ürün bu tercihlere uygunsa işaretleyin (ör. sadece vegan menü)"
+                options={DIET_CATALOG.map((t) => ({ id: t.id, label: t.label.tr }))}
+                selected={dietIdsFromFlags(form)}
+                onChange={(ids) => {
+                  const flags = flagsFromDietIds(ids);
+                  onFormChange({ ...form, ...flags });
+                }}
+              />
+            </div>
+          )}
+
           {activeTab === 'translations' && (
             <div className="space-y-4 pt-2">
               <LanguageTabs
@@ -447,15 +570,6 @@ export default function ProductModal({
                     targetLang={currentLang.code}
                     value={currentTranslation.ingredients}
                     onChange={(val) => updateTranslation('ingredients', val)}
-                  />
-                  <TranslatableTextarea
-                    key={`all-${currentLang.code}`}
-                    label="Alerjenler"
-                    rows={2}
-                    sourceText={trTranslation.allergens}
-                    targetLang={currentLang.code}
-                    value={currentTranslation.allergens}
-                    onChange={(val) => updateTranslation('allergens', val)}
                   />
                 </div>
               )}
@@ -545,7 +659,7 @@ export default function ProductModal({
             <Button variant="secondary" className="flex-1" onClick={onClose} disabled={saving}>
               İptal
             </Button>
-            <Button className="flex-1" onClick={onSave} disabled={saving}>
+            <Button className="flex-1" onClick={handleSaveClick} disabled={saving}>
               {saving ? 'Kaydediliyor...' : 'Kaydet'}
             </Button>
           </div>

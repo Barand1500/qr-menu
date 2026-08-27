@@ -6,6 +6,7 @@ import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId, validateProduct } from '../lib/auth.js';
 import { config } from '../config.js';
 import {
+  applyAllergenTagsToI18n,
   buildProductI18n,
   getGroupName,
   getLanguages,
@@ -16,6 +17,11 @@ import {
 } from '../lib/i18n-json.js';
 import { imagesPayload, parseProductImages } from '../lib/product-images.js';
 import { ensureDefaultCurrency } from '../lib/currencies.js';
+import {
+  allergensTextFromTags,
+  parseAllergenTags,
+  sanitizeAllergenTags,
+} from '../lib/diet-allergens.js';
 
 const router = Router();
 router.use(authRequired);
@@ -117,6 +123,7 @@ router.post('/', async (req, res) => {
     isDiabetic,
     isRecommended,
     features,
+    allergenTags,
   } = req.body;
 
   const group = await prisma.group.findFirst({
@@ -144,6 +151,12 @@ router.post('/', async (req, res) => {
     getLanguages(),
   ]);
 
+  const tags = sanitizeAllergenTags(allergenTags);
+  let i18n = buildProductI18n(translations || [], languages);
+  i18n = applyAllergenTagsToI18n(i18n, tags, languages, (lang) =>
+    allergensTextFromTags(tags, lang)
+  );
+
   const product = await prisma.product.create({
     data: {
       restaurantId: restaurantId!,
@@ -160,7 +173,8 @@ router.post('/', async (req, res) => {
       isDiabetic: isDiabetic ?? false,
       isRecommended: isRecommended ?? false,
       features: Array.isArray(features) ? features : [],
-      i18n: buildProductI18n(translations || [], languages),
+      allergenTags: tags,
+      i18n,
     },
     include: { group: true, currency: true },
   });
@@ -187,6 +201,7 @@ router.put('/:id', async (req, res) => {
     isDiabetic,
     isRecommended,
     features,
+    allergenTags,
   } = req.body;
 
   const existing = await prisma.product.findFirst({ where: { id, restaurantId: restaurantId! } });
@@ -200,10 +215,21 @@ router.put('/:id', async (req, res) => {
   }
 
   const languages = await getLanguages();
-  const i18n =
+  let i18n =
     translations?.length > 0
       ? mergeProductI18n(existing.i18n, translations, languages)
       : undefined;
+
+  const tags =
+    allergenTags !== undefined
+      ? sanitizeAllergenTags(allergenTags)
+      : parseAllergenTags(existing.allergenTags);
+
+  if (allergenTags !== undefined || translations?.length > 0) {
+    i18n = applyAllergenTagsToI18n(i18n ?? existing.i18n, tags, languages, (lang) =>
+      allergensTextFromTags(tags, lang)
+    );
+  }
 
   const product = await prisma.product.update({
     where: { id },
@@ -229,6 +255,7 @@ router.put('/:id', async (req, res) => {
       ...(isDiabetic !== undefined && { isDiabetic }),
       ...(isRecommended !== undefined && { isRecommended }),
       ...(features !== undefined && { features: Array.isArray(features) ? features : [] }),
+      ...(allergenTags !== undefined && { allergenTags: tags }),
       ...(i18n !== undefined && { i18n }),
     },
     include: { group: true, currency: true },
@@ -380,6 +407,7 @@ async function mapProduct(
     isRecommended: boolean;
     imageUrl: string | null;
     images: unknown;
+    allergenTags?: unknown;
     sortOrder: number;
     isActive: boolean;
     i18n: unknown;
@@ -416,6 +444,11 @@ async function mapProduct(
     prepTimeMinutes: product.prepTimeMinutes,
     calories: product.calories,
     features: resolveFeatures(product),
+    isVegan: product.isVegan,
+    isVegetarian: product.isVegetarian,
+    isGlutenFree: product.isGlutenFree,
+    isDiabetic: product.isDiabetic,
+    allergenTags: parseAllergenTags(product.allergenTags),
     isRecommended: product.isRecommended,
     imageUrl: images[0] ?? null,
     images,

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, ChevronDown, Trash2 } from 'lucide-react';
+import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2 } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
@@ -114,7 +114,7 @@ export default function SettingsPage() {
   const [translateStatus, setTranslateStatus] = useState<TranslateStatus | null>(null);
   const [languagesHighlight, setLanguagesHighlight] = useState(false);
   const [socialLinks, setSocialLinks] = useState<SocialLinkConfig[]>(mergeSocialConfigs([]));
-  const [socialOpen, setSocialOpen] = useState(false);
+  const [welcomeMusicUrl, setWelcomeMusicUrl] = useState('');
   const [iconPickerFor, setIconPickerFor] = useState<string | null>(null);
   const [iconPickerPos, setIconPickerPos] = useState<{ left: number; bottom: number } | null>(
     null
@@ -150,6 +150,7 @@ export default function SettingsPage() {
         } catch {
           setSocialLinks(mergeSocialConfigs([]));
         }
+        setWelcomeMusicUrl(d.settings.welcome_music_url || '');
         setTranslateStatus({
           openaiConfigured:
             status.openaiConfigured || Boolean(d.settings.openai_api_key?.trim()),
@@ -261,6 +262,10 @@ export default function SettingsPage() {
         method: 'PUT',
         body: JSON.stringify({ links: socialLinks }),
       });
+      await api('/api/admin/settings/welcome-music', {
+        method: 'PUT',
+        body: JSON.stringify({ url: welcomeMusicUrl }),
+      });
       if (logoFile) {
         const fd = new FormData();
         fd.append('logo', logoFile);
@@ -283,6 +288,8 @@ export default function SettingsPage() {
 
   function toggleLanguage(id: number) {
     if (!data) return;
+    const lang = data.languages.find((l) => l.id === id);
+    if (!lang || lang.code === 'tr') return;
     setData({
       ...data,
       languages: data.languages.map((l) =>
@@ -292,9 +299,48 @@ export default function SettingsPage() {
   }
 
   function toggleCurrency(id: number) {
-    setCurrencies((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, isActive: !c.isActive } : c))
-    );
+    setCurrencies((prev) => {
+      const target = prev.find((c) => c.id === id);
+      if (!target || target.code === 'TRY') return prev;
+      return prev.map((c) => (c.id === id ? { ...c, isActive: !c.isActive } : c));
+    });
+  }
+
+  async function handleDeleteLanguage(lang: Language) {
+    if (lang.code === 'tr') return;
+    if (!window.confirm(`“${lang.name}” dilini silmek istediğinize emin misiniz?`)) return;
+    try {
+      await api(`/api/admin/languages/${lang.id}`, { method: 'DELETE' });
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          languages: prev.languages.filter((l) => l.id !== lang.id),
+        };
+      });
+      setMessages((prev) => {
+        const next = { ...prev };
+        delete next[lang.id];
+        return next;
+      });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Dil silinemedi');
+    }
+  }
+
+  async function handleDeleteCurrency(currency: Currency) {
+    if (currency.code === 'TRY') return;
+    if (
+      !window.confirm(`“${currency.name}” para birimini silmek istediğinize emin misiniz?`)
+    ) {
+      return;
+    }
+    try {
+      await api(`/api/admin/currencies/${currency.id}`, { method: 'DELETE' });
+      setCurrencies((prev) => prev.filter((c) => c.id !== currency.id));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Para birimi silinemedi');
+    }
   }
 
   async function handleAddLanguage(lang: CatalogLanguage) {
@@ -317,6 +363,19 @@ export default function SettingsPage() {
       setMessages((prev) => ({ ...prev, [created.id]: prev[created.id] || '' }));
       setAddLangOpen(false);
     } catch (err) {
+      // DB'de var ama liste eskiyse sunucudan senkronize et
+      try {
+        const all = await api<Language[]>('/api/admin/languages');
+        setData((prev) => (prev ? { ...prev, languages: all } : prev));
+        const found = all.find((l) => l.code === lang.code);
+        if (found) {
+          setMessages((prev) => ({ ...prev, [found.id]: prev[found.id] || '' }));
+          setAddLangOpen(false);
+          return;
+        }
+      } catch {
+        /* ignore sync errors */
+      }
       alert(err instanceof Error ? err.message : 'Dil eklenemedi');
     } finally {
       setAddingLang(false);
@@ -342,6 +401,16 @@ export default function SettingsPage() {
       });
       setAddCurrencyOpen(false);
     } catch (err) {
+      try {
+        const all = await api<Currency[]>('/api/admin/currencies');
+        setCurrencies(all);
+        if (all.some((c) => c.code === currency.code)) {
+          setAddCurrencyOpen(false);
+          return;
+        }
+      } catch {
+        /* ignore */
+      }
       alert(err instanceof Error ? err.message : 'Para birimi eklenemedi');
     } finally {
       setAddingCurrency(false);
@@ -459,10 +528,11 @@ export default function SettingsPage() {
             ) : (
               sortedLanguages.map((lang) => {
                 const catalog = catalogByCode(lang.code);
+                const isProtected = lang.code === 'tr';
                 return (
-                  <label
+                  <div
                     key={lang.id}
-                    className="flex items-center justify-between py-3 px-3 rounded-xl cursor-pointer transition hover:bg-[var(--admin-accent-soft)]/30 gap-3"
+                    className="flex items-center justify-between py-3 px-3 rounded-xl transition hover:bg-[var(--admin-accent-soft)]/30 gap-3"
                     style={{ borderBottom: '1px solid var(--admin-card-border)' }}
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -476,19 +546,33 @@ export default function SettingsPage() {
                         <p className="text-[11px] admin-text-muted uppercase tracking-wide">
                           {lang.code}
                           {catalog?.nativeName ? ` · ${catalog.nativeName}` : ''}
+                          {isProtected ? ' · Varsayılan' : ''}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2.5 shrink-0">
-                      <span className="text-xs admin-text-muted">Aktif</span>
-                      <input
-                        type="checkbox"
-                        checked={lang.isActive}
-                        onChange={() => toggleLanguage(lang.id)}
-                        className="w-4 h-4 rounded accent-[var(--admin-accent)]"
-                      />
-                    </div>
-                  </label>
+                    {!isProtected && (
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <span className="text-xs admin-text-muted">Aktif</span>
+                          <input
+                            type="checkbox"
+                            checked={lang.isActive}
+                            onChange={() => toggleLanguage(lang.id)}
+                            className="w-4 h-4 rounded accent-[var(--admin-accent)]"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLanguage(lang)}
+                          className="p-2 rounded-xl hover:bg-red-500/10 text-red-500 transition"
+                          title="Sil"
+                          aria-label={`${lang.name} dilini sil`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 );
               })
             )}
@@ -518,10 +602,11 @@ export default function SettingsPage() {
             ) : (
               sortedCurrencies.map((currency) => {
                 const catalog = currencyCatalogByCode(currency.code);
+                const isProtected = currency.code === 'TRY';
                 return (
-                  <label
+                  <div
                     key={currency.id}
-                    className="flex items-center justify-between py-3 px-3 rounded-xl cursor-pointer transition hover:bg-[var(--admin-accent-soft)]/30 gap-3"
+                    className="flex items-center justify-between py-3 px-3 rounded-xl transition hover:bg-[var(--admin-accent-soft)]/30 gap-3"
                     style={{ borderBottom: '1px solid var(--admin-card-border)' }}
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -534,19 +619,33 @@ export default function SettingsPage() {
                         </p>
                         <p className="text-[11px] admin-text-muted uppercase tracking-wide">
                           {currency.code}
+                          {isProtected ? ' · Varsayılan' : ''}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2.5 shrink-0">
-                      <span className="text-xs admin-text-muted">Aktif</span>
-                      <input
-                        type="checkbox"
-                        checked={currency.isActive}
-                        onChange={() => toggleCurrency(currency.id)}
-                        className="w-4 h-4 rounded accent-[var(--admin-accent)]"
-                      />
-                    </div>
-                  </label>
+                    {!isProtected && (
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <span className="text-xs admin-text-muted">Aktif</span>
+                          <input
+                            type="checkbox"
+                            checked={currency.isActive}
+                            onChange={() => toggleCurrency(currency.id)}
+                            className="w-4 h-4 rounded accent-[var(--admin-accent)]"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCurrency(currency)}
+                          className="p-2 rounded-xl hover:bg-red-500/10 text-red-500 transition"
+                          title="Sil"
+                          aria-label={`${currency.name} para birimini sil`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 );
               })
             )}
@@ -648,148 +747,78 @@ export default function SettingsPage() {
         </SettingsSection>
       </div>
 
-      <SettingsSection icon={MessageSquare} title="Karşılama Metinleri">
-        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4 float-field-stack">
-          {activeLanguages.length === 0 ? (
-            <p className="text-sm admin-text-muted col-span-full">
-              Karşılama metni eklemek için en az bir dil aktif olmalı.
-            </p>
-          ) : (
-            activeLanguages.map((lang) => (
-              <TranslatableTextarea
-                key={lang.id}
-                label={`Karşılama metni (${lang.name})`}
-                rows={4}
-                sourceText={trWelcomeMessage}
-                targetLang={lang.code}
-                value={messages[lang.id] || ''}
-                onChange={(val) => setMessages({ ...messages, [lang.id]: val })}
-              />
-            ))
-          )}
-        </div>
-      </SettingsSection>
+      <div className="settings-welcome-split">
+        <SettingsSection icon={MessageSquare} title="Karşılama Metinleri">
+          <div className="grid sm:grid-cols-1 gap-4 float-field-stack">
+            {activeLanguages.length === 0 ? (
+              <p className="text-sm admin-text-muted">
+                Karşılama metni eklemek için en az bir dil aktif olmalı.
+              </p>
+            ) : (
+              activeLanguages.map((lang) => (
+                <TranslatableTextarea
+                  key={lang.id}
+                  label={`Karşılama metni (${lang.name})`}
+                  rows={3}
+                  sourceText={trWelcomeMessage}
+                  targetLang={lang.code}
+                  value={messages[lang.id] || ''}
+                  onChange={(val) => setMessages({ ...messages, [lang.id]: val })}
+                />
+              ))
+            )}
+          </div>
+        </SettingsSection>
 
-      <section className="admin-card overflow-hidden flex flex-col">
-        <button
-          type="button"
-          className="w-full flex items-center gap-2.5 px-5 py-3.5 text-left shrink-0 transition hover:bg-[var(--admin-accent-soft)]/25"
-          style={{
-            background: 'var(--admin-input-bg)',
-            borderBottom: socialOpen ? '1px solid var(--admin-card-border)' : undefined,
-          }}
-          onClick={() => setSocialOpen((v) => !v)}
-          aria-expanded={socialOpen}
-        >
-          <Share2 className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
-          <span className="text-sm font-bold uppercase tracking-wide text-[var(--admin-text)] flex-1">
-            Sosyal Medya
-          </span>
-          <span className="text-[11px] font-semibold admin-text-muted mr-1">
-            {filledSocialCount} dolu
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 admin-text-muted transition-transform duration-200 ${
-              socialOpen ? 'rotate-180' : ''
-            }`}
-          />
-        </button>
+        <section className="admin-card overflow-hidden flex flex-col settings-welcome-split__social">
+          <div
+            className="w-full flex items-center gap-2.5 px-5 py-3.5 shrink-0"
+            style={{ background: 'var(--admin-input-bg)' }}
+          >
+            <Share2 className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
+            <span className="text-sm font-bold uppercase tracking-wide text-[var(--admin-text)] flex-1">
+              Sosyal Medya
+            </span>
+            <span className="text-[11px] font-semibold admin-text-muted">{filledSocialCount} dolu</span>
+          </div>
 
-        {socialOpen && (
-          <div className="p-5 space-y-3">
-            <div className="space-y-2">
-              {SOCIAL_PLATFORMS.map((platform) => {
-                const row = platformSocial.find((s) => s.id === platform.id) || {
-                  id: platform.id,
-                  value: '',
-                  showWelcome: false,
-                  showMenu: false,
-                };
-                return (
-                  <div key={platform.id} className="social-settings-row">
-                    <span
-                      className="social-settings-row__icon"
-                      style={{
-                        background:
-                          platform.id === 'instagram'
-                            ? 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)'
-                            : platform.color,
-                      }}
-                      title={platform.name}
-                    >
-                      <SocialBrandIcon id={platform.id} className="w-4 h-4 text-white" />
-                    </span>
-                    <input
-                      type={platform.kind === 'phone' ? 'tel' : 'url'}
-                      className="social-settings-row__input"
-                      placeholder={platform.placeholder}
-                      value={row.value}
-                      onChange={(e) => updateSocial(platform.id, { value: e.target.value })}
-                      aria-label={platform.name}
-                    />
-                    <label className="social-settings-row__toggle" title="Karşılamada göster">
-                      <input
-                        type="checkbox"
-                        checked={row.showWelcome}
-                        onChange={(e) =>
-                          updateSocial(platform.id, { showWelcome: e.target.checked })
-                        }
-                      />
-                      <span>Karşılama</span>
-                    </label>
-                    <label className="social-settings-row__toggle" title="Menüde göster">
-                      <input
-                        type="checkbox"
-                        checked={row.showMenu}
-                        onChange={(e) => updateSocial(platform.id, { showMenu: e.target.checked })}
-                      />
-                      <span>Menü</span>
-                    </label>
-                  </div>
-                );
-              })}
-
-              {customSocial.map((row) => (
-                <div key={row.id} className="social-settings-row social-settings-row--custom">
-                  <button
-                    type="button"
-                    className="social-settings-row__icon social-settings-row__icon--btn"
+          <div className="p-4 space-y-2 settings-welcome-split__social-body admin-scroll">
+            {SOCIAL_PLATFORMS.map((platform) => {
+              const row = platformSocial.find((s) => s.id === platform.id) || {
+                id: platform.id,
+                value: '',
+                showWelcome: false,
+                showMenu: false,
+              };
+              return (
+                <div key={platform.id} className="social-settings-row">
+                  <span
+                    className="social-settings-row__icon"
                     style={{
-                      background: row.iconUrl ? 'transparent' : '#475569',
-                      overflow: 'hidden',
-                      padding: row.iconUrl ? 0 : undefined,
+                      background:
+                        platform.id === 'instagram'
+                          ? 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)'
+                          : platform.color,
                     }}
-                    title="İkon seç"
-                    onClick={(e) => openIconPicker(row.id, e.currentTarget)}
+                    title={platform.name}
                   >
-                    <SocialDisplayIcon
-                      id={row.id}
-                      iconKey={row.iconKey}
-                      iconUrl={row.iconUrl}
-                      className="w-4 h-4 text-white"
-                    />
-                  </button>
+                    <SocialBrandIcon id={platform.id} className="w-4 h-4 text-white" />
+                  </span>
                   <input
-                    type="text"
-                    className="social-settings-row__input social-settings-row__input--label"
-                    placeholder="İsim (opsiyonel)"
-                    value={row.label || ''}
-                    onChange={(e) => updateSocial(row.id, { label: e.target.value })}
-                    aria-label="Özel link adı"
-                  />
-                  <input
-                    type="url"
+                    type={platform.kind === 'phone' ? 'tel' : 'url'}
                     className="social-settings-row__input"
-                    placeholder="https://..."
+                    placeholder={platform.placeholder}
                     value={row.value}
-                    onChange={(e) => updateSocial(row.id, { value: e.target.value })}
-                    aria-label="Özel link"
+                    onChange={(e) => updateSocial(platform.id, { value: e.target.value })}
+                    aria-label={platform.name}
                   />
                   <label className="social-settings-row__toggle" title="Karşılamada göster">
                     <input
                       type="checkbox"
                       checked={row.showWelcome}
-                      onChange={(e) => updateSocial(row.id, { showWelcome: e.target.checked })}
+                      onChange={(e) =>
+                        updateSocial(platform.id, { showWelcome: e.target.checked })
+                      }
                     />
                     <span>Karşılama</span>
                   </label>
@@ -797,48 +826,121 @@ export default function SettingsPage() {
                     <input
                       type="checkbox"
                       checked={row.showMenu}
-                      onChange={(e) => updateSocial(row.id, { showMenu: e.target.checked })}
+                      onChange={(e) => updateSocial(platform.id, { showMenu: e.target.checked })}
                     />
                     <span>Menü</span>
                   </label>
-                  <button
-                    type="button"
-                    className="social-settings-row__remove"
-                    title="Sil"
-                    onClick={() => removeCustomSocial(row.id)}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
                 </div>
-              ))}
+              );
+            })}
 
-              <button
-                type="button"
-                className="social-settings-add"
-                onClick={addCustomSocial}
-              >
-                <Plus className="w-4 h-4" />
-                Kendi linkini ekle
-              </button>
+            {customSocial.map((row) => (
+              <div key={row.id} className="social-settings-row social-settings-row--custom">
+                <button
+                  type="button"
+                  className="social-settings-row__icon social-settings-row__icon--btn"
+                  style={{
+                    background: row.iconUrl ? 'transparent' : '#475569',
+                    overflow: 'hidden',
+                    padding: row.iconUrl ? 0 : undefined,
+                  }}
+                  title="İkon seç"
+                  onClick={(e) => openIconPicker(row.id, e.currentTarget)}
+                >
+                  <SocialDisplayIcon
+                    id={row.id}
+                    iconKey={row.iconKey}
+                    iconUrl={row.iconUrl}
+                    className="w-4 h-4 text-white"
+                  />
+                </button>
+                <input
+                  type="text"
+                  className="social-settings-row__input social-settings-row__input--label"
+                  placeholder="İsim (opsiyonel)"
+                  value={row.label || ''}
+                  onChange={(e) => updateSocial(row.id, { label: e.target.value })}
+                  aria-label="Özel link adı"
+                />
+                <input
+                  type="url"
+                  className="social-settings-row__input"
+                  placeholder="https://..."
+                  value={row.value}
+                  onChange={(e) => updateSocial(row.id, { value: e.target.value })}
+                  aria-label="Özel link"
+                />
+                <label className="social-settings-row__toggle" title="Karşılamada göster">
+                  <input
+                    type="checkbox"
+                    checked={row.showWelcome}
+                    onChange={(e) => updateSocial(row.id, { showWelcome: e.target.checked })}
+                  />
+                  <span>Karşılama</span>
+                </label>
+                <label className="social-settings-row__toggle" title="Menüde göster">
+                  <input
+                    type="checkbox"
+                    checked={row.showMenu}
+                    onChange={(e) => updateSocial(row.id, { showMenu: e.target.checked })}
+                  />
+                  <span>Menü</span>
+                </label>
+                <button
+                  type="button"
+                  className="social-settings-row__remove"
+                  title="Sil"
+                  onClick={() => removeCustomSocial(row.id)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
 
-              <input
-                ref={customIconInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  const id = pendingCustomIconIdRef.current;
-                  pendingCustomIconIdRef.current = null;
-                  e.target.value = '';
-                  if (!file || !id) return;
-                  void uploadCustomIcon(id, file);
-                }}
-              />
-            </div>
+            <button type="button" className="social-settings-add" onClick={addCustomSocial}>
+              <Plus className="w-4 h-4" />
+              Kendi linkini ekle
+            </button>
+
+            <input
+              ref={customIconInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                const id = pendingCustomIconIdRef.current;
+                pendingCustomIconIdRef.current = null;
+                e.target.value = '';
+                if (!file || !id) return;
+                void uploadCustomIcon(id, file);
+              }}
+            />
           </div>
-        )}
-      </section>
+        </section>
+      </div>
+
+      <SettingsSection icon={Music2} title="Karşılama Müziği">
+        <div className="settings-welcome-music">
+          <p className="settings-welcome-music__hint">
+            YouTube video linki veya doğrudan ses dosyası (mp3, m4a, ogg) yapıştırın. Karşılama
+            ekranında bu müzik çalar. Boş bırakırsanız varsayılan ambient kullanılır. Spotify sayfa
+            linkleri desteklenmez.
+          </p>
+          <Input
+            label="Müzik linki"
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=… veya https://…/muzik.mp3"
+            value={welcomeMusicUrl}
+            onChange={(e) => setWelcomeMusicUrl(e.target.value)}
+          />
+          {welcomeMusicUrl.trim() && /spotify\.com|open\.spotify/i.test(welcomeMusicUrl) && (
+            <p className="settings-welcome-music__warn">
+              Spotify linki desteklenmiyor. YouTube veya doğrudan mp3 linki kullanın.
+            </p>
+          )}
+        </div>
+      </SettingsSection>
 
       {iconPickerFor &&
         iconPickerPos &&

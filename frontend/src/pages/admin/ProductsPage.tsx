@@ -18,6 +18,7 @@ import {
   Select,
   Spinner,
 } from '@/components/ui';
+import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import ProductModal, {
   type ProductFormState,
   type ProductTranslationFields,
@@ -48,6 +49,11 @@ interface Product {
   prepTimeMinutes?: number | null;
   calories?: number | null;
   features?: string[];
+  allergenTags?: string[];
+  isVegan?: boolean;
+  isVegetarian?: boolean;
+  isGlutenFree?: boolean;
+  isDiabetic?: boolean;
   isRecommended?: boolean;
   imageUrl?: string | null;
   images?: string[];
@@ -83,6 +89,11 @@ const emptyForm = (): ProductFormState => ({
   prepTimeMinutes: '',
   calories: '',
   features: [],
+  allergenTags: [],
+  isVegan: false,
+  isVegetarian: false,
+  isGlutenFree: false,
+  isDiabetic: false,
   isRecommended: false,
   translations: {},
   isActive: true,
@@ -105,6 +116,11 @@ function buildFormFromProduct(product: Product): ProductFormState {
     prepTimeMinutes: product.prepTimeMinutes?.toString() || '',
     calories: product.calories?.toString() || '',
     features: product.features ?? [],
+    allergenTags: product.allergenTags ?? [],
+    isVegan: product.isVegan ?? false,
+    isVegetarian: product.isVegetarian ?? false,
+    isGlutenFree: product.isGlutenFree ?? false,
+    isDiabetic: product.isDiabetic ?? false,
     isRecommended: product.isRecommended ?? false,
     translations,
     isActive: product.isActive,
@@ -327,6 +343,11 @@ export default function ProductsPage() {
         prepTimeMinutes: form.prepTimeMinutes ? Number(form.prepTimeMinutes) : null,
         calories: form.calories ? Number(form.calories) : null,
         features: form.features,
+        allergenTags: form.allergenTags,
+        isVegan: form.isVegan,
+        isVegetarian: form.isVegetarian,
+        isGlutenFree: form.isGlutenFree,
+        isDiabetic: form.isDiabetic,
         isRecommended: form.isRecommended,
         translations,
         isActive: form.isActive,
@@ -487,10 +508,9 @@ export default function ProductsPage() {
                           style={{ background: 'var(--admin-input-bg)' }}
                         />
                       ) : (
-                        <div
-                          className="w-12 h-12 rounded-xl"
-                          style={{ background: 'var(--admin-accent-soft)' }}
-                        />
+                        <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">
+                          <MenuMediaPlaceholder kind="product" size="sm" label={product.name} />
+                        </div>
                       )}
                     </td>
                     <td className="py-3.5 px-4">

@@ -251,6 +251,31 @@ export function buildProductI18n(
   return mergeProductI18n({}, items, languages);
 }
 
+/** Alerjen pill'lerinden tüm dillere okunabilir metin yazar */
+export function applyAllergenTagsToI18n(
+  existing: unknown,
+  tags: string[],
+  languages: LangRow[],
+  textForLang: (lang: string) => string
+) {
+  const map = { ...asMap<ProductI18nEntry>(existing) };
+  const codes = new Set([
+    ...languages.map((l) => l.code),
+    ...Object.keys(map),
+    'tr',
+    'en',
+    'ru',
+    'ar',
+  ]);
+  for (const code of codes) {
+    map[code] = {
+      ...map[code],
+      allergens: textForLang(code),
+    };
+  }
+  return map;
+}
+
 export function buildShowcaseI18n(
   items: { languageId: number; title1?: string; title2?: string }[],
   languages: LangRow[]

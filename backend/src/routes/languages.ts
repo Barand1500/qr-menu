@@ -1,9 +1,12 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { authRequired } from '../lib/auth.js';
+import { clearLanguageCache } from '../lib/i18n-json.js';
 
 const router = Router();
 router.use(authRequired);
+
+const PROTECTED_LANGUAGE_CODE = 'tr';
 
 router.get('/', async (_req, res) => {
   const languages = await prisma.language.findMany({ orderBy: { id: 'asc' } });
@@ -33,15 +36,41 @@ router.post('/', async (req, res) => {
         where: { id: existing.id },
         data: { isActive: true, name: displayName || existing.name },
       });
+      clearLanguageCache();
       return res.json(reactivated);
     }
-    return res.status(409).json({ message: 'Bu dil zaten ekli' });
+    // DB'de var ama admin listesi cache'te eski kalmış olabilir
+    clearLanguageCache();
+    return res.status(409).json({
+      message: 'Bu dil zaten ekli',
+      language: existing,
+    });
   }
 
   const created = await prisma.language.create({
     data: { code: normalized, name: displayName, isActive: true },
   });
+  clearLanguageCache();
   res.status(201).json(created);
+});
+
+router.delete('/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ message: 'Geçersiz dil' });
+  }
+
+  const existing = await prisma.language.findUnique({ where: { id } });
+  if (!existing) {
+    return res.status(404).json({ message: 'Dil bulunamadı' });
+  }
+  if (existing.code === PROTECTED_LANGUAGE_CODE) {
+    return res.status(400).json({ message: 'Türkçe dil silinemez' });
+  }
+
+  await prisma.language.delete({ where: { id } });
+  clearLanguageCache();
+  res.json({ ok: true });
 });
 
 export default router;

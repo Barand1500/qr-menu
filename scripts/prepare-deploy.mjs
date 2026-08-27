@@ -82,37 +82,20 @@ const readme = `MENU QR — GÜNCELLEME (CloudPanel)
 Domain: https://menu.guzelteknoloji.com
 Port: 3008
 
-1) ZIP’i Dosya Yöneticisi’nde şuraya atıp AÇ:
+1) Bu klasörün İÇİNDEKİLERİ (dist, public, prisma, package.json) şuraya kopyala:
    htdocs/menu.guzelteknoloji.com/
-   (içerik doğrudan bu klasöre çıksın; ara klasör olmasın)
+   "deploy" adında ara klasör OLMASIN.
+   uploads/ ve .env DOSUNMA.
 
-2) KORU:
-   - uploads/  (görseller)
-   - .env      (zaten doğruysa dokunma; ZIP’teki .env ile aynı)
+2) Özellikle public/ klasörünü TAMAMEN değiştir (eski assets silinsin).
 
-3) SSH’de SADECE şunlar:
-   cd ~/htdocs/menu.guzelteknoloji.com
-   npm install --omit=dev
-   npx prisma generate
-   npx prisma db push
+3) SSH / Görevler ile Node yeniden başlat (port 3008 kill + npm start).
 
-4) CloudPanel → Node.js → Uygulamayı Yeniden Başlat (Restart)
-
-5) Test:
-   https://menu.guzelteknoloji.com/api/health
-
-ÖNEMLİ
-- npm run setup / db:seed ÇALIŞTIRMA — veriyi siler.
-- node_modules ZIP’te yok; npm install şart.
+4) Test: /api/health ve Ayarlar sayfası (hard refresh: Ctrl+F5)
 `;
 fs.writeFileSync(path.join(deployDir, 'OKU-BENI.txt'), readme);
 
-console.log('\n4) ZIP oluşturuluyor...');
-const zipPath = path.join(root, 'menu-qr-deploy.zip');
-rimraf(zipPath);
-run(`tar -a -c -f "${zipPath}" -C "${deployDir}" .`, root);
-
 console.log('\nHazır!');
 console.log(`  Klasör: ${deployDir}`);
-console.log(`  ZIP:    ${zipPath}`);
-console.log('  Sunucuya ZIP’i atıp aç, sonra OKU-BENI.txt adımlarını uygula.');
+console.log('  Sunucuya dist + public + prisma + package.json at (deploy klasörü olarak değil).');
+console.log('  ZIP adımı atlandı (Windows kilit/crash önlemi).');

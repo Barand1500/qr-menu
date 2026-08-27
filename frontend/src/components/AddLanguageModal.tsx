@@ -82,7 +82,7 @@ export default function AddLanguageModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
     >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[6px]" />
 
@@ -106,11 +106,8 @@ export default function AddLanguageModal({
               >
                 🌐
               </div>
-              <div>
+              <div className="flex items-center min-h-11">
                 <h2 className="text-base font-bold text-[var(--admin-text)]">Dil Ekle</h2>
-                <p className="text-xs admin-text-muted mt-0.5 leading-relaxed">
-                  Menüde göstermek istediğin dili seç. Çeviri durumu dil kartında görünür.
-                </p>
               </div>
             </div>
             <button
