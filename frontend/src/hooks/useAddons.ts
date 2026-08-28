@@ -1,16 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { ADDON_CATALOG, type AddonProduct } from '@/addons';
+import {
+  parseMenuAssistantStyle,
+  type MenuAssistantStyle,
+} from '@/lib/menuAssistantStyle';
 
 interface AddonsResponse {
   owned: string[];
   disabled?: string[];
+  menuAssistantStyle?: string;
   products: AddonProduct[];
 }
 
 export function useAddons() {
   const [owned, setOwned] = useState<string[]>([]);
   const [disabled, setDisabled] = useState<string[]>([]);
+  const [menuAssistantStyle, setMenuAssistantStyle] = useState<MenuAssistantStyle>('sunset');
   const [products, setProducts] = useState<AddonProduct[]>(ADDON_CATALOG);
   const [loading, setLoading] = useState(true);
 
@@ -19,6 +25,7 @@ export function useAddons() {
     const disabledIds = res.disabled || [];
     setOwned(ownedIds);
     setDisabled(disabledIds);
+    setMenuAssistantStyle(parseMenuAssistantStyle(res.menuAssistantStyle));
     setProducts(
       ADDON_CATALOG.map((p) => {
         const fromApi = res.products.find((x) => x.id === p.id);
@@ -94,5 +101,26 @@ export function useAddons() {
     return res;
   }
 
-  return { owned, disabled, products, loading, reload, isOwned, isEnabled, unlock, setEnabled };
+  async function setAssistantStyle(style: MenuAssistantStyle) {
+    const res = await api<{ style: MenuAssistantStyle }>('/api/admin/addons/menu-assistant/style', {
+      method: 'PATCH',
+      body: JSON.stringify({ style }),
+    });
+    setMenuAssistantStyle(res.style);
+    return res;
+  }
+
+  return {
+    owned,
+    disabled,
+    products,
+    menuAssistantStyle,
+    loading,
+    reload,
+    isOwned,
+    isEnabled,
+    unlock,
+    setEnabled,
+    setAssistantStyle,
+  };
 }

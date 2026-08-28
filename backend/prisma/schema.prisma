@@ -42,6 +42,7 @@ model Restaurant {
   viewEvents     ViewEvent[]
   complaints     Complaint[]
   suggestions    Suggestion[]
+  tableRequests  TableServiceRequest[]
   qrTableGroups  QrTableGroup[]
   campaigns      Campaign[]
 
@@ -227,6 +228,23 @@ model Suggestion {
 
   @@index([restaurantId, createdAt])
   @@map("oneriler")
+}
+
+/// Masa bazlı garson çağır / hesap iste
+model TableServiceRequest {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int      @map("restoran_id")
+  type         String   @db.VarChar(20) /// waiter | bill
+  tableNumber  String   @map("masa_no") @db.VarChar(40)
+  groupSlug    String?  @map("grup_slug") @db.VarChar(100)
+  isRead       Boolean  @default(false) @map("okundu")
+  createdAt    DateTime @default(now()) @map("olusturma")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, createdAt])
+  @@index([restaurantId, isRead])
+  @@map("masa_cagrilari")
 }
 
 /// Barkod / masa QR grupları (Salon, Teras vb.)

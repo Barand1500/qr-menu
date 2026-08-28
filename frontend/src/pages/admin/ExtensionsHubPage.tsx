@@ -13,7 +13,9 @@ import { Button, Card, PageHeader, Spinner } from '@/components/ui';
 import UnlockAddonModal from '@/components/UnlockAddonModal';
 import SupportContactModal from '@/components/SupportContactModal';
 import { useAddons } from '@/hooks/useAddons';
+import MenuAssistantStylePicker from '@/components/MenuAssistantStylePicker';
 import type { AddonCategory, AddonProduct } from '@/addons';
+import type { MenuAssistantStyle } from '@/lib/menuAssistantStyle';
 
 type TabId = 'all' | 'startup' | 'qr' | 'lang' | 'feature';
 
@@ -48,12 +50,14 @@ function parseTab(raw: string | null): TabId {
 }
 
 export default function ExtensionsHubPage() {
-  const { products, loading, unlock, setEnabled } = useAddons();
+  const { products, loading, unlock, setEnabled, menuAssistantStyle, setAssistantStyle } =
+    useAddons();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = parseTab(searchParams.get('tab'));
   const [selected, setSelected] = useState<AddonProduct | null>(null);
   const [unlocking, setUnlocking] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [savingStyle, setSavingStyle] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
 
   const list = useMemo(
@@ -88,7 +92,40 @@ export default function ExtensionsHubPage() {
     }
   }
 
+  async function handleAssistantStyle(style: MenuAssistantStyle) {
+    setSavingStyle(true);
+    try {
+      await setAssistantStyle(style);
+    } finally {
+      setSavingStyle(false);
+    }
+  }
+
   function ownedAction(product: AddonProduct) {
+    if (product.id === 'menu-assistant' && product.owned) {
+      const on = Boolean(product.enabled);
+      return (
+        <div className="flex flex-col gap-2.5 w-full">
+          <button
+            type="button"
+            className="addon-toggle"
+            onClick={() => void handleToggle(product)}
+            disabled={togglingId === product.id}
+            aria-pressed={on}
+          >
+            <span>{on ? 'Menüde açık' : 'Menüde kapalı'}</span>
+            <span className={`addon-toggle__switch${on ? ' is-on' : ''}`} aria-hidden>
+              <span className="addon-toggle__knob" />
+            </span>
+          </button>
+          <MenuAssistantStylePicker
+            value={menuAssistantStyle}
+            saving={savingStyle}
+            onChange={(style) => void handleAssistantStyle(style)}
+          />
+        </div>
+      );
+    }
     if (product.toggleable) {
       const on = Boolean(product.enabled);
       return (

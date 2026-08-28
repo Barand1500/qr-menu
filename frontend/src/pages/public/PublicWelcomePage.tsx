@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { enteredKey, menuHomePath } from '@/lib/menuPaths';
-import { Volume2, VolumeX, Sparkles, Music2, MessageCircleHeart, Lightbulb } from 'lucide-react';
+import { Volume2, VolumeX, Sparkles, MessageCircleHeart, Lightbulb } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { languageFlag } from '@/lib/languageFlags';
 import ComplaintBoxModal from '@/components/public/ComplaintBoxModal';
@@ -383,17 +383,6 @@ export default function PublicWelcomePage() {
           <span>{t.complaintBox}</span>
         </button>
       </div>
-
-      {musicBlocked && musicOn && (
-        <button
-          type="button"
-          className="welcome-scene__music-hint"
-          onClick={() => tryPlayMusic()}
-        >
-          <Music2 className="w-4 h-4" />
-          {t.musicTapHint}
-        </button>
-      )}
 
       <div className="welcome-scene__content">
         <div

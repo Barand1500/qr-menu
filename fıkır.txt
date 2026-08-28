@@ -6,10 +6,6 @@
 A) MÜŞTERİ TARAFİ — “WOW, bu menü farklı”
 ================================================================================
 
-1. Diyet / yaşam tarzı filtresi (vegan, vejetaryen, glutensiz, diyabetik)
-   - Schema’da bayraklar zaten var, admin UI yok. Alerji gibi chip’lerle filtre.
-   - Satış cümlesi: “Her müşteri kendi menüsünü görür.”
-
 2. Baharat / acılık seviyesi filtresi
    - Üründe 0–3 acı biber; müşteri “az acı” seçince sert olanlar düşer.
    - Kebap / Asya / Meksika işletmelerine birebir.
@@ -18,10 +14,6 @@ A) MÜŞTERİ TARAFİ — “WOW, bu menü farklı”
    - “Bugün 600 kalori altı” veya “yüksek protein” hızlı filtre.
    - Fitness cafe / healthy bowl yerleri bayılır.
 
-4. “Ne yiyeceğime karar veremiyorum” — 3 soruluk menü asistanı
-   - Aç/tok, tatlı/tuzlu, bütçe → 3–5 öneri.
-   - Karşılama veya yan menüden açılır; ekstra eklenti olarak satılır.
-
 5. Masa bazlı garson çağır / hesap iste
    - QR’da masa no zaten geliyor; tek tuş “Garson” / “Hesap” → admin’e anlık bildirim.
    - Restoranlar için en net “bunu isterim” özellik.
@@ -29,9 +21,6 @@ A) MÜŞTERİ TARAFİ — “WOW, bu menü farklı”
 6. Sipariş notu / “bu ürünü istiyorum” sepet (sipariş motoru olmadan)
    - Sepete ekle → masa no + not → WhatsApp / garson paneline düşer.
    - Tam POS’a girmeden “hafif sipariş” satışı.
-
-7. Favori / “daha sonra” listesi (cihazda kalır)
-   - Kalp ikonu; arkadaşla paylaşılabilir kısa link.
 
 8. Ürün “benzer lezzetler” + “bununla iyi gider”
    - Related products var; kurallı çapraz satış (burger → patates, kahve → tatlı).
@@ -44,43 +33,18 @@ A) MÜŞTERİ TARAFİ — “WOW, bu menü farklı”
     - Öğle 12–15 sadece öğle setleri; gece farklı kategori.
     - Otel / büyük cafe için premium eklenti.
 
-11. Alerji + diyet “güven rozeti” ürün kartında
-    - Filtre sonrası kartta “senin seçimine uygun” yeşil nokta.
-
-12. Çocuk menüsü ayrı giriş veya chip
-    - “Çocukla geldik” → sadece çocuk ürünleri + alerji.
-
 13. Sesli menü / ekran okuyucu dostu mod
     - Büyük yazı, yüksek kontrast, az animasyon (erişilebilirlik = ihale/otel artısı).
 
 14. Menüde “hazırlama süresi”ye göre sırala
     - “Acele” → 10 dk altı ürünler üste.
 
-15. Fotoğraflı yorum duvarı (moderasyonlu)
-    - Müşteri foto+yıldız; admin onaylar → üründe görünür.
-    - Sosyal kanıt = satış.
-
 16. “Şefin notu” kısa video (15 sn) ürün detayında
     - Hikâye altyapısı var; ürüne özel mikro video premium.
-
-17. Masa QR’dan dil otomatik (tarayıcı dili + son seçim)
-    - Turist yoğun yerlerde sürtünme sıfır.
-
-18. Menü PDF / offline cache
-    - İnternet zayıfsa son menü açılsın; “PDF indir” otel için.
-
-19. Çok şubeli “hangi şubedesin?” seçici
-    - Aynı marka, farklı fiyat/menü (SaaS’a giden yol).
-
-20. Sadakat: “bu QR’dan 5. ziyaret” rozeti / küçük sürpriz mesajı
-    - Puan sistemi olmadan bile “tanındım” hissi.
 
 ================================================================================
 B) ADMİN TARAFİ — “Bunu her gün kullanırım”
 ================================================================================
-
-21. Karşılama müziği ayarı admin’de
-    - URL zaten okunuyor, UI yok. 10 dk’lık iş, “eksik his” kapanır.
 
 22. Tek tık “tükendi / geldi” ürün paneli (mutfak tablet modu)
     - Büyük butonlar, fotoğraflı grid; garson/aşçı kullanır.
@@ -92,17 +56,8 @@ B) ADMİN TARAFİ — “Bunu her gün kullanırım”
 24. Happy hour / saatlik fiyat
     - 17–19 biralar X TL; kampanya motorunu zamana bağla.
 
-25. Stok adedi (basit)
-    - 12 porsiyon kaldı; 0 olunca otomatik tükendi.
-
-26. Menü “yayınla / taslak”
-    - Değişiklikleri sakla, öğlen 12’de yayınla. Zincir işletme sever.
-
 27. Fotoğraf AI önerisi / arka plan temizle
     - Ürün yüklerken “arka planı temizle + ışığı düzelt” (ücretli kota).
-
-28. Alerjen chip seçici (serbest yazı + checkbox)
-    - Admin yazı yazmasın; chip seçsin → filtre %100 tutar. (Mevcut serbest yazıyı da destekle)
 
 29. Diyet bayrakları UI (vegan / vejetaryen / GF / diyabetik)
     - Schema hazır; form’a 4 checkbox.
@@ -110,35 +65,14 @@ B) ADMİN TARAFİ — “Bunu her gün kullanırım”
 30. “Boş çeviri” kırmızı uyarı dashboard’da
     - Dil paketı olanlara: “12 üründe İngilizce eksik” → toplu çeviriye at.
 
-31. Şikayet / öneri anlık bildirim (Telegram / WhatsApp webhook)
-    - Okunmamış şikayet gelsin telefona. Restoran sahibi bayılır.
-
 32. Masa ısı haritası
     - Hangi masa QR’sı ne kadar tıklandı; doluluk / popüler salon.
-
-33. Personel için “sadece menü düzenle” vs “sadece şikayet oku” ince yetki
-    - Role var; izinleri parçala.
 
 34. Excel / CSV menü içe aktar
     - 200 ürünlü yer 1 günde geçer. Satış kapatıcı özellik.
 
-35. Menü kopyala (şube A → şube B)
-    - Multi-tenant gelince altın özellik.
-
-36. Otomatik yedek + “dün akşamki menüye dön”
-    - Korku azaltır; büyük müşteri güvenir.
-
-37. Rakip / sektör benchmark (anonim)
-    - “Senin popüler ürün tıklanman sektör ortalamasının üstünde” (ileride veri ürünü).
-
-38. Yazdırılabilir alerjen matrisi (mutfak duvarına A4)
-    - QR paket yanına “mutfak uyum paketi”.
-
 39. Etkinlik modu: düğün / özel gece menüsü zamanla aç-kapa
     - Kampanya + takvim.
-
-40. Dashboard’da “bugün en çok bakılan ama az satılan?” (görüntülenme vs not)
-    - Basit içgörü; upsell konuşması için.
 
 ================================================================================
 C) PARA KAZANDIRAN EKLENTİ / PAKET FİKİRLERİ
@@ -146,77 +80,16 @@ C) PARA KAZANDIRAN EKLENTİ / PAKET FİKİRLERİ
 
 41. “Garson Çağır + Hesap” paketi (bildirimli)
 42. “Sipariş Köprüsü” (sepet → WhatsApp / Telegram / mutfak ekranı) — POS’suz
-43. “Sağlık Menüsü” paketi: diyet bayrakları + filtre + rozetler
-44. “Mutfak Tablet” paketi: tükendi paneli + alerjen matrisi
-45. “Turist Paketi”: ek dil + otomatik çeviri kotası + RTL polish
-46. “Etkinlik / Otel Paketi”: saatlik menü + PDF + çok dil karşılama
-47. “Sadakat Lite”: ziyaret sayacı + doğum günü mesajı (isimli öneri kutusundan)
-48. “Marka Paketi”: özel font + renk + custom domain (menu.musteri.com)
-49. “AI Şef”: menü asistanı + fotoğraf iyileştirme kotası (aylık)
-50. “Analitik Pro”: cihaz/OS/dil (şu an stub) + ısı haritası + saat dilimi grafikleri
 
 ================================================================================
 D) BÜYÜME / SATIŞ / İŞ MODELİ
 ================================================================================
 
-51. Gerçek çok kiracılı SaaS (alt alan: isim.guzelteknoloji.com)
-    - Schema restaurant’lı; resolve şu an tek kayıt. Bu açılınca ölçeklenir.
-
 52. Abonelik + eklenti mağazası (kod yerine ödeme)
     - Aylık / yıllık; eklenti aç/kapa faturalı.
-
-53. Beyaz etiket (acente satışı)
-    - Ajans kendi markasıyla satsın; siz master lisans.
-
-54. “14 gün deneme menüsü” hazır şablon sektörlere göre
-    - Cafe / kebap / sushi / otel kahvaltı — 1 tık kurulum.
 
 55. Satış demosu: admin’de “müşteriye göster” full ekran tur
     - Eklentiler kilitli ama önizlemeli (zaten demo data var; tur senaryosu ekle).
 
 56. Referans QR: “bu sistemi yapan Güzel Teknoloji” küçük footer (ücretsiz planda)
     - Ücretli planda kalkar = upsell.
-
-57. Şehir / bölge satış kit: masa QR PDF + 1 sayfalık “neden dijital menü”
-
-================================================================================
-E) HIZLI KAZANIM (az efor, yüksek algı)
-================================================================================
-
-58. Admin’den karşılama müziği URL + aç/kapa
-59. Üründe vegan/vejetaryen/GF/diyabetik checkbox → public chip filtre
-60. Alerjen chip’leri admin formunda (yazıya otomatik birleştir)
-61. “Tükendi” anahtarı ürün listesinde
-62. Şikayet gelince Telegram bot mesajı
-63. Stats’taki boş dil/cihaz/OS’u doldur (altyapı yarım)
-64. Menü layout editörü (bileşen var, sayfaya bağlı değil) — “kendi ana sayfanı diz”
-65. Büyük yazı / sade erişilebilirlik modu (müşteri yan menü)
-66. Sepetsiz “Garson çağır” tek buton (masa query ile)
-67. Toplu % fiyat güncelleme
-
-================================================================================
-F) “BUNU KOYSAK ÇOK SATAR” — KISA LİSTE (öncelik adayları)
-================================================================================
-
-★★★ Garson çağır / hesap iste (masa QR’lı)
-★★★ Tükendi butonu + mutfak tablet görünümü
-★★★ Diyet filtreleri (schema hazır) + alerjen chip admin
-★★★ Toplu zam / fiyat güncelle
-★★  Sepet → WhatsApp’a sipariş özeti (POS’suz)
-★★  Saatlik / günün menüsü
-★★  Şikayet anlık telefon bildirimi
-★★  Çok şube / custom domain SaaS
-★   Menü asistanı (3 soru → öneri)
-★   AI fotoğraf temizle
-★   Moderasyonlu müşteri yorumu + foto
-
-================================================================================
-G) NOT / MANTIĞA DAİR
-================================================================================
-
-- Alerji filtresi müşteriye “güven” satar; bir sonraki doğal adım diyet bayrakları + admin chip.
-- En çok para: operasyonel özellikler (garson, tükendi, zam, bildirim) — tema kadar “güzel” değil ama patron öder.
-- En çok “vitrin”: asistan, video, luxury temalar — satış görüşmesinde açılır.
-- Yarım kalanlar önce bitirilirse ürün olgun görünür: müzik UI, stats stub, diyet bayrakları, layout editör.
-
-# son — elemek serbest, sırayı sen belirle

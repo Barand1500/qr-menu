@@ -29,6 +29,8 @@ import PublicSocialLinks from '@/components/public/PublicSocialLinks';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import MenuAssistantModal from '@/components/public/MenuAssistantModal';
 import MenuMascot from '@/components/public/MenuMascot';
+import TableServiceButtons from '@/components/public/TableServiceButtons';
+import { parseMenuAssistantStyle } from '@/lib/menuAssistantStyle';
 import type { PublicSocialLink } from '@/lib/socialCatalog';
 import {
   loadDietaryPrefs,
@@ -57,7 +59,11 @@ interface MenuData {
   theme?: string;
   campaign?: { name: string; slug: string; itemCount: number } | null;
   socialLinks?: PublicSocialLink[];
-  features?: { menuAssistant?: boolean };
+  features?: {
+    menuAssistant?: boolean;
+    menuAssistantStyle?: 'sunset' | 'berry' | 'dark';
+    tableService?: boolean;
+  };
 }
 
 interface ProductData {
@@ -371,6 +377,8 @@ export default function PublicMenuPage() {
   const isAlive = menuTheme === 'alive';
   const isLuxury = menuTheme === 'luxury';
   const menuAssistantOn = Boolean(menu.features?.menuAssistant);
+  const assistantStyle = parseMenuAssistantStyle(menu.features?.menuAssistantStyle);
+  const tableServiceOn = menu.features?.tableService !== false;
   const assistantLabel =
     (lang || 'tr').split('-')[0] === 'en'
       ? { title: 'What to eat?', sub: 'Ask me' }
@@ -400,7 +408,7 @@ export default function PublicMenuPage() {
       {!searchOpen && (
         <button
           type="button"
-          className="menu-assistant-launcher"
+          className={`menu-assistant-launcher menu-assistant-launcher--${assistantStyle}`}
           onClick={() => setAssistantOpen(true)}
           aria-label={assistantLabel.title}
         >
@@ -421,6 +429,10 @@ export default function PublicMenuPage() {
         onClose={() => setAssistantOpen(false)}
       />
     </>
+  ) : null;
+
+  const tableServiceUi = !searchOpen ? (
+    <TableServiceButtons lang={lang} slug={slug} enabled={tableServiceOn} />
   ) : null;
 
   /* ── Ürün listesi ── */
@@ -550,6 +562,7 @@ export default function PublicMenuPage() {
 
         {sideMenu}
         {assistantUi}
+        {tableServiceUi}
 
         {searchOpen && (
           <SearchOverlay
@@ -758,6 +771,7 @@ export default function PublicMenuPage() {
 
       {sideMenu}
       {assistantUi}
+      {tableServiceUi}
 
       {searchOpen && (
         <SearchOverlay

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2 } from 'lucide-react';
+import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, Sparkles } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
@@ -21,6 +21,8 @@ import {
   splitSocialConfigs,
   type SocialLinkConfig,
 } from '@/lib/socialCatalog';
+import { useAddons } from '@/hooks/useAddons';
+import { isTableServiceEnabled } from '@/lib/tableService';
 
 interface Language {
   id: number;
@@ -94,6 +96,9 @@ function SettingsSection({
 
 export default function SettingsPage() {
   const { refreshUser } = useAuth();
+  const { isOwned, isEnabled, setEnabled } = useAddons();
+  const assistantOwned = isOwned('menu-assistant');
+  const assistantEnabled = isEnabled('menu-assistant');
   const [searchParams, setSearchParams] = useSearchParams();
   const fileRef = useRef<HTMLInputElement>(null);
   const [data, setData] = useState<SettingsData | null>(null);
@@ -115,6 +120,8 @@ export default function SettingsPage() {
   const [languagesHighlight, setLanguagesHighlight] = useState(false);
   const [socialLinks, setSocialLinks] = useState<SocialLinkConfig[]>(mergeSocialConfigs([]));
   const [welcomeMusicUrl, setWelcomeMusicUrl] = useState('');
+  const [tableServiceEnabled, setTableServiceEnabled] = useState(true);
+  const [togglingMenuFeature, setTogglingMenuFeature] = useState<'table' | 'assistant' | null>(null);
   const [iconPickerFor, setIconPickerFor] = useState<string | null>(null);
   const [iconPickerPos, setIconPickerPos] = useState<{ left: number; bottom: number } | null>(
     null
@@ -151,6 +158,7 @@ export default function SettingsPage() {
           setSocialLinks(mergeSocialConfigs([]));
         }
         setWelcomeMusicUrl(d.settings.welcome_music_url || '');
+        setTableServiceEnabled(isTableServiceEnabled(d.settings.menu_table_service_enabled));
         setTranslateStatus({
           openaiConfigured:
             status.openaiConfigured || Boolean(d.settings.openai_api_key?.trim()),
@@ -233,6 +241,30 @@ export default function SettingsPage() {
     });
   }
 
+  async function toggleTableService() {
+    const next = !tableServiceEnabled;
+    setTogglingMenuFeature('table');
+    try {
+      await api('/api/admin/settings/menu-features', {
+        method: 'PUT',
+        body: JSON.stringify({ tableService: next }),
+      });
+      setTableServiceEnabled(next);
+    } finally {
+      setTogglingMenuFeature(null);
+    }
+  }
+
+  async function toggleMenuAssistant() {
+    if (!assistantOwned) return;
+    setTogglingMenuFeature('assistant');
+    try {
+      await setEnabled('menu-assistant', !assistantEnabled);
+    } finally {
+      setTogglingMenuFeature(null);
+    }
+  }
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -265,6 +297,10 @@ export default function SettingsPage() {
       await api('/api/admin/settings/welcome-music', {
         method: 'PUT',
         body: JSON.stringify({ url: welcomeMusicUrl }),
+      });
+      await api('/api/admin/settings/menu-features', {
+        method: 'PUT',
+        body: JSON.stringify({ tableService: tableServiceEnabled }),
       });
       if (logoFile) {
         const fd = new FormData();
@@ -939,6 +975,50 @@ export default function SettingsPage() {
               Spotify linki desteklenmiyor. YouTube veya doğrudan mp3 linki kullanın.
             </p>
           )}
+
+          <div className="settings-menu-features">
+            <div className="settings-menu-features__item">
+              <span className="settings-menu-features__label">
+                <HandHelping className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
+                <span>Garson / Hesap</span>
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={tableServiceEnabled}
+                disabled={togglingMenuFeature === 'table'}
+                onClick={() => void toggleTableService()}
+                style={{ flexShrink: 0, padding: 0, border: 'none', background: 'transparent' }}
+              >
+                <span className={`addon-toggle__switch${tableServiceEnabled ? ' is-on' : ''}`} aria-hidden>
+                  <span className="addon-toggle__knob" />
+                </span>
+              </button>
+            </div>
+
+            <div className={`settings-menu-features__item${!assistantOwned ? ' is-disabled' : ''}`}>
+              <span className="settings-menu-features__label">
+                <Sparkles className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
+                <span>Menü Asistanı</span>
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={assistantEnabled}
+                disabled={!assistantOwned || togglingMenuFeature === 'assistant'}
+                onClick={() => void toggleMenuAssistant()}
+                style={{ flexShrink: 0, padding: 0, border: 'none', background: 'transparent' }}
+              >
+                <span className={`addon-toggle__switch${assistantEnabled ? ' is-on' : ''}`} aria-hidden>
+                  <span className="addon-toggle__knob" />
+                </span>
+              </button>
+            </div>
+          </div>
+          <p className="settings-menu-features__hint">
+            Menüdeki yüzen butonları buradan açıp kapatabilirsiniz. Menü Asistanı için önce
+            Eklentiler’den satın almanız gerekir.
+          </p>
         </div>
       </SettingsSection>
 

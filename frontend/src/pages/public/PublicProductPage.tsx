@@ -22,6 +22,7 @@ import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { usePublicRtl } from '@/hooks/usePublicRtl';
 import { menuGroupPath, menuProductPath } from '@/lib/menuPaths';
+import TableServiceButtons from '@/components/public/TableServiceButtons';
 import { useEffect, useState } from 'react';
 
 interface ProductDetail {
@@ -39,6 +40,7 @@ interface ProductDetail {
   isRecommended?: boolean;
   features: string[];
   theme?: string;
+  menuFeatures?: { tableService?: boolean };
   group: { id: number; name: string };
   restaurant: { name: string; slug: string; logoUrl?: string | null };
 }
@@ -341,6 +343,11 @@ export default function PublicProductPage() {
           </main>
         </div>
       </div>
+      <TableServiceButtons
+        lang={lang}
+        slug={slug}
+        enabled={product.menuFeatures?.tableService !== false}
+      />
     </div>
   );
 }

@@ -41,7 +41,7 @@ import {
   Check,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
+import { adminPreviewMenuUrl } from '@/lib/tableContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoData } from '@/contexts/DemoDataContext';
 import {
@@ -235,7 +235,7 @@ function FeaturedCard({
   const { theme } = useTheme();
 
   function openMenu() {
-    window.open('/menu', '_blank');
+    window.open(adminPreviewMenuUrl(), '_blank');
   }
 
   return (

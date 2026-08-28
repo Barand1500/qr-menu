@@ -13,7 +13,6 @@ export interface WelcomeUiStrings {
   musicOff: string;
   musicLoading: string;
   musicStart: string;
-  musicTapHint: string;
   musicAriaOn: string;
   musicAriaOff: string;
   campaign: string;
@@ -37,7 +36,6 @@ const STRINGS: Record<WelcomeUiLang, WelcomeUiStrings> = {
     musicOff: 'Müzik kapalı',
     musicLoading: 'Müzik yükleniyor',
     musicStart: 'Müziği başlat',
-    musicTapHint: 'Sakinleştirici müzik için ekrana dokunun',
     musicAriaOn: 'Müziği kapat',
     musicAriaOff: 'Müziği aç',
     campaign: 'Kampanya',
@@ -59,7 +57,6 @@ const STRINGS: Record<WelcomeUiLang, WelcomeUiStrings> = {
     musicOff: 'Music off',
     musicLoading: 'Loading music',
     musicStart: 'Start music',
-    musicTapHint: 'Tap the screen to start relaxing music',
     musicAriaOn: 'Mute music',
     musicAriaOff: 'Unmute music',
     campaign: 'Campaign',
@@ -81,7 +78,6 @@ const STRINGS: Record<WelcomeUiLang, WelcomeUiStrings> = {
     musicOff: 'Музыка выключена',
     musicLoading: 'Загрузка музыки',
     musicStart: 'Включить музыку',
-    musicTapHint: 'Коснитесь экрана, чтобы включить музыку',
     musicAriaOn: 'Выключить музыку',
     musicAriaOff: 'Включить музыку',
     campaign: 'Акция',
@@ -103,7 +99,6 @@ const STRINGS: Record<WelcomeUiLang, WelcomeUiStrings> = {
     musicOff: 'الموسيقى متوقفة',
     musicLoading: 'جاري تحميل الموسيقى',
     musicStart: 'تشغيل الموسيقى',
-    musicTapHint: 'المس الشاشة لتشغيل موسيقى هادئة',
     musicAriaOn: 'كتم الموسيقى',
     musicAriaOff: 'تشغيل الموسيقى',
     campaign: 'حملة',

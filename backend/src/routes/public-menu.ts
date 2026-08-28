@@ -9,6 +9,8 @@ import {
 } from '../lib/i18n-json.js';
 import { parseSocialLinks, publicSocialLinks } from '../lib/social.js';
 import { isAddonActive } from '../addons/ownership.js';
+import { parseMenuAssistantStyle, MENU_ASSISTANT_STYLE_KEY } from '../lib/menu-assistant-style.js';
+import { isTableServiceEnabled, MENU_TABLE_SERVICE_KEY } from '../lib/table-service.js';
 import { parseProductImages } from '../lib/product-images.js';
 import { parseAllergenTags } from '../lib/diet-allergens.js';
 import { getRestaurantThemes } from '../addons/themes.js';
@@ -167,6 +169,9 @@ router.get('/:slug/products/:productId', async (req, res) => {
     mapCurrency
   );
   const themes = await getRestaurantThemes(restaurant.id);
+  const tableServiceSetting = await prisma.setting.findFirst({
+    where: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
+  });
 
   res.json({
     id: product.id,
@@ -198,6 +203,9 @@ router.get('/:slug/products/:productId', async (req, res) => {
       slug: restaurant.slug,
       logoUrl: restaurant.logoUrl,
     },
+    menuFeatures: {
+      tableService: isTableServiceEnabled(tableServiceSetting?.value),
+    },
   });
 });
 
@@ -218,7 +226,7 @@ router.get('/:slug', async (req, res) => {
     return res.status(404).json({ message: 'Kampanya bulunamadı' });
   }
 
-  const [groups, bannerShowcase, storyShowcase, languages, aboutSetting, socialSetting, themes, menuAssistant] =
+  const [groups, bannerShowcase, storyShowcase, languages, aboutSetting, socialSetting, themes, menuAssistant, assistantStyleSetting, tableServiceSetting] =
     await Promise.all([
     prisma.group.findMany({
       where: { restaurantId: restaurant.id, isActive: true, parentId: null },
@@ -257,6 +265,16 @@ router.get('/:slug', async (req, res) => {
     }),
     getRestaurantThemes(restaurant.id),
     isAddonActive(restaurant.id, 'menu-assistant'),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurant.id, key: MENU_ASSISTANT_STYLE_KEY },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
+      },
+    }),
   ]);
 
   await trackView(restaurant.id, 'menu', restaurant.id, sessionId);
@@ -324,7 +342,13 @@ router.get('/:slug', async (req, res) => {
     languages: languages.map((l) => ({ code: l.code, name: l.name })),
     theme: themes.menu,
     campaign: campaignMeta(campaign),
-    features: { menuAssistant },
+    features: {
+      menuAssistant,
+      menuAssistantStyle: menuAssistant
+        ? parseMenuAssistantStyle(assistantStyleSetting?.value)
+        : undefined,
+      tableService: isTableServiceEnabled(tableServiceSetting?.value),
+    },
     socialLinks: publicSocialLinks(parseSocialLinks(socialSetting?.value), 'menu'),
     showcase: bannerShowcase.map((s) => {
       const { title1, title2 } = getShowcaseTitles(s.i18n, activeLang);
@@ -772,6 +796,68 @@ router.post('/:slug/suggestions', async (req, res) => {
   });
 
   res.status(201).json({ ok: true, id: suggestion.id });
+});
+
+router.post('/:slug/table-request', async (req, res) => {
+  const slug = req.params.slug;
+  const { type, tableNumber, groupSlug } = req.body as {
+    type?: string;
+    tableNumber?: string;
+    groupSlug?: string;
+  };
+
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
+  if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
+
+  const tableServiceSetting = await prisma.setting.findFirst({
+    where: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
+  });
+  if (!isTableServiceEnabled(tableServiceSetting?.value)) {
+    return res.status(403).json({ message: 'Masa hizmeti kapalı' });
+  }
+
+  const requestType = String(type || '').trim();
+  if (requestType !== 'waiter' && requestType !== 'bill') {
+    return res.status(400).json({ message: 'Geçersiz istek türü' });
+  }
+
+  const masa = String(tableNumber || '').trim();
+  if (!masa || masa.length > 40) {
+    return res.status(400).json({ message: 'Masa numarası gerekli' });
+  }
+
+  const grup = groupSlug ? String(groupSlug).trim().slice(0, 100) : null;
+
+  const recent = await prisma.tableServiceRequest.findFirst({
+    where: {
+      restaurantId: restaurant.id,
+      tableNumber: masa,
+      type: requestType,
+      createdAt: { gte: new Date(Date.now() - 45_000) },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (recent) {
+    return res.status(429).json({ message: 'Kısa süre önce iletildi, lütfen bekleyin' });
+  }
+
+  const row = await prisma.tableServiceRequest.create({
+    data: {
+      restaurantId: restaurant.id,
+      type: requestType,
+      tableNumber: masa,
+      groupSlug: grup,
+    },
+  });
+
+  res.status(201).json({
+    ok: true,
+    id: row.id,
+    type: row.type,
+    tableNumber: row.tableNumber,
+    groupSlug: row.groupSlug,
+    createdAt: row.createdAt.toISOString(),
+  });
 });
 
 router.post('/:slug/track', async (req, res) => {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Printer,
   QrCode,
@@ -181,6 +181,7 @@ export default function BarcodePage() {
   const { user } = useAuth();
   const { isOwned, loading: addonsLoading } = useAddons();
   const qrPack = isOwned('qr-pack');
+  const [searchParams] = useSearchParams();
 
   const [view, setView] = useState<ViewMode>('classic');
   const [paperSize, setPaperSize] = useState('a4');
@@ -205,6 +206,10 @@ export default function BarcodePage() {
   const [editingCampaignName, setEditingCampaignName] = useState(false);
   const [menuModalOpen, setMenuModalOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
+  const [callHighlight, setCallHighlight] = useState<{
+    masa: string;
+    type: string;
+  } | null>(null);
 
   const color = resolveColor(colorId);
   const [logoPath, setLogoPath] = useState<string | null>(
@@ -261,6 +266,32 @@ export default function BarcodePage() {
       .catch(() => {})
       .finally(() => setGroupsReady(true));
   }, []);
+
+  useEffect(() => {
+    if (!groupsReady) return;
+    const masa = searchParams.get('masa');
+    const grup = searchParams.get('grup');
+    const viewParam = searchParams.get('view');
+    const tip = searchParams.get('tip');
+
+    if (viewParam === 'tables' || masa) setView('tables');
+    if (grup && groups.some((g) => g.id === grup)) setActiveGroupId(grup);
+
+    if (!masa) return;
+
+    const targetGroup =
+      groups.find((g) => g.id === (grup || activeGroupId)) || groups[0];
+    if (!targetGroup) return;
+
+    for (let n = 1; n <= targetGroup.count; n++) {
+      if (tableCode(n, targetGroup.prefix) === masa) {
+        setActiveGroupId(targetGroup.id);
+        setSelectedTable(n);
+        if (tip) setCallHighlight({ masa, type: tip });
+        break;
+      }
+    }
+  }, [groupsReady, searchParams, groups, activeGroupId]);
 
   useEffect(() => {
     if (!groupsReady) return;
@@ -683,18 +714,36 @@ export default function BarcodePage() {
               )}
             </div>
 
+            {callHighlight && (
+              <div
+                className={`barcode-call-alert barcode-call-alert--${callHighlight.type === 'bill' ? 'bill' : 'waiter'}`}
+                role="status"
+              >
+                <strong>
+                  {callHighlight.type === 'bill' ? 'Hesap istendi' : 'Garson çağrıldı'}
+                </strong>
+                <span>Masa {callHighlight.masa}</span>
+                <button type="button" onClick={() => setCallHighlight(null)} aria-label="Kapat">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
             <div className="barcode-table-grid">
               {tables.map((n) => {
                 const style = getTableStyle(n);
                 const c = resolveColor(style.colorId);
                 const masaUrl = `${origin}/menu?masa=${encodeURIComponent(tableCode(n, activeGroup.prefix))}&grup=${activeGroup.id}`;
+                const isCallTarget =
+                  callHighlight &&
+                  tableCode(n, activeGroup.prefix) === callHighlight.masa;
                 return (
                   <button
                     key={`${activeGroup.id}-${n}`}
                     type="button"
                     className={`barcode-table-card ${
                       selectedTable === n ? 'is-active' : ''
-                    }`}
+                    }${isCallTarget ? ' barcode-table-card--call' : ''}`}
                     onClick={() => {
                       setSelectedTable(n);
                       setEditingTable(null);

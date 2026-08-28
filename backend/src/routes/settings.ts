@@ -16,6 +16,7 @@ import {
   themeIdToAddon,
 } from '../addons/index.js';
 import { parseSocialLinks, serializeSocialLinks, type SocialLinkConfig } from '../lib/social.js';
+import { MENU_TABLE_SERVICE_KEY } from '../lib/table-service.js';
 
 const router = Router();
 router.use(authRequired);
@@ -239,6 +240,27 @@ router.put('/welcome-music', async (req, res) => {
   }
 
   res.json({ ok: true, url: value || null });
+});
+
+router.put('/menu-features', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const { tableService } = req.body as { tableService?: boolean };
+
+  if (typeof tableService === 'boolean') {
+    await prisma.setting.upsert({
+      where: {
+        restaurantId_key: { restaurantId: restaurantId!, key: MENU_TABLE_SERVICE_KEY },
+      },
+      update: { value: tableService ? 'true' : 'false' },
+      create: {
+        restaurantId: restaurantId!,
+        key: MENU_TABLE_SERVICE_KEY,
+        value: tableService ? 'true' : 'false',
+      },
+    });
+  }
+
+  res.json({ ok: true, tableService: tableService ?? true });
 });
 
 router.post('/social-icon', upload.single('icon'), async (req, res) => {

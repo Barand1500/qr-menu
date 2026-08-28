@@ -2,7 +2,6 @@ import { useState, useEffect, type ReactNode } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Menu,
-  Bell,
   LogOut,
   ExternalLink,
   ChevronDown,
@@ -16,6 +15,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoData } from '@/contexts/DemoDataContext';
 import { api } from '@/lib/api';
 import { useAddons } from '@/hooks/useAddons';
+import AdminNotificationBell from '@/components/AdminNotificationBell';
+import { adminPreviewMenuUrl } from '@/lib/tableContext';
 
 const mainNavBase = [
   { to: '/admin', label: 'Özet', end: true },
@@ -125,7 +126,7 @@ export default function AdminLayout() {
   }
 
   function openPublicMenu() {
-    window.open('/menu', '_blank');
+    window.open(adminPreviewMenuUrl(), '_blank');
   }
 
   async function handleResetPurchases() {
@@ -330,13 +331,7 @@ export default function AdminLayout() {
               {resettingAddons ? 'Sıfırlanıyor…' : 'Satın alımları geri yükle'}
             </button>
 
-            <button className="p-2 rounded-lg relative hover:bg-[var(--admin-accent-soft)] transition">
-              <Bell className="w-[18px] h-[18px]" style={{ color: 'var(--admin-text-muted)' }} />
-              <span
-                className="absolute top-1 right-1 w-2 h-2 rounded-full"
-                style={{ background: 'var(--admin-badge)' }}
-              />
-            </button>
+            <AdminNotificationBell />
 
             <div className="hidden sm:flex items-center gap-2 pl-1">
               <div

@@ -16,6 +16,7 @@ import languagesRouter from './routes/languages.js';
 import translateRouter from './routes/translate.js';
 import complaintsRouter from './routes/complaints.js';
 import suggestionsRouter from './routes/suggestions.js';
+import tableRequestsRouter from './routes/table-requests.js';
 import currenciesRouter from './routes/currencies.js';
 import addonsRouter from './routes/addons.js';
 import barcodeRouter from './routes/barcode.js';
@@ -52,6 +53,7 @@ export function createApp() {
   app.use('/api/admin/translate', translateRouter);
   app.use('/api/admin/complaints', complaintsRouter);
   app.use('/api/admin/suggestions', suggestionsRouter);
+  app.use('/api/admin/table-requests', tableRequestsRouter);
   app.use('/api/admin/currencies', currenciesRouter);
   app.use('/api/admin/addons', addonsRouter);
   app.use('/api/admin/barcode', barcodeRouter);

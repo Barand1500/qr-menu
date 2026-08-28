@@ -1,27 +1,44 @@
 import { Router } from 'express';
+import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId } from '../lib/auth.js';
 import {
   ADDON_PRODUCTS,
   getDisabledAddons,
   getOwnedAddons,
+  ownsAddon,
   resetOwnedAddons,
   setAddonEnabled,
   unlockAddon,
   validateUnlockCode,
 } from '../addons/index.js';
+import {
+  MENU_ASSISTANT_STYLE_KEY,
+  parseMenuAssistantStyle,
+} from '../lib/menu-assistant-style.js';
 
 const router = Router();
 router.use(authRequired);
 
+async function getMenuAssistantStyle(restaurantId: number) {
+  const row = await prisma.setting.findUnique({
+    where: {
+      restaurantId_key: { restaurantId, key: MENU_ASSISTANT_STYLE_KEY },
+    },
+  });
+  return parseMenuAssistantStyle(row?.value);
+}
+
 router.get('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const [owned, disabled] = await Promise.all([
+  const [owned, disabled, menuAssistantStyle] = await Promise.all([
     getOwnedAddons(restaurantId!),
     getDisabledAddons(restaurantId!),
+    getMenuAssistantStyle(restaurantId!),
   ]);
   res.json({
     owned,
     disabled,
+    menuAssistantStyle,
     products: ADDON_PRODUCTS.map((p) => {
       const isOwned = owned.includes(p.id);
       const enabled = isOwned && !disabled.includes(p.id);
@@ -88,6 +105,31 @@ router.patch('/:productId/enabled', async (req, res) => {
     }
     throw err;
   }
+});
+
+router.patch('/menu-assistant/style', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const { style } = req.body as { style?: string };
+
+  const owned = await ownsAddon(restaurantId!, 'menu-assistant');
+  if (!owned) {
+    return res.status(403).json({ message: 'Önce Menü Asistanı eklentisini satın alın' });
+  }
+
+  const parsed = parseMenuAssistantStyle(style);
+  if (!style || parsed !== style) {
+    return res.status(400).json({ message: 'Geçersiz renk seçimi' });
+  }
+
+  await prisma.setting.upsert({
+    where: {
+      restaurantId_key: { restaurantId: restaurantId!, key: MENU_ASSISTANT_STYLE_KEY },
+    },
+    update: { value: parsed },
+    create: { restaurantId: restaurantId!, key: MENU_ASSISTANT_STYLE_KEY, value: parsed },
+  });
+
+  res.json({ ok: true, style: parsed });
 });
 
 router.post('/reset', async (req, res) => {
