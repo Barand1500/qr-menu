@@ -9,11 +9,7 @@ export {
   type DietaryPrefs,
 } from './dietAllergens';
 
-import {
-  loadDietaryPrefs,
-  saveDietaryPrefs,
-  type DietaryPrefs,
-} from './dietAllergens';
+import { loadDietaryPrefs, saveDietaryPrefs } from './dietAllergens';
 
 /** Eski API uyumu */
 export function loadAllergyFilters(): string[] {
@@ -33,5 +29,3 @@ export function isProductSafeForAllergies(
   if (selectedIds.length === 0) return true;
   return true;
 }
-
-export type { DietaryPrefs };

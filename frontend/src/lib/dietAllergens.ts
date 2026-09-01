@@ -54,6 +54,8 @@ export function dietLabel(id: string, lang: string): string {
 }
 
 export function loadDietaryPrefs(): DietaryPrefs {
+  const isAllergenId = (id: string) => VALID_ALLERGEN.has(id) || /^c-[a-z0-9][a-z0-9-]*$/.test(id);
+  const isDietId = (id: string) => VALID_DIET.has(id) || /^c-[a-z0-9][a-z0-9-]*$/.test(id);
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
@@ -62,7 +64,7 @@ export function loadDietaryPrefs(): DietaryPrefs {
       if (legacy) {
         const parsed = JSON.parse(legacy) as unknown;
         const allergens = Array.isArray(parsed)
-          ? parsed.filter((id): id is string => typeof id === 'string' && VALID_ALLERGEN.has(id))
+          ? parsed.filter((id): id is string => typeof id === 'string' && isAllergenId(id))
           : [];
         return { allergens, diets: [] };
       }
@@ -71,10 +73,10 @@ export function loadDietaryPrefs(): DietaryPrefs {
     const parsed = JSON.parse(raw) as DietaryPrefs;
     return {
       allergens: Array.isArray(parsed.allergens)
-        ? parsed.allergens.filter((id) => VALID_ALLERGEN.has(id))
+        ? parsed.allergens.filter((id) => isAllergenId(id))
         : [],
       diets: Array.isArray(parsed.diets)
-        ? parsed.diets.filter((id) => VALID_DIET.has(id))
+        ? parsed.diets.filter((id) => isDietId(id))
         : [],
     };
   } catch {
@@ -83,9 +85,11 @@ export function loadDietaryPrefs(): DietaryPrefs {
 }
 
 export function saveDietaryPrefs(prefs: DietaryPrefs) {
+  const isAllergenId = (id: string) => VALID_ALLERGEN.has(id) || /^c-[a-z0-9][a-z0-9-]*$/.test(id);
+  const isDietId = (id: string) => VALID_DIET.has(id) || /^c-[a-z0-9][a-z0-9-]*$/.test(id);
   const clean: DietaryPrefs = {
-    allergens: prefs.allergens.filter((id) => VALID_ALLERGEN.has(id)),
-    diets: prefs.diets.filter((id) => VALID_DIET.has(id)),
+    allergens: prefs.allergens.filter((id) => isAllergenId(id)),
+    diets: prefs.diets.filter((id) => isDietId(id)),
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
 }
@@ -96,6 +100,7 @@ export function prefsActive(prefs: DietaryPrefs): boolean {
 
 export interface FilterableProduct {
   allergenTags?: string[] | null;
+  dietTags?: string[] | null;
   allergens?: string | null;
   isVegan?: boolean;
   isVegetarian?: boolean;
@@ -103,17 +108,25 @@ export interface FilterableProduct {
   isDiabetic?: boolean;
 }
 
+const BUILTIN_DIETS = new Set(['vegan', 'vegetarian', 'gluten-free', 'diabetic']);
+
 export function productMatchesPrefs(product: FilterableProduct, prefs: DietaryPrefs): boolean {
   if (!prefsActive(prefs)) return true;
 
   const tags = Array.isArray(product.allergenTags) ? product.allergenTags : [];
   if (prefs.allergens.some((id) => tags.includes(id))) return false;
 
+  const productDietTags = Array.isArray(product.dietTags) ? product.dietTags : [];
+
   for (const diet of prefs.diets) {
-    if (diet === 'vegan' && !product.isVegan) return false;
-    if (diet === 'vegetarian' && !product.isVegetarian && !product.isVegan) return false;
-    if (diet === 'gluten-free' && !product.isGlutenFree) return false;
-    if (diet === 'diabetic' && !product.isDiabetic) return false;
+    if (BUILTIN_DIETS.has(diet)) {
+      if (diet === 'vegan' && !product.isVegan) return false;
+      if (diet === 'vegetarian' && !product.isVegetarian && !product.isVegan) return false;
+      if (diet === 'gluten-free' && !product.isGlutenFree) return false;
+      if (diet === 'diabetic' && !product.isDiabetic) return false;
+    } else if (!productDietTags.includes(diet)) {
+      return false;
+    }
   }
   return true;
 }

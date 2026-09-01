@@ -4,14 +4,11 @@ import PublicSocialLinks from '@/components/public/PublicSocialLinks';
 import type { PublicSocialLink } from '@/lib/socialCatalog';
 import { languageFlag } from '@/lib/languageFlags';
 import {
-  ALLERGEN_CATALOG,
-  DIET_CATALOG,
-  allergenLabel,
-  dietLabel,
   preferenceUi,
   prefsActive,
   type DietaryPrefs,
 } from '@/lib/dietAllergens';
+import { catalogLabel, loadPrefCatalogSession, resolvePrefCatalog } from '@/lib/prefCatalog';
 
 export type PublicTab = 'home' | 'about' | 'settings';
 
@@ -48,6 +45,7 @@ export default function PublicSideMenu({
   onDietaryPrefsChange,
 }: PublicSideMenuProps) {
   const ui = preferenceUi(activeLang);
+  const prefCatalog = resolvePrefCatalog(loadPrefCatalogSession());
   const [langOpen, setLangOpen] = useState(false);
   const [allergyOpen, setAllergyOpen] = useState(() => prefsActive(dietaryPrefs));
   const langRef = useRef<HTMLDivElement>(null);
@@ -214,7 +212,7 @@ export default function PublicSideMenu({
                 <div className="public-side-menu__accordion-body">
                   <p className="public-side-menu__allergy-sub">{ui.avoidTitle}</p>
                   <div className="public-side-menu__allergy-chips">
-                    {ALLERGEN_CATALOG.map((opt) => {
+                    {prefCatalog.allergens.map((opt) => {
                       const active = dietaryPrefs.allergens.includes(opt.id);
                       return (
                         <button
@@ -224,7 +222,7 @@ export default function PublicSideMenu({
                           className={`public-side-menu__allergy-chip${active ? ' is-active' : ''}`}
                           aria-pressed={active}
                         >
-                          {allergenLabel(opt.id, activeLang)}
+                          {catalogLabel(prefCatalog, 'allergen', opt.id, activeLang)}
                         </button>
                       );
                     })}
@@ -232,7 +230,7 @@ export default function PublicSideMenu({
 
                   <p className="public-side-menu__allergy-sub mt-3">{ui.dietTitle}</p>
                   <div className="public-side-menu__allergy-chips">
-                    {DIET_CATALOG.map((opt) => {
+                    {prefCatalog.diets.map((opt) => {
                       const active = dietaryPrefs.diets.includes(opt.id);
                       return (
                         <button
@@ -242,7 +240,7 @@ export default function PublicSideMenu({
                           className={`public-side-menu__allergy-chip public-side-menu__allergy-chip--diet${active ? ' is-active' : ''}`}
                           aria-pressed={active}
                         >
-                          {dietLabel(opt.id, activeLang)}
+                          {catalogLabel(prefCatalog, 'diet', opt.id, activeLang)}
                         </button>
                       );
                     })}

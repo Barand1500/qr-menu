@@ -8,6 +8,10 @@ import {
   X,
 } from 'lucide-react';
 import { Button, Textarea } from '@/components/ui';
+import {
+  SUPPORT_PHONE_DISPLAY,
+  supportWhatsAppUrl,
+} from '@/lib/supportContact';
 
 const CHANNELS = [
   'Satın alma',
@@ -18,8 +22,6 @@ const CHANNELS = [
   'Diğer',
 ] as const;
 
-const PHONE_DISPLAY = '+90 850 885 12 60';
-const PHONE_WA = '908508851260';
 const EMAILS = ['arge@guzelteknoloji.com', 'destek@guzelteknoloji.com'] as const;
 
 interface SupportContactModalProps {
@@ -73,8 +75,7 @@ export default function SupportContactModal({ open, onClose }: SupportContactMod
   }
 
   function openWhatsApp() {
-    const url = `https://wa.me/${PHONE_WA}?text=${encodeURIComponent(buildWhatsAppText())}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    window.open(supportWhatsAppUrl(buildWhatsAppText()), '_blank', 'noopener,noreferrer');
   }
 
   return (
@@ -201,7 +202,7 @@ export default function SupportContactModal({ open, onClose }: SupportContactMod
                   </span>
                   <span className="min-w-0 text-left">
                     <span className="block text-sm font-bold text-[var(--admin-text)]">
-                      {PHONE_DISPLAY}
+                      {SUPPORT_PHONE_DISPLAY}
                     </span>
                     <span className="block text-[11px] admin-text-muted">
                       WhatsApp ile yaz — form mesaja eklenir

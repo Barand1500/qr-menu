@@ -34,11 +34,15 @@ async function main() {
     data: { code: 'EUR', name: 'Euro', symbol: '€', isActive: false },
   });
 
+  const licenseEnds = new Date();
+  licenseEnds.setFullYear(licenseEnds.getFullYear() + 1);
+
   const restaurant = await prisma.restaurant.create({
     data: {
       name: 'Zeen Lounge',
       slug: 'zeen-lounge',
       logoUrl: null,
+      licenseExpiresAt: licenseEnds,
       welcomeI18n: {
         tr: { message: 'Dijital menümüze hoş geldiniz. Afiyet olsun!' },
         en: { message: 'Welcome to our digital menu. Enjoy!' },

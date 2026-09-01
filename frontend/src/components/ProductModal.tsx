@@ -5,11 +5,12 @@ import { Button, Input, Select } from '@/components/ui';
 import LanguageTabs, { type Language } from '@/components/LanguageTabs';
 import { TranslatableInput, TranslatableTextarea } from '@/components/TranslatableField';
 import {
-  ALLERGEN_CATALOG,
-  DIET_CATALOG,
-  dietIdsFromFlags,
-  flagsFromDietIds,
-} from '@/lib/dietAllergens';
+  catalogToOptions,
+  dietIdsFromProduct,
+  flagsFromDietSelection,
+  type PrefCatalog,
+} from '@/lib/prefCatalog';
+import { ManageableTagPillGroup } from '@/components/CatalogTagManager';
 
 export interface ProductTranslationFields {
   name: string;
@@ -26,6 +27,7 @@ export interface ProductFormState {
   calories: string;
   features: string[];
   allergenTags: string[];
+  dietTags: string[];
   isVegan: boolean;
   isVegetarian: boolean;
   isGlutenFree: boolean;
@@ -51,55 +53,6 @@ const MODAL_TABS: { id: ModalTab; label: string }[] = [
   { id: 'image', label: 'Görseller' },
 ];
 
-function TagPillGroup({
-  title,
-  hint,
-  options,
-  selected,
-  onChange,
-}: {
-  title: string;
-  hint?: string;
-  options: { id: string; label: string }[];
-  selected: string[];
-  onChange: (ids: string[]) => void;
-}) {
-  function toggle(id: string) {
-    onChange(
-      selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      <div>
-        <p className="text-sm font-semibold text-[var(--admin-text)]">{title}</p>
-        {hint ? <p className="text-xs admin-text-muted mt-0.5">{hint}</p> : null}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {options.map((opt) => {
-          const active = selected.includes(opt.id);
-          return (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => toggle(opt.id)}
-              className="px-3 py-1.5 rounded-full text-xs font-semibold border transition"
-              style={{
-                background: active ? 'var(--admin-accent)' : 'var(--admin-input-bg)',
-                color: active ? 'var(--admin-btn-primary-text)' : 'var(--admin-text)',
-                borderColor: active ? 'var(--admin-accent)' : 'var(--admin-card-border)',
-              }}
-              aria-pressed={active}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 function ProductFeaturesEditor({
   features,
   onChange,
@@ -246,6 +199,8 @@ interface ProductModalProps {
   languages: Language[];
   currencies: { id: number; code: string; name: string; symbol: string; isActive: boolean }[];
   groups: GroupOption[];
+  prefCatalog: PrefCatalog;
+  onPrefCatalogChange: (catalog: PrefCatalog) => void;
   form: ProductFormState;
   productImages: string[];
   pendingPreviews: { id: string; url: string }[];
@@ -265,6 +220,8 @@ export default function ProductModal({
   languages,
   currencies,
   groups,
+  prefCatalog,
+  onPrefCatalogChange,
   form,
   productImages,
   pendingPreviews,
@@ -309,6 +266,7 @@ export default function ProductModal({
   function hasAnyDietSelection() {
     return (
       form.allergenTags.length > 0 ||
+      form.dietTags.length > 0 ||
       form.isVegan ||
       form.isVegetarian ||
       form.isGlutenFree ||
@@ -514,23 +472,36 @@ export default function ProductModal({
                 yazmanız gerekmez.
               </p>
 
-              <TagPillGroup
+              <ManageableTagPillGroup
                 title="Alerjenler"
                 hint="Üründe bulunan maddeleri seçin"
-                options={ALLERGEN_CATALOG.map((t) => ({ id: t.id, label: t.label.tr }))}
+                kind="allergen"
+                options={catalogToOptions(prefCatalog, 'allergen')}
                 selected={form.allergenTags}
                 onChange={(allergenTags) => onFormChange({ ...form, allergenTags })}
+                catalog={prefCatalog}
+                onCatalogChange={onPrefCatalogChange}
               />
 
-              <TagPillGroup
+              <ManageableTagPillGroup
                 title="Diyet / yaşam tarzı"
-                hint="Ürün bu tercihlere uygunsa işaretleyin (ör. sadece vegan menü)"
-                options={DIET_CATALOG.map((t) => ({ id: t.id, label: t.label.tr }))}
-                selected={dietIdsFromFlags(form)}
+                hint="Ürün bu tercihlere uygunsa işaretleyin"
+                kind="diet"
+                options={catalogToOptions(prefCatalog, 'diet')}
+                selected={dietIdsFromProduct(form, form.dietTags)}
                 onChange={(ids) => {
-                  const flags = flagsFromDietIds(ids);
-                  onFormChange({ ...form, ...flags });
+                  const flags = flagsFromDietSelection(ids);
+                  onFormChange({
+                    ...form,
+                    isVegan: flags.isVegan,
+                    isVegetarian: flags.isVegetarian,
+                    isGlutenFree: flags.isGlutenFree,
+                    isDiabetic: flags.isDiabetic,
+                    dietTags: flags.dietTags,
+                  });
                 }}
+                catalog={prefCatalog}
+                onCatalogChange={onPrefCatalogChange}
               />
             </div>
           )}

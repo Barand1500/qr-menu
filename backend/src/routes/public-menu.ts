@@ -13,6 +13,11 @@ import { parseMenuAssistantStyle, MENU_ASSISTANT_STYLE_KEY } from '../lib/menu-a
 import { isTableServiceEnabled, MENU_TABLE_SERVICE_KEY } from '../lib/table-service.js';
 import { parseProductImages } from '../lib/product-images.js';
 import { parseAllergenTags } from '../lib/diet-allergens.js';
+import {
+  loadPrefCatalog,
+  sanitizeAllergenTagsForCatalog,
+  sanitizeDietTagsForCatalog,
+} from '../lib/pref-catalog.js';
 import { getRestaurantThemes } from '../addons/themes.js';
 import {
   applyCampaignPrice,
@@ -83,7 +88,7 @@ router.get('/:slug/welcome', async (req, res) => {
   const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
   if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
 
-  const [languages, musicSetting, socialSetting, themes, campaign] = await Promise.all([
+  const [languages, musicSetting, socialSetting, themes, campaign, prefCatalog] = await Promise.all([
     prisma.language.findMany({ where: { isActive: true }, orderBy: { id: 'asc' } }),
     prisma.setting.findUnique({
       where: {
@@ -97,6 +102,7 @@ router.get('/:slug/welcome', async (req, res) => {
     }),
     getRestaurantThemes(restaurant.id),
     loadCampaignContext(restaurant.id, campaignSlug),
+    loadPrefCatalog(restaurant.id),
   ]);
 
   const welcomeI18n = (restaurant.welcomeI18n as Record<string, { message?: string }>) || {};
@@ -117,6 +123,7 @@ router.get('/:slug/welcome', async (req, res) => {
     theme: themes.welcome,
     campaign: campaignMeta(campaign),
     socialLinks: publicSocialLinks(parseSocialLinks(socialSetting?.value), 'welcome'),
+    prefCatalog,
   });
 });
 
@@ -169,6 +176,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
     mapCurrency
   );
   const themes = await getRestaurantThemes(restaurant.id);
+  const prefCatalog = await loadPrefCatalog(restaurant.id);
   const tableServiceSetting = await prisma.setting.findFirst({
     where: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
   });
@@ -179,7 +187,8 @@ router.get('/:slug/products/:productId', async (req, res) => {
     description: getProductField(product.i18n, activeLang, 'description'),
     ingredients: getProductField(product.i18n, activeLang, 'ingredients'),
     allergens: getProductField(product.i18n, activeLang, 'allergens'),
-    allergenTags: parseAllergenTags(product.allergenTags),
+    allergenTags: sanitizeAllergenTagsForCatalog(product.allergenTags, prefCatalog),
+    dietTags: sanitizeDietTagsForCatalog(product.dietTags, prefCatalog),
     isVegan: product.isVegan,
     isVegetarian: product.isVegetarian,
     isGlutenFree: product.isGlutenFree,

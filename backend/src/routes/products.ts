@@ -18,10 +18,12 @@ import {
 import { imagesPayload, parseProductImages } from '../lib/product-images.js';
 import { ensureDefaultCurrency } from '../lib/currencies.js';
 import {
-  allergensTextFromTags,
-  parseAllergenTags,
-  sanitizeAllergenTags,
-} from '../lib/diet-allergens.js';
+  allergensTextFromCatalog,
+  loadPrefCatalog,
+  parseDietTags,
+  sanitizeAllergenTagsForCatalog,
+  sanitizeDietTagsForCatalog,
+} from '../lib/pref-catalog.js';
 
 const router = Router();
 router.use(authRequired);
@@ -124,6 +126,7 @@ router.post('/', async (req, res) => {
     isRecommended,
     features,
     allergenTags,
+    dietTags,
   } = req.body;
 
   const group = await prisma.group.findFirst({
@@ -143,18 +146,20 @@ router.post('/', async (req, res) => {
     resolvedCurrencyId = fallback.id;
   }
 
-  const [maxOrder, languages] = await Promise.all([
+  const [maxOrder, languages, catalog] = await Promise.all([
     prisma.product.aggregate({
       where: { groupId: Number(groupId) },
       _max: { sortOrder: true },
     }),
     getLanguages(),
+    loadPrefCatalog(restaurantId!),
   ]);
 
-  const tags = sanitizeAllergenTags(allergenTags);
+  const tags = sanitizeAllergenTagsForCatalog(allergenTags, catalog);
+  const customDietTags = sanitizeDietTagsForCatalog(dietTags, catalog);
   let i18n = buildProductI18n(translations || [], languages);
   i18n = applyAllergenTagsToI18n(i18n, tags, languages, (lang) =>
-    allergensTextFromTags(tags, lang)
+    allergensTextFromCatalog(tags, lang, catalog)
   );
 
   const product = await prisma.product.create({
@@ -174,6 +179,7 @@ router.post('/', async (req, res) => {
       isRecommended: isRecommended ?? false,
       features: Array.isArray(features) ? features : [],
       allergenTags: tags,
+      dietTags: customDietTags,
       i18n,
     },
     include: { group: true, currency: true },
@@ -202,6 +208,7 @@ router.put('/:id', async (req, res) => {
     isRecommended,
     features,
     allergenTags,
+    dietTags,
   } = req.body;
 
   const existing = await prisma.product.findFirst({ where: { id, restaurantId: restaurantId! } });
@@ -215,6 +222,7 @@ router.put('/:id', async (req, res) => {
   }
 
   const languages = await getLanguages();
+  const catalog = await loadPrefCatalog(restaurantId!);
   let i18n =
     translations?.length > 0
       ? mergeProductI18n(existing.i18n, translations, languages)
@@ -222,12 +230,17 @@ router.put('/:id', async (req, res) => {
 
   const tags =
     allergenTags !== undefined
-      ? sanitizeAllergenTags(allergenTags)
-      : parseAllergenTags(existing.allergenTags);
+      ? sanitizeAllergenTagsForCatalog(allergenTags, catalog)
+      : sanitizeAllergenTagsForCatalog(existing.allergenTags, catalog);
+
+  const customDietTags =
+    dietTags !== undefined
+      ? sanitizeDietTagsForCatalog(dietTags, catalog)
+      : sanitizeDietTagsForCatalog(existing.dietTags, catalog);
 
   if (allergenTags !== undefined || translations?.length > 0) {
     i18n = applyAllergenTagsToI18n(i18n ?? existing.i18n, tags, languages, (lang) =>
-      allergensTextFromTags(tags, lang)
+      allergensTextFromCatalog(tags, lang, catalog)
     );
   }
 
@@ -256,6 +269,7 @@ router.put('/:id', async (req, res) => {
       ...(isRecommended !== undefined && { isRecommended }),
       ...(features !== undefined && { features: Array.isArray(features) ? features : [] }),
       ...(allergenTags !== undefined && { allergenTags: tags }),
+      ...(dietTags !== undefined && { dietTags: customDietTags }),
       ...(i18n !== undefined && { i18n }),
     },
     include: { group: true, currency: true },
@@ -408,6 +422,7 @@ async function mapProduct(
     imageUrl: string | null;
     images: unknown;
     allergenTags?: unknown;
+    dietTags?: unknown;
     sortOrder: number;
     isActive: boolean;
     i18n: unknown;
@@ -424,6 +439,7 @@ async function mapProduct(
 ) {
   const validation = await validateProduct(product.id, restaurantId);
   const images = parseProductImages(product);
+  const catalog = await loadPrefCatalog(restaurantId);
   const currency = product.currency
     ? {
         id: product.currency.id,
@@ -448,7 +464,8 @@ async function mapProduct(
     isVegetarian: product.isVegetarian,
     isGlutenFree: product.isGlutenFree,
     isDiabetic: product.isDiabetic,
-    allergenTags: parseAllergenTags(product.allergenTags),
+    allergenTags: sanitizeAllergenTagsForCatalog(product.allergenTags, catalog),
+    dietTags: sanitizeDietTagsForCatalog(product.dietTags, catalog),
     isRecommended: product.isRecommended,
     imageUrl: images[0] ?? null,
     images,

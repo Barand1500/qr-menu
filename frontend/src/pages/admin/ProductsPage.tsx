@@ -24,6 +24,12 @@ import ProductModal, {
   type ProductTranslationFields,
 } from '@/components/ProductModal';
 import {
+  defaultPrefCatalog,
+  fetchPrefCatalog,
+  savePrefCatalog,
+  type PrefCatalog,
+} from '@/lib/prefCatalog';
+import {
   AdminFilterBar,
   FilterChipGroup,
   FilterFieldLabel,
@@ -50,6 +56,7 @@ interface Product {
   calories?: number | null;
   features?: string[];
   allergenTags?: string[];
+  dietTags?: string[];
   isVegan?: boolean;
   isVegetarian?: boolean;
   isGlutenFree?: boolean;
@@ -90,6 +97,7 @@ const emptyForm = (): ProductFormState => ({
   calories: '',
   features: [],
   allergenTags: [],
+  dietTags: [],
   isVegan: false,
   isVegetarian: false,
   isGlutenFree: false,
@@ -117,6 +125,7 @@ function buildFormFromProduct(product: Product): ProductFormState {
     calories: product.calories?.toString() || '',
     features: product.features ?? [],
     allergenTags: product.allergenTags ?? [],
+    dietTags: product.dietTags ?? [],
     isVegan: product.isVegan ?? false,
     isVegetarian: product.isVegetarian ?? false,
     isGlutenFree: product.isGlutenFree ?? false,
@@ -147,6 +156,7 @@ export default function ProductsPage() {
   const [form, setForm] = useState<ProductFormState>(emptyForm());
   const [productImages, setProductImages] = useState<string[]>([]);
   const [pendingFiles, setPendingFiles] = useState<{ id: string; file: File; url: string }[]>([]);
+  const [prefCatalog, setPrefCatalog] = useState<PrefCatalog>(() => defaultPrefCatalog());
 
   const load = useCallback(async () => {
     const params = new URLSearchParams({ limit: '100' });
@@ -170,6 +180,10 @@ export default function ProductsPage() {
   useEffect(() => {
     load().finally(() => setLoading(false));
   }, [load]);
+
+  useEffect(() => {
+    fetchPrefCatalog().then(setPrefCatalog).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -344,6 +358,7 @@ export default function ProductsPage() {
         calories: form.calories ? Number(form.calories) : null,
         features: form.features,
         allergenTags: form.allergenTags,
+        dietTags: form.dietTags,
         isVegan: form.isVegan,
         isVegetarian: form.isVegetarian,
         isGlutenFree: form.isGlutenFree,
@@ -381,6 +396,15 @@ export default function ProductsPage() {
       await load();
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handlePrefCatalogChange(catalog: PrefCatalog) {
+    setPrefCatalog(catalog);
+    try {
+      await savePrefCatalog(catalog);
+    } catch {
+      /* sessiz — kullanıcı kaydetmeye devam edebilir */
     }
   }
 
@@ -572,6 +596,8 @@ export default function ProductsPage() {
         languages={languages}
         currencies={currencies}
         groups={groupOptions}
+        prefCatalog={prefCatalog}
+        onPrefCatalogChange={handlePrefCatalogChange}
         form={form}
         productImages={productImages}
         pendingPreviews={pendingFiles.map(({ id, url }) => ({ id, url }))}

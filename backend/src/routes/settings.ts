@@ -17,6 +17,12 @@ import {
 } from '../addons/index.js';
 import { parseSocialLinks, serializeSocialLinks, type SocialLinkConfig } from '../lib/social.js';
 import { MENU_TABLE_SERVICE_KEY } from '../lib/table-service.js';
+import {
+  loadPrefCatalog,
+  normalizePrefCatalogInput,
+  PREF_CATALOG_KEY,
+  serializePrefCatalog,
+} from '../lib/pref-catalog.js';
 
 const router = Router();
 router.use(authRequired);
@@ -326,6 +332,32 @@ router.put('/themes', async (req, res) => {
     welcome: map.theme_welcome || DEFAULT_WELCOME_THEME,
     menu: map.theme_menu || DEFAULT_MENU_THEME,
   });
+});
+
+router.get('/pref-catalog', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const catalog = await loadPrefCatalog(restaurantId!);
+  res.json(catalog);
+});
+
+router.put('/pref-catalog', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const catalog = normalizePrefCatalogInput(req.body);
+  if (!catalog) {
+    return res.status(400).json({ message: 'Geçersiz katalog verisi' });
+  }
+
+  await prisma.setting.upsert({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: PREF_CATALOG_KEY } },
+    update: { value: serializePrefCatalog(catalog) },
+    create: {
+      restaurantId: restaurantId!,
+      key: PREF_CATALOG_KEY,
+      value: serializePrefCatalog(catalog),
+    },
+  });
+
+  res.json(catalog);
 });
 
 export default router;

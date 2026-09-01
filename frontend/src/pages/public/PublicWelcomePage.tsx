@@ -13,15 +13,17 @@ import { usePublicRtl } from '@/hooks/usePublicRtl';
 import type { PublicSocialLink } from '@/lib/socialCatalog';
 import { welcomeUi } from '@/lib/welcomeUi';
 import {
-  ALLERGEN_CATALOG,
-  DIET_CATALOG,
-  allergenLabel,
-  dietLabel,
   loadDietaryPrefs,
   preferenceUi,
   saveDietaryPrefs,
   type DietaryPrefs,
 } from '@/lib/dietAllergens';
+import {
+  catalogLabel,
+  resolvePrefCatalog,
+  storePrefCatalogSession,
+  type PrefCatalog,
+} from '@/lib/prefCatalog';
 import { resolveWelcomeMusic, youtubeEmbedSrc } from '@/lib/welcomeMusic';
 
 interface WelcomeData {
@@ -32,6 +34,7 @@ interface WelcomeData {
   theme?: string;
   campaign?: { name: string; slug: string; itemCount: number } | null;
   socialLinks?: PublicSocialLink[];
+  prefCatalog?: PrefCatalog;
 }
 
 export default function PublicWelcomePage() {
@@ -268,6 +271,7 @@ export default function PublicWelcomePage() {
     if (!slug) return;
     const nextPrefs = prefs ?? dietaryPrefs;
     saveDietaryPrefs(nextPrefs);
+    if (data?.prefCatalog) storePrefCatalogSession(data.prefCatalog);
     setEntering(true);
     localStorage.setItem('menu_lang', lang);
     sessionStorage.setItem(enteredKey(slug), '1');
@@ -281,6 +285,7 @@ export default function PublicWelcomePage() {
 
   const t = welcomeUi(selectedLang);
   const prefUi = preferenceUi(selectedLang);
+  const prefCatalog = resolvePrefCatalog(data?.prefCatalog ?? null);
 
   if (loading && !data) {
     return (
@@ -501,7 +506,7 @@ export default function PublicWelcomePage() {
             <div className="welcome-prefs__block">
               <p className="welcome-prefs__label">{prefUi.avoidTitle}</p>
               <div className="welcome-prefs__chips">
-                {ALLERGEN_CATALOG.map((opt) => {
+                {prefCatalog.allergens.map((opt) => {
                   const active = dietaryPrefs.allergens.includes(opt.id);
                   return (
                     <button
@@ -511,7 +516,7 @@ export default function PublicWelcomePage() {
                       onClick={() => toggleWelcomeAllergen(opt.id)}
                       aria-pressed={active}
                     >
-                      {allergenLabel(opt.id, selectedLang)}
+                      {catalogLabel(prefCatalog, 'allergen', opt.id, selectedLang)}
                     </button>
                   );
                 })}
@@ -521,7 +526,7 @@ export default function PublicWelcomePage() {
             <div className="welcome-prefs__block">
               <p className="welcome-prefs__label">{prefUi.dietTitle}</p>
               <div className="welcome-prefs__chips">
-                {DIET_CATALOG.map((opt) => {
+                {prefCatalog.diets.map((opt) => {
                   const active = dietaryPrefs.diets.includes(opt.id);
                   return (
                     <button
@@ -531,7 +536,7 @@ export default function PublicWelcomePage() {
                       onClick={() => toggleWelcomeDiet(opt.id)}
                       aria-pressed={active}
                     >
-                      {dietLabel(opt.id, selectedLang)}
+                      {catalogLabel(prefCatalog, 'diet', opt.id, selectedLang)}
                     </button>
                   );
                 })}

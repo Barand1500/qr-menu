@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, Sparkles } from 'lucide-react';
+import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
@@ -23,6 +23,12 @@ import {
 } from '@/lib/socialCatalog';
 import { useAddons } from '@/hooks/useAddons';
 import { isTableServiceEnabled } from '@/lib/tableService';
+import { daysUntilLicenseEnd, formatLicenseDate } from '@/lib/license';
+import {
+  SUPPORT_PHONE_DISPLAY,
+  SUPPORT_PHONE_TEL,
+  supportWhatsAppUrl,
+} from '@/lib/supportContact';
 
 interface Language {
   id: number;
@@ -40,7 +46,12 @@ interface Currency {
 }
 
 interface SettingsData {
-  restaurant: { id: number; name: string; logoUrl?: string | null };
+  restaurant: {
+    id: number;
+    name: string;
+    logoUrl?: string | null;
+    licenseExpiresAt?: string | null;
+  };
   languages: Language[];
   currencies?: Currency[];
   welcomeMessages: { languageId: number; languageCode: string; message: string }[];
@@ -122,6 +133,8 @@ export default function SettingsPage() {
   const [welcomeMusicUrl, setWelcomeMusicUrl] = useState('');
   const [tableServiceEnabled, setTableServiceEnabled] = useState(true);
   const [togglingMenuFeature, setTogglingMenuFeature] = useState<'table' | 'assistant' | null>(null);
+  const [renewContactOpen, setRenewContactOpen] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [iconPickerFor, setIconPickerFor] = useState<string | null>(null);
   const [iconPickerPos, setIconPickerPos] = useState<{ left: number; bottom: number } | null>(
     null
@@ -250,6 +263,8 @@ export default function SettingsPage() {
         body: JSON.stringify({ tableService: next }),
       });
       setTableServiceEnabled(next);
+    } catch {
+      /* leave previous state */
     } finally {
       setTogglingMenuFeature(null);
     }
@@ -260,6 +275,8 @@ export default function SettingsPage() {
     setTogglingMenuFeature('assistant');
     try {
       await setEnabled('menu-assistant', !assistantEnabled);
+    } catch {
+      /* leave previous state */
     } finally {
       setTogglingMenuFeature(null);
     }
@@ -480,7 +497,6 @@ export default function SettingsPage() {
 
   function addCustomSocial() {
     setSocialLinks((prev) => [...prev, newCustomSocialLink()]);
-    setSocialOpen(true);
   }
 
   function removeCustomSocial(id: string) {
@@ -689,9 +705,9 @@ export default function SettingsPage() {
         </SettingsSection>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-5">
-        <SettingsSection icon={Plug} title="Entegrasyon Ayarları" className="flex flex-col">
-          <div className="flex flex-col h-full gap-5">
+      <div className="grid lg:grid-cols-2 gap-5 items-stretch">
+        <SettingsSection icon={Plug} title="Entegrasyon Ayarları">
+          <div className="flex flex-col gap-3.5">
             <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl hover:bg-[var(--admin-accent-soft)]/30 transition">
               <input
                 type="checkbox"
@@ -709,10 +725,7 @@ export default function SettingsPage() {
               </div>
             </label>
 
-            <div
-              className="rounded-2xl p-4 flex-1"
-              style={{ background: 'var(--admin-input-bg)' }}
-            >
+            <div className="settings-openai-box rounded-2xl p-3.5">
               <Input
                 label="OpenAI API Anahtarı"
                 type="password"
@@ -720,16 +733,158 @@ export default function SettingsPage() {
                 onChange={(e) => setOpenaiApiKey(e.target.value)}
                 placeholder="sk-..."
               />
-              <p className="text-xs admin-text-muted mt-3 leading-relaxed">
-                Oto çeviri için ChatGPT anahtarınızı yapıştırın. Anahtar kaydedildiğinde çeviriler
-                önce OpenAI ile yapılır; yoksa ücretsiz servisler kullanılır.
+              <p className="text-[11px] admin-text-muted mt-2 leading-relaxed">
+                Oto çeviri için ChatGPT anahtarınızı yapıştırın. Kayıtlıysa önce OpenAI kullanılır.
               </p>
             </div>
+
+            {data && (
+              <div className="settings-license-box">
+                <div className="settings-license-box__head">
+                  <span className="settings-license-box__icon" aria-hidden>
+                    <CalendarClock className="w-4 h-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="settings-license-box__title">Abonelik / Lisans</p>
+                    {data.restaurant.licenseExpiresAt && (
+                      <p className="settings-license-box__date">
+                        Bitiş: {formatLicenseDate(data.restaurant.licenseExpiresAt)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {(() => {
+                  const days = daysUntilLicenseEnd(data.restaurant.licenseExpiresAt);
+                  if (days === null) {
+                    return (
+                      <p className="settings-license-box__status settings-license-box__status--muted">
+                        Lisans süreniz henüz tanımlanmadı. Yenileme için bizimle iletişime geçin.
+                      </p>
+                    );
+                  }
+                  if (days < 0) {
+                    return (
+                      <p className="settings-license-box__status settings-license-box__status--danger">
+                        Aboneliğiniz sona erdi ({Math.abs(days)} gün önce)
+                      </p>
+                    );
+                  }
+                  if (days === 0) {
+                    return (
+                      <p className="settings-license-box__status settings-license-box__status--danger">
+                        Aboneliğiniz bugün sona eriyor
+                      </p>
+                    );
+                  }
+                  return (
+                    <p
+                      className={`settings-license-box__status${
+                        days <= 7
+                          ? ' settings-license-box__status--danger'
+                          : days <= 30
+                            ? ' settings-license-box__status--warn'
+                            : ' settings-license-box__status--ok'
+                      }`}
+                    >
+                      Aboneliğinizin bitmesine <strong>{days}</strong> gün kaldı
+                    </p>
+                  );
+                })()}
+
+                {!renewContactOpen ? (
+                  <div className="settings-license-box__renew">
+                    <p>Yenilemek ister misiniz?</p>
+                    <button
+                      type="button"
+                      className="settings-license-box__renew-btn"
+                      onClick={() => setRenewContactOpen(true)}
+                    >
+                      Evet, iletişime geç
+                    </button>
+                  </div>
+                ) : (
+                  <div className="settings-license-box__contact">
+                    <p className="settings-license-box__contact-hint">
+                      Lisans yenileme için bizi arayın veya WhatsApp’tan yazın. Restoran kodunuzu
+                      belirtmeyi unutmayın.
+                    </p>
+                    <a href={`tel:${SUPPORT_PHONE_TEL}`} className="settings-license-contact-row">
+                      <span className="settings-license-contact-row__icon">
+                        <Phone className="w-4 h-4" />
+                      </span>
+                      <span>
+                        <strong>{SUPPORT_PHONE_DISPLAY}</strong>
+                        <em>Ara</em>
+                      </span>
+                    </a>
+                    <a
+                      href={supportWhatsAppUrl(
+                        `Merhaba, Menu QR lisans yenileme talebi.\nRestoran kodu: ${data.restaurant.id}\nRestoran: ${data.restaurant.name}`
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="settings-license-contact-row settings-license-contact-row--wa"
+                    >
+                      <span
+                        className="settings-license-contact-row__icon"
+                        style={{ background: '#25D366' }}
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </span>
+                      <span>
+                        <strong>WhatsApp ile yaz</strong>
+                        <em>Formu otomatik doldurur</em>
+                      </span>
+                    </a>
+                    <button
+                      type="button"
+                      className="settings-license-box__back"
+                      onClick={() => setRenewContactOpen(false)}
+                    >
+                      Kapat
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </SettingsSection>
 
-        <SettingsSection icon={Building2} title="Firma Ayarları">
-          <div className="grid sm:grid-cols-2 gap-6 items-stretch">
+        <SettingsSection icon={Building2} title="Firma Ayarları" className="flex flex-col">
+          <div className="flex flex-col gap-4 h-full">
+            {data && (
+              <div className="settings-restaurant-code shrink-0">
+                <div className="min-w-0">
+                  <p className="settings-restaurant-code__label">Restoran Kodunuz</p>
+                  <p className="settings-restaurant-code__hint">
+                    Destek veya yenileme talebinde bu kodu paylaşın
+                  </p>
+                </div>
+                <div className="settings-restaurant-code__value-wrap">
+                  <span className="settings-restaurant-code__value">{data.restaurant.id}</span>
+                  <button
+                    type="button"
+                    className="settings-restaurant-code__copy"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(String(data.restaurant.id)).then(() => {
+                        setCodeCopied(true);
+                        window.setTimeout(() => setCodeCopied(false), 1800);
+                      });
+                    }}
+                    aria-label="Kodu kopyala"
+                  >
+                    {codeCopied ? (
+                      <Check className="w-3.5 h-3.5" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="grid sm:grid-cols-2 gap-6 items-stretch flex-1 min-h-0">
             <div className="flex flex-col gap-4 min-h-[240px]">
               <Input
                 label="Firma Adı"
@@ -740,8 +895,8 @@ export default function SettingsPage() {
                 label="Hakkında"
                 value={companyAbout}
                 onChange={(e) => setCompanyAbout(e.target.value)}
-                className="flex-1 [&_.float-field]:h-full [&_.float-field__input]:min-h-[160px] [&_.float-field__input]:h-full [&_.float-field__input]:resize-none"
-                rows={8}
+                className="flex-1 [&_.float-field]:h-full [&_.float-field__input]:min-h-[140px] [&_.float-field__input]:h-full [&_.float-field__input]:resize-none"
+                rows={6}
               />
             </div>
 
@@ -779,6 +934,7 @@ export default function SettingsPage() {
                 <p className="text-xs admin-text-subtle mt-1">PNG, JPG — şeffaf arka plan önerilir</p>
               </div>
             </div>
+          </div>
           </div>
         </SettingsSection>
       </div>
@@ -956,7 +1112,7 @@ export default function SettingsPage() {
         </section>
       </div>
 
-      <SettingsSection icon={Music2} title="Karşılama Müziği">
+      <SettingsSection icon={Music2} title="Karşılama Müziği / Çağırma Ayarları">
         <div className="settings-welcome-music">
           <p className="settings-welcome-music__hint">
             YouTube video linki veya doğrudan ses dosyası (mp3, m4a, ogg) yapıştırın. Karşılama
@@ -977,48 +1133,58 @@ export default function SettingsPage() {
           )}
 
           <div className="settings-menu-features">
-            <div className="settings-menu-features__item">
-              <span className="settings-menu-features__label">
-                <HandHelping className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
-                <span>Garson / Hesap</span>
-              </span>
+            <p className="settings-menu-features__caption">Menü çağırma butonları</p>
+            <div className="settings-menu-features__row">
               <button
                 type="button"
+                className="settings-feature-toggle"
                 role="switch"
                 aria-checked={tableServiceEnabled}
                 disabled={togglingMenuFeature === 'table'}
                 onClick={() => void toggleTableService()}
-                style={{ flexShrink: 0, padding: 0, border: 'none', background: 'transparent' }}
               >
-                <span className={`addon-toggle__switch${tableServiceEnabled ? ' is-on' : ''}`} aria-hidden>
-                  <span className="addon-toggle__knob" />
+                <span className="settings-feature-toggle__label">
+                  <HandHelping className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
+                  Garson / Hesap
+                </span>
+                <span
+                  className={`settings-switch${tableServiceEnabled ? ' is-on' : ''}`}
+                  aria-hidden
+                >
+                  <span className="settings-switch__knob" />
                 </span>
               </button>
-            </div>
 
-            <div className={`settings-menu-features__item${!assistantOwned ? ' is-disabled' : ''}`}>
-              <span className="settings-menu-features__label">
-                <Sparkles className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
-                <span>Menü Asistanı</span>
-              </span>
               <button
                 type="button"
+                className={`settings-feature-toggle${!assistantOwned ? ' is-disabled' : ''}`}
                 role="switch"
                 aria-checked={assistantEnabled}
                 disabled={!assistantOwned || togglingMenuFeature === 'assistant'}
                 onClick={() => void toggleMenuAssistant()}
-                style={{ flexShrink: 0, padding: 0, border: 'none', background: 'transparent' }}
+                title={
+                  assistantOwned
+                    ? undefined
+                    : 'Menü Asistanı için önce Eklentiler’den satın alın'
+                }
               >
-                <span className={`addon-toggle__switch${assistantEnabled ? ' is-on' : ''}`} aria-hidden>
-                  <span className="addon-toggle__knob" />
+                <span className="settings-feature-toggle__label">
+                  <Sparkles className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
+                  Menü Asistanı
+                </span>
+                <span
+                  className={`settings-switch${assistantEnabled ? ' is-on' : ''}`}
+                  aria-hidden
+                >
+                  <span className="settings-switch__knob" />
                 </span>
               </button>
             </div>
+            <p className="settings-menu-features__hint">
+              Menüdeki yüzen butonları buradan açıp kapatabilirsiniz. Menü Asistanı için önce
+              Eklentiler’den satın almanız gerekir.
+            </p>
           </div>
-          <p className="settings-menu-features__hint">
-            Menüdeki yüzen butonları buradan açıp kapatabilirsiniz. Menü Asistanı için önce
-            Eklentiler’den satın almanız gerekir.
-          </p>
         </div>
       </SettingsSection>
 

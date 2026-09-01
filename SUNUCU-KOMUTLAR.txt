@@ -4,106 +4,95 @@
   Port: 3008
 ====================================================
 
-ÖN KOŞUL
---------
-- Dosyalar şurada olmalı:
-  htdocs/menu.guzelteknoloji.com/
-  (dist, public, prisma, uploads, package.json, .env)
+GÜNCELLEME (mevcut canlı site) — bu paket için
+------------------------------------------------
 
-- .env dosyasını elle düzelttin. Tamam.
-  Şifrede ! varsa URL içinde %21 olmalı.
+1) ZIP'i site klasörüne çıkart
+2) .env ve uploads/ DOKUNMA
+3) SSH'de sırayla:
 
-
-----------------------------------------------------
-1) SITE KLASÖRÜNE GİR
-----------------------------------------------------
 cd ~/htdocs/menu.guzelteknoloji.com
-
-Ne işe yarar?
-  Terminali proje klasörüne götürür.
-  Sonraki komutlar burada çalışır.
-
-
-----------------------------------------------------
-2) PAKETLERİ KUR
-----------------------------------------------------
 npm install --omit=dev
-
-Ne işe yarar?
-  package.json içindeki bağımlılıkları indirir.
-  node_modules klasörünü oluşturur.
-  --omit=dev = sadece canlıda lazım olan paketler.
-
-
-----------------------------------------------------
-3) VERİTABANI + İLK VERİ
-----------------------------------------------------
 npm run setup
 
-Ne işe yarar?
-  1. Prisma client üretir
-  2. MySQL tablolarını oluşturur
-  3. Seed ile örnek / admin verisini yükler
+4) CloudPanel → Node.js → Restart
+
+
+İLK KURULUM (sıfırdan)
+----------------------
+Yukarıdakilere ek olarak .env dosyasını oluştur (.env.example'a bak).
+Sonra panelden Node uygulamasını başlat.
 
 
 ----------------------------------------------------
-4) UYGULAMAYI BAŞLAT
+KOMUT AÇIKLAMALARI
 ----------------------------------------------------
 
-SEÇENEK A — CloudPanel’den başlatıyorsan:
-  Panel → Node.js → Start / Yeniden Başlat
-  (SSH’de npm start ÇALIŞTIRMA, port çakışır)
+cd ~/htdocs/menu.guzelteknoloji.com
+  → Proje klasörüne gir
 
-SEÇENEK B — SSH’den test için:
-npm start
+npm install --omit=dev
+  → Bağımlılıkları kur (node_modules)
 
-Ne işe yarar?
-  node dist/index.js çalışır, port 3008 dinler.
-  Nginx bu porta proxy yapar.
+npm run setup
+  → prisma generate + prisma db push
+  → Yeni tablolar/kolonlar eklenir (masa_cagrilari, lisans_bitis vb.)
+  → SEED ÇALIŞTIRMAZ — canlı veri korunur
 
 
 ----------------------------------------------------
-5) TEST (tarayıcı)
+NODE YENİDEN BAŞLAT
+----------------------------------------------------
+
+SEÇENEK A (önerilen):
+  CloudPanel → Sites → menu.guzelteknoloji.com → Node.js → Restart
+
+SEÇENEK B (sadece test, panel kapalıyken):
+  npm start
+
+
+----------------------------------------------------
+TEST
 ----------------------------------------------------
 https://menu.guzelteknoloji.com/api/health
-  → {"status":"ok"...} gelmeli
-
-https://menu.guzelteknoloji.com/menu
-  → müşteri menüsü
-
 https://menu.guzelteknoloji.com/login
-  → admin giriş
+https://menu.guzelteknoloji.com/menu
 
 
-====================================================
-  HIZLI KOPYALA (sırayla)
-====================================================
+----------------------------------------------------
+HIZLI KOPYALA (güncelleme)
+----------------------------------------------------
 
 cd ~/htdocs/menu.guzelteknoloji.com
 npm install --omit=dev
 npm run setup
-npm start
+
+(sonra CloudPanel'den Restart)
 
 
-====================================================
-  SIK HATALAR
-====================================================
+----------------------------------------------------
+SIK HATALAR
+----------------------------------------------------
 
 EADDRINUSE / port kullanımda
-  → Aynı anda hem panel hem npm start çalışıyordur.
-  → Birini kapat.
+  → Panel + npm start aynı anda çalışıyor. Birini kapat.
 
 Database / P1000 / auth failed
-  → .env içindeki DATABASE_URL şifresi yanlış.
-  → ! karakteri %21 olmalı.
+  → .env DATABASE_URL yanlış. ! karakteri URL'de %21 olmalı.
 
-Cannot find module
-  → npm install --omit=dev tekrar çalıştır.
+Cannot find module '@prisma/client'
+  → npm install --omit=dev && npm run setup
 
 502 Bad Gateway
-  → Node uygulama kapalı / port 3008 dinlemiyor.
-  → Panelden Start veya npm start.
+  → Node kapalı. Panelden Restart.
 
-====================================================
-Bu dosyayı iş bitince silebilirsin.
+Lisans kutusu "henüz tanımlanmadı"
+  → Normal; MySQL'de lisans_bitis set et:
+  UPDATE restoranlar SET lisans_bitis = '2027-12-31' WHERE id = 1;
+
+ASLA ÇALIŞTIRMA (canlıda):
+  npm run db:seed
+  npm run db:reset
+  → Tüm menü, kullanıcı, ayar verisi silinir!
+
 ====================================================
