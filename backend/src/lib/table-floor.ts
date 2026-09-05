@@ -85,7 +85,7 @@ export async function openOrGetSession(
     if (existing.status === 'reserved') {
       return prisma.tableFloorSession.update({
         where: { id: existing.id },
-        data: { status: 'open', openedBy },
+        data: { status: 'open', openedBy, openedAt: new Date() },
       });
     }
     return existing;

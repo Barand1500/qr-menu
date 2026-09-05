@@ -16,6 +16,8 @@ import {
   mapDemoStoriesToGroups,
 } from '@/lib/demoData';
 import { checkInTable } from '@/lib/tableCheckin';
+import GeoLockGate from '@/components/public/GeoLockGate';
+import type { GeoCoords } from '@/lib/geoLock';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { useMenuColorMode } from '@/hooks/useMenuColorMode';
 import { usePublicRtl } from '@/hooks/usePublicRtl';
@@ -121,8 +123,39 @@ interface ProductData {
 }
 
 export default function PublicMenuPage() {
+  const { slug, error: slugError } = useMenuSlug();
+
+  if (slugError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 text-center">
+        <p className="text-sm text-slate-600">{slugError}</p>
+      </div>
+    );
+  }
+
+  if (!slug) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center public-menu-page gap-3 p-6">
+        <div className="w-9 h-9 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <GeoLockGate slug={slug}>
+      {({ coords }) => <PublicMenuPageInner slug={slug} coords={coords} />}
+    </GeoLockGate>
+  );
+}
+
+function PublicMenuPageInner({
+  slug,
+  coords,
+}: {
+  slug: string;
+  coords: GeoCoords | null;
+}) {
   const { demoEnabled } = useDemoData();
-  const { slug } = useMenuSlug();
   const { groupId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -169,8 +202,13 @@ export default function PublicMenuPage() {
     if (masa) sessionStorage.setItem('menu_masa', masa);
     if (grup) sessionStorage.setItem('menu_grup', grup);
     if (kampanya) sessionStorage.setItem('menu_kampanya', kampanya);
-    if (slug && masa) checkInTable(slug, masa, grup);
-  }, [searchParams, slug]);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const masa = searchParams.get('masa') || sessionStorage.getItem('menu_masa');
+    const grup = searchParams.get('grup') || sessionStorage.getItem('menu_grup');
+    if (masa) checkInTable(slug, masa, grup, coords ?? undefined);
+  }, [slug, searchParams, coords]);
 
   const campaignSlug =
     searchParams.get('kampanya') ||

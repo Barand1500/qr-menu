@@ -103,6 +103,19 @@ function formatMoney(n: number) {
   return `${n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
 }
 
+/** Rezervasyon saati */
+function formatExpectedAt(expectedAt: string | null | undefined) {
+  if (!expectedAt) return 'Saat yok';
+  const d = new Date(expectedAt);
+  if (Number.isNaN(d.getTime())) return 'Saat yok';
+  return d.toLocaleString('tr-TR', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 /** Masada: sadece dakika */
 function formatDurationMinutes(openedAt: string | null, now: number) {
   if (!openedAt) return '—';
@@ -477,21 +490,20 @@ export default function TableFloorPage() {
   }
 
   const catalogGroups = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, { id: string; name: string; count: number }>();
     for (const p of catalog) {
-      const id = p.groupId != null ? String(p.groupId) : '';
-      const name = p.groupName?.trim();
-      if (id && name) map.set(id, name);
-      else if (name) map.set(name, name);
+      const id = p.groupId != null ? String(p.groupId) : p.groupName.trim() || 'other';
+      const name = p.groupName?.trim() || 'Diğer';
+      const prev = map.get(id);
+      if (prev) prev.count += 1;
+      else map.set(id, { id, name, count: 1 });
     }
-    return Array.from(map.entries())
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
   }, [catalog]);
 
   const filteredCatalog = catalog.filter((p) => {
     if (catalogGroup !== 'all') {
-      const id = p.groupId != null ? String(p.groupId) : p.groupName;
+      const id = p.groupId != null ? String(p.groupId) : p.groupName.trim() || 'other';
       if (id !== catalogGroup) return false;
     }
     const q = productQuery.trim().toLowerCase();
@@ -603,15 +615,6 @@ export default function TableFloorPage() {
                   }${pickMode && !moveSelectable && !mergeSelectable && !isSource ? ' is-dimmed' : ''}`}
                   onClick={() => handleTableClick(table)}
                 >
-                  <span className="floor-table__label">{table.name}</span>
-                  {table.status === 'merged' && primaryName ? (
-                    <span className="floor-table__link">{primaryName} ile</span>
-                  ) : null}
-                  {(table.mergedTables || []).length > 0 ? (
-                    <span className="floor-table__link">
-                      +{(table.mergedTables || []).length} birleşik
-                    </span>
-                  ) : null}
                   <span className="floor-table__chair floor-table__chair--n" aria-hidden />
                   <span className="floor-table__chair floor-table__chair--e" aria-hidden />
                   <span className="floor-table__chair floor-table__chair--s" aria-hidden />
@@ -628,7 +631,14 @@ export default function TableFloorPage() {
                       />
                     </span>
                     {table.status === 'reserved' ? (
-                      <span className="floor-table__meta">Rezerve</span>
+                      <span className="floor-table__meta">
+                        {table.expectedAt
+                          ? new Date(table.expectedAt).toLocaleTimeString('tr-TR', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : 'Rezerve'}
+                      </span>
                     ) : table.status === 'merged' ? (
                       <span className="floor-table__meta">Birleşik</span>
                     ) : table.occupied ? (
@@ -639,6 +649,17 @@ export default function TableFloorPage() {
                     ) : (
                       <span className="floor-table__meta floor-table__meta--free">Boş</span>
                     )}
+                  </span>
+                  <span className="floor-table__caption">
+                    <span className="floor-table__label">{table.name}</span>
+                    {table.status === 'merged' && primaryName ? (
+                      <span className="floor-table__link">{primaryName} ile</span>
+                    ) : null}
+                    {(table.mergedTables || []).length > 0 ? (
+                      <span className="floor-table__link">
+                        +{(table.mergedTables || []).length} birleşik
+                      </span>
+                    ) : null}
                   </span>
                 </button>
               );
@@ -714,8 +735,17 @@ export default function TableFloorPage() {
                   <div>
                     <Clock3 className="w-4 h-4" />
                     <div>
-                      <span>Oturma</span>
-                      <strong>{formatDurationPrecise(selected.openedAt, now)}</strong>
+                      {selected.status === 'reserved' ? (
+                        <>
+                          <span>Beklenen</span>
+                          <strong>{formatExpectedAt(selected.expectedAt)}</strong>
+                        </>
+                      ) : (
+                        <>
+                          <span>Oturma</span>
+                          <strong>{formatDurationPrecise(selected.openedAt, now)}</strong>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div>
@@ -816,23 +846,23 @@ export default function TableFloorPage() {
                 </div>
 
                 <div className="table-floor__drawer-actions">
-                  <div className="table-floor__action-row">
-                    <button
-                      type="button"
-                      className="table-floor__secondary"
-                      onClick={() =>
-                        printBill({
-                          restaurant: data?.restaurant?.name || user?.restaurant?.name || 'Restoran',
-                          tableName: selected.name,
-                          orders: selected.orders,
-                          total: selected.total,
-                          guestName: selected.guestName,
-                        })
-                      }
-                    >
-                      Hesap yazdır
-                    </button>
-                    {selected.occupied ? (
+                  {selected.occupied && selected.status === 'open' ? (
+                    <div className="table-floor__action-row">
+                      <button
+                        type="button"
+                        className="table-floor__secondary"
+                        onClick={() =>
+                          printBill({
+                            restaurant: data?.restaurant?.name || user?.restaurant?.name || 'Restoran',
+                            tableName: selected.name,
+                            orders: selected.orders,
+                            total: selected.total,
+                            guestName: selected.guestName,
+                          })
+                        }
+                      >
+                        Hesap yazdır
+                      </button>
                       <button
                         type="button"
                         className="table-floor__primary"
@@ -841,9 +871,9 @@ export default function TableFloorPage() {
                       >
                         Ödeme alındı
                       </button>
-                    ) : null}
-                  </div>
-                  {!selected.occupied ? (
+                    </div>
+                  ) : null}
+                  {!selected.occupied || selected.status === 'reserved' ? (
                     <button
                       type="button"
                       className="table-floor__primary"
@@ -851,7 +881,7 @@ export default function TableFloorPage() {
                       onClick={() => void openTable(selected)}
                     >
                       <UtensilsCrossed className="w-4 h-4" />
-                      Masayı aç
+                      {selected.status === 'reserved' ? 'Misafir geldi · Aç' : 'Masayı aç'}
                     </button>
                   ) : (
                     <button
@@ -962,68 +992,68 @@ export default function TableFloorPage() {
               value={productQuery}
               onChange={(e) => setProductQuery(e.target.value)}
             />
-            {catalogGroups.length > 0 ? (
-              <div className="table-floor-modal__pills" role="tablist" aria-label="Ürün grupları">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={catalogGroup === 'all'}
-                  className={`table-floor-modal__pill${catalogGroup === 'all' ? ' is-active' : ''}`}
-                  onClick={() => setCatalogGroup('all')}
-                >
-                  Tümü
-                </button>
-                {catalogGroups.map((g) => (
+            <div className="table-floor-modal__body">
+              {catalogGroups.length > 0 ? (
+                <nav className="table-floor-modal__cats" aria-label="Ürün grupları">
                   <button
-                    key={g.id}
                     type="button"
-                    role="tab"
-                    aria-selected={catalogGroup === g.id}
-                    className={`table-floor-modal__pill${catalogGroup === g.id ? ' is-active' : ''}`}
-                    onClick={() => setCatalogGroup(g.id)}
+                    className={`table-floor-modal__cat${catalogGroup === 'all' ? ' is-active' : ''}`}
+                    onClick={() => setCatalogGroup('all')}
                   >
-                    {g.name}
+                    <span>Tümü</span>
+                    <em>{catalog.length}</em>
                   </button>
-                ))}
+                  {catalogGroups.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      className={`table-floor-modal__cat${catalogGroup === g.id ? ' is-active' : ''}`}
+                      onClick={() => setCatalogGroup(g.id)}
+                    >
+                      <span>{g.name}</span>
+                      <em>{g.count}</em>
+                    </button>
+                  ))}
+                </nav>
+              ) : null}
+              <div className="table-floor-modal__list">
+                {filteredCatalog.length === 0 ? (
+                  <p className="table-floor__hint" style={{ padding: '0.5rem 0.25rem' }}>
+                    Ürün bulunamadı.
+                  </p>
+                ) : (
+                  filteredCatalog.map((p) => {
+                    const qty = cart[p.id] || 0;
+                    return (
+                      <div key={p.id} className="table-floor-modal__row">
+                        <div>
+                          <strong>{p.name}</strong>
+                          <span>
+                            {p.groupName} · {formatMoney(p.price)}
+                          </span>
+                        </div>
+                        <div className="table-floor-modal__qty">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCart((c) => ({ ...c, [p.id]: Math.max(0, (c[p.id] || 0) - 1) }))
+                            }
+                          >
+                            −
+                          </button>
+                          <em>{qty}</em>
+                          <button
+                            type="button"
+                            onClick={() => setCart((c) => ({ ...c, [p.id]: (c[p.id] || 0) + 1 }))}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
-            ) : null}
-            <div className="table-floor-modal__list">
-              {filteredCatalog.length === 0 ? (
-                <p className="table-floor__hint" style={{ padding: '0.5rem 0.25rem' }}>
-                  Bu filtrede ürün yok.
-                </p>
-              ) : (
-                filteredCatalog.map((p) => {
-                const qty = cart[p.id] || 0;
-                return (
-                  <div key={p.id} className="table-floor-modal__row">
-                    <div>
-                      <strong>{p.name}</strong>
-                      <span>
-                        {p.groupName} · {formatMoney(p.price)}
-                      </span>
-                    </div>
-                    <div className="table-floor-modal__qty">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCart((c) => ({ ...c, [p.id]: Math.max(0, (c[p.id] || 0) - 1) }))
-                        }
-                      >
-                        −
-                      </button>
-                      <em>{qty}</em>
-                      <button
-                        type="button"
-                        onClick={() => setCart((c) => ({ ...c, [p.id]: (c[p.id] || 0) + 1 }))}
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-              )}
             </div>
             <footer>
               <button

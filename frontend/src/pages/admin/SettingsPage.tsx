@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check } from 'lucide-react';
+import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check, MapPinned } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
@@ -10,6 +10,8 @@ import AddLanguageModal from '@/components/AddLanguageModal';
 import AddCurrencyModal from '@/components/AddCurrencyModal';
 import SocialBrandIcon from '@/components/SocialBrandIcon';
 import { SocialDisplayIcon, CUSTOM_ICONS } from '@/components/SocialDisplayIcon';
+import GeoLockMapEditor from '@/components/admin/GeoLockMapEditor';
+import type { GeoLockConfig } from '@/lib/geoLock';
 import { languageFlag } from '@/lib/languageFlags';
 import { catalogByCode, type CatalogLanguage } from '@/lib/languageCatalog';
 import { currencyCatalogByCode, type CatalogCurrency } from '@/lib/currencyCatalog';
@@ -134,6 +136,12 @@ export default function SettingsPage() {
   const [socialLinks, setSocialLinks] = useState<SocialLinkConfig[]>(mergeSocialConfigs([]));
   const [welcomeMusicUrl, setWelcomeMusicUrl] = useState('');
   const [tableServiceEnabled, setTableServiceEnabled] = useState(true);
+  const [geoLock, setGeoLock] = useState<GeoLockConfig>({
+    enabled: false,
+    lat: 36.8121,
+    lng: 34.6415,
+    radiusMeters: 120,
+  });
   const [togglingMenuFeature, setTogglingMenuFeature] = useState<'table' | 'assistant' | null>(null);
   const [renewContactOpen, setRenewContactOpen] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
@@ -174,6 +182,19 @@ export default function SettingsPage() {
         }
         setWelcomeMusicUrl(d.settings.welcome_music_url || '');
         setTableServiceEnabled(isTableServiceEnabled(d.settings.menu_table_service_enabled));
+        try {
+          const raw = d.settings.geo_lock ? JSON.parse(d.settings.geo_lock) : null;
+          if (raw && typeof raw === 'object') {
+            setGeoLock({
+              enabled: Boolean(raw.enabled),
+              lat: Number(raw.lat) || 36.8121,
+              lng: Number(raw.lng) || 34.6415,
+              radiusMeters: Number(raw.radiusMeters) || 120,
+            });
+          }
+        } catch {
+          /* keep default */
+        }
         setTranslateStatus({
           openaiConfigured:
             status.openaiConfigured || Boolean(d.settings.openai_api_key?.trim()),
@@ -320,6 +341,10 @@ export default function SettingsPage() {
       await api('/api/admin/settings/menu-features', {
         method: 'PUT',
         body: JSON.stringify({ tableService: tableServiceEnabled }),
+      });
+      await api('/api/admin/settings/geo-lock', {
+        method: 'PUT',
+        body: JSON.stringify(geoLock),
       });
       if (logoFile) {
         const fd = new FormData();
@@ -1192,6 +1217,37 @@ export default function SettingsPage() {
               Eklentiler’den satın almanız gerekir.
             </p>
           </div>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection icon={MapPinned} title="Konum Kilidi (QR Bölgesi)">
+        <div className="geo-lock-admin">
+          <p className="geo-lock-admin__hint">
+            Açıkken menü yalnızca seçtiğiniz daire içinde konum izni veren müşterilere açılır.
+            Dışarıdan QR okutanlar karşılama ekranını görmez; “Bölge dışındasınız” uyarısı alır.
+          </p>
+          <button
+            type="button"
+            className="settings-feature-toggle geo-lock-admin__toggle"
+            role="switch"
+            aria-checked={geoLock.enabled}
+            onClick={() => setGeoLock((g) => ({ ...g, enabled: !g.enabled }))}
+          >
+            <span className="settings-feature-toggle__label">
+              <MapPinned className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
+              Konum kilidini kullan
+            </span>
+            <span className={`settings-switch${geoLock.enabled ? ' is-on' : ''}`} aria-hidden>
+              <span className="settings-switch__knob" />
+            </span>
+          </button>
+          {geoLock.enabled ? (
+            <GeoLockMapEditor value={geoLock} onChange={setGeoLock} />
+          ) : (
+            <p className="geo-lock-admin__hint">
+              Kilidi açınca bölge arayıp haritada restoran konumunu ve yarıçapı ayarlayabilirsiniz.
+            </p>
+          )}
         </div>
       </SettingsSection>
 

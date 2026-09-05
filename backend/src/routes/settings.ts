@@ -17,12 +17,18 @@ import {
 } from '../addons/index.js';
 import { parseSocialLinks, serializeSocialLinks, type SocialLinkConfig } from '../lib/social.js';
 import { MENU_TABLE_SERVICE_KEY } from '../lib/table-service.js';
-import {
-  loadPrefCatalog,
+import { loadPrefCatalog,
   normalizePrefCatalogInput,
   PREF_CATALOG_KEY,
   serializePrefCatalog,
 } from '../lib/pref-catalog.js';
+import {
+  GEO_LOCK_KEY,
+  loadGeoLock,
+  parseGeoLock,
+  serializeGeoLock,
+  type GeoLockConfig,
+} from '../lib/geo-lock.js';
 
 const router = Router();
 router.use(authRequired);
@@ -358,6 +364,85 @@ router.put('/pref-catalog', async (req, res) => {
   });
 
   res.json(catalog);
+});
+
+router.get('/geo-lock', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const cfg = await loadGeoLock(restaurantId!);
+  res.json(cfg);
+});
+
+router.put('/geo-lock', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const body = req.body as Partial<GeoLockConfig>;
+  const current = await loadGeoLock(restaurantId!);
+  const next = parseGeoLock(
+    JSON.stringify({
+      enabled: typeof body.enabled === 'boolean' ? body.enabled : current.enabled,
+      lat: body.lat ?? current.lat,
+      lng: body.lng ?? current.lng,
+      radiusMeters: body.radiusMeters ?? current.radiusMeters,
+    })
+  );
+
+  if (next.enabled && (!Number.isFinite(next.lat) || !Number.isFinite(next.lng))) {
+    return res.status(400).json({ message: 'Konum seçin' });
+  }
+
+  await prisma.setting.upsert({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: GEO_LOCK_KEY } },
+    update: { value: serializeGeoLock(next) },
+    create: {
+      restaurantId: restaurantId!,
+      key: GEO_LOCK_KEY,
+      value: serializeGeoLock(next),
+    },
+  });
+
+  res.json(next);
+});
+
+/** Nominatim proxy (tarayıcı CORS yok) */
+router.get('/geo-search', async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  if (q.length < 2) return res.json([]);
+  if (q.length > 120) return res.status(400).json({ message: 'Arama çok uzun' });
+
+  const url = new URL('https://nominatim.openstreetmap.org/search');
+  url.searchParams.set('q', q);
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('addressdetails', '1');
+  url.searchParams.set('limit', '6');
+  url.searchParams.set('countrycodes', 'tr');
+
+  try {
+    const upstream = await fetch(url.toString(), {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'MenuQR-Admin/1.0 (geo-lock settings)',
+        'Accept-Language': 'tr',
+      },
+    });
+    if (!upstream.ok) {
+      return res.status(502).json({ message: 'Harita araması başarısız' });
+    }
+    const rows = (await upstream.json()) as Array<{
+      display_name?: string;
+      lat?: string;
+      lon?: string;
+    }>;
+    res.json(
+      rows
+        .map((r) => ({
+          label: r.display_name || '',
+          lat: Number(r.lat),
+          lng: Number(r.lon),
+        }))
+        .filter((r) => r.label && Number.isFinite(r.lat) && Number.isFinite(r.lng))
+    );
+  } catch {
+    res.status(502).json({ message: 'Harita araması başarısız' });
+  }
 });
 
 export default router;

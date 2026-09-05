@@ -38,6 +38,7 @@ import {
   loadCampaignContext,
   type CampaignCtx,
 } from '../lib/campaigns.js';
+import { distanceMeters, isWithinGeoLock, loadGeoLock } from '../lib/geo-lock.js';
 
 const router = Router();
 
@@ -91,6 +92,54 @@ router.get('/resolve', async (_req, res) => {
     slug: restaurant.slug,
     logoUrl: restaurant.logoUrl,
     themes,
+  });
+});
+
+/** Konum kilidi durumu (karşılama öncesi) */
+router.get('/:slug/geo-lock', async (req, res) => {
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug: req.params.slug } });
+  if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
+  const cfg = await loadGeoLock(restaurant.id);
+  if (!cfg.enabled) {
+    return res.json({ enabled: false });
+  }
+  res.json({
+    enabled: true,
+    lat: cfg.lat,
+    lng: cfg.lng,
+    radiusMeters: cfg.radiusMeters,
+  });
+});
+
+/** Konum doğrulama */
+router.post('/:slug/geo-check', async (req, res) => {
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug: req.params.slug } });
+  if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
+  const cfg = await loadGeoLock(restaurant.id);
+  if (!cfg.enabled) {
+    return res.json({ allowed: true, enabled: false });
+  }
+
+  const lat = Number((req.body as { lat?: number }).lat);
+  const lng = Number((req.body as { lng?: number }).lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return res.status(400).json({
+      allowed: false,
+      enabled: true,
+      code: 'GEO_REQUIRED',
+      message: 'Konum izni gerekli',
+    });
+  }
+
+  const dist = distanceMeters(cfg.lat, cfg.lng, lat, lng);
+  const allowed = dist <= cfg.radiusMeters;
+  res.json({
+    allowed,
+    enabled: true,
+    distanceMeters: Math.round(dist),
+    radiusMeters: cfg.radiusMeters,
+    code: allowed ? 'OK' : 'GEO_OUTSIDE',
+    message: allowed ? 'Tamam' : 'Bölge dışındasınız',
   });
 });
 
@@ -972,9 +1021,11 @@ router.post('/:slug/table-request', async (req, res) => {
 /** QR okutulunca / menü açılınca masa oturumu başlat */
 router.post('/:slug/table-checkin', async (req, res) => {
   const slug = req.params.slug;
-  const { tableNumber, groupSlug } = req.body as {
+  const { tableNumber, groupSlug, lat, lng } = req.body as {
     tableNumber?: string;
     groupSlug?: string;
+    lat?: number;
+    lng?: number;
   };
 
   const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
@@ -983,6 +1034,18 @@ router.post('/:slug/table-checkin', async (req, res) => {
   const masa = String(tableNumber || '').trim();
   if (!masa || masa === 'admin' || masa.length > 40) {
     return res.status(400).json({ message: 'Geçersiz masa' });
+  }
+
+  const geo = await loadGeoLock(restaurant.id);
+  if (geo.enabled) {
+    const userLat = Number(lat);
+    const userLng = Number(lng);
+    if (!isWithinGeoLock(geo, userLat, userLng)) {
+      return res.status(403).json({
+        message: 'Bölge dışındasınız',
+        code: 'GEO_OUTSIDE',
+      });
+    }
   }
 
   const grup = groupSlug ? String(groupSlug).trim().slice(0, 100) : null;

@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { enteredKey, menuHomePath } from '@/lib/menuPaths';
-import { checkInTable } from '@/lib/tableCheckin';
+import GeoLockGate from '@/components/public/GeoLockGate';
+import GeoCheckInBridge from '@/components/public/GeoCheckInBridge';
+import type { GeoCoords } from '@/lib/geoLock';
 import { Volume2, VolumeX, Sparkles, MessageCircleHeart, Lightbulb } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { languageFlag } from '@/lib/languageFlags';
@@ -40,6 +42,44 @@ interface WelcomeData {
 
 export default function PublicWelcomePage() {
   const { slug, error: slugError } = useMenuSlug();
+
+  if (slugError) {
+    return (
+      <div className="welcome-scene flex items-center justify-center p-6">
+        <WelcomeSceneBackground theme="vibrant" />
+        <div className="welcome-scene__error login-glass">
+          <p className="welcome-scene__error-title">Menü bulunamadı</p>
+          <p className="welcome-scene__error-text">{slugError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!slug) {
+    return (
+      <div className="welcome-scene flex items-center justify-center">
+        <WelcomeSceneBackground theme="vibrant" />
+        <div className="welcome-scene__loading">
+          <div className="w-10 h-10 border-2 border-white/40 border-t-white rounded-full animate-spin mx-auto" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <GeoLockGate slug={slug}>
+      {({ coords }) => <PublicWelcomePageInner slug={slug} coords={coords} />}
+    </GeoLockGate>
+  );
+}
+
+function PublicWelcomePageInner({
+  slug,
+  coords,
+}: {
+  slug: string;
+  coords: GeoCoords | null;
+}) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tableNo = searchParams.get('masa');
@@ -75,17 +115,6 @@ export default function PublicWelcomePage() {
   }, [tableNo, groupSlug, campaignSlug]);
 
   useEffect(() => {
-    if (slug && tableNo) checkInTable(slug, tableNo, groupSlug);
-  }, [slug, tableNo, groupSlug]);
-
-  useEffect(() => {
-    if (slugError) {
-      setLoadError(slugError);
-      setLoading(false);
-      return;
-    }
-    if (!slug) return;
-
     let cancelled = false;
     setLoading(true);
     setLoadError(null);
@@ -111,7 +140,7 @@ export default function PublicWelcomePage() {
     return () => {
       cancelled = true;
     };
-  }, [slug, navigate, campaignSlug]);
+  }, [slug, campaignSlug]);
 
   function retryLoad() {
     if (!slug) return;
@@ -353,6 +382,7 @@ export default function PublicWelcomePage() {
       className={`welcome-scene ${entering ? 'welcome-scene--exit' : ''} ${revealed ? 'welcome-scene--revealed' : ''}`}
       data-theme-welcome={data.theme || 'vibrant'}
     >
+      <GeoCheckInBridge slug={slug} masa={tableNo} grup={groupSlug} coords={coords} />
       <WelcomeSceneBackground theme={data.theme || 'vibrant'} />
 
       {ytEmbedSrc ? (
