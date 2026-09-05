@@ -1,8 +1,12 @@
 export type AddonProductId =
+  | 'welcome-vibrant'
   | 'welcome-cinema'
   | 'welcome-neon'
+  | 'menu-sade'
+  | 'menu-siparis'
   | 'menu-alive'
   | 'menu-luxury'
+  | 'menu-animasyon'
   | 'qr-pack'
   | 'lang-pack'
   | 'menu-assistant';
@@ -15,6 +19,8 @@ export interface AddonProductDef {
   name: string;
   description: string;
   themeId?: string;
+  /** Bedava — her zaman açık, satın alma yok */
+  free?: boolean;
   /** Satın alındıktan sonra aç/kapa yapılabilir */
   toggleable?: boolean;
 }

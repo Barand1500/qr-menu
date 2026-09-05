@@ -157,7 +157,6 @@ export function flagsFromDietIds(ids: string[]) {
 }
 
 export function preferenceUi(lang: string) {
-  const code = asLang(lang);
   const map = {
     tr: {
       title: 'Alerjiniz veya özel bir tercihiniz var mı?',
@@ -208,7 +207,9 @@ export function preferenceUi(lang: string) {
       sideTitle: 'حساسية / نظام غذائي',
     },
   } as const;
-  return map[code];
+  const raw = (lang || 'tr').split('-')[0].toLowerCase();
+  if (raw in map) return map[raw as keyof typeof map];
+  return map.en;
 }
 
 /** @deprecated — preferenceUi kullan */

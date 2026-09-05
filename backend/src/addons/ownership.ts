@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { prisma } from '../lib/prisma.js';
 import { DEFAULT_MENU_THEME, DEFAULT_WELCOME_THEME } from './themes.js';
+import { ADDON_PRODUCTS } from './catalog.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = path.resolve(__dirname, '../../eklenti-urun.json');
@@ -76,16 +77,18 @@ export async function getDisabledAddons(restaurantId: number): Promise<string[]>
 }
 
 export async function ownsAddon(restaurantId: number, productId: string) {
+  const product = ADDON_PRODUCTS.find((p) => p.id === productId);
+  if (product?.free) return true;
   const owned = await getOwnedAddons(restaurantId);
   return owned.includes(productId);
 }
 
 /** Satın alınmış ve kapatılmamış */
 export async function isAddonActive(restaurantId: number, productId: string) {
-  const [owned, disabled] = await Promise.all([
-    getOwnedAddons(restaurantId),
-    getDisabledAddons(restaurantId),
-  ]);
+  const product = ADDON_PRODUCTS.find((p) => p.id === productId);
+  const disabled = await getDisabledAddons(restaurantId);
+  if (product?.free) return !disabled.includes(productId);
+  const owned = await getOwnedAddons(restaurantId);
   return owned.includes(productId) && !disabled.includes(productId);
 }
 

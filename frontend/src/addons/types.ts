@@ -7,6 +7,8 @@ export interface AddonProduct {
   description: string;
   themeId?: string;
   previewClass?: string;
+  /** Bedava — her zaman açık, satın alma yok */
+  free?: boolean;
   owned?: boolean;
   enabled?: boolean;
   toggleable?: boolean;

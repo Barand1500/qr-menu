@@ -239,6 +239,10 @@ model TableServiceRequest {
   type         String   @db.VarChar(20) /// waiter | bill
   tableNumber  String   @map("masa_no") @db.VarChar(40)
   groupSlug    String?  @map("grup_slug") @db.VarChar(100)
+  /// Sipariş Odaklı tema: müşteri notu
+  note         String?  @map("not") @db.Text
+  /// Sipariş Odaklı tema: sepet özeti JSON
+  orderJson    String?  @map("siparis_json") @db.Text
   isRead       Boolean  @default(false) @map("okundu")
   createdAt    DateTime @default(now()) @map("olusturma")
 

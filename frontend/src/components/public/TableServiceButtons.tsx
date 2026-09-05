@@ -12,15 +12,17 @@ const COPY = {
     waiter: 'Garson',
     bill: 'Hesap',
     sent: 'İletildi',
-    wait: '…',
+    wait: 'Bekleniyor',
     err: 'Olmadı',
+    group: 'Masa hizmeti',
   },
   en: {
     waiter: 'Waiter',
     bill: 'Bill',
     sent: 'Sent',
-    wait: '…',
+    wait: 'Wait',
     err: 'Failed',
+    group: 'Table service',
   },
 };
 
@@ -86,45 +88,50 @@ export default function TableServiceButtons({
     }
   }
 
+  function labelFor(type: RequestType) {
+    if (error === type) return t.err;
+    if (done === type) return t.sent;
+    if (busy === type) return t.wait;
+    return type === 'waiter' ? t.waiter : t.bill;
+  }
+
   return (
-    <div className="table-service-bar" role="group" aria-label="Masa hizmeti">
+    <div className="table-service-bar" role="group" aria-label={t.group}>
       <button
         type="button"
-        className={`table-service-btn table-service-btn--waiter${
+        className={`table-service-btn table-service-btn--icon table-service-btn--waiter${
           done === 'waiter' ? ' is-done' : error === 'waiter' ? ' is-error' : ''
         }`}
         disabled={Boolean(busy)}
         onClick={() => void send('waiter')}
+        aria-label={labelFor('waiter')}
+        title={labelFor('waiter')}
       >
         {error === 'waiter' ? (
-          <AlertCircle className="w-4 h-4" />
+          <AlertCircle className="w-5 h-5" />
         ) : done === 'waiter' ? (
-          <Check className="w-4 h-4" />
+          <Check className="w-5 h-5" />
         ) : (
-          <HandHelping className="w-4 h-4" />
+          <HandHelping className="w-5 h-5" />
         )}
-        <span>
-          {error === 'waiter' ? t.err : done === 'waiter' ? t.sent : busy === 'waiter' ? t.wait : t.waiter}
-        </span>
       </button>
       <button
         type="button"
-        className={`table-service-btn table-service-btn--bill${
+        className={`table-service-btn table-service-btn--icon table-service-btn--bill${
           done === 'bill' ? ' is-done' : error === 'bill' ? ' is-error' : ''
         }`}
         disabled={Boolean(busy)}
         onClick={() => void send('bill')}
+        aria-label={labelFor('bill')}
+        title={labelFor('bill')}
       >
         {error === 'bill' ? (
-          <AlertCircle className="w-4 h-4" />
+          <AlertCircle className="w-5 h-5" />
         ) : done === 'bill' ? (
-          <Check className="w-4 h-4" />
+          <Check className="w-5 h-5" />
         ) : (
-          <Receipt className="w-4 h-4" />
+          <Receipt className="w-5 h-5" />
         )}
-        <span>
-          {error === 'bill' ? t.err : done === 'bill' ? t.sent : busy === 'bill' ? t.wait : t.bill}
-        </span>
       </button>
     </div>
   );

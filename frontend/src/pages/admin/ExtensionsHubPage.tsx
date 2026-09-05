@@ -17,11 +17,12 @@ import MenuAssistantStylePicker from '@/components/MenuAssistantStylePicker';
 import type { AddonCategory, AddonProduct } from '@/addons';
 import type { MenuAssistantStyle } from '@/lib/menuAssistantStyle';
 
-type TabId = 'all' | 'startup' | 'qr' | 'lang' | 'feature';
+type TabId = 'all' | 'welcome' | 'menu' | 'qr' | 'lang' | 'feature';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'all', label: 'Tümü' },
-  { id: 'startup', label: 'Başlangıç' },
+  { id: 'welcome', label: 'Karşılama' },
+  { id: 'menu', label: 'Menü' },
   { id: 'qr', label: 'QR' },
   { id: 'lang', label: 'Dil' },
   { id: 'feature', label: 'Özellik' },
@@ -29,7 +30,6 @@ const TABS: { id: TabId; label: string }[] = [
 
 function matchesTab(product: AddonProduct, tab: TabId) {
   if (tab === 'all') return true;
-  if (tab === 'startup') return product.category === 'welcome' || product.category === 'menu';
   return product.category === tab;
 }
 
@@ -42,10 +42,18 @@ function categoryBadge(category: AddonCategory) {
 }
 
 function parseTab(raw: string | null): TabId {
-  if (raw === 'startup' || raw === 'qr' || raw === 'lang' || raw === 'feature' || raw === 'all') {
+  if (
+    raw === 'welcome' ||
+    raw === 'menu' ||
+    raw === 'qr' ||
+    raw === 'lang' ||
+    raw === 'feature' ||
+    raw === 'all'
+  ) {
     return raw;
   }
-  if (raw === 'welcome' || raw === 'menu') return 'startup';
+  // Eski “Başlangıç” linkleri → Karşılama
+  if (raw === 'startup') return 'welcome';
   return 'all';
 }
 
@@ -231,6 +239,7 @@ export default function ExtensionsHubPage() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {list.map((product) => {
             const owned = Boolean(product.owned);
+            const free = Boolean(product.free);
             return (
               <Card
                 key={product.id}
@@ -246,7 +255,7 @@ export default function ExtensionsHubPage() {
                   {owned ? (
                     <div className="theme-preview__active">
                       <Check className="w-4 h-4" />
-                      Satın alındı
+                      {free ? 'Dahil' : 'Satın alındı'}
                     </div>
                   ) : (
                     <div className="theme-preview__lock">
@@ -261,17 +270,23 @@ export default function ExtensionsHubPage() {
                     {product.description}
                   </p>
                   <div className="mt-4 flex flex-col gap-2">
-                    <Button type="button" variant="secondary" className="w-full" disabled>
-                      <ShoppingBag className="w-4 h-4" />
-                      Satın Al
-                    </Button>
-                    {owned ? (
+                    {free ? (
                       ownedAction(product)
                     ) : (
-                      <Button type="button" className="w-full" onClick={() => setSelected(product)}>
-                        <KeyRound className="w-4 h-4" />
-                        Kod Gir
-                      </Button>
+                      <>
+                        <Button type="button" variant="secondary" className="w-full" disabled>
+                          <ShoppingBag className="w-4 h-4" />
+                          Satın Al
+                        </Button>
+                        {owned ? (
+                          ownedAction(product)
+                        ) : (
+                          <Button type="button" className="w-full" onClick={() => setSelected(product)}>
+                            <KeyRound className="w-4 h-4" />
+                            Kod Gir
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

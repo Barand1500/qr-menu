@@ -467,25 +467,26 @@ export default function ProductModal({
                 className="text-xs admin-text-muted rounded-xl px-3 py-2.5 leading-relaxed"
                 style={{ background: 'var(--admin-input-bg)' }}
               >
-                Burada seçtiğiniz pill’ler menü filtreleriyle birebir bağlanır. Alerjen metni
-                otomatik olarak TR / EN / RU / AR dillerinde üretilir — çeviri sekmesinde ayrıca
-                yazmanız gerekmez.
+                Burada seçtiğiniz pill’ler menü filtreleriyle birebir bağlanır. Yeni eklediğiniz
+                seçenekler Dil Ayarları’ndaki aktif dillere otomatik çevrilir — çeviri sekmesinde
+                ayrıca yazmanız gerekmez.
               </p>
 
               <ManageableTagPillGroup
                 title="Alerjenler"
-                hint="Üründe bulunan maddeleri seçin"
+                hint="Üründe bulunan maddeleri seçin — yeni eklerken Dil Ayarları dillerine otomatik çevrilir"
                 kind="allergen"
                 options={catalogToOptions(prefCatalog, 'allergen')}
                 selected={form.allergenTags}
                 onChange={(allergenTags) => onFormChange({ ...form, allergenTags })}
                 catalog={prefCatalog}
                 onCatalogChange={onPrefCatalogChange}
+                languageCodes={languages.map((l) => l.code)}
               />
 
               <ManageableTagPillGroup
                 title="Diyet / yaşam tarzı"
-                hint="Ürün bu tercihlere uygunsa işaretleyin"
+                hint="Ürün bu tercihlere uygunsa işaretleyin — yeni eklerken Dil Ayarları dillerine otomatik çevrilir"
                 kind="diet"
                 options={catalogToOptions(prefCatalog, 'diet')}
                 selected={dietIdsFromProduct(form, form.dietTags)}
@@ -502,6 +503,7 @@ export default function ProductModal({
                 }}
                 catalog={prefCatalog}
                 onCatalogChange={onPrefCatalogChange}
+                languageCodes={languages.map((l) => l.code)}
               />
             </div>
           )}

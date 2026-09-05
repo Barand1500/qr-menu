@@ -498,14 +498,21 @@ router.get('/:slug/groups/:groupId/products', async (req, res) => {
 
   const group = await prisma.group.findFirst({
     where: { id: groupId, restaurantId: restaurant.id, isActive: true },
+    include: {
+      children: {
+        where: { isActive: true },
+        orderBy: { sortOrder: 'asc' },
+      },
+    },
   });
   if (!group) return res.status(404).json({ message: 'Kategori bulunamadı' });
 
-  const products = await prisma.product.findMany({
+  const childIds = group.children.map((c) => c.id);
+  const allProducts = await prisma.product.findMany({
     where: {
-      groupId,
       restaurantId: restaurant.id,
       isActive: true,
+      groupId: { in: [groupId, ...childIds] },
       ...(campaign ? { id: { in: campaign.productIds } } : {}),
     },
     include: { currency: true },
@@ -514,36 +521,58 @@ router.get('/:slug/groups/:groupId/products', async (req, res) => {
 
   await trackView(restaurant.id, 'group', groupId, sessionId);
 
-  const mapped = products
-    .map((p) => {
-      const images = parseProductImages(p);
-      const priced = applyCampaignPrice(
-        p.id,
-        {
-          price: Number(p.price),
-          currency: mapCurrency(p.currency),
-        },
-        campaign,
-        mapCurrency
-      );
+  function mapProduct(p: (typeof allProducts)[number]) {
+    const images = parseProductImages(p);
+    const priced = applyCampaignPrice(
+      p.id,
+      {
+        price: Number(p.price),
+        currency: mapCurrency(p.currency),
+      },
+      campaign,
+      mapCurrency
+    );
+    return {
+      id: p.id,
+      name: getProductField(p.i18n, activeLang, 'name'),
+      description: getProductField(p.i18n, activeLang, 'description'),
+      price: priced.price,
+      currency: priced.currency,
+      imageUrl: images[0] ?? null,
+      calories: p.calories ?? null,
+      isRecommended: p.isRecommended,
+      allergens: getProductField(p.i18n, activeLang, 'allergens'),
+      allergenTags: parseAllergenTags(p.allergenTags),
+      isVegan: p.isVegan,
+      isVegetarian: p.isVegetarian,
+      isGlutenFree: p.isGlutenFree,
+      isDiabetic: p.isDiabetic,
+      groupId: p.groupId,
+      sortOrder: campaign?.itemByProductId.get(p.id)?.sortOrder ?? p.sortOrder,
+    };
+  }
+
+  const mappedAll = allProducts
+    .map(mapProduct)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const strip = <T extends { sortOrder: number }>(rows: T[]) =>
+    rows.map(({ sortOrder: _s, ...rest }) => rest);
+
+  const mapped = strip(mappedAll.filter((p) => p.groupId === groupId));
+
+  const children = group.children
+    .map((c) => {
+      const childProducts = strip(mappedAll.filter((p) => p.groupId === c.id));
+      if (childProducts.length === 0) return null;
       return {
-        id: p.id,
-        name: getProductField(p.i18n, activeLang, 'name'),
-        description: getProductField(p.i18n, activeLang, 'description'),
-        price: priced.price,
-        currency: priced.currency,
-        imageUrl: images[0] ?? null,
-        allergens: getProductField(p.i18n, activeLang, 'allergens'),
-        allergenTags: parseAllergenTags(p.allergenTags),
-        isVegan: p.isVegan,
-        isVegetarian: p.isVegetarian,
-        isGlutenFree: p.isGlutenFree,
-        isDiabetic: p.isDiabetic,
-        sortOrder: campaign?.itemByProductId.get(p.id)?.sortOrder ?? p.sortOrder,
+        id: c.id,
+        name: getGroupName(c.i18n, activeLang),
+        imageUrl: c.imageUrl,
+        products: childProducts,
       };
     })
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map(({ sortOrder: _s, ...rest }) => rest);
+    .filter(Boolean);
 
   res.json({
     group: {
@@ -553,13 +582,14 @@ router.get('/:slug/groups/:groupId/products', async (req, res) => {
     },
     campaign: campaignMeta(campaign),
     products: mapped,
+    children,
   });
 });
 
 router.get('/:slug/popular-products', async (req, res) => {
   const slug = req.params.slug;
   const lang = getLangCode(req);
-  const limit = Math.min(Math.max(Number(req.query.limit) || 5, 1), 10);
+  const limit = Math.min(Math.max(Number(req.query.limit) || 8, 1), 20);
   const campaignSlug = getCampaignSlug(req.query);
 
   const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
@@ -579,89 +609,46 @@ router.get('/:slug/popular-products', async (req, res) => {
 
   const campaignFilter = campaign ? { id: { in: campaign.productIds } } : {};
 
-  const viewCounts = await prisma.viewEvent.groupBy({
-    by: ['entityId'],
+  /** Sadece admin “Önerilen ürün” işaretli ürünler — görüntüleme/rastgele yok */
+  const products = await prisma.product.findMany({
     where: {
       restaurantId: restaurant.id,
-      entityType: 'product',
-      ...(campaign ? { entityId: { in: campaign.productIds } } : {}),
+      isActive: true,
+      isRecommended: true,
+      ...campaignFilter,
     },
-    _count: { entityId: true },
-    orderBy: { _count: { entityId: 'desc' } },
+    include: { group: true, currency: true },
+    orderBy: { sortOrder: 'asc' },
     take: limit,
   });
 
-  const orderedIds: number[] = viewCounts.map((e) => e.entityId);
-
-  if (orderedIds.length < limit) {
-    const recommended = await prisma.product.findMany({
-      where: {
-        restaurantId: restaurant.id,
-        isActive: true,
-        isRecommended: true,
-        id: { notIn: orderedIds },
-        ...campaignFilter,
+  const items = products.map((p) => {
+    const priced = applyCampaignPrice(
+      p.id,
+      {
+        price: Number(p.price),
+        currency: mapCurrency(p.currency),
       },
-      orderBy: { sortOrder: 'asc' },
-      take: limit - orderedIds.length,
-      select: { id: true },
-    });
-    orderedIds.push(...recommended.map((p) => p.id));
-  }
-
-  if (orderedIds.length < limit) {
-    const fallback = await prisma.product.findMany({
-      where: {
-        restaurantId: restaurant.id,
-        isActive: true,
-        id: { notIn: orderedIds },
-        ...campaignFilter,
-      },
-      orderBy: { sortOrder: 'asc' },
-      take: limit - orderedIds.length,
-      select: { id: true },
-    });
-    orderedIds.push(...fallback.map((p) => p.id));
-  }
-
-  if (orderedIds.length === 0) {
-    return res.json([]);
-  }
-
-  const products = await prisma.product.findMany({
-    where: { id: { in: orderedIds }, isActive: true },
-    include: { group: true, currency: true },
+      campaign,
+      mapCurrency
+    );
+    return {
+      id: p.id,
+      name: getProductField(p.i18n, activeLang, 'name'),
+      price: priced.price,
+      currency: priced.currency,
+      imageUrl: parseProductImages(p)[0] ?? null,
+      calories: p.calories ?? null,
+      allergens: getProductField(p.i18n, activeLang, 'allergens'),
+      allergenTags: parseAllergenTags(p.allergenTags),
+      isVegan: p.isVegan,
+      isVegetarian: p.isVegetarian,
+      isGlutenFree: p.isGlutenFree,
+      isDiabetic: p.isDiabetic,
+      groupId: p.groupId,
+      groupName: getGroupName(p.group.i18n, activeLang),
+    };
   });
-
-  const items = orderedIds
-    .map((id) => products.find((p) => p.id === id))
-    .filter(Boolean)
-    .map((p) => {
-      const priced = applyCampaignPrice(
-        p!.id,
-        {
-          price: Number(p!.price),
-          currency: mapCurrency(p!.currency),
-        },
-        campaign,
-        mapCurrency
-      );
-      return {
-        id: p!.id,
-        name: getProductField(p!.i18n, activeLang, 'name'),
-        price: priced.price,
-        currency: priced.currency,
-        imageUrl: parseProductImages(p!)[0] ?? null,
-        allergens: getProductField(p!.i18n, activeLang, 'allergens'),
-        allergenTags: parseAllergenTags(p!.allergenTags),
-        isVegan: p!.isVegan,
-        isVegetarian: p!.isVegetarian,
-        isGlutenFree: p!.isGlutenFree,
-        isDiabetic: p!.isDiabetic,
-        groupId: p!.groupId,
-        groupName: getGroupName(p!.group.i18n, activeLang),
-      };
-    });
 
   res.json(items);
 });
@@ -809,10 +796,22 @@ router.post('/:slug/suggestions', async (req, res) => {
 
 router.post('/:slug/table-request', async (req, res) => {
   const slug = req.params.slug;
-  const { type, tableNumber, groupSlug } = req.body as {
+  const { type, tableNumber, groupSlug, note, order } = req.body as {
     type?: string;
     tableNumber?: string;
     groupSlug?: string;
+    note?: string;
+    order?: {
+      items?: {
+        name?: string;
+        qty?: number;
+        price?: number;
+        calories?: number | null;
+      }[];
+      totalPrice?: number;
+      totalCalories?: number | null;
+      currency?: { code?: string; symbol?: string } | null;
+    };
   };
 
   const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
@@ -837,6 +836,33 @@ router.post('/:slug/table-request', async (req, res) => {
 
   const grup = groupSlug ? String(groupSlug).trim().slice(0, 100) : null;
 
+  const noteText = typeof note === 'string' ? note.trim().slice(0, 500) : '';
+  let orderJson: string | null = null;
+  if (order && Array.isArray(order.items) && order.items.length > 0) {
+    const items = order.items
+      .slice(0, 40)
+      .map((i) => ({
+        name: String(i.name || '').trim().slice(0, 120),
+        qty: Math.min(99, Math.max(1, Number(i.qty) || 1)),
+        price: Number(i.price) || 0,
+        calories:
+          i.calories != null && Number(i.calories) > 0 ? Number(i.calories) : null,
+      }))
+      .filter((i) => i.name);
+    if (items.length > 0) {
+      orderJson = JSON.stringify({
+        items,
+        totalPrice: Number(order.totalPrice) || items.reduce((s, i) => s + i.price * i.qty, 0),
+        totalCalories:
+          order.totalCalories != null && Number(order.totalCalories) > 0
+            ? Number(order.totalCalories)
+            : null,
+        currency: order.currency ?? null,
+        note: noteText || null,
+      });
+    }
+  }
+
   const recent = await prisma.tableServiceRequest.findFirst({
     where: {
       restaurantId: restaurant.id,
@@ -856,6 +882,8 @@ router.post('/:slug/table-request', async (req, res) => {
       type: requestType,
       tableNumber: masa,
       groupSlug: grup,
+      note: noteText || null,
+      orderJson,
     },
   });
 
@@ -865,6 +893,8 @@ router.post('/:slug/table-request', async (req, res) => {
     type: row.type,
     tableNumber: row.tableNumber,
     groupSlug: row.groupSlug,
+    note: row.note,
+    orderJson: row.orderJson,
     createdAt: row.createdAt.toISOString(),
   });
 });

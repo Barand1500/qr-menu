@@ -9,7 +9,6 @@ import MobileStoriesStrip, { type MenuStory } from '@/components/public/MobileSt
 import PopularSearchProducts, {
   type PopularProduct,
 } from '@/components/public/PopularSearchProducts';
-import { BrushCaption, BrushCaptionBlock } from '@/components/public/BrushCaption';
 import { useDemoData } from '@/contexts/DemoDataContext';
 import {
   DEMO_MENU_BANNERS,
@@ -17,6 +16,7 @@ import {
   mapDemoStoriesToGroups,
 } from '@/lib/demoData';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
+import { useMenuColorMode } from '@/hooks/useMenuColorMode';
 import { usePublicRtl } from '@/hooks/usePublicRtl';
 import {
   enteredKey,
@@ -31,7 +31,21 @@ import MenuAssistantModal from '@/components/public/MenuAssistantModal';
 import MenuMascot from '@/components/public/MenuMascot';
 import TableServiceButtons from '@/components/public/TableServiceButtons';
 import { parseMenuAssistantStyle } from '@/lib/menuAssistantStyle';
+import { sideMenuUi } from '@/lib/menuChromeUi';
 import type { PublicSocialLink } from '@/lib/socialCatalog';
+import SadeHome from '@/components/public/sade/SadeHome';
+import SadeProductList from '@/components/public/sade/SadeProductList';
+import AliveHome from '@/components/public/alive/AliveHome';
+import AliveProductList from '@/components/public/alive/AliveProductList';
+import AnimasyonHome from '@/components/public/animasyon/AnimasyonHome';
+import LuxuryProductList from '@/components/public/luxury/LuxuryProductList';
+import SiparisHome from '@/components/public/siparis/SiparisHome';
+import SiparisProductList from '@/components/public/siparis/SiparisProductList';
+import SiparisCartButton from '@/components/public/siparis/SiparisCartButton';
+import SiparisCartSheet from '@/components/public/siparis/SiparisCartSheet';
+import AnimasyonCartSheet from '@/components/public/animasyon/AnimasyonCartSheet';
+import SiparisMobileNav from '@/components/public/siparis/SiparisMobileNav';
+import { SiparisCartProvider } from '@/hooks/useSiparisCart';
 import {
   loadDietaryPrefs,
   preferenceUi,
@@ -55,7 +69,13 @@ interface MenuData {
   languages: { code: string; name: string }[];
   showcase?: ShowcaseItem[];
   stories?: MenuStory[];
-  groups: { id: number; name: string; imageUrl?: string | null; productCount?: number }[];
+  groups: {
+    id: number;
+    name: string;
+    imageUrl?: string | null;
+    productCount?: number;
+    children?: { id: number; name: string; imageUrl?: string | null }[];
+  }[];
   theme?: string;
   campaign?: { name: string; slug: string; itemCount: number } | null;
   socialLinks?: PublicSocialLink[];
@@ -75,12 +95,20 @@ interface ProductData {
     price: number;
     currency?: { code?: string; symbol?: string } | null;
     imageUrl?: string | null;
+    calories?: number | null;
+    isRecommended?: boolean;
     allergens?: string | null;
     allergenTags?: string[];
     isVegan?: boolean;
     isVegetarian?: boolean;
     isGlutenFree?: boolean;
     isDiabetic?: boolean;
+  }[];
+  children?: {
+    id: number;
+    name: string;
+    imageUrl?: string | null;
+    products: ProductData['products'];
   }[];
 }
 
@@ -121,6 +149,8 @@ export default function PublicMenuPage() {
   const [menuError, setMenuError] = useState<string | null>(null);
   const [menuLoading, setMenuLoading] = useState(true);
   const sessionId = getSessionId();
+  const menuThemeForMode = menu?.theme || 'sade';
+  const { colorMode, toggleColorMode } = useMenuColorMode(menuThemeForMode);
 
   usePublicRtl(lang);
 
@@ -206,7 +236,7 @@ export default function PublicMenuPage() {
       setPopularProducts(DEMO_POPULAR_PRODUCTS);
       return;
     }
-    const params = new URLSearchParams({ lang, limit: '5' });
+    const params = new URLSearchParams({ lang, limit: '8' });
     if (campaignSlug) params.set('kampanya', campaignSlug);
     api<PopularProduct[]>(`/api/menu/${slug}/popular-products?${params}`).then(
       setPopularProducts
@@ -216,6 +246,7 @@ export default function PublicMenuPage() {
   function changeLang(code: string) {
     setLang(code);
     localStorage.setItem('menu_lang', code);
+    if (code !== 'tr') setAssistantOpen(false);
   }
 
   function changeDietaryPrefs(prefs: DietaryPrefs) {
@@ -286,7 +317,16 @@ export default function PublicMenuPage() {
   const filteredSearchResults = searchResults.filter((r) => productMatchesPrefs(r, dietaryPrefs));
   const filteredGroupProducts =
     products?.products.filter((p) => productMatchesPrefs(p, dietaryPrefs)) ?? [];
+  const filteredGroupChildren =
+    products?.children
+      ?.map((c) => ({
+        ...c,
+        products: c.products.filter((p) => productMatchesPrefs(p, dietaryPrefs)),
+      }))
+      .filter((c) => c.products.length > 0) ?? [];
   const allergyActive = prefsActive(dietaryPrefs);
+  const hasGroupContent =
+    filteredGroupProducts.length > 0 || filteredGroupChildren.length > 0;
 
   const allergyBanner = allergyActive ? (
     <div className="public-allergy-banner" role="status">
@@ -376,6 +416,9 @@ export default function PublicMenuPage() {
   const menuTheme = menu.theme || 'sade';
   const isAlive = menuTheme === 'alive';
   const isLuxury = menuTheme === 'luxury';
+  const isSiparis = menuTheme === 'siparis';
+  const isAnimasyon = menuTheme === 'animasyon';
+  const cartTheme = isSiparis || isAnimasyon;
   const menuAssistantOn = Boolean(menu.features?.menuAssistant);
   const assistantStyle = parseMenuAssistantStyle(menu.features?.menuAssistantStyle);
   const tableServiceOn = menu.features?.tableService !== false;
@@ -403,7 +446,7 @@ export default function PublicMenuPage() {
     />
   );
 
-  const assistantUi = menuAssistantOn && slug ? (
+  const assistantUi = menuAssistantOn && slug && lang === 'tr' ? (
     <>
       {!searchOpen && (
         <button
@@ -438,7 +481,8 @@ export default function PublicMenuPage() {
   /* ── Ürün listesi ── */
   if (groupId && products) {
     return (
-      <div className="public-menu-page" data-theme-menu={menuTheme}>
+      <SiparisCartProvider slug={slug} enabled={cartTheme}>
+      <div className="public-menu-page" data-theme-menu={menuTheme} data-color-mode={colorMode}>
         <PublicMenuHeader
           restaurant={menu.restaurant}
           title={products.group.name}
@@ -447,6 +491,10 @@ export default function PublicMenuPage() {
           onMenuOpen={() => setSideMenuOpen(true)}
           searchOpen={searchOpen}
           onSearchToggle={toggleSearch}
+          showMobileSearch={isSiparis || isAnimasyon}
+          extraIcons={cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon} /> : null}
+          colorMode={isAnimasyon ? undefined : colorMode}
+          onColorModeToggle={isAnimasyon ? undefined : toggleColorMode}
           searchSlot={
             <>
               {searchField}
@@ -457,112 +505,87 @@ export default function PublicMenuPage() {
 
         <main className="public-menu-main">
           {allergyBanner}
-          {filteredGroupProducts.length === 0 ? (
+          {!hasGroupContent ? (
             <p className="public-allergy-empty">
               {allergyActive ? allergyCopy.empty : 'Bu grupta ürün yok'}
             </p>
           ) : isAlive ? (
-            <div className="alive-product-grid">
-              {filteredGroupProducts.map((p) => (
-                <Link
-                  key={p.id}
-                  to={menuProductPath(p.id)}
-                  className="alive-product-tile"
-                >
-                  <div className="alive-product-tile__media">
-                    {p.imageUrl ? (
-                      <img src={imageUrl(p.imageUrl)} alt="" />
-                    ) : (
-                      <MenuMediaPlaceholder kind="product" size="lg" label={p.name} />
-                    )}
-                    <span className="alive-product-tile__price">
-                      {formatMoney(p.price, p.currency)}
-                    </span>
-                  </div>
-                  <div className="alive-product-tile__body">
-                    <h3>{p.name}</h3>
-                    {p.description ? <p>{p.description}</p> : null}
-                  </div>
-                </Link>
-              ))}
-            </div>
+            <AliveProductList
+              products={filteredGroupProducts}
+              subgroups={filteredGroupChildren}
+              groupName={products.group.name}
+              groupId={products.group.id}
+              navGroups={menu.groups.map((g) => ({ id: g.id, name: g.name }))}
+            />
           ) : isLuxury ? (
-            <div className="luxury-product-list">
-              <header className="luxury-product-list__head">
-                <p className="luxury-eyebrow">Menü</p>
-                <h1>{products.group.name}</h1>
-                <span className="luxury-rule" aria-hidden />
-              </header>
-              {filteredGroupProducts.map((p) => (
-                <Link
-                  key={p.id}
-                  to={menuProductPath(p.id)}
-                  className="luxury-product-row"
-                >
-                  <div className="luxury-product-row__media">
-                    {p.imageUrl ? (
-                      <img src={imageUrl(p.imageUrl)} alt="" />
-                    ) : (
-                      <MenuMediaPlaceholder kind="product" size="lg" label={p.name} />
-                    )}
-                  </div>
-                  <div className="luxury-product-row__body">
-                    <h3>{p.name}</h3>
-                    {p.description ? <p>{p.description}</p> : null}
-                    <span className="luxury-product-row__price">
-                      {formatMoney(p.price, p.currency)}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
+            <LuxuryProductList
+              products={filteredGroupProducts}
+              subgroups={filteredGroupChildren}
+              groupName={products.group.name}
+            />
+          ) : isSiparis ? (
+            <SiparisProductList
+              products={filteredGroupProducts}
+              groupName={products.group.name}
+            />
+          ) : isAnimasyon ? (
+            <AnimasyonHome
+              menu={menu}
+              popularProducts={filteredPopular}
+              allergyBanner={null}
+              lang={lang}
+              campaignSlug={campaignSlug}
+              initialGroupId={products.group.id}
+            />
           ) : (
-            <div className="public-product-list">
-              {filteredGroupProducts.map((p) => (
-                <Link
-                  key={p.id}
-                  to={menuProductPath(p.id)}
-                  className="public-product-card public-product-card--link"
-                >
-                  {p.imageUrl ? (
-                    <img
-                      src={imageUrl(p.imageUrl)}
-                      alt=""
-                      className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover shrink-0"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl shrink-0 overflow-hidden">
-                      <MenuMediaPlaceholder kind="product" size="md" label={p.name} />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-slate-900 text-base">{p.name}</h3>
-                    {p.description && (
-                      <p className="text-sm text-slate-500 mt-1 line-clamp-2">{p.description}</p>
-                    )}
-                    <p className="text-sky-600 font-bold mt-2 text-lg">
-                      {formatMoney(p.price, p.currency)}
-                    </p>
-                  </div>
-                </Link>
-              ))}
-            </div>
+            <SadeProductList
+              products={filteredGroupProducts}
+              subgroups={filteredGroupChildren}
+              groupName={products.group.name}
+            />
           )}
         </main>
 
-        <PublicMobileNav
-          tab="home"
-          onTab={(t) => {
-            setTab(t);
-            if (t === 'home') navigate(menuHomePath());
-          }}
-          onSearchOpen={toggleSearch}
-          onMenuOpen={() => setSideMenuOpen(true)}
-        />
+        {isAnimasyon ? (
+          <PublicMobileNav
+            tab="home"
+            onTab={(t) => {
+              setTab(t);
+              if (t === 'home') navigate(menuHomePath());
+            }}
+            onSearchOpen={toggleSearch}
+            onMenuOpen={() => setSideMenuOpen(true)}
+          />
+        ) : isSiparis ? (
+          <SiparisMobileNav
+            tab="home"
+            onTab={(t) => {
+              setTab(t);
+              if (t === 'home') navigate(menuHomePath());
+            }}
+            onSearchOpen={toggleSearch}
+            onMenuOpen={() => setSideMenuOpen(true)}
+          />
+        ) : (
+          <PublicMobileNav
+            tab="home"
+            onTab={(t) => {
+              setTab(t);
+              if (t === 'home') navigate(menuHomePath());
+            }}
+            onSearchOpen={toggleSearch}
+            onMenuOpen={() => setSideMenuOpen(true)}
+          />
+        )}
 
         {sideMenu}
         {assistantUi}
         {tableServiceUi}
+        {isAnimasyon ? (
+          <AnimasyonCartSheet lang={lang} />
+        ) : cartTheme ? (
+          <SiparisCartSheet lang={lang} />
+        ) : null}
 
         {searchOpen && (
           <SearchOverlay
@@ -573,17 +596,23 @@ export default function PublicMenuPage() {
           />
         )}
       </div>
+      </SiparisCartProvider>
     );
   }
 
   /* ── Ana menü ── */
   return (
-    <div className="public-menu-page" data-theme-menu={menuTheme}>
+    <SiparisCartProvider slug={slug} enabled={cartTheme}>
+    <div className="public-menu-page" data-theme-menu={menuTheme} data-color-mode={colorMode}>
       <PublicMenuHeader
         restaurant={menu.restaurant}
         onMenuOpen={() => setSideMenuOpen(true)}
         searchOpen={searchOpen}
         onSearchToggle={toggleSearch}
+        showMobileSearch={isSiparis || isAnimasyon}
+        extraIcons={cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon} /> : null}
+        colorMode={isAnimasyon ? undefined : colorMode}
+        onColorModeToggle={isAnimasyon ? undefined : toggleColorMode}
         searchSlot={
           <>
             {searchField}
@@ -593,27 +622,27 @@ export default function PublicMenuPage() {
       />
 
       <main className="public-menu-main">
-        <div className="public-tablet-tabs">
+        <div className={`public-tablet-tabs${cartTheme ? ' public-tablet-tabs--always' : ''}`}>
           <button
             type="button"
             className={tab === 'home' ? 'is-active' : ''}
             onClick={() => setTab('home')}
           >
-            Kategoriler
+            {sideMenuUi(lang).home}
           </button>
           <button
             type="button"
             className={tab === 'about' ? 'is-active' : ''}
             onClick={() => setTab('about')}
           >
-            Hakkımızda
+            {sideMenuUi(lang).about}
           </button>
           <button
             type="button"
             className={tab === 'settings' ? 'is-active' : ''}
             onClick={() => setTab('settings')}
           >
-            Dil
+            {sideMenuUi(lang).lang}
           </button>
         </div>
 
@@ -634,101 +663,31 @@ export default function PublicMenuPage() {
               popularProducts={filteredPopular}
               allergyBanner={allergyBanner}
             />
+          ) : isSiparis ? (
+            <SiparisHome
+              menu={menu}
+              displayShowcase={displayShowcase}
+              popularProducts={filteredPopular}
+              allergyBanner={allergyBanner}
+              lang={lang}
+              campaignSlug={campaignSlug}
+            />
+          ) : isAnimasyon ? (
+            <AnimasyonHome
+              menu={menu}
+              popularProducts={filteredPopular}
+              allergyBanner={allergyBanner}
+              lang={lang}
+              campaignSlug={campaignSlug}
+            />
           ) : (
-            <div className="public-menu-home">
-              <div className="public-menu-home__orbs" aria-hidden>
-                <span className="public-menu-home__orb public-menu-home__orb--1" />
-                <span className="public-menu-home__orb public-menu-home__orb--2" />
-                <span className="public-menu-home__orb public-menu-home__orb--3" />
-              </div>
-
-              {allergyBanner}
-
-              {displayShowcase?.[0]?.imageUrl && (
-                <div className="public-showcase public-menu-reveal public-menu-reveal--1">
-                  <img
-                    src={imageUrl(displayShowcase[0].imageUrl)}
-                    alt={displayShowcase[0].title1 || ''}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="public-showcase__fade" aria-hidden />
-                  {(displayShowcase[0].title1 || displayShowcase[0].title2) && (
-                    <div className="public-showcase__caption">
-                      <BrushCaptionBlock>
-                        {displayShowcase[0].title1 && (
-                          <BrushCaption size="lg">{displayShowcase[0].title1}</BrushCaption>
-                        )}
-                        {displayShowcase[0].title2 && (
-                          <BrushCaption size="sm" tone="warm">
-                            {displayShowcase[0].title2}
-                          </BrushCaption>
-                        )}
-                      </BrushCaptionBlock>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {menu.campaign && (
-                <div className="mx-4 mb-3 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 public-menu-reveal public-menu-reveal--2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-800/80">
-                    Kampanya menüsü
-                  </p>
-                  <p className="text-sm font-semibold text-amber-950 mt-0.5">
-                    {menu.campaign.name}
-                  </p>
-                </div>
-              )}
-
-              {menu.welcomeMessage && (
-                <p className="public-welcome public-menu-reveal public-menu-reveal--2">
-                  {menu.welcomeMessage}
-                </p>
-              )}
-
-              <div className="public-menu-divider public-menu-reveal public-menu-reveal--2" aria-hidden>
-                <span />
-              </div>
-
-              {displayStories && displayStories.length > 0 && (
-                <div className="public-menu-reveal public-menu-reveal--3">
-                  <MobileStoriesStrip stories={displayStories} />
-                </div>
-              )}
-
-              {filteredPopular.length > 0 && (
-                <section className="public-home-popular md:hidden public-menu-reveal public-menu-reveal--3">
-                  <PopularSearchProducts products={filteredPopular} />
-                </section>
-              )}
-
-              <div className="public-section-head public-menu-reveal public-menu-reveal--4">
-                <h2 className="public-section-title">Kategoriler</h2>
-                <span className="public-section-accent" aria-hidden />
-              </div>
-
-              <div className="public-group-grid">
-                {menu.groups.map((group, index) => (
-                  <GroupCard
-                    key={group.id}
-                    group={group}
-                    reveal={Math.min(index + 5, 9)}
-                  />
-                ))}
-              </div>
-
-              {filteredPopular.length > 0 && (
-                <section className="public-home-popular hidden md:block mt-4 public-menu-reveal public-menu-reveal--8">
-                  <PopularSearchProducts products={filteredPopular} />
-                </section>
-              )}
-
-              {menu.socialLinks && menu.socialLinks.length > 0 && (
-                <div className="flex justify-center mt-6 pb-2 public-menu-reveal public-menu-reveal--9">
-                  <PublicSocialLinks links={menu.socialLinks} />
-                </div>
-              )}
-            </div>
+            <SadeHome
+              menu={menu}
+              displayShowcase={displayShowcase}
+              displayStories={displayStories}
+              popularProducts={filteredPopular}
+              allergyBanner={allergyBanner}
+            />
           ))}
 
         {tab === 'about' && (
@@ -745,7 +704,7 @@ export default function PublicMenuPage() {
 
         {tab === 'settings' && (
           <div className="public-content-card max-w-md mx-auto md:max-w-lg">
-            <h2 className="public-content-card__title">Dil Seçimi</h2>
+            <h2 className="public-content-card__title">{sideMenuUi(lang).lang}</h2>
             <div className="public-lang-list">
               {menu.languages.map((l) => (
                 <button
@@ -762,16 +721,37 @@ export default function PublicMenuPage() {
         )}
       </main>
 
-      <PublicMobileNav
-        tab={tab}
-        onTab={setTab}
-        onSearchOpen={toggleSearch}
-        onMenuOpen={() => setSideMenuOpen(true)}
-      />
+        {isAnimasyon ? (
+          <PublicMobileNav
+            tab={tab}
+            onTab={setTab}
+            onSearchOpen={toggleSearch}
+            onMenuOpen={() => setSideMenuOpen(true)}
+          />
+        ) : isSiparis ? (
+          <SiparisMobileNav
+            tab={tab}
+            onTab={setTab}
+            onSearchOpen={toggleSearch}
+            onMenuOpen={() => setSideMenuOpen(true)}
+          />
+        ) : (
+          <PublicMobileNav
+            tab={tab}
+            onTab={setTab}
+            onSearchOpen={toggleSearch}
+            onMenuOpen={() => setSideMenuOpen(true)}
+          />
+        )}
 
       {sideMenu}
       {assistantUi}
       {tableServiceUi}
+      {isAnimasyon ? (
+        <AnimasyonCartSheet lang={lang} />
+      ) : cartTheme ? (
+        <SiparisCartSheet lang={lang} />
+      ) : null}
 
       {searchOpen && (
         <SearchOverlay
@@ -782,150 +762,7 @@ export default function PublicMenuPage() {
         />
       )}
     </div>
-  );
-}
-
-function AliveHome({
-  menu,
-  displayShowcase,
-  displayStories,
-  popularProducts,
-  allergyBanner,
-}: {
-  menu: MenuData;
-  displayShowcase?: ShowcaseItem[] | null;
-  displayStories?: MenuStory[] | null;
-  popularProducts: PopularProduct[];
-  allergyBanner?: ReactNode;
-}) {
-  const featured = menu.groups[0];
-  const rest = menu.groups.slice(1);
-
-  return (
-    <div className="alive-home">
-      {allergyBanner}
-
-      {displayShowcase?.[0]?.imageUrl && (
-        <section className="alive-hero">
-          <img
-            src={imageUrl(displayShowcase[0].imageUrl)}
-            alt={displayShowcase[0].title1 || ''}
-          />
-          <div className="alive-hero__veil" aria-hidden />
-          <div className="alive-hero__copy">
-            {menu.campaign ? (
-              <span className="alive-hero__badge">{menu.campaign.name}</span>
-            ) : (
-              <span className="alive-hero__badge">Menü</span>
-            )}
-            <h1>{displayShowcase[0].title1 || menu.restaurant.name}</h1>
-            {(displayShowcase[0].title2 || menu.welcomeMessage) && (
-              <p>{displayShowcase[0].title2 || menu.welcomeMessage}</p>
-            )}
-          </div>
-        </section>
-      )}
-
-      {!displayShowcase?.[0]?.imageUrl && menu.welcomeMessage && (
-        <p className="alive-welcome">{menu.welcomeMessage}</p>
-      )}
-
-      {popularProducts.length > 0 && (
-        <section className="alive-rail">
-          <div className="alive-rail__head">
-            <h2>Öne çıkanlar</h2>
-            <span>Kaydır</span>
-          </div>
-          <div className="alive-rail__track">
-            {popularProducts.map((p) => (
-              <Link
-                key={p.id}
-                to={menuProductPath(p.id)}
-                className="alive-rail__card"
-              >
-                {p.imageUrl ? (
-                  <img src={imageUrl(p.imageUrl)} alt="" />
-                ) : (
-                  <MenuMediaPlaceholder kind="product" size="md" label={p.name} className="alive-rail__ph" />
-                )}
-                <div className="alive-rail__meta">
-                  <strong>{p.name}</strong>
-                  <span>{formatMoney(p.price, p.currency)}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {displayStories && displayStories.length > 0 && (
-        <div className="alive-stories">
-          <MobileStoriesStrip stories={displayStories} />
-        </div>
-      )}
-
-      <section className="alive-categories">
-        <div className="alive-categories__head">
-          <h2>Kategoriler</h2>
-          <p>{menu.groups.length} bölüm</p>
-        </div>
-
-        {featured && (
-          <Link to={menuGroupPath(featured.id)} className="alive-category-feature">
-            {featured.imageUrl ? (
-              <img src={imageUrl(featured.imageUrl)} alt={featured.name} />
-            ) : (
-              <MenuMediaPlaceholder
-                kind="group"
-                size="hero"
-                label={featured.name}
-                className="alive-category-feature__ph"
-              />
-            )}
-            <div className="alive-category-feature__copy">
-              <span>Öne çıkan</span>
-              <h3>{featured.name}</h3>
-              {typeof featured.productCount === 'number' && featured.productCount > 0 && (
-                <p>{featured.productCount} ürün</p>
-              )}
-            </div>
-          </Link>
-        )}
-
-        <div className="alive-category-stack">
-          {rest.map((group) => (
-            <Link
-              key={group.id}
-              to={menuGroupPath(group.id)}
-              className="alive-category-row"
-            >
-              <div className="alive-category-row__media">
-                {group.imageUrl ? (
-                  <img src={imageUrl(group.imageUrl)} alt="" />
-                ) : (
-                  <MenuMediaPlaceholder kind="group" size="sm" label={group.name} />
-                )}
-              </div>
-              <div className="alive-category-row__body">
-                <h3>{group.name}</h3>
-                {typeof group.productCount === 'number' && group.productCount > 0 && (
-                  <p>{group.productCount} ürün</p>
-                )}
-              </div>
-              <span className="alive-category-row__go" aria-hidden>
-                →
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {menu.socialLinks && menu.socialLinks.length > 0 && (
-        <div className="alive-social">
-          <PublicSocialLinks links={menu.socialLinks} />
-        </div>
-      )}
-    </div>
+    </SiparisCartProvider>
   );
 }
 
@@ -972,7 +809,7 @@ function LuxuryHome({
         <section className="luxury-signature">
           <div className="luxury-signature__head">
             <p className="luxury-eyebrow">İmza seçimler</p>
-            <h2>Öne çıkanlar</h2>
+            <h2>Önerilenler</h2>
             <span className="luxury-rule" aria-hidden />
           </div>
           <div className="luxury-signature__track">
@@ -1051,47 +888,6 @@ function LuxuryHome({
         </div>
       )}
     </div>
-  );
-}
-
-function GroupCard({
-  group,
-  reveal,
-}: {
-  group: { id: number; name: string; imageUrl?: string | null; productCount?: number };
-  reveal: number;
-}) {
-  const [broken, setBroken] = useState(false);
-  const showImage = Boolean(group.imageUrl) && !broken;
-
-  return (
-    <Link
-      to={menuGroupPath(group.id)}
-      className={`public-group-card public-menu-reveal public-menu-reveal--${reveal}`}
-    >
-      {showImage ? (
-        <img
-          src={imageUrl(group.imageUrl)}
-          alt={group.name}
-          className="public-group-card__img"
-          onError={() => setBroken(true)}
-        />
-      ) : (
-        <MenuMediaPlaceholder
-          kind="group"
-          size="lg"
-          label={group.name}
-          className="public-group-card__placeholder"
-        />
-      )}
-      <div className="public-group-card__shade" aria-hidden />
-      <div className="public-group-card__caption">
-        <BrushCaption size="sm">{group.name}</BrushCaption>
-        {typeof group.productCount === 'number' && group.productCount > 0 && (
-          <span className="public-group-card__count">{group.productCount} ürün</span>
-        )}
-      </div>
-    </Link>
   );
 }
 

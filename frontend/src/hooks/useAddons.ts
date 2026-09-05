@@ -29,10 +29,11 @@ export function useAddons() {
     setProducts(
       ADDON_CATALOG.map((p) => {
         const fromApi = res.products.find((x) => x.id === p.id);
-        const isOwned = ownedIds.includes(p.id);
+        const isOwned = Boolean(p.free) || Boolean(fromApi?.free) || ownedIds.includes(p.id);
         return {
           ...p,
           ...fromApi,
+          free: Boolean(p.free || fromApi?.free),
           owned: isOwned,
           enabled: isOwned && !disabledIds.includes(p.id),
           toggleable: fromApi?.toggleable ?? p.toggleable,
@@ -51,16 +52,26 @@ export function useAddons() {
       .catch(() => {
         setOwned([]);
         setDisabled([]);
-        setProducts(ADDON_CATALOG.map((p) => ({ ...p, owned: false, enabled: false })));
+        setProducts(
+          ADDON_CATALOG.map((p) => ({
+            ...p,
+            owned: Boolean(p.free),
+            enabled: Boolean(p.free),
+          }))
+        );
       })
       .finally(() => setLoading(false));
   }, [reload]);
 
   function isOwned(id: string) {
+    const product = ADDON_CATALOG.find((p) => p.id === id);
+    if (product?.free) return true;
     return owned.includes(id);
   }
 
   function isEnabled(id: string) {
+    const product = ADDON_CATALOG.find((p) => p.id === id);
+    if (product?.free) return !disabled.includes(id);
     return owned.includes(id) && !disabled.includes(id);
   }
 
@@ -75,11 +86,14 @@ export function useAddons() {
     setOwned(res.owned);
     setDisabled(res.disabled || []);
     setProducts((prev) =>
-      prev.map((p) => ({
-        ...p,
-        owned: res.owned.includes(p.id),
-        enabled: res.owned.includes(p.id) && !(res.disabled || []).includes(p.id),
-      }))
+      prev.map((p) => {
+        const isOwned = Boolean(p.free) || res.owned.includes(p.id);
+        return {
+          ...p,
+          owned: isOwned,
+          enabled: isOwned && !(res.disabled || []).includes(p.id),
+        };
+      })
     );
     return res;
   }

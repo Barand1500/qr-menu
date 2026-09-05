@@ -1,0 +1,15 @@
+﻿MENU QR — SUNUCUYA YÜKLEME PAKETİ
+=====================================
+Tarih: 2026-09-01
+Domain: https://menu.guzelteknoloji.com
+Port: 3008
+
+ADIM 1 — ZIP'i site klasörüne çıkart (deploy ara klasörü OLMASIN)
+ADIM 2 — .env ve uploads/ DOKUNMA; public/, dist/, prisma/ tamamen değiştir
+ADIM 3 — SSH:
+  cd ~/htdocs/menu.guzelteknoloji.com
+  npm install --omit=dev
+  npm run setup
+ADIM 4 — CloudPanel Node.js Restart
+
+Detay: SUNUCU-KOMUTLAR.txt

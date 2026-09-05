@@ -10,6 +10,7 @@ export interface PopularProduct {
   price: number;
   currency?: { code?: string; symbol?: string } | null;
   imageUrl?: string | null;
+  calories?: number | null;
   groupId: number;
   groupName: string;
   allergens?: string | null;
@@ -31,7 +32,7 @@ export default function PopularSearchProducts({
   products,
   onNavigate,
   compact,
-  title = 'Popüler ürünler',
+  title = 'Önerilen ürünler',
 }: PopularSearchProductsProps) {
   if (products.length === 0) return null;
 

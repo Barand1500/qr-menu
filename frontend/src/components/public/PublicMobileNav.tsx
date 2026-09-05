@@ -1,4 +1,4 @@
-import { Home, Search, Menu } from 'lucide-react';
+import { Home, Search, Menu, ShoppingBag } from 'lucide-react';
 
 export type PublicTab = 'home' | 'about' | 'settings';
 
@@ -7,6 +7,10 @@ interface PublicMobileNavProps {
   onTab: (tab: PublicTab) => void;
   onSearchOpen: () => void;
   onMenuOpen: () => void;
+  /** Sipariş teması: orta FAB sepet olur */
+  cartMode?: boolean;
+  cartCount?: number;
+  onCartOpen?: () => void;
 }
 
 export default function PublicMobileNav({
@@ -14,6 +18,9 @@ export default function PublicMobileNav({
   onTab,
   onSearchOpen,
   onMenuOpen,
+  cartMode = false,
+  cartCount = 0,
+  onCartOpen,
 }: PublicMobileNavProps) {
   return (
     <nav className="public-mobile-nav md:hidden" aria-label="Ana menü">
@@ -50,14 +57,31 @@ export default function PublicMobileNav({
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={onSearchOpen}
-          className="public-mobile-nav__fab"
-          aria-label="Ara"
-        >
-          <Search className="w-6 h-6" strokeWidth={2.25} />
-        </button>
+        {cartMode ? (
+          <button
+            type="button"
+            onClick={onCartOpen}
+            data-siparis-cart-target
+            className="public-mobile-nav__fab siparis-nav-cart"
+            aria-label="Sepet"
+          >
+            <ShoppingBag className="w-6 h-6" strokeWidth={2.25} />
+            {cartCount > 0 ? (
+              <span className="siparis-nav-cart__badge">
+                {cartCount > 99 ? '99+' : cartCount}
+              </span>
+            ) : null}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onSearchOpen}
+            className="public-mobile-nav__fab"
+            aria-label="Ara"
+          >
+            <Search className="w-6 h-6" strokeWidth={2.25} />
+          </button>
+        )}
       </div>
     </nav>
   );

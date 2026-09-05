@@ -13,9 +13,15 @@ export const MENU_THEMES: MenuThemeOption[] = [
   {
     id: 'alive',
     name: 'Canlı',
-    description: 'Daha güçlü hareket, glow ve dikkat çeken kategori kartları.',
+    description: 'Yeşil kafe dili: karşılama kartı, dikey kategori rail ve taşan ürün görselleri.',
     locked: true,
     previewClass: 'theme-preview--alive',
+  },  {
+    id: 'animasyon',
+    name: 'Animasyonlu',
+    description: 'Gri-krem editorial: soft ürün kaydırma, modal detay ve sepet animasyonları.',
+    locked: true,
+    previewClass: 'theme-preview--animasyon',
   },
   {
     id: 'luxury',
@@ -23,5 +29,12 @@ export const MENU_THEMES: MenuThemeOption[] = [
     description: 'Noir champagne editorial: serif masthead, full-bleed bölümler ve kartsız lüks ürün satırları.',
     locked: true,
     previewClass: 'theme-preview--luxury',
+  },
+  {
+    id: 'siparis',
+    name: 'Sipariş Odaklı',
+    description: 'Kırmızı-krem fast menü: banner, kategori ikonları, popüler kartlar ve masa sepeti.',
+    locked: false,
+    previewClass: 'theme-preview--siparis',
   },
 ];

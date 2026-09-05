@@ -1,0 +1,310 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  staff
+}
+
+enum ViewEntityType {
+  group
+  product
+  showcase
+  menu
+}
+
+enum ShowcaseDisplayType {
+  banner
+  story
+}
+
+/// Restoran / işletme
+model Restaurant {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(150)
+  slug        String   @unique @db.VarChar(100)
+  logoUrl     String?  @map("logo_url") @db.VarChar(500)
+  licenseExpiresAt DateTime? @map("lisans_bitis")
+  welcomeI18n Json     @default("{}") @map("hosgeldin_ceviriler")
+  createdAt   DateTime @default(now()) @map("olusturma")
+  updatedAt   DateTime @updatedAt @map("guncelleme")
+
+  users          User[]
+  groups         Group[]
+  products       Product[]
+  showcaseImages ShowcaseImage[]
+  settings       Setting[]
+  viewEvents     ViewEvent[]
+  complaints     Complaint[]
+  suggestions    Suggestion[]
+  tableRequests  TableServiceRequest[]
+  qrTableGroups  QrTableGroup[]
+  campaigns      Campaign[]
+
+  @@map("restoranlar")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int      @map("restoran_id")
+  email        String   @unique @db.VarChar(150)
+  passwordHash String   @map("sifre_hash") @db.VarChar(255)
+  fullName     String   @map("ad_soyad") @db.VarChar(150)
+  phone        String?  @db.VarChar(30)
+  role         UserRole @default(admin)
+  isActive     Boolean  @default(true) @map("aktif")
+  createdAt    DateTime @default(now()) @map("olusturma")
+  updatedAt    DateTime @updatedAt @map("guncelleme")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+  @@map("kullanicilar")
+}
+
+model Language {
+  id       Int     @id @default(autoincrement())
+  code     String  @unique @db.VarChar(10)
+  name     String  @db.VarChar(50)
+  isActive Boolean @default(true) @map("aktif")
+
+  @@map("diller")
+}
+
+/// Para birimleri — kur yok; ürün fiyatı yazıldığı gibi gösterilir
+model Currency {
+  id       Int     @id @default(autoincrement())
+  code     String  @unique @db.VarChar(10)
+  name     String  @db.VarChar(50)
+  symbol   String  @db.VarChar(10)
+  isActive Boolean @default(true) @map("aktif")
+
+  products Product[]
+  campaignItems CampaignItem[]
+
+  @@map("para_birimleri")
+}
+
+/// Menü grupları — ceviriler JSON: { "tr": { "name": "..." }, "en": { ... } }
+model Group {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int      @map("restoran_id")
+  parentId     Int?     @map("ust_grup_id")
+  imageUrl     String?  @map("gorsel_url") @db.VarChar(500)
+  sortOrder    Int      @default(0) @map("sira")
+  isActive     Boolean  @default(true) @map("aktif")
+  i18n         Json     @default("{}") @map("ceviriler")
+  createdAt    DateTime @default(now()) @map("olusturma")
+  updatedAt    DateTime @updatedAt @map("guncelleme")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  parent     Group?     @relation("GrupHiyerarsi", fields: [parentId], references: [id], onDelete: Cascade)
+  children   Group[]    @relation("GrupHiyerarsi")
+  products   Product[]
+
+  @@index([restaurantId, sortOrder])
+  @@index([restaurantId, parentId])
+  @@map("gruplar")
+}
+
+/// Ürünler — ceviriler JSON içinde ad, açıklama, malzemeler, alerjenler
+model Product {
+  id              Int      @id @default(autoincrement())
+  restaurantId    Int      @map("restoran_id")
+  groupId         Int      @map("grup_id")
+  currencyId      Int?     @map("para_birimi_id")
+  price           Decimal  @default(0) @db.Decimal(10, 2)
+  prepTimeMinutes Int?     @map("hazirlik_dk")
+  calories        Int?     @map("kalori")
+  features        Json     @default("[]") @map("ozellikler")
+  isVegan         Boolean  @default(false) @map("vegan")
+  isVegetarian    Boolean  @default(false) @map("vejetaryen")
+  isGlutenFree    Boolean  @default(false) @map("glutensiz")
+  isDiabetic      Boolean  @default(false) @map("diyabetik")
+  isRecommended   Boolean  @default(false) @map("onerilen")
+  imageUrl        String?  @map("gorsel_url") @db.VarChar(500)
+  images          Json     @default("[]") @map("gorseller")
+  allergenTags    Json     @default("[]") @map("alerjen_etiketleri")
+  dietTags        Json     @default("[]") @map("diyet_etiketleri")
+  sortOrder       Int      @default(0) @map("sira")
+  isActive        Boolean  @default(true) @map("aktif")
+  i18n            Json     @default("{}") @map("ceviriler")
+  createdAt       DateTime @default(now()) @map("olusturma")
+  updatedAt       DateTime @updatedAt @map("guncelleme")
+
+  restaurant     Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  group          Group           @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  currency       Currency?       @relation(fields: [currencyId], references: [id], onDelete: SetNull)
+  showcaseImages ShowcaseImage[]
+  campaignItems  CampaignItem[]
+
+  @@index([restaurantId, groupId, sortOrder])
+  @@index([currencyId])
+  @@map("urunler")
+}
+
+/// Vitrin görselleri — web banner veya mobil hikaye
+model ShowcaseImage {
+  id           Int                 @id @default(autoincrement())
+  restaurantId Int                 @map("restoran_id")
+  productId    Int?                @map("urun_id")
+  name         String              @db.VarChar(200)
+  imageUrl     String?             @map("gorsel_url") @db.VarChar(500)
+  displayType  ShowcaseDisplayType @default(banner) @map("gosterim_tipi")
+  sortOrder    Int                 @default(0) @map("sira")
+  isActive     Boolean             @default(true) @map("aktif")
+  durationSeconds Int              @default(5) @map("sure_sn")
+  i18n         Json                @default("{}") @map("ceviriler")
+  createdAt    DateTime            @default(now()) @map("olusturma")
+  updatedAt    DateTime            @updatedAt @map("guncelleme")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  product    Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([restaurantId, sortOrder])
+  @@map("vitrin_gorselleri")
+}
+
+/// Anahtar-değer ayarları (firma hakkında, entegrasyon vb.)
+model Setting {
+  id           Int     @id @default(autoincrement())
+  restaurantId Int     @map("restoran_id")
+  key          String  @db.VarChar(100)
+  value        String? @db.Text
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, key])
+  @@map("ayarlar")
+}
+
+model ViewEvent {
+  id           BigInt         @id @default(autoincrement())
+  restaurantId Int            @map("restoran_id")
+  entityType   ViewEntityType @map("varlik_tipi")
+  entityId     Int            @map("varlik_id")
+  sessionId    String         @map("oturum_id") @db.VarChar(64)
+  viewedAt     DateTime       @default(now()) @map("goruntulenme")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, entityType, viewedAt])
+  @@index([restaurantId, sessionId, viewedAt])
+  @@map("goruntuleme_kayitlari")
+}
+
+/// Misafir şikayet / geri bildirim kutusu
+model Complaint {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int      @map("restoran_id")
+  fullName     String   @map("ad_soyad") @db.VarChar(150)
+  phone        String?  @db.VarChar(30)
+  message      String   @map("mesaj") @db.Text
+  isRead       Boolean  @default(false) @map("okundu")
+  createdAt    DateTime @default(now()) @map("olusturma")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, createdAt])
+  @@map("sikayetler")
+}
+
+/// Misafir öneri / memnuniyet anketi
+model Suggestion {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int      @map("restoran_id")
+  fullName     String?  @map("ad_soyad") @db.VarChar(150)
+  phone        String?  @db.VarChar(30)
+  message      String?  @map("mesaj") @db.Text
+  rating       Int      @map("puan")
+  isRead       Boolean  @default(false) @map("okundu")
+  createdAt    DateTime @default(now()) @map("olusturma")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, createdAt])
+  @@map("oneriler")
+}
+
+/// Masa bazlı garson çağır / hesap iste
+model TableServiceRequest {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int      @map("restoran_id")
+  type         String   @db.VarChar(20) /// waiter | bill
+  tableNumber  String   @map("masa_no") @db.VarChar(40)
+  groupSlug    String?  @map("grup_slug") @db.VarChar(100)
+  isRead       Boolean  @default(false) @map("okundu")
+  createdAt    DateTime @default(now()) @map("olusturma")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, createdAt])
+  @@index([restaurantId, isRead])
+  @@map("masa_cagrilari")
+}
+
+/// Barkod / masa QR grupları (Salon, Teras vb.)
+model QrTableGroup {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int      @map("restoran_id")
+  name         String   @db.VarChar(100)
+  slug         String   @db.VarChar(100)
+  tableCount   Int      @default(8) @map("masa_sayisi")
+  /// Masa numarası öneki — örn. "a" → a-1, a-2
+  prefix       String   @default("") @map("oneki") @db.VarChar(20)
+  sortOrder    Int      @default(0) @map("sira")
+  /// { "1": { "name", "colorId", "withLogo", "frameId" }, ... }
+  tableStyles  Json     @default("{}") @map("masa_stilleri")
+  createdAt    DateTime @default(now()) @map("olusturma")
+  updatedAt    DateTime @updatedAt @map("guncelleme")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, slug])
+  @@index([restaurantId, sortOrder])
+  @@map("qr_masa_gruplari")
+}
+
+/// Kampanya (özel menü) — slug QR linkinde: ?kampanya=iftar
+model Campaign {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int      @map("restoran_id")
+  name         String   @db.VarChar(150)
+  slug         String   @db.VarChar(100)
+  isActive     Boolean  @default(true) @map("aktif")
+  sortOrder    Int      @default(0) @map("sira")
+  createdAt    DateTime @default(now()) @map("olusturma")
+  updatedAt    DateTime @updatedAt @map("guncelleme")
+
+  restaurant Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items      CampaignItem[]
+
+  @@unique([restaurantId, slug])
+  @@index([restaurantId, sortOrder])
+  @@map("kampanyalar")
+}
+
+/// Kampanyaya seçilen ürün + özel fiyat / para birimi
+model CampaignItem {
+  id         Int     @id @default(autoincrement())
+  campaignId Int     @map("kampanya_id")
+  productId  Int     @map("urun_id")
+  price      Decimal @db.Decimal(10, 2)
+  currencyId Int?    @map("para_birimi_id")
+  sortOrder  Int     @default(0) @map("sira")
+
+  campaign Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  product  Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  currency Currency? @relation(fields: [currencyId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, productId])
+  @@index([campaignId, sortOrder])
+  @@index([productId])
+  @@map("kampanya_urunleri")
+}

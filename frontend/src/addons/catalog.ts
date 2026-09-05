@@ -3,6 +3,15 @@ import type { AddonProduct } from './types';
 /** Frontend katalog — kilit durumu API'deki owned listesine göre hesaplanır */
 export const ADDON_CATALOG: AddonProduct[] = [
   {
+    id: 'welcome-vibrant',
+    category: 'welcome',
+    name: 'Renkli Animasyonlu',
+    description: 'Aurora, ışık orb’ları ve yumuşak animasyonlarla canlı karşılama.',
+    themeId: 'vibrant',
+    previewClass: 'theme-preview--vibrant',
+    free: true,
+  },
+  {
     id: 'welcome-cinema',
     category: 'welcome',
     name: 'Sinematik',
@@ -19,12 +28,38 @@ export const ADDON_CATALOG: AddonProduct[] = [
     previewClass: 'theme-preview--neon',
   },
   {
+    id: 'menu-sade',
+    category: 'menu',
+    name: 'Sade',
+    description: 'Temiz kartlar, yumuşak hover ve sakin menü deneyimi.',
+    themeId: 'sade',
+    previewClass: 'theme-preview--sade',
+    free: true,
+  },
+  {
+    id: 'menu-siparis',
+    category: 'menu',
+    name: 'Sipariş Odaklı',
+    description: 'Kırmızı-krem fast menü: banner, kategori ikonları, popüler kartlar ve masa sepeti.',
+    themeId: 'siparis',
+    previewClass: 'theme-preview--siparis',
+    free: true,
+  },
+  {
     id: 'menu-alive',
     category: 'menu',
     name: 'Canlı',
-    description: 'Daha güçlü hareket, glow ve dikkat çeken kategori kartları.',
+    description: 'Yeşil kafe dili: karşılama kartı, dikey kategori rail ve taşan ürün görselleri.',
     themeId: 'alive',
     previewClass: 'theme-preview--alive',
+  },
+  {
+    id: 'menu-animasyon',
+    category: 'menu',
+    name: 'Animasyonlu',
+    description: 'Gri-krem editorial sahne: soft kaydırma, modal detay ve sepete uçuş animasyonları.',
+    themeId: 'animasyon',
+    previewClass: 'theme-preview--animasyon',
   },
   {
     id: 'menu-luxury',

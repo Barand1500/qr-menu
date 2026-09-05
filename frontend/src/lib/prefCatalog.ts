@@ -3,12 +3,12 @@ import {
   ALLERGEN_CATALOG,
   DIET_CATALOG,
   type CatalogTag,
-  type PrefLang,
 } from '@/lib/dietAllergens';
 
 export type PrefCatalogItem = {
   id: string;
-  label: Record<PrefLang, string>;
+  /** Dil kodu → etiket (tr zorunlu) */
+  label: Record<string, string>;
 };
 
 export type PrefCatalog = {
@@ -53,8 +53,8 @@ export function catalogLabel(
   const list = kind === 'allergen' ? catalog.allergens : catalog.diets;
   const tag = list.find((t) => t.id === id);
   if (!tag) return id;
-  const code = (lang || 'tr').split('-')[0] as PrefLang;
-  return tag.label[code] || tag.label.tr;
+  const code = (lang || 'tr').split('-')[0].toLowerCase();
+  return tag.label[code] || tag.label.tr || id;
 }
 
 export function catalogToOptions(catalog: PrefCatalog, kind: 'allergen' | 'diet') {

@@ -23,6 +23,16 @@ import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { usePublicRtl } from '@/hooks/usePublicRtl';
 import { menuGroupPath, menuProductPath } from '@/lib/menuPaths';
 import TableServiceButtons from '@/components/public/TableServiceButtons';
+import MenuColorModeToggle from '@/components/public/MenuColorModeToggle';
+import { useMenuColorMode } from '@/hooks/useMenuColorMode';
+import SadeProductPage from '@/components/public/sade/SadeProductPage';
+import AliveProductPage from '@/components/public/alive/AliveProductPage';
+import LuxuryProductPage from '@/components/public/luxury/LuxuryProductPage';
+import AnimasyonProductPage from '@/components/public/animasyon/AnimasyonProductPage';
+import SiparisProductPage from '@/components/public/siparis/SiparisProductPage';
+import SiparisCartSheet from '@/components/public/siparis/SiparisCartSheet';
+import AnimasyonCartSheet from '@/components/public/animasyon/AnimasyonCartSheet';
+import { SiparisCartProvider } from '@/hooks/useSiparisCart';
 import { useEffect, useState } from 'react';
 
 interface ProductDetail {
@@ -88,9 +98,7 @@ export default function PublicProductPage() {
         `/api/menu/${slug}/groups/${product.group.id}/products?lang=${lang}&sessionId=${sessionId}`
       )
         .then((data) => {
-          setRelated(
-            data.products.filter((p) => p.id !== product.id).slice(0, 8)
-          );
+          setRelated(data.products.filter((p) => p.id !== product.id).slice(0, 8));
         })
         .catch(() => setRelated([]));
       return;
@@ -115,10 +123,13 @@ export default function PublicProductPage() {
   const { index: galleryIndex, setIndex: setGalleryIndex } =
     useProductGalleryIndex(galleryImageCount);
 
+  const productTheme = product?.theme || 'sade';
+  const { colorMode, toggleColorMode } = useMenuColorMode(productTheme);
+
   if (!product) {
     return (
       <div className="public-menu-page min-h-screen flex items-center justify-center" data-theme-menu="sade">
-        <div className="w-9 h-9 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-9 h-9 border-2 border-[#c4a494] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -136,10 +147,125 @@ export default function PublicProductPage() {
     (product.prepTimeMinutes != null && product.prepTimeMinutes > 0) ||
     (product.calories != null && product.calories > 0);
 
+  const theme = product.theme || 'sade';
+  const onBack = () => navigate(menuGroupPath(product.group.id));
+
+  if (theme === 'sade') {
+    return (
+      <div
+        className="public-menu-page public-product-page public-product-page--sade"
+        data-theme-menu="sade"
+        data-color-mode={colorMode}
+      >
+        <SadeProductPage
+          product={product}
+          related={related}
+          galleryImages={galleryImages}
+          colorMode={colorMode}
+          toggleColorMode={toggleColorMode}
+          lang={lang}
+          slug={slug}
+          onBack={onBack}
+        />
+      </div>
+    );
+  }
+
+  if (theme === 'alive') {
+    return (
+      <div
+        className="public-menu-page public-product-page public-product-page--alive"
+        data-theme-menu="alive"
+        data-color-mode={colorMode}
+      >
+        <AliveProductPage
+          product={product}
+          related={related}
+          galleryImages={galleryImages}
+          colorMode={colorMode}
+          toggleColorMode={toggleColorMode}
+          lang={lang}
+          slug={slug}
+          onBack={onBack}
+        />
+      </div>
+    );
+  }
+
+  if (theme === 'luxury') {
+    return (
+      <div
+        className="public-menu-page public-product-page public-product-page--luxury"
+        data-theme-menu="luxury"
+        data-color-mode={colorMode}
+      >
+        <LuxuryProductPage
+          product={product}
+          related={related}
+          galleryImages={galleryImages}
+          colorMode={colorMode}
+          toggleColorMode={toggleColorMode}
+          lang={lang}
+          slug={slug}
+          onBack={onBack}
+        />
+      </div>
+    );
+  }
+
+  if (theme === 'animasyon') {
+    return (
+      <SiparisCartProvider slug={slug} enabled>
+        <div
+          className="public-menu-page public-product-page public-product-page--animasyon"
+          data-theme-menu="animasyon"
+          data-color-mode={colorMode}
+        >
+          <AnimasyonProductPage
+            product={product}
+            related={related}
+            galleryImages={galleryImages}
+            colorMode={colorMode}
+            toggleColorMode={toggleColorMode}
+            lang={lang}
+            slug={slug}
+            onBack={onBack}
+          />
+          <AnimasyonCartSheet lang={lang} />
+        </div>
+      </SiparisCartProvider>
+    );
+  }
+
+  if (theme === 'siparis') {
+    return (
+      <SiparisCartProvider slug={slug} enabled>
+        <div
+          className="public-menu-page public-product-page public-product-page--siparis"
+          data-theme-menu="siparis"
+          data-color-mode={colorMode}
+        >
+          <SiparisProductPage
+            product={product}
+            related={related}
+            galleryImages={galleryImages}
+            colorMode={colorMode}
+            toggleColorMode={toggleColorMode}
+            lang={lang}
+            slug={slug}
+            onBack={onBack}
+          />
+          <SiparisCartSheet lang={lang} />
+        </div>
+      </SiparisCartProvider>
+    );
+  }
+
   return (
     <div
-      className={`public-menu-page public-product-page public-product-page--${product.theme || 'sade'}`}
-      data-theme-menu={product.theme || 'sade'}
+      className={`public-menu-page public-product-page public-product-page--${theme}`}
+      data-theme-menu={theme}
+      data-color-mode={colorMode}
     >
       <header className="public-product-hero">
         <ProductImageGallery
@@ -154,12 +280,17 @@ export default function PublicProductPage() {
         <div className="public-product-hero__top">
           <button
             type="button"
-            onClick={() => navigate(menuGroupPath(product.group.id))}
+            onClick={onBack}
             className="public-product-hero__back"
             aria-label="Geri"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
+          <MenuColorModeToggle
+            colorMode={colorMode}
+            onToggle={toggleColorMode}
+            variant="hero"
+          />
         </div>
 
         <div className="public-product-hero__bottom">
@@ -183,7 +314,7 @@ export default function PublicProductPage() {
           />
         )}
 
-          <div className="public-product-scene">
+        <div className="public-product-scene">
           <div className="public-product-scene__orb public-product-scene__orb--1" aria-hidden />
           <div className="public-product-scene__orb public-product-scene__orb--2" aria-hidden />
           <div className="public-product-scene__orb public-product-scene__orb--3" aria-hidden />
@@ -249,42 +380,42 @@ export default function PublicProductPage() {
               )}
 
               <div className="public-product-content">
-              {product.description && (
-                <section className="public-product-reveal public-product-reveal--2">
-                  <h2 className="public-product-section-label">Açıklama</h2>
-                  <BrushPanel className="public-product-panel">
-                    <p className="public-product-panel__lead">{product.description}</p>
-                  </BrushPanel>
-                </section>
-              )}
+                {product.description && (
+                  <section className="public-product-reveal public-product-reveal--2">
+                    <h2 className="public-product-section-label">Açıklama</h2>
+                    <BrushPanel className="public-product-panel">
+                      <p className="public-product-panel__lead">{product.description}</p>
+                    </BrushPanel>
+                  </section>
+                )}
 
-              {product.ingredients && (
-                <section className="public-product-reveal public-product-reveal--3">
-                  <h2 className="public-product-section-label public-product-section-label--warm">
-                    <span className="public-product-section-label__row">
-                      <UtensilsCrossed className="w-3.5 h-3.5" />
-                      İçindekiler
-                    </span>
-                  </h2>
-                  <BrushPanel tone="warm" className="public-product-panel">
-                    <p className="public-product-panel__text">{product.ingredients}</p>
-                  </BrushPanel>
-                </section>
-              )}
+                {product.ingredients && (
+                  <section className="public-product-reveal public-product-reveal--3">
+                    <h2 className="public-product-section-label public-product-section-label--warm">
+                      <span className="public-product-section-label__row">
+                        <UtensilsCrossed className="w-3.5 h-3.5" />
+                        İçindekiler
+                      </span>
+                    </h2>
+                    <BrushPanel tone="warm" className="public-product-panel">
+                      <p className="public-product-panel__text">{product.ingredients}</p>
+                    </BrushPanel>
+                  </section>
+                )}
 
-              {product.allergens && (
-                <section className="public-product-reveal public-product-reveal--4">
-                  <h2 className="public-product-section-label public-product-section-label--warn">
-                    <span className="public-product-section-label__row">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      Alerjenler
-                    </span>
-                  </h2>
-                  <BrushPanel tone="warn" className="public-product-panel">
-                    <p className="public-product-panel__text">{product.allergens}</p>
-                  </BrushPanel>
-                </section>
-              )}
+                {product.allergens && (
+                  <section className="public-product-reveal public-product-reveal--4">
+                    <h2 className="public-product-section-label public-product-section-label--warn">
+                      <span className="public-product-section-label__row">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        Alerjenler
+                      </span>
+                    </h2>
+                    <BrushPanel tone="warn" className="public-product-panel">
+                      <p className="public-product-panel__text">{product.allergens}</p>
+                    </BrushPanel>
+                  </section>
+                )}
               </div>
             </div>
 
@@ -323,7 +454,9 @@ export default function PublicProductPage() {
                       )}
                       <div className="public-product-related__info">
                         <p className="public-product-related__name">{item.name}</p>
-                        <p className="public-product-related__price">{formatMoney(item.price, item.currency)}</p>
+                        <p className="public-product-related__price">
+                          {formatMoney(item.price, item.currency)}
+                        </p>
                       </div>
                     </Link>
                   ))}

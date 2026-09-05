@@ -9,6 +9,7 @@ import {
   type DietaryPrefs,
 } from '@/lib/dietAllergens';
 import { catalogLabel, loadPrefCatalogSession, resolvePrefCatalog } from '@/lib/prefCatalog';
+import { sideMenuUi } from '@/lib/menuChromeUi';
 
 export type PublicTab = 'home' | 'about' | 'settings';
 
@@ -45,6 +46,7 @@ export default function PublicSideMenu({
   onDietaryPrefsChange,
 }: PublicSideMenuProps) {
   const ui = preferenceUi(activeLang);
+  const chrome = sideMenuUi(activeLang);
   const prefCatalog = resolvePrefCatalog(loadPrefCatalogSession());
   const [langOpen, setLangOpen] = useState(false);
   const [allergyOpen, setAllergyOpen] = useState(() => prefsActive(dietaryPrefs));
@@ -101,14 +103,14 @@ export default function PublicSideMenu({
       <aside
         className={`public-side-menu ${open ? 'is-open' : ''}`}
         aria-hidden={!open}
-        aria-label="Menü"
+        aria-label={chrome.menu}
       >
         <div className="public-side-menu__header">
           <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wider text-white/60">Menü</p>
+            <p className="text-xs uppercase tracking-wider text-white/60">{chrome.menu}</p>
             <p className="font-semibold text-white truncate">{restaurantName}</p>
           </div>
-          <button type="button" onClick={onClose} className="public-side-menu__close" aria-label="Kapat">
+          <button type="button" onClick={onClose} className="public-side-menu__close" aria-label={chrome.close}>
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -120,7 +122,7 @@ export default function PublicSideMenu({
             className={`public-side-menu__link ${tab === 'home' ? 'is-active' : ''}`}
           >
             <Home className="w-5 h-5" />
-            Anasayfa
+            {chrome.home}
           </button>
           <button
             type="button"
@@ -128,7 +130,7 @@ export default function PublicSideMenu({
             className={`public-side-menu__link ${tab === 'about' ? 'is-active' : ''}`}
           >
             <Info className="w-5 h-5" />
-            Hakkımızda
+            {chrome.about}
           </button>
         </nav>
 
@@ -136,7 +138,7 @@ export default function PublicSideMenu({
           <div className="public-side-menu__section">
             <p className="public-side-menu__section-title">
               <Globe className="w-4 h-4" />
-              Dil Seçimi
+              {chrome.lang}
             </p>
 
             <div className="public-side-menu__lang-combo" ref={langRef}>
@@ -157,7 +159,7 @@ export default function PublicSideMenu({
               </button>
 
               {langOpen && (
-                <ul className="public-side-menu__lang-list" role="listbox" aria-label="Dil Seçimi">
+                <ul className="public-side-menu__lang-list" role="listbox" aria-label={chrome.lang}>
                   {languages.map((l) => {
                     const selected = activeLang === l.code;
                     return (

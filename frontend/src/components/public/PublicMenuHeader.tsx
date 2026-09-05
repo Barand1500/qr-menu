@@ -1,5 +1,8 @@
 import { ArrowLeft, Menu, Search } from 'lucide-react';
 import { imageUrl } from '@/lib/api';
+import MenuColorModeToggle from '@/components/public/MenuColorModeToggle';
+import type { MenuColorMode } from '@/lib/menuColorMode';
+import type { ReactNode } from 'react';
 
 interface PublicMenuHeaderProps {
   restaurant: { name: string; logoUrl?: string | null };
@@ -9,7 +12,13 @@ interface PublicMenuHeaderProps {
   onMenuOpen: () => void;
   searchOpen?: boolean;
   onSearchToggle?: () => void;
-  searchSlot?: React.ReactNode;
+  /** Sipariş teması: arama mobil header’da da görünsün (alt nav sepet olunca) */
+  showMobileSearch?: boolean;
+  searchSlot?: ReactNode;
+  colorMode?: MenuColorMode;
+  onColorModeToggle?: () => void;
+  /** Örn. PC sepet ikonu (Sipariş teması) */
+  extraIcons?: ReactNode;
 }
 
 export default function PublicMenuHeader({
@@ -20,8 +29,16 @@ export default function PublicMenuHeader({
   onMenuOpen,
   searchOpen = false,
   onSearchToggle,
+  showMobileSearch = false,
   searchSlot,
+  colorMode,
+  onColorModeToggle,
+  extraIcons,
 }: PublicMenuHeaderProps) {
+  const searchBtnClass = showMobileSearch
+    ? `public-menu-header__icon-btn ${searchOpen ? 'is-active' : ''}`
+    : `public-menu-header__icon-btn public-menu-header__icon-btn--md-only ${searchOpen ? 'is-active' : ''}`;
+
   return (
     <header className="public-menu-header sticky top-0 z-40">
       <div className="public-menu-header__inner">
@@ -61,16 +78,20 @@ export default function PublicMenuHeader({
             <button
               type="button"
               onClick={onSearchToggle}
-              className={`public-menu-header__icon-btn hidden md:flex ${searchOpen ? 'is-active' : ''}`}
+              className={searchBtnClass}
               aria-label={searchOpen ? 'Aramayı kapat' : 'Ara'}
             >
               <Search className="w-5 h-5" />
             </button>
           )}
+          {extraIcons}
+          {colorMode && onColorModeToggle && (
+            <MenuColorModeToggle colorMode={colorMode} onToggle={onColorModeToggle} />
+          )}
           <button
             type="button"
             onClick={onMenuOpen}
-            className="public-menu-header__icon-btn hidden md:flex"
+            className="public-menu-header__icon-btn public-menu-header__icon-btn--md-only"
             aria-label="Menüyü aç"
           >
             <Menu className="w-5 h-5" />

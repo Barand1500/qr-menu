@@ -4,7 +4,7 @@ export const DEFAULT_WELCOME_THEME = 'vibrant';
 export const DEFAULT_MENU_THEME = 'sade';
 
 export const FREE_WELCOME_THEMES = new Set(['vibrant']);
-export const FREE_MENU_THEMES = new Set(['sade']);
+export const FREE_MENU_THEMES = new Set(['sade', 'siparis']);
 
 export async function getRestaurantThemes(restaurantId: number) {
   const rows = await prisma.setting.findMany({

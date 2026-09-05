@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
     disabled,
     menuAssistantStyle,
     products: ADDON_PRODUCTS.map((p) => {
-      const isOwned = owned.includes(p.id);
+      const isOwned = Boolean(p.free) || owned.includes(p.id);
       const enabled = isOwned && !disabled.includes(p.id);
       return {
         ...p,
@@ -58,6 +58,9 @@ router.post('/unlock', async (req, res) => {
   const product = ADDON_PRODUCTS.find((p) => p.id === productId);
   if (!product) {
     return res.status(400).json({ message: 'Geçersiz eklenti' });
+  }
+  if (product.free) {
+    return res.status(400).json({ message: 'Bu eklenti zaten dahil' });
   }
 
   if (!validateUnlockCode(product.id, String(code || ''))) {

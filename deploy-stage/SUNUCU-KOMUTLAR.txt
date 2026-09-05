@@ -1,0 +1,98 @@
+====================================================
+  MENU QR — SUNUCU KOMUTLARI (CloudPanel SSH)
+  Domain: https://menu.guzelteknoloji.com
+  Port: 3008
+====================================================
+
+GÜNCELLEME (mevcut canlı site) — bu paket için
+------------------------------------------------
+
+1) ZIP'i site klasörüne çıkart
+2) .env ve uploads/ DOKUNMA
+3) SSH'de sırayla:
+
+cd ~/htdocs/menu.guzelteknoloji.com
+npm install --omit=dev
+npm run setup
+
+4) CloudPanel → Node.js → Restart
+
+
+İLK KURULUM (sıfırdan)
+----------------------
+Yukarıdakilere ek olarak .env dosyasını oluştur (.env.example'a bak).
+Sonra panelden Node uygulamasını başlat.
+
+
+----------------------------------------------------
+KOMUT AÇIKLAMALARI
+----------------------------------------------------
+
+cd ~/htdocs/menu.guzelteknoloji.com
+  → Proje klasörüne gir
+
+npm install --omit=dev
+  → Bağımlılıkları kur (node_modules)
+
+npm run setup
+  → prisma generate + prisma db push
+  → Yeni tablolar/kolonlar eklenir (masa_cagrilari, lisans_bitis vb.)
+  → SEED ÇALIŞTIRMAZ — canlı veri korunur
+
+
+----------------------------------------------------
+NODE YENİDEN BAŞLAT
+----------------------------------------------------
+
+SEÇENEK A (önerilen):
+  CloudPanel → Sites → menu.guzelteknoloji.com → Node.js → Restart
+
+SEÇENEK B (sadece test, panel kapalıyken):
+  npm start
+
+
+----------------------------------------------------
+TEST
+----------------------------------------------------
+https://menu.guzelteknoloji.com/api/health
+https://menu.guzelteknoloji.com/login
+https://menu.guzelteknoloji.com/menu
+
+
+----------------------------------------------------
+HIZLI KOPYALA (güncelleme)
+----------------------------------------------------
+
+cd ~/htdocs/menu.guzelteknoloji.com
+npm install --omit=dev
+npm run setup
+
+(sonra CloudPanel'den Restart)
+
+
+----------------------------------------------------
+SIK HATALAR
+----------------------------------------------------
+
+EADDRINUSE / port kullanımda
+  → Panel + npm start aynı anda çalışıyor. Birini kapat.
+
+Database / P1000 / auth failed
+  → .env DATABASE_URL yanlış. ! karakteri URL'de %21 olmalı.
+
+Cannot find module '@prisma/client'
+  → npm install --omit=dev && npm run setup
+
+502 Bad Gateway
+  → Node kapalı. Panelden Restart.
+
+Lisans kutusu "henüz tanımlanmadı"
+  → Normal; MySQL'de lisans_bitis set et:
+  UPDATE restoranlar SET lisans_bitis = '2027-12-31' WHERE id = 1;
+
+ASLA ÇALIŞTIRMA (canlıda):
+  npm run db:seed
+  npm run db:reset
+  → Tüm menü, kullanıcı, ayar verisi silinir!
+
+====================================================

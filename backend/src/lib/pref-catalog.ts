@@ -2,8 +2,6 @@ import { prisma } from './prisma.js';
 import {
   ALLERGEN_CATALOG,
   DIET_CATALOG,
-  type CatalogTag,
-  type PrefLang,
 } from './diet-allergens.js';
 
 export const PREF_CATALOG_KEY = 'pref_catalog';
@@ -12,7 +10,8 @@ export const BUILTIN_DIET_IDS = new Set(['vegan', 'vegetarian', 'gluten-free', '
 
 export interface PrefCatalogItem {
   id: string;
-  label: Record<PrefLang, string>;
+  /** Dil kodu → etiket (tr zorunlu; diğerleri Dil Ayarları dillerine göre) */
+  label: Record<string, string>;
 }
 
 export interface PrefCatalog {
@@ -50,16 +49,23 @@ export function newCatalogItemId(labelTr: string): string {
   return `c-${slugifyId(labelTr)}-${Date.now().toString(36).slice(-4)}`;
 }
 
-function cleanLabel(raw: unknown): Record<PrefLang, string> | null {
+function cleanLabel(raw: unknown): Record<string, string> | null {
   if (!raw || typeof raw !== 'object') return null;
   const o = raw as Record<string, unknown>;
   const tr = typeof o.tr === 'string' ? o.tr.trim() : '';
   if (!tr) return null;
-  const pick = (code: PrefLang) =>
-    typeof o[code] === 'string' && (o[code] as string).trim()
-      ? (o[code] as string).trim()
-      : tr;
-  return { tr, en: pick('en'), ru: pick('ru'), ar: pick('ar') };
+  const out: Record<string, string> = { tr };
+  for (const [code, value] of Object.entries(o)) {
+    if (code === 'tr') continue;
+    if (!/^[a-z]{2,5}$/i.test(code)) continue;
+    if (typeof value === 'string' && value.trim()) {
+      out[code.toLowerCase()] = value.trim();
+    }
+  }
+  for (const code of ['en', 'ru', 'ar'] as const) {
+    if (!out[code]) out[code] = tr;
+  }
+  return out;
 }
 
 function cleanItems(raw: unknown, kind: 'allergen' | 'diet'): PrefCatalogItem[] {
@@ -134,15 +140,15 @@ export function sanitizeDietTagsForCatalog(ids: unknown, catalog: PrefCatalog): 
 export function allergenLabelFromCatalog(id: string, lang: string, catalog: PrefCatalog): string {
   const tag = catalog.allergens.find((t) => t.id === id);
   if (!tag) return id;
-  const code = (lang || 'tr').split('-')[0] as PrefLang;
-  return tag.label[code] || tag.label.tr;
+  const code = (lang || 'tr').split('-')[0].toLowerCase();
+  return tag.label[code] || tag.label.tr || id;
 }
 
 export function dietLabelFromCatalog(id: string, lang: string, catalog: PrefCatalog): string {
   const tag = catalog.diets.find((t) => t.id === id);
   if (!tag) return id;
-  const code = (lang || 'tr').split('-')[0] as PrefLang;
-  return tag.label[code] || tag.label.tr;
+  const code = (lang || 'tr').split('-')[0].toLowerCase();
+  return tag.label[code] || tag.label.tr || id;
 }
 
 export function allergensTextFromCatalog(tags: string[], lang: string, catalog: PrefCatalog): string {

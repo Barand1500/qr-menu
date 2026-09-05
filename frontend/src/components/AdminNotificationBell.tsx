@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, HandHelping, Receipt, Trash2, X } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api, formatMoney } from '@/lib/api';
 import { playAdminNotificationSound } from '@/lib/notificationSound';
 import { formatTableServiceLabel } from '@/lib/tableContext';
 import {
+  parseOrderJson,
   subscribeTableRequestCreated,
   type TableRequestNotifyPayload,
 } from '@/lib/tableRequestNotify';
@@ -14,11 +15,14 @@ export interface TableServiceRequestRow {
   type: string;
   tableNumber: string;
   groupSlug?: string | null;
+  note?: string | null;
+  orderJson?: string | null;
   isRead: boolean;
   createdAt: string;
 }
 
-function typeLabel(type: string) {
+function typeLabel(type: string, hasOrder: boolean) {
+  if (hasOrder) return 'Sipariş + garson';
   return type === 'bill' ? 'Hesap istendi' : 'Garson çağrıldı';
 }
 
@@ -70,6 +74,8 @@ export default function AdminNotificationBell() {
           type: payload.type,
           tableNumber: payload.tableNumber,
           groupSlug: payload.groupSlug,
+          note: payload.note,
+          orderJson: payload.orderJson,
           isRead: false,
           createdAt: payload.createdAt,
         };
@@ -224,6 +230,8 @@ export default function AdminNotificationBell() {
             <ul className="admin-notify__list">
               {items.map((item) => {
                 const Icon = typeIcon(item.type);
+                const order = parseOrderJson(item.orderJson);
+                const noteText = item.note?.trim() || order?.note || null;
                 return (
                   <li key={item.id}>
                     <button
@@ -235,10 +243,23 @@ export default function AdminNotificationBell() {
                         <Icon className="w-4 h-4" />
                       </span>
                       <span className="admin-notify__item-copy">
-                        <strong>{typeLabel(item.type)}</strong>
+                        <strong>{typeLabel(item.type, Boolean(order))}</strong>
                         <span>
                           {formatTableServiceLabel(item.tableNumber, item.groupSlug)}
                         </span>
+                        {order ? (
+                          <span className="admin-notify__order">
+                            {order.items
+                              .map((i) => `${i.qty}× ${i.name}`)
+                              .join(' · ')}
+                            {order.totalPrice > 0
+                              ? ` — ${formatMoney(order.totalPrice, null)}`
+                              : ''}
+                          </span>
+                        ) : null}
+                        {noteText ? (
+                          <span className="admin-notify__note">Not: {noteText}</span>
+                        ) : null}
                       </span>
                       <em>{formatTime(item.createdAt)}</em>
                     </button>

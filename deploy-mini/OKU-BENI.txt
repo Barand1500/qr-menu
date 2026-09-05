@@ -1,0 +1,17 @@
+﻿KUCUK GUNCELLEME PAKETI (2026-09-04)
+====================================
+Icerik: public/ + dist/  (sadece frontend + backend build)
+
+1) ZIP'i site kokune cikart (public ve dist ustune yazilsin)
+2) .env ve uploads/ DOKUNMA
+3) npm install / npm run setup GEREKMEZ
+4) Restart:
+
+cd /home/guzelteknoloji-menu/htdocs/menu.guzelteknoloji.com
+fuser -k 3008/tcp 2>/dev/null || kill $(lsof -t -i:3008) 2>/dev/null || true
+sleep 2
+nohup npm start >> logs-start.log 2>&1 &
+sleep 3
+curl -s http://127.0.0.1:3008/api/health
+
+Tarayicida Ctrl+F5

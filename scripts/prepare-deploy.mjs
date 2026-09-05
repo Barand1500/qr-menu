@@ -33,7 +33,8 @@ const stamp = new Date().toISOString().slice(0, 10);
 const zipName = `menu-qr-deploy-${stamp}.zip`;
 const zipPath = path.join(root, zipName);
 
-console.log('1) Frontend build...');
+console.log('1) Frontend build (eski dist temizleniyor)...');
+rimraf(path.join(frontendDir, 'dist'));
 run('npm run build', frontendDir);
 
 console.log('\n2) Backend build...');
@@ -258,10 +259,11 @@ fs.writeFileSync(path.join(root, 'SUNUCU-KOMUTLAR.txt'), sunucuKomutlar);
 
 console.log('\n4) ZIP oluşturuluyor...');
 if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
-execSync(`Compress-Archive -Path "${deployDir}\\*" -DestinationPath "${zipPath}" -Force`, {
-  cwd: root,
+// tar: Windows'ta dosya kilidi sorunlarına karşı Compress-Archive yerine
+execSync(`tar -a -cf "${zipPath}" *`, {
+  cwd: deployDir,
   stdio: 'inherit',
-  shell: 'powershell.exe',
+  shell: true,
 });
 
 const zipSizeMb = (fs.statSync(zipPath).size / 1024 / 1024).toFixed(2);
