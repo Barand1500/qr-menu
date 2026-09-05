@@ -1,0 +1,241 @@
+.sidebar-tour-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  cursor: pointer;
+}
+
+.sidebar-tour-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.32);
+  transform: translateY(-1px);
+}
+
+.admin-tour {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  pointer-events: none;
+}
+
+.admin-tour__scrim {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: transparent;
+  pointer-events: auto;
+  cursor: default;
+}
+
+.admin-tour__dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.52);
+  pointer-events: none;
+}
+
+.admin-tour__spot {
+  position: fixed;
+  border-radius: 0.85rem;
+  box-shadow:
+    0 0 0 2px rgba(37, 99, 235, 0.85),
+    0 0 0 9999px rgba(15, 23, 42, 0.55);
+  pointer-events: none;
+  z-index: 1;
+  transition:
+    top 0.28s ease,
+    left 0.28s ease,
+    width 0.28s ease,
+    height 0.28s ease;
+}
+
+.admin-tour__card {
+  position: fixed;
+  z-index: 2;
+  pointer-events: auto;
+  padding: 1rem 1.05rem 0.95rem;
+  border-radius: 1rem;
+  background: #fff;
+  color: #0f172a;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+  animation: admin-tour-card-in 0.28s ease;
+}
+
+@keyframes admin-tour-card-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.admin-tour__card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.admin-tour__step {
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.admin-tour__x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.admin-tour__x:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.admin-tour__card h3 {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.admin-tour__card p {
+  margin: 0.45rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.admin-tour__tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0.7rem 0 0 !important;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.7rem;
+  background: #eff6ff;
+  color: #1e40af !important;
+  font-size: 0.78rem !important;
+  line-height: 1.4 !important;
+  font-weight: 600;
+}
+
+.admin-tour__loading {
+  margin: 0.55rem 0 0 !important;
+  font-size: 0.75rem !important;
+  font-weight: 650;
+  color: #2563eb !important;
+}
+
+.admin-tour__card.is-busy .admin-tour__next,
+.admin-tour__card.is-busy .admin-tour__prev {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.admin-tour__next:disabled,
+.admin-tour__prev:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.admin-tour__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.admin-tour__skip {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+  padding: 0.35rem 0.2rem;
+}
+
+.admin-tour__skip:hover {
+  color: #0f172a;
+}
+
+.admin-tour__nav {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.admin-tour__prev,
+.admin-tour__next {
+  height: 2.1rem;
+  padding: 0 0.9rem;
+  border-radius: 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.admin-tour__prev {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+}
+
+.admin-tour__next {
+  border: none;
+  background: #2563eb;
+  color: #fff;
+}
+
+.admin-tour__next:hover {
+  filter: brightness(1.06);
+}
+
+[data-theme='dark'] .admin-tour__card {
+  background: #111827;
+  color: #f8fafc;
+  border-color: #1f2937;
+}
+
+[data-theme='dark'] .admin-tour__card p {
+  color: #94a3b8;
+}
+
+[data-theme='dark'] .admin-tour__tip {
+  background: rgba(37, 99, 235, 0.18);
+  color: #93c5fd !important;
+}
+
+[data-theme='dark'] .admin-tour__x {
+  background: #1f2937;
+  color: #94a3b8;
+}
+
+[data-theme='dark'] .admin-tour__prev {
+  background: #111827;
+  border-color: #334155;
+  color: #e2e8f0;
+}

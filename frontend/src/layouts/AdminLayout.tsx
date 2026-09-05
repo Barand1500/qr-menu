@@ -17,29 +17,32 @@ import { useDemoData } from '@/contexts/DemoDataContext';
 import { api } from '@/lib/api';
 import { useAddons } from '@/hooks/useAddons';
 import AdminNotificationBell from '@/components/AdminNotificationBell';
+import AdminTour, { AdminTourHelpButton } from '@/components/admin/AdminTour';
+import type { TourOpenGroup } from '@/lib/adminTourSteps';
 import { adminPreviewMenuUrl } from '@/lib/tableContext';
+import '@/admin-tour.css';
 
 const mainNavBase = [
-  { to: '/admin', label: 'Özet', end: true },
-  { to: '/admin/groups', label: 'Gruplar' },
-  { to: '/admin/products', label: 'Ürünler' },
-  { to: '/admin/showcase', label: 'Vitrin Görselleri' },
-  { to: '/admin/barcode', label: 'Barkod Yazdır' },
+  { to: '/admin', label: 'Özet', end: true, tourId: 'nav-ozet' },
+  { to: '/admin/groups', label: 'Gruplar', tourId: 'nav-groups' },
+  { to: '/admin/products', label: 'Ürünler', tourId: 'nav-products' },
+  { to: '/admin/showcase', label: 'Vitrin Görselleri', tourId: 'nav-showcase' },
+  { to: '/admin/barcode', label: 'Barkod Yazdır', tourId: 'nav-barcode' },
 ];
 
 const startupNav = [
-  { to: '/admin/startup/welcome', label: 'Karşılama Ekranı' },
-  { to: '/admin/startup/menu', label: 'Menü Ekranı' },
+  { to: '/admin/startup/welcome', label: 'Karşılama Ekranı', tourId: 'nav-welcome-theme' },
+  { to: '/admin/startup/menu', label: 'Menü Ekranı', tourId: 'nav-menu-theme' },
 ];
 
 const reportNav = [
-  { to: '/admin/stats', label: 'İstatistikler' },
-  { to: '/admin/suggestions', label: 'Öneri Kutusu' },
-  { to: '/admin/complaints', label: 'Şikayet Kutusu' },
+  { to: '/admin/stats', label: 'İstatistikler', tourId: 'nav-stats' },
+  { to: '/admin/suggestions', label: 'Öneri Kutusu', tourId: 'nav-suggestions' },
+  { to: '/admin/complaints', label: 'Şikayet Kutusu', tourId: 'nav-complaints' },
 ];
 const managementNav = [
-  { to: '/admin/users', label: 'Kullanıcılar' },
-  { to: '/admin/settings', label: 'Ayarlar' },
+  { to: '/admin/users', label: 'Kullanıcılar', tourId: 'nav-users' },
+  { to: '/admin/settings', label: 'Ayarlar', tourId: 'nav-settings' },
 ];
 
 function NavGroup({
@@ -47,17 +50,20 @@ function NavGroup({
   open,
   onToggle,
   children,
+  tourId,
 }: {
   label: string;
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
+  tourId?: string;
 }) {
   return (
     <div className="pt-1">
       <button
         type="button"
         onClick={onToggle}
+        data-tour={tourId}
         className={`sidebar-nav-group-btn ${open ? 'sidebar-nav-group-btn--open' : ''}`}
       >
         <span>{label}</span>
@@ -76,18 +82,21 @@ function NavItem({
   end,
   sub,
   onNavigate,
+  tourId,
 }: {
   to: string;
   label: string;
   end?: boolean;
   sub?: boolean;
   onNavigate?: () => void;
+  tourId?: string;
 }) {
   return (
     <NavLink
       to={to}
       end={end}
       onClick={onNavigate}
+      data-tour={tourId}
       className={({ isActive }) =>
         `sidebar-nav-link${sub ? ' sidebar-nav-link--sub' : ''}${
           isActive ? ' sidebar-nav-link--active' : ''
@@ -111,15 +120,22 @@ export default function AdminLayout() {
   const [managementOpen, setManagementOpen] = useState(false);
   const [startupOpen, setStartupOpen] = useState(false);
   const [resettingAddons, setResettingAddons] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
 
   const mainNav = [
     ...mainNavBase,
     ...(isOwned('lang-pack')
-      ? [{ to: '/admin/bulk-translate', label: 'Toplu Çeviri' }]
+      ? [{ to: '/admin/bulk-translate', label: 'Toplu Çeviri', tourId: 'nav-bulk' }]
       : []),
   ];
 
   const closeMobile = () => setMobileOpen(false);
+
+  function handleOpenTourGroup(group: TourOpenGroup) {
+    if (group === 'startup') setStartupOpen(true);
+    if (group === 'reports') setReportsOpen(true);
+    if (group === 'management') setManagementOpen(true);
+  }
 
   function handleLogout() {
     logout();
@@ -187,6 +203,7 @@ export default function AdminLayout() {
       <div className="px-5 mb-5">
         <button
           onClick={openPublicMenu}
+          data-tour="menu-preview"
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all hover:brightness-105 active:scale-[0.98]"
           style={{
             background: 'var(--admin-sidebar-active-bg)',
@@ -201,45 +218,61 @@ export default function AdminLayout() {
       <div className="mx-5 h-px bg-white/10 mb-2" />
 
       <nav className="sidebar-nav flex-1 overflow-y-auto admin-scroll pb-8">
-        {mainNav.map(({ to, label, end }) => (
-          <NavItem key={to} to={to} label={label} end={end} onNavigate={closeMobile} />
+        {mainNav.map(({ to, label, end, tourId }) => (
+          <NavItem
+            key={to}
+            to={to}
+            label={label}
+            end={end}
+            tourId={tourId}
+            onNavigate={closeMobile}
+          />
         ))}
 
         <NavGroup
           label="Başlangıç Ayarları"
+          tourId="nav-startup"
           open={startupOpen}
           onToggle={() => setStartupOpen(!startupOpen)}
         >
-          {startupNav.map(({ to, label }) => (
-            <NavItem key={to} to={to} label={label} sub onNavigate={closeMobile} />
+          {startupNav.map(({ to, label, tourId }) => (
+            <NavItem key={to} to={to} label={label} tourId={tourId} sub onNavigate={closeMobile} />
           ))}
         </NavGroup>
 
-        <NavGroup label="Raporlar" open={reportsOpen} onToggle={() => setReportsOpen(!reportsOpen)}>
-          {reportNav.map(({ to, label }) => (
-            <NavItem key={to} to={to} label={label} sub onNavigate={closeMobile} />
+        <NavGroup
+          label="Raporlar"
+          tourId="nav-reports"
+          open={reportsOpen}
+          onToggle={() => setReportsOpen(!reportsOpen)}
+        >
+          {reportNav.map(({ to, label, tourId }) => (
+            <NavItem key={to} to={to} label={label} tourId={tourId} sub onNavigate={closeMobile} />
           ))}
         </NavGroup>
 
         <NavGroup
           label="Yönetim"
+          tourId="nav-management"
           open={managementOpen}
           onToggle={() => setManagementOpen(!managementOpen)}
         >
-          {managementNav.map(({ to, label }) => (
-            <NavItem key={to} to={to} label={label} sub onNavigate={closeMobile} />
+          {managementNav.map(({ to, label, tourId }) => (
+            <NavItem key={to} to={to} label={label} tourId={tourId} sub onNavigate={closeMobile} />
           ))}
         </NavGroup>
       </nav>
 
       <div className="px-5 py-4 border-t border-white/10 mt-auto">
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           <p className="text-xs text-white/45 truncate flex-1 min-w-0">
             {user?.restaurant.name}
           </p>
+          <AdminTourHelpButton onClick={() => setTourOpen(true)} />
           <NavLink
             to="/admin/extensions"
             onClick={closeMobile}
+            data-tour="extensions"
             title="Eklentiler"
             aria-label="Eklentiler"
             className={`sidebar-extensions-btn shrink-0 ${
@@ -288,6 +321,7 @@ export default function AdminLayout() {
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
             <button
               onClick={toggleTheme}
+              data-tour="header-theme"
               className="p-2 rounded-lg hover:bg-[var(--admin-accent-soft)] transition"
               title={theme === 'light' ? 'Gece modu' : 'Gündüz modu'}
             >
@@ -301,6 +335,7 @@ export default function AdminLayout() {
             <button
               type="button"
               onClick={() => navigate('/admin/masa-gorunumu')}
+              data-tour="header-floor"
               className="p-2 rounded-lg hover:bg-[var(--admin-accent-soft)] transition"
               title="Masa görünümü"
             >
@@ -341,7 +376,9 @@ export default function AdminLayout() {
               {resettingAddons ? 'Sıfırlanıyor…' : 'Satın alımları geri yükle'}
             </button>
 
-            <AdminNotificationBell />
+            <div data-tour="header-bell">
+              <AdminNotificationBell />
+            </div>
 
             <div className="hidden sm:flex items-center gap-2 pl-1">
               <div
@@ -375,6 +412,13 @@ export default function AdminLayout() {
           <Outlet />
         </main>
       </div>
+
+      <AdminTour
+        open={tourOpen}
+        onClose={() => setTourOpen(false)}
+        onOpenGroup={handleOpenTourGroup}
+        onNeedMobileNav={() => setMobileOpen(true)}
+      />
     </div>
   );
 }
