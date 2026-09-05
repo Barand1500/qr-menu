@@ -56,6 +56,7 @@ type CatalogProduct = {
   id: number;
   name: string;
   price: number;
+  groupId?: number;
   groupName: string;
   currency?: { code?: string; symbol?: string } | null;
 };
@@ -131,7 +132,7 @@ export default function TableFloorPage() {
   const [cart, setCart] = useState<Record<number, number>>({});
   const [orderSaving, setOrderSaving] = useState(false);
   const [productQuery, setProductQuery] = useState('');
-  const [catalogGroup, setCatalogGroup] = useState<string>('all');
+  const [catalogGroup, setCatalogGroup] = useState<string>('all'); // 'all' | groupId string
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
 
@@ -257,16 +258,23 @@ export default function TableFloorPage() {
   }
 
   const catalogGroups = useMemo(() => {
-    const names = new Set<string>();
+    const map = new Map<string, string>();
     for (const p of catalog) {
-      const g = p.groupName?.trim();
-      if (g) names.add(g);
+      const id = p.groupId != null ? String(p.groupId) : '';
+      const name = p.groupName?.trim();
+      if (id && name) map.set(id, name);
+      else if (name) map.set(name, name);
     }
-    return Array.from(names).sort((a, b) => a.localeCompare(b, 'tr'));
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
   }, [catalog]);
 
   const filteredCatalog = catalog.filter((p) => {
-    if (catalogGroup !== 'all' && p.groupName !== catalogGroup) return false;
+    if (catalogGroup !== 'all') {
+      const id = p.groupId != null ? String(p.groupId) : p.groupName;
+      if (id !== catalogGroup) return false;
+    }
     const q = productQuery.trim().toLowerCase();
     if (!q) return true;
     return p.name.toLowerCase().includes(q) || p.groupName.toLowerCase().includes(q);
@@ -511,14 +519,14 @@ export default function TableFloorPage() {
                 </button>
                 {catalogGroups.map((g) => (
                   <button
-                    key={g}
+                    key={g.id}
                     type="button"
                     role="tab"
-                    aria-selected={catalogGroup === g}
-                    className={`table-floor-modal__pill${catalogGroup === g ? ' is-active' : ''}`}
-                    onClick={() => setCatalogGroup(g)}
+                    aria-selected={catalogGroup === g.id}
+                    className={`table-floor-modal__pill${catalogGroup === g.id ? ' is-active' : ''}`}
+                    onClick={() => setCatalogGroup(g.id)}
                   >
-                    {g}
+                    {g.name}
                   </button>
                 ))}
               </div>

@@ -12,7 +12,7 @@ import {
   WAITER_ALERT_MS,
   type FloorOrderItem,
 } from '../lib/table-floor.js';
-import { getProductField, getLanguages } from '../lib/i18n-json.js';
+import { getProductField, getLanguages, getGroupName } from '../lib/i18n-json.js';
 
 const router = Router();
 router.use(authRequired);
@@ -287,7 +287,8 @@ router.get('/products', async (req, res) => {
       id: p.id,
       name: getProductField(p.i18n, langCode, 'name') || `Ürün #${p.id}`,
       price: Number(p.price),
-      groupName: p.group?.name || '',
+      groupId: p.groupId,
+      groupName: (p.group ? getGroupName(p.group.i18n, langCode) : '') || '',
       currency: p.currency
         ? { code: p.currency.code, symbol: p.currency.symbol }
         : null,
