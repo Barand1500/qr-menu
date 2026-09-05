@@ -28,6 +28,7 @@ type FloorTable = {
   index: number;
   code: string;
   name: string;
+  colorId?: string;
   occupied: boolean;
   openedAt: string | null;
   openedBy: string | null;
@@ -59,18 +60,61 @@ type CatalogProduct = {
   currency?: { code?: string; symbol?: string } | null;
 };
 
+const QR_COLORS: { id: string; fg: string; bg: string }[] = [
+  { id: 'black', fg: '#0f172a', bg: '#ffffff' },
+  { id: 'navy', fg: '#1e3a5f', bg: '#f8fafc' },
+  { id: 'ocean', fg: '#0369a1', bg: '#f0f9ff' },
+  { id: 'sky', fg: '#0284c7', bg: '#e0f2fe' },
+  { id: 'teal', fg: '#0f766e', bg: '#f0fdfa' },
+  { id: 'forest', fg: '#14532d', bg: '#f0fdf4' },
+  { id: 'emerald', fg: '#047857', bg: '#ecfdf5' },
+  { id: 'wine', fg: '#7f1d1d', bg: '#fff1f2' },
+  { id: 'rose', fg: '#be123c', bg: '#fff1f2' },
+  { id: 'coral', fg: '#c2410c', bg: '#fff7ed' },
+  { id: 'gold', fg: '#78350f', bg: '#fffbeb' },
+  { id: 'amber', fg: '#b45309', bg: '#fffbeb' },
+  { id: 'purple', fg: '#5b21b6', bg: '#f5f3ff' },
+  { id: 'slate', fg: '#475569', bg: '#f8fafc' },
+];
+
+function normalizeHex(value: string) {
+  const v = value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) return v.toLowerCase();
+  if (/^[0-9a-fA-F]{6}$/.test(v)) return `#${v.toLowerCase()}`;
+  return null;
+}
+
+function resolveQrColor(colorId?: string) {
+  const id = colorId || 'black';
+  const preset = QR_COLORS.find((c) => c.id === id);
+  if (preset) return preset;
+  const fg = normalizeHex(id) || '#0f172a';
+  return { id, fg, bg: '#ffffff' };
+}
+
 function formatMoney(n: number) {
   return `${n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
 }
 
-function formatDuration(openedAt: string | null, now: number) {
+/** Masada: sadece dakika */
+function formatDurationMinutes(openedAt: string | null, now: number) {
   if (!openedAt) return '—';
   const ms = Math.max(0, now - new Date(openedAt).getTime());
   const mins = Math.floor(ms / 60_000);
+  return `${mins} dk`;
+}
+
+/** Sağ panel: dakika + saniye */
+function formatDurationPrecise(openedAt: string | null, now: number) {
+  if (!openedAt) return '—';
+  const ms = Math.max(0, now - new Date(openedAt).getTime());
+  const totalSec = Math.floor(ms / 1000);
+  const mins = Math.floor(totalSec / 60);
+  const secs = totalSec % 60;
   const hrs = Math.floor(mins / 60);
-  const rem = mins % 60;
-  if (hrs <= 0) return `${mins} dk`;
-  return `${hrs} sa ${rem} dk`;
+  const remMins = mins % 60;
+  if (hrs > 0) return `${hrs} sa ${remMins} dk ${secs} sn`;
+  return `${mins} dk ${secs} sn`;
 }
 
 export default function TableFloorPage() {
@@ -113,7 +157,7 @@ export default function TableFloorPage() {
 
   useEffect(() => {
     const poll = window.setInterval(() => void load(true), 4000);
-    const tick = window.setInterval(() => setNow(Date.now()), 15_000);
+    const tick = window.setInterval(() => setNow(Date.now()), 1000);
     return () => {
       window.clearInterval(poll);
       window.clearInterval(tick);
@@ -261,6 +305,7 @@ export default function TableFloorPage() {
             {activeGroup.tables.map((table) => {
               const menuUrl = `${origin}/menu?masa=${encodeURIComponent(table.code)}&grup=${activeGroup.id}`;
               const alerting = table.waiterAlertMs > 0;
+              const qrColor = resolveQrColor(table.colorId);
               return (
                 <button
                   key={table.code}
@@ -276,13 +321,20 @@ export default function TableFloorPage() {
                   <span className="floor-table__chair floor-table__chair--s" aria-hidden />
                   <span className="floor-table__chair floor-table__chair--w" aria-hidden />
                   <span className="floor-table__top">
-                    <span className="floor-table__qr">
-                      <QRCodeSVG value={menuUrl} size={44} level="M" includeMargin={false} />
+                    <span className="floor-table__qr" style={{ background: qrColor.bg }}>
+                      <QRCodeSVG
+                        value={menuUrl}
+                        size={44}
+                        level="M"
+                        includeMargin={false}
+                        fgColor={qrColor.fg}
+                        bgColor={qrColor.bg}
+                      />
                     </span>
                     {table.occupied ? (
                       <span className="floor-table__meta">
                         <Clock3 className="w-3 h-3" />
-                        {formatDuration(table.openedAt, now)}
+                        {formatDurationMinutes(table.openedAt, now)}
                       </span>
                     ) : (
                       <span className="floor-table__meta floor-table__meta--free">Boş</span>
@@ -335,7 +387,7 @@ export default function TableFloorPage() {
                 <Clock3 className="w-4 h-4" />
                 <div>
                   <span>Oturma</span>
-                  <strong>{formatDuration(selected.openedAt, now)}</strong>
+                  <strong>{formatDurationPrecise(selected.openedAt, now)}</strong>
                 </div>
               </div>
               <div>

@@ -106,6 +106,7 @@ router.get('/', async (req, res) => {
           index: n,
           code,
           name: style.name?.trim() || `${g.name} ${n}`,
+          colorId: style.colorId || 'black',
           occupied: Boolean(session),
           openedAt: session?.openedAt?.toISOString() || null,
           openedBy: session?.openedBy || null,
