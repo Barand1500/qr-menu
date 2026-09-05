@@ -23,10 +23,12 @@ export default function AnimasyonDetailModal({
   product,
   open,
   onClose,
+  cartEnabled = true,
 }: {
   product: AnimasyonProduct | null;
   open: boolean;
   onClose: () => void;
+  cartEnabled?: boolean;
 }) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -247,10 +249,12 @@ export default function AnimasyonDetailModal({
             </section>
           ) : null}
 
-          <button type="button" className="anim-detail__add anim-detail__reveal" onClick={onAdd}>
-            <Plus className="w-4 h-4" strokeWidth={2.5} />
-            Sepete ekle
-          </button>
+          {cartEnabled ? (
+            <button type="button" className="anim-detail__add anim-detail__reveal" onClick={onAdd}>
+              <Plus className="w-4 h-4" strokeWidth={2.5} />
+              Sepete ekle
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

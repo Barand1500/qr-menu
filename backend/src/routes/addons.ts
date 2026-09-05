@@ -15,6 +15,18 @@ import {
   MENU_ASSISTANT_STYLE_KEY,
   parseMenuAssistantStyle,
 } from '../lib/menu-assistant-style.js';
+import {
+  MENU_LINEAR_CONFIG_KEY,
+  parseLinearThemeConfig,
+  serializeLinearThemeConfig,
+  type LinearThemeConfig,
+} from '../lib/menu-linear-config.js';
+import {
+  MENU_ANIMASYON_CONFIG_KEY,
+  parseAnimasyonThemeConfig,
+  serializeAnimasyonThemeConfig,
+  type AnimasyonThemeConfig,
+} from '../lib/menu-animasyon-config.js';
 
 const router = Router();
 router.use(authRequired);
@@ -30,15 +42,27 @@ async function getMenuAssistantStyle(restaurantId: number) {
 
 router.get('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const [owned, disabled, menuAssistantStyle] = await Promise.all([
+  const [owned, disabled, menuAssistantStyle, linearRow, animasyonRow] = await Promise.all([
     getOwnedAddons(restaurantId!),
     getDisabledAddons(restaurantId!),
     getMenuAssistantStyle(restaurantId!),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurantId!, key: MENU_LINEAR_CONFIG_KEY },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurantId!, key: MENU_ANIMASYON_CONFIG_KEY },
+      },
+    }),
   ]);
   res.json({
     owned,
     disabled,
     menuAssistantStyle,
+    linearConfig: parseLinearThemeConfig(linearRow?.value),
+    animasyonConfig: parseAnimasyonThemeConfig(animasyonRow?.value),
     products: ADDON_PRODUCTS.map((p) => {
       const isOwned = Boolean(p.free) || owned.includes(p.id);
       const enabled = isOwned && !disabled.includes(p.id);
@@ -133,6 +157,50 @@ router.patch('/menu-assistant/style', async (req, res) => {
   });
 
   res.json({ ok: true, style: parsed });
+});
+
+router.patch('/menu-linear/config', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const owned = await ownsAddon(restaurantId!, 'menu-linear');
+  if (!owned) {
+    return res.status(403).json({ message: 'Önce Linear tema eklentisini satın alın' });
+  }
+
+  const body = (req.body || {}) as Partial<LinearThemeConfig>;
+  const parsed = parseLinearThemeConfig(JSON.stringify(body));
+  const value = serializeLinearThemeConfig(parsed);
+
+  await prisma.setting.upsert({
+    where: {
+      restaurantId_key: { restaurantId: restaurantId!, key: MENU_LINEAR_CONFIG_KEY },
+    },
+    update: { value },
+    create: { restaurantId: restaurantId!, key: MENU_LINEAR_CONFIG_KEY, value },
+  });
+
+  res.json({ ok: true, config: parsed });
+});
+
+router.patch('/menu-animasyon/config', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const owned = await ownsAddon(restaurantId!, 'menu-animasyon');
+  if (!owned) {
+    return res.status(403).json({ message: 'Önce Animasyonlu tema eklentisini satın alın' });
+  }
+
+  const body = (req.body || {}) as Partial<AnimasyonThemeConfig>;
+  const parsed = parseAnimasyonThemeConfig(JSON.stringify(body));
+  const value = serializeAnimasyonThemeConfig(parsed);
+
+  await prisma.setting.upsert({
+    where: {
+      restaurantId_key: { restaurantId: restaurantId!, key: MENU_ANIMASYON_CONFIG_KEY },
+    },
+    update: { value },
+    create: { restaurantId: restaurantId!, key: MENU_ANIMASYON_CONFIG_KEY, value },
+  });
+
+  res.json({ ok: true, config: parsed });
 });
 
 router.post('/reset', async (req, res) => {

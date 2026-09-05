@@ -96,6 +96,7 @@ export default function SiparisProductPage({
         <div className="siparis-detail__top-actions">
           <SiparisCartButton alwaysShow />
           <MenuColorModeToggle colorMode={colorMode} onToggle={toggleColorMode} />
+          <TableServiceButtons lang={lang} slug={slug} enabled={tableServiceOn} />
         </div>
       </div>
 
@@ -194,8 +195,6 @@ export default function SiparisProductPage({
           ) : null}
         </div>
       </div>
-
-      <TableServiceButtons lang={lang} slug={slug} enabled={tableServiceOn} />
     </div>
   );
 }

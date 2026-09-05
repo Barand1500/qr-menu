@@ -102,6 +102,12 @@
   z-index: 3;
 }
 
+.lux-detail__bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .lux-detail__back {
   width: 2.5rem;
   height: 2.5rem;

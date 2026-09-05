@@ -968,14 +968,6 @@
   font-size: 1.05rem;
 }
 
-/* Sipariş: garson/hesap PC’de sağ altta serbest (sepet header’da) */
-@media (min-width: 768px) {
-  .public-menu-page[data-theme-menu='siparis'] .table-service-bar {
-    bottom: 1.25rem;
-    inset-inline-end: 1.25rem;
-  }
-}
-
 /* ── Cart sheet ── */
 .siparis-cart-sheet {
   position: fixed;

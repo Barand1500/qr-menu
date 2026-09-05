@@ -31,6 +31,13 @@ export const MENU_THEMES: MenuThemeOption[] = [
     previewClass: 'theme-preview--luxury',
   },
   {
+    id: 'linear',
+    name: 'Linear',
+    description: 'Krem–zeytin dalgalı split: yuvarlak ürün vitrini, özellik satırları, salt gösterim.',
+    locked: true,
+    previewClass: 'theme-preview--linear',
+  },
+  {
     id: 'siparis',
     name: 'Sipariş Odaklı',
     description: 'Kırmızı-krem fast menü: banner, kategori ikonları, popüler kartlar ve masa sepeti.',

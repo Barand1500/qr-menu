@@ -105,7 +105,14 @@ export default function LuxuryProductPage({
         <button type="button" className="lux-detail__back" onClick={onBack} aria-label="Geri">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <MenuColorModeToggle colorMode={colorMode} onToggle={toggleColorMode} />
+        <div className="lux-detail__bar-actions">
+          <MenuColorModeToggle colorMode={colorMode} onToggle={toggleColorMode} />
+          <TableServiceButtons
+            lang={lang}
+            slug={slug}
+            enabled={product.menuFeatures?.tableService !== false}
+          />
+        </div>
       </div>
 
       <div className="lux-detail__layout">
@@ -231,12 +238,6 @@ export default function LuxuryProductPage({
           </div>
         </section>
       ) : null}
-
-      <TableServiceButtons
-        lang={lang}
-        slug={slug}
-        enabled={product.menuFeatures?.tableService !== false}
-      />
     </div>
   );
 }

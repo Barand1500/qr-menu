@@ -68,6 +68,7 @@ function SettingsSection({
   title,
   children,
   className = '',
+  bodyClassName = '',
   action,
   sectionId,
   highlight,
@@ -76,6 +77,7 @@ function SettingsSection({
   title: string;
   children: React.ReactNode;
   className?: string;
+  bodyClassName?: string;
   action?: React.ReactNode;
   sectionId?: string;
   highlight?: boolean;
@@ -100,7 +102,7 @@ function SettingsSection({
         </h3>
         {action}
       </div>
-      <div className="p-5 flex-1">{children}</div>
+      <div className={`p-5 flex-1 min-h-0 ${bodyClassName}`.trim()}>{children}</div>
     </section>
   );
 }
@@ -940,7 +942,12 @@ export default function SettingsPage() {
       </div>
 
       <div className="settings-welcome-split">
-        <SettingsSection icon={MessageSquare} title="Karşılama Metinleri">
+        <SettingsSection
+          icon={MessageSquare}
+          title="Karşılama Metinleri"
+          className="settings-welcome-split__texts"
+          bodyClassName="settings-welcome-split__texts-body admin-scroll"
+        >
           <div className="grid sm:grid-cols-1 gap-4 float-field-stack">
             {activeLanguages.length === 0 ? (
               <p className="text-sm admin-text-muted">
@@ -1133,7 +1140,7 @@ export default function SettingsPage() {
           )}
 
           <div className="settings-menu-features">
-            <p className="settings-menu-features__caption">Menü çağırma butonları</p>
+            <p className="settings-menu-features__caption">Menü çağırma</p>
             <div className="settings-menu-features__row">
               <button
                 type="button"
@@ -1145,7 +1152,7 @@ export default function SettingsPage() {
               >
                 <span className="settings-feature-toggle__label">
                   <HandHelping className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
-                  Garson / Hesap
+                  Garson çağır
                 </span>
                 <span
                   className={`settings-switch${tableServiceEnabled ? ' is-on' : ''}`}

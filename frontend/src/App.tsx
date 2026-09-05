@@ -17,6 +17,7 @@ import WelcomeThemePage from '@/pages/admin/WelcomeThemePage';
 import MenuThemePage from '@/pages/admin/MenuThemePage';
 import ExtensionsHubPage from '@/pages/admin/ExtensionsHubPage';
 import BulkTranslatePage from '@/pages/admin/BulkTranslatePage';
+import TableFloorPage from '@/pages/admin/TableFloorPage';
 import PublicWelcomePage from '@/pages/public/PublicWelcomePage';
 import PublicMenuPage from '@/pages/public/PublicMenuPage';
 import PublicProductPage from '@/pages/public/PublicProductPage';
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="/m/:slug/product/:productId" element={<LegacyMenuRedirect to="product" />} />
 
           <Route element={<ProtectedRoute />}>
+            <Route path="/admin/masa-gorunumu" element={<TableFloorPage />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<DashboardPage />} />
               <Route path="groups" element={<GroupsPage />} />

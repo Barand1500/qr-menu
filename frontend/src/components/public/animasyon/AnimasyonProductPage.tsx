@@ -21,7 +21,7 @@ type Product = {
   features: string[];
   group: { id: number; name: string };
   restaurant: { name: string };
-  menuFeatures?: { tableService?: boolean };
+  menuFeatures?: { tableService?: boolean; animasyonCart?: boolean };
 };
 
 export default function AnimasyonProductPage({
@@ -43,6 +43,7 @@ export default function AnimasyonProductPage({
   const rootRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
   const { addItem, setSheetOpen } = useSiparisCart();
+  const cartEnabled = product.menuFeatures?.animasyonCart !== false;
   const [imgIdx, setImgIdx] = useState(0);
   const touchX = useRef<number | null>(null);
   const gallery = galleryImages.length > 0 ? galleryImages : [];
@@ -116,6 +117,11 @@ export default function AnimasyonProductPage({
         <button type="button" onClick={onBack} className="anim-detail__close" aria-label="Geri">
           <ArrowLeft className="w-5 h-5" />
         </button>
+        <TableServiceButtons
+          lang={lang}
+          slug={slug}
+          enabled={product.menuFeatures?.tableService !== false}
+        />
       </div>
 
       <div className="anim-page__card">
@@ -212,18 +218,14 @@ export default function AnimasyonProductPage({
             </section>
           ) : null}
 
-          <button type="button" className="anim-detail__add anim-page__reveal" onClick={onAdd}>
-            <Plus className="w-4 h-4" strokeWidth={2.5} />
-            Sepete ekle
-          </button>
+          {cartEnabled ? (
+            <button type="button" className="anim-detail__add anim-page__reveal" onClick={onAdd}>
+              <Plus className="w-4 h-4" strokeWidth={2.5} />
+              Sepete ekle
+            </button>
+          ) : null}
         </div>
       </div>
-
-      <TableServiceButtons
-        lang={lang}
-        slug={slug}
-        enabled={product.menuFeatures?.tableService !== false}
-      />
     </div>
   );
 }

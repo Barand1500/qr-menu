@@ -9,6 +9,7 @@ import {
   Moon,
   RotateCcw,
   Puzzle,
+  Armchair,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -295,6 +296,15 @@ export default function AdminLayout() {
               ) : (
                 <Sun className="w-[18px] h-[18px]" style={{ color: 'var(--admin-accent)' }} />
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/admin/masa-gorunumu')}
+              className="p-2 rounded-lg hover:bg-[var(--admin-accent-soft)] transition"
+              title="Masa görünümü"
+            >
+              <Armchair className="w-[18px] h-[18px]" style={{ color: 'var(--admin-accent)' }} />
             </button>
 
             <button

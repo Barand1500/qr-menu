@@ -10,7 +10,20 @@ import {
 import { parseSocialLinks, publicSocialLinks } from '../lib/social.js';
 import { isAddonActive } from '../addons/ownership.js';
 import { parseMenuAssistantStyle, MENU_ASSISTANT_STYLE_KEY } from '../lib/menu-assistant-style.js';
+import {
+  MENU_LINEAR_CONFIG_KEY,
+  parseLinearThemeConfig,
+} from '../lib/menu-linear-config.js';
+import {
+  MENU_ANIMASYON_CONFIG_KEY,
+  parseAnimasyonThemeConfig,
+} from '../lib/menu-animasyon-config.js';
 import { isTableServiceEnabled, MENU_TABLE_SERVICE_KEY } from '../lib/table-service.js';
+import {
+  appendOrdersToSession,
+  openOrGetSession,
+  type FloorOrderItem,
+} from '../lib/table-floor.js';
 import { parseProductImages } from '../lib/product-images.js';
 import { parseAllergenTags } from '../lib/diet-allergens.js';
 import {
@@ -177,9 +190,16 @@ router.get('/:slug/products/:productId', async (req, res) => {
   );
   const themes = await getRestaurantThemes(restaurant.id);
   const prefCatalog = await loadPrefCatalog(restaurant.id);
-  const tableServiceSetting = await prisma.setting.findFirst({
-    where: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
-  });
+  const [tableServiceSetting, animasyonConfigSetting] = await Promise.all([
+    prisma.setting.findFirst({
+      where: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurant.id, key: MENU_ANIMASYON_CONFIG_KEY },
+      },
+    }),
+  ]);
 
   res.json({
     id: product.id,
@@ -214,6 +234,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
     },
     menuFeatures: {
       tableService: isTableServiceEnabled(tableServiceSetting?.value),
+      animasyonCart: parseAnimasyonThemeConfig(animasyonConfigSetting?.value).cartEnabled,
     },
   });
 });
@@ -235,8 +256,20 @@ router.get('/:slug', async (req, res) => {
     return res.status(404).json({ message: 'Kampanya bulunamadı' });
   }
 
-  const [groups, bannerShowcase, storyShowcase, languages, aboutSetting, socialSetting, themes, menuAssistant, assistantStyleSetting, tableServiceSetting] =
-    await Promise.all([
+  const [
+    groups,
+    bannerShowcase,
+    storyShowcase,
+    languages,
+    aboutSetting,
+    socialSetting,
+    themes,
+    menuAssistant,
+    assistantStyleSetting,
+    tableServiceSetting,
+    linearConfigSetting,
+    animasyonConfigSetting,
+  ] = await Promise.all([
     prisma.group.findMany({
       where: { restaurantId: restaurant.id, isActive: true, parentId: null },
       include: {
@@ -282,6 +315,16 @@ router.get('/:slug', async (req, res) => {
     prisma.setting.findUnique({
       where: {
         restaurantId_key: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurant.id, key: MENU_LINEAR_CONFIG_KEY },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurant.id, key: MENU_ANIMASYON_CONFIG_KEY },
       },
     }),
   ]);
@@ -357,6 +400,8 @@ router.get('/:slug', async (req, res) => {
         ? parseMenuAssistantStyle(assistantStyleSetting?.value)
         : undefined,
       tableService: isTableServiceEnabled(tableServiceSetting?.value),
+      linear: parseLinearThemeConfig(linearConfigSetting?.value),
+      animasyon: parseAnimasyonThemeConfig(animasyonConfigSetting?.value),
     },
     socialLinks: publicSocialLinks(parseSocialLinks(socialSetting?.value), 'menu'),
     showcase: bannerShowcase.map((s) => {
@@ -825,7 +870,7 @@ router.post('/:slug/table-request', async (req, res) => {
   }
 
   const requestType = String(type || '').trim();
-  if (requestType !== 'waiter' && requestType !== 'bill') {
+  if (requestType !== 'waiter') {
     return res.status(400).json({ message: 'Geçersiz istek türü' });
   }
 
@@ -887,6 +932,31 @@ router.post('/:slug/table-request', async (req, res) => {
     },
   });
 
+  // Masa görünümü: oturumu aç + müşteri siparişini ekle
+  if (masa !== 'admin') {
+    try {
+      const session = await openOrGetSession(restaurant.id, masa, grup, 'qr');
+      if (orderJson) {
+        const parsed = JSON.parse(orderJson) as {
+          items?: { name?: string; qty?: number; price?: number }[];
+        };
+        const lines: FloorOrderItem[] = (parsed.items || [])
+          .filter((i) => i.name)
+          .map((i) => ({
+            id: `cust-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            name: String(i.name).slice(0, 120),
+            qty: Math.min(99, Math.max(1, Number(i.qty) || 1)),
+            price: Number(i.price) || 0,
+            createdAt: new Date().toISOString(),
+            source: 'customer' as const,
+          }));
+        if (lines.length) await appendOrdersToSession(session.id, lines);
+      }
+    } catch {
+      /* floor sync best-effort */
+    }
+  }
+
   res.status(201).json({
     ok: true,
     id: row.id,
@@ -896,6 +966,33 @@ router.post('/:slug/table-request', async (req, res) => {
     note: row.note,
     orderJson: row.orderJson,
     createdAt: row.createdAt.toISOString(),
+  });
+});
+
+/** QR okutulunca / menü açılınca masa oturumu başlat */
+router.post('/:slug/table-checkin', async (req, res) => {
+  const slug = req.params.slug;
+  const { tableNumber, groupSlug } = req.body as {
+    tableNumber?: string;
+    groupSlug?: string;
+  };
+
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
+  if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
+
+  const masa = String(tableNumber || '').trim();
+  if (!masa || masa === 'admin' || masa.length > 40) {
+    return res.status(400).json({ message: 'Geçersiz masa' });
+  }
+
+  const grup = groupSlug ? String(groupSlug).trim().slice(0, 100) : null;
+  const session = await openOrGetSession(restaurant.id, masa, grup, 'qr');
+
+  res.json({
+    ok: true,
+    sessionId: session.id,
+    openedAt: session.openedAt.toISOString(),
+    openedBy: session.openedBy,
   });
 });
 

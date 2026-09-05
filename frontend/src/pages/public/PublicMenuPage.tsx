@@ -15,6 +15,7 @@ import {
   DEMO_POPULAR_PRODUCTS,
   mapDemoStoriesToGroups,
 } from '@/lib/demoData';
+import { checkInTable } from '@/lib/tableCheckin';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { useMenuColorMode } from '@/hooks/useMenuColorMode';
 import { usePublicRtl } from '@/hooks/usePublicRtl';
@@ -38,6 +39,7 @@ import SadeProductList from '@/components/public/sade/SadeProductList';
 import AliveHome from '@/components/public/alive/AliveHome';
 import AliveProductList from '@/components/public/alive/AliveProductList';
 import AnimasyonHome from '@/components/public/animasyon/AnimasyonHome';
+import LinearHome from '@/components/public/linear/LinearHome';
 import LuxuryProductList from '@/components/public/luxury/LuxuryProductList';
 import SiparisHome from '@/components/public/siparis/SiparisHome';
 import SiparisProductList from '@/components/public/siparis/SiparisProductList';
@@ -83,6 +85,12 @@ interface MenuData {
     menuAssistant?: boolean;
     menuAssistantStyle?: 'sunset' | 'berry' | 'dark';
     tableService?: boolean;
+    linear?: {
+      headline: string;
+      subhead: string;
+      features: { icon: string; text: string }[];
+    };
+    animasyon?: { cartEnabled?: boolean };
   };
 }
 
@@ -161,7 +169,8 @@ export default function PublicMenuPage() {
     if (masa) sessionStorage.setItem('menu_masa', masa);
     if (grup) sessionStorage.setItem('menu_grup', grup);
     if (kampanya) sessionStorage.setItem('menu_kampanya', kampanya);
-  }, [searchParams]);
+    if (slug && masa) checkInTable(slug, masa, grup);
+  }, [searchParams, slug]);
 
   const campaignSlug =
     searchParams.get('kampanya') ||
@@ -418,7 +427,10 @@ export default function PublicMenuPage() {
   const isLuxury = menuTheme === 'luxury';
   const isSiparis = menuTheme === 'siparis';
   const isAnimasyon = menuTheme === 'animasyon';
-  const cartTheme = isSiparis || isAnimasyon;
+  const isLinear = menuTheme === 'linear';
+  const animasyonCartOn = menu.features?.animasyon?.cartEnabled !== false;
+  const cartTheme = isSiparis || (isAnimasyon && animasyonCartOn);
+  const hideColorToggle = isAnimasyon || isLinear;
   const menuAssistantOn = Boolean(menu.features?.menuAssistant);
   const assistantStyle = parseMenuAssistantStyle(menu.features?.menuAssistantStyle);
   const tableServiceOn = menu.features?.tableService !== false;
@@ -474,9 +486,9 @@ export default function PublicMenuPage() {
     </>
   ) : null;
 
-  const tableServiceUi = !searchOpen ? (
+  const tableServiceSlot = (
     <TableServiceButtons lang={lang} slug={slug} enabled={tableServiceOn} />
-  ) : null;
+  );
 
   /* ── Ürün listesi ── */
   if (groupId && products) {
@@ -493,8 +505,9 @@ export default function PublicMenuPage() {
           onSearchToggle={toggleSearch}
           showMobileSearch={isSiparis || isAnimasyon}
           extraIcons={cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon} /> : null}
-          colorMode={isAnimasyon ? undefined : colorMode}
-          onColorModeToggle={isAnimasyon ? undefined : toggleColorMode}
+          colorMode={hideColorToggle ? undefined : colorMode}
+          onColorModeToggle={hideColorToggle ? undefined : toggleColorMode}
+          tableServiceSlot={tableServiceSlot}
           searchSlot={
             <>
               {searchField}
@@ -509,6 +522,14 @@ export default function PublicMenuPage() {
             <p className="public-allergy-empty">
               {allergyActive ? allergyCopy.empty : 'Bu grupta ürün yok'}
             </p>
+          ) : isLinear ? (
+            <LinearHome
+              menu={menu}
+              allergyBanner={null}
+              lang={lang}
+              campaignSlug={campaignSlug}
+              initialGroupId={products.group.id}
+            />
           ) : isAlive ? (
             <AliveProductList
               products={filteredGroupProducts}
@@ -536,6 +557,7 @@ export default function PublicMenuPage() {
               lang={lang}
               campaignSlug={campaignSlug}
               initialGroupId={products.group.id}
+              cartEnabled={animasyonCartOn}
             />
           ) : (
             <SadeProductList
@@ -580,7 +602,6 @@ export default function PublicMenuPage() {
 
         {sideMenu}
         {assistantUi}
-        {tableServiceUi}
         {isAnimasyon ? (
           <AnimasyonCartSheet lang={lang} />
         ) : cartTheme ? (
@@ -611,8 +632,9 @@ export default function PublicMenuPage() {
         onSearchToggle={toggleSearch}
         showMobileSearch={isSiparis || isAnimasyon}
         extraIcons={cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon} /> : null}
-        colorMode={isAnimasyon ? undefined : colorMode}
-        onColorModeToggle={isAnimasyon ? undefined : toggleColorMode}
+        colorMode={hideColorToggle ? undefined : colorMode}
+        onColorModeToggle={hideColorToggle ? undefined : toggleColorMode}
+        tableServiceSlot={tableServiceSlot}
         searchSlot={
           <>
             {searchField}
@@ -647,7 +669,15 @@ export default function PublicMenuPage() {
         </div>
 
         {tab === 'home' &&
-          (isAlive ? (
+          (isLinear ? (
+            <LinearHome
+              menu={menu}
+              popularProducts={filteredPopular}
+              allergyBanner={allergyBanner}
+              lang={lang}
+              campaignSlug={campaignSlug}
+            />
+          ) : isAlive ? (
             <AliveHome
               menu={menu}
               displayShowcase={displayShowcase}
@@ -679,6 +709,7 @@ export default function PublicMenuPage() {
               allergyBanner={allergyBanner}
               lang={lang}
               campaignSlug={campaignSlug}
+              cartEnabled={animasyonCartOn}
             />
           ) : (
             <SadeHome
@@ -746,7 +777,6 @@ export default function PublicMenuPage() {
 
       {sideMenu}
       {assistantUi}
-      {tableServiceUi}
       {isAnimasyon ? (
         <AnimasyonCartSheet lang={lang} />
       ) : cartTheme ? (

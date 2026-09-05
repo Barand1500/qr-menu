@@ -21,7 +21,7 @@ import BrushPanel from '@/components/public/BrushPanel';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { usePublicRtl } from '@/hooks/usePublicRtl';
-import { menuGroupPath, menuProductPath } from '@/lib/menuPaths';
+import { menuGroupPath, menuHomePath, menuProductPath } from '@/lib/menuPaths';
 import TableServiceButtons from '@/components/public/TableServiceButtons';
 import MenuColorModeToggle from '@/components/public/MenuColorModeToggle';
 import { useMenuColorMode } from '@/hooks/useMenuColorMode';
@@ -50,7 +50,7 @@ interface ProductDetail {
   isRecommended?: boolean;
   features: string[];
   theme?: string;
-  menuFeatures?: { tableService?: boolean };
+  menuFeatures?: { tableService?: boolean; animasyonCart?: boolean };
   group: { id: number; name: string };
   restaurant: { name: string; slug: string; logoUrl?: string | null };
 }
@@ -113,6 +113,12 @@ export default function PublicProductPage() {
     });
   }, [product, slug, lang, sessionId, demoEnabled, campaignSlug]);
 
+  useEffect(() => {
+    if (product?.theme === 'linear') {
+      navigate(menuHomePath(), { replace: true });
+    }
+  }, [product?.theme, navigate]);
+
   const galleryImageCount = product
     ? product.images && product.images.length > 0
       ? product.images.length
@@ -149,6 +155,14 @@ export default function PublicProductPage() {
 
   const theme = product.theme || 'sade';
   const onBack = () => navigate(menuGroupPath(product.group.id));
+
+  if (theme === 'linear') {
+    return (
+      <div className="public-menu-page min-h-screen flex items-center justify-center" data-theme-menu="linear">
+        <div className="w-9 h-9 border-2 border-[#3f4730] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (theme === 'sade') {
     return (
@@ -214,8 +228,9 @@ export default function PublicProductPage() {
   }
 
   if (theme === 'animasyon') {
+    const animasyonCartOn = product.menuFeatures?.animasyonCart !== false;
     return (
-      <SiparisCartProvider slug={slug} enabled>
+      <SiparisCartProvider slug={slug} enabled={animasyonCartOn}>
         <div
           className="public-menu-page public-product-page public-product-page--animasyon"
           data-theme-menu="animasyon"
@@ -231,7 +246,7 @@ export default function PublicProductPage() {
             slug={slug}
             onBack={onBack}
           />
-          <AnimasyonCartSheet lang={lang} />
+          {animasyonCartOn ? <AnimasyonCartSheet lang={lang} /> : null}
         </div>
       </SiparisCartProvider>
     );
@@ -286,11 +301,18 @@ export default function PublicProductPage() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <MenuColorModeToggle
-            colorMode={colorMode}
-            onToggle={toggleColorMode}
-            variant="hero"
-          />
+          <div className="public-product-hero__top-actions">
+            <MenuColorModeToggle
+              colorMode={colorMode}
+              onToggle={toggleColorMode}
+              variant="hero"
+            />
+            <TableServiceButtons
+              lang={lang}
+              slug={slug}
+              enabled={product.menuFeatures?.tableService !== false}
+            />
+          </div>
         </div>
 
         <div className="public-product-hero__bottom">
@@ -476,11 +498,6 @@ export default function PublicProductPage() {
           </main>
         </div>
       </div>
-      <TableServiceButtons
-        lang={lang}
-        slug={slug}
-        enabled={product.menuFeatures?.tableService !== false}
-      />
     </div>
   );
 }

@@ -46,6 +46,7 @@ model Restaurant {
   tableRequests  TableServiceRequest[]
   qrTableGroups  QrTableGroup[]
   campaigns      Campaign[]
+  tableSessions  TableFloorSession[]
 
   @@map("restoranlar")
 }
@@ -273,6 +274,28 @@ model QrTableGroup {
   @@unique([restaurantId, slug])
   @@index([restaurantId, sortOrder])
   @@map("qr_masa_gruplari")
+}
+
+/// Masa görünümü — açık oturum (QR / admin)
+model TableFloorSession {
+  id           Int       @id @default(autoincrement())
+  restaurantId Int       @map("restoran_id")
+  tableNumber  String    @map("masa_no") @db.VarChar(40)
+  groupSlug    String?   @map("grup_slug") @db.VarChar(100)
+  status       String    @default("open") @db.VarChar(20) /// open | closed
+  openedBy     String    @default("qr") @map("acilis") @db.VarChar(20) /// qr | admin
+  openedAt     DateTime  @map("acilis_zamani")
+  closedAt     DateTime? @map("kapanis_zamani")
+  /// [{ id, productId?, name, qty, price, createdAt, source }]
+  ordersJson   String?   @map("siparis_json") @db.Text
+  createdAt    DateTime  @default(now()) @map("olusturma")
+  updatedAt    DateTime  @updatedAt @map("guncelleme")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, status])
+  @@index([restaurantId, tableNumber, groupSlug])
+  @@map("masa_oturumlari")
 }
 
 /// Kampanya (özel menü) — slug QR linkinde: ?kampanya=iftar

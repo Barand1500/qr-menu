@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { Button, Card, PageHeader } from '@/components/ui';
 import { useAddons } from '@/hooks/useAddons';
+import LinearThemeSettingsModal from '@/components/LinearThemeSettingsModal';
+import AnimasyonThemeSettingsModal from '@/components/AnimasyonThemeSettingsModal';
 import {
   themeAddonId,
   DEFAULT_MENU_THEME,
@@ -13,6 +15,8 @@ import {
   type MenuThemeOption,
   type ThemeKind,
 } from '@/addons';
+import type { LinearThemeConfig } from '@/lib/menuLinearConfig';
+import type { AnimasyonThemeConfig } from '@/lib/menuAnimasyonConfig';
 
 interface ThemePickerPageProps {
   kind: ThemeKind;
@@ -23,11 +27,22 @@ interface ThemePickerPageProps {
 export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPageProps) {
   const themes = kind === 'welcome' ? WELCOME_THEMES : MENU_THEMES;
   const defaultId = kind === 'welcome' ? DEFAULT_WELCOME_THEME : DEFAULT_MENU_THEME;
-  const { isOwned, loading: addonsLoading } = useAddons();
+  const {
+    isOwned,
+    loading: addonsLoading,
+    linearConfig,
+    setLinearThemeConfig,
+    animasyonConfig,
+    setAnimasyonThemeConfig,
+  } = useAddons();
   const [selected, setSelected] = useState(defaultId);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [linearOpen, setLinearOpen] = useState(false);
+  const [animasyonOpen, setAnimasyonOpen] = useState(false);
+  const [savingLinear, setSavingLinear] = useState(false);
+  const [savingAnimasyon, setSavingAnimasyon] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,6 +92,38 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
     }
   }
 
+  async function handleLinearSave(config: LinearThemeConfig) {
+    setSavingLinear(true);
+    try {
+      await setLinearThemeConfig(config);
+      setLinearOpen(false);
+      setMessage('Linear tema ayarları kaydedildi.');
+    } finally {
+      setSavingLinear(false);
+    }
+  }
+
+  async function handleAnimasyonSave(config: AnimasyonThemeConfig) {
+    setSavingAnimasyon(true);
+    try {
+      await setAnimasyonThemeConfig(config);
+      setAnimasyonOpen(false);
+      setMessage('Animasyonlu tema ayarları kaydedildi.');
+    } finally {
+      setSavingAnimasyon(false);
+    }
+  }
+
+  function openThemeSettings(theme: MenuThemeOption) {
+    if (theme.id === 'linear') setLinearOpen(true);
+    else if (theme.id === 'animasyon') setAnimasyonOpen(true);
+  }
+
+  function hasThemeSettings(theme: MenuThemeOption) {
+    if (kind !== 'menu' || isThemeLocked(theme)) return false;
+    return theme.id === 'linear' || theme.id === 'animasyon';
+  }
+
   return (
     <div>
       <PageHeader title={title} />
@@ -107,6 +154,7 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
           {themes.map((theme) => {
             const locked = isThemeLocked(theme);
             const isActive = selected === theme.id;
+            const showSettings = hasThemeSettings(theme);
             return (
               <Card
                 key={theme.id}
@@ -123,18 +171,27 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
                     </div>
                   )}
                   {isActive && !locked && (
-                    <div className="theme-preview__active">
+                    <div className="theme-preview__active theme-preview__active--left">
                       <Check className="w-4 h-4" />
                       Aktif
                     </div>
                   )}
+                  {showSettings ? (
+                    <button
+                      type="button"
+                      className="theme-preview__settings"
+                      onClick={() => openThemeSettings(theme)}
+                    >
+                      ayarlar
+                    </button>
+                  ) : null}
                 </div>
                 <div className="p-4">
                   <h3 className="font-bold text-[var(--admin-text)]">{theme.name}</h3>
                   <p className="text-sm admin-text-muted mt-1.5 leading-relaxed">
                     {theme.description}
                   </p>
-                  <div className="mt-4">
+                  <div className="mt-4 flex flex-col gap-2">
                     {locked ? (
                       <Link
                         to={
@@ -164,6 +221,25 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
           })}
         </div>
       )}
+
+      {kind === 'menu' ? (
+        <>
+          <LinearThemeSettingsModal
+            open={linearOpen}
+            initial={linearConfig}
+            saving={savingLinear}
+            onClose={() => setLinearOpen(false)}
+            onSave={handleLinearSave}
+          />
+          <AnimasyonThemeSettingsModal
+            open={animasyonOpen}
+            initial={animasyonConfig}
+            saving={savingAnimasyon}
+            onClose={() => setAnimasyonOpen(false)}
+            onSave={handleAnimasyonSave}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

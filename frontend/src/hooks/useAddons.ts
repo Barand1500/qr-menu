@@ -5,11 +5,21 @@ import {
   parseMenuAssistantStyle,
   type MenuAssistantStyle,
 } from '@/lib/menuAssistantStyle';
+import {
+  DEFAULT_LINEAR_CONFIG,
+  type LinearThemeConfig,
+} from '@/lib/menuLinearConfig';
+import {
+  DEFAULT_ANIMASYON_CONFIG,
+  type AnimasyonThemeConfig,
+} from '@/lib/menuAnimasyonConfig';
 
 interface AddonsResponse {
   owned: string[];
   disabled?: string[];
   menuAssistantStyle?: string;
+  linearConfig?: LinearThemeConfig;
+  animasyonConfig?: AnimasyonThemeConfig;
   products: AddonProduct[];
 }
 
@@ -17,6 +27,9 @@ export function useAddons() {
   const [owned, setOwned] = useState<string[]>([]);
   const [disabled, setDisabled] = useState<string[]>([]);
   const [menuAssistantStyle, setMenuAssistantStyle] = useState<MenuAssistantStyle>('sunset');
+  const [linearConfig, setLinearConfig] = useState<LinearThemeConfig>(DEFAULT_LINEAR_CONFIG);
+  const [animasyonConfig, setAnimasyonConfig] =
+    useState<AnimasyonThemeConfig>(DEFAULT_ANIMASYON_CONFIG);
   const [products, setProducts] = useState<AddonProduct[]>(ADDON_CATALOG);
   const [loading, setLoading] = useState(true);
 
@@ -26,6 +39,8 @@ export function useAddons() {
     setOwned(ownedIds);
     setDisabled(disabledIds);
     setMenuAssistantStyle(parseMenuAssistantStyle(res.menuAssistantStyle));
+    if (res.linearConfig) setLinearConfig(res.linearConfig);
+    if (res.animasyonConfig) setAnimasyonConfig(res.animasyonConfig);
     setProducts(
       ADDON_CATALOG.map((p) => {
         const fromApi = res.products.find((x) => x.id === p.id);
@@ -87,11 +102,11 @@ export function useAddons() {
     setDisabled(res.disabled || []);
     setProducts((prev) =>
       prev.map((p) => {
-        const isOwned = Boolean(p.free) || res.owned.includes(p.id);
+        const isOwnedNow = Boolean(p.free) || res.owned.includes(p.id);
         return {
           ...p,
-          owned: isOwned,
-          enabled: isOwned && !(res.disabled || []).includes(p.id),
+          owned: isOwnedNow,
+          enabled: isOwnedNow && !(res.disabled || []).includes(p.id),
         };
       })
     );
@@ -109,7 +124,9 @@ export function useAddons() {
     setDisabled(res.disabled);
     setProducts((prev) =>
       prev.map((p) =>
-        p.id === productId ? { ...p, enabled: res.enabled } : { ...p, enabled: p.owned && !res.disabled.includes(p.id) }
+        p.id === productId
+          ? { ...p, enabled: res.enabled }
+          : { ...p, enabled: p.owned && !res.disabled.includes(p.id) }
       )
     );
     return res;
@@ -124,11 +141,34 @@ export function useAddons() {
     return res;
   }
 
+  async function setLinearThemeConfig(config: LinearThemeConfig) {
+    const res = await api<{ config: LinearThemeConfig }>('/api/admin/addons/menu-linear/config', {
+      method: 'PATCH',
+      body: JSON.stringify(config),
+    });
+    setLinearConfig(res.config);
+    return res;
+  }
+
+  async function setAnimasyonThemeConfig(config: AnimasyonThemeConfig) {
+    const res = await api<{ config: AnimasyonThemeConfig }>(
+      '/api/admin/addons/menu-animasyon/config',
+      {
+        method: 'PATCH',
+        body: JSON.stringify(config),
+      }
+    );
+    setAnimasyonConfig(res.config);
+    return res;
+  }
+
   return {
     owned,
     disabled,
     products,
     menuAssistantStyle,
+    linearConfig,
+    animasyonConfig,
     loading,
     reload,
     isOwned,
@@ -136,5 +176,7 @@ export function useAddons() {
     unlock,
     setEnabled,
     setAssistantStyle,
+    setLinearThemeConfig,
+    setAnimasyonThemeConfig,
   };
 }

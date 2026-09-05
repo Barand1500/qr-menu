@@ -70,6 +70,15 @@ export const ADDON_CATALOG: AddonProduct[] = [
     previewClass: 'theme-preview--luxury',
   },
   {
+    id: 'menu-linear',
+    category: 'menu',
+    name: 'Linear',
+    description:
+      'Krem–zeytin split sahne: dalgalı ayırıcı, yuvarlak ürünler ve salt vitrin menü.',
+    themeId: 'linear',
+    previewClass: 'theme-preview--linear',
+  },
+  {
     id: 'qr-pack',
     category: 'qr',
     name: 'QR Paketi',

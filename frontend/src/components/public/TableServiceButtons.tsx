@@ -1,28 +1,22 @@
 import { useState } from 'react';
-import { HandHelping, Receipt, Check, AlertCircle } from 'lucide-react';
+import { HandHelping, Check, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { resolveTableContext } from '@/lib/tableContext';
 import { notifyTableRequestCreated } from '@/lib/tableRequestNotify';
 
-type RequestType = 'waiter' | 'bill';
-
 const COPY = {
   tr: {
-    waiter: 'Garson',
-    bill: 'Hesap',
+    waiter: 'Garson çağır',
     sent: 'İletildi',
     wait: 'Bekleniyor',
     err: 'Olmadı',
-    group: 'Masa hizmeti',
   },
   en: {
-    waiter: 'Waiter',
-    bill: 'Bill',
+    waiter: 'Call waiter',
     sent: 'Sent',
     wait: 'Wait',
     err: 'Failed',
-    group: 'Table service',
   },
 };
 
@@ -45,16 +39,16 @@ export default function TableServiceButtons({
   const [tableCtx] = useState(() => resolveTableContext());
   const masa = tableCtx.masa;
   const grup = tableCtx.grup;
-  const [busy, setBusy] = useState<RequestType | null>(null);
-  const [done, setDone] = useState<RequestType | null>(null);
-  const [error, setError] = useState<RequestType | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState(false);
 
   if (!slug || !enabled) return null;
 
-  async function send(type: RequestType) {
+  async function send() {
     if (busy || done || !masa) return;
-    setBusy(type);
-    setError(null);
+    setBusy(true);
+    setError(false);
     try {
       const res = await api<{
         ok: boolean;
@@ -66,7 +60,7 @@ export default function TableServiceButtons({
       }>(`/api/menu/${slug}/table-request`, {
         method: 'POST',
         body: JSON.stringify({
-          type,
+          type: 'waiter',
           tableNumber: masa,
           groupSlug: grup || undefined,
         }),
@@ -78,61 +72,34 @@ export default function TableServiceButtons({
         groupSlug: res.groupSlug,
         createdAt: res.createdAt,
       });
-      setDone(type);
-      window.setTimeout(() => setDone(null), 3500);
+      setDone(true);
+      window.setTimeout(() => setDone(false), 3500);
     } catch {
-      setError(type);
-      window.setTimeout(() => setError(null), 2800);
+      setError(true);
+      window.setTimeout(() => setError(false), 2800);
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
-  function labelFor(type: RequestType) {
-    if (error === type) return t.err;
-    if (done === type) return t.sent;
-    if (busy === type) return t.wait;
-    return type === 'waiter' ? t.waiter : t.bill;
-  }
+  const label = error ? t.err : done ? t.sent : busy ? t.wait : t.waiter;
 
   return (
-    <div className="table-service-bar" role="group" aria-label={t.group}>
-      <button
-        type="button"
-        className={`table-service-btn table-service-btn--icon table-service-btn--waiter${
-          done === 'waiter' ? ' is-done' : error === 'waiter' ? ' is-error' : ''
-        }`}
-        disabled={Boolean(busy)}
-        onClick={() => void send('waiter')}
-        aria-label={labelFor('waiter')}
-        title={labelFor('waiter')}
-      >
-        {error === 'waiter' ? (
-          <AlertCircle className="w-5 h-5" />
-        ) : done === 'waiter' ? (
-          <Check className="w-5 h-5" />
-        ) : (
-          <HandHelping className="w-5 h-5" />
-        )}
-      </button>
-      <button
-        type="button"
-        className={`table-service-btn table-service-btn--icon table-service-btn--bill${
-          done === 'bill' ? ' is-done' : error === 'bill' ? ' is-error' : ''
-        }`}
-        disabled={Boolean(busy)}
-        onClick={() => void send('bill')}
-        aria-label={labelFor('bill')}
-        title={labelFor('bill')}
-      >
-        {error === 'bill' ? (
-          <AlertCircle className="w-5 h-5" />
-        ) : done === 'bill' ? (
-          <Check className="w-5 h-5" />
-        ) : (
-          <Receipt className="w-5 h-5" />
-        )}
-      </button>
-    </div>
+    <button
+      type="button"
+      className={`table-service-header-btn${done ? ' is-done' : ''}${error ? ' is-error' : ''}`}
+      disabled={busy}
+      onClick={() => void send()}
+      aria-label={label}
+      title={label}
+    >
+      {error ? (
+        <AlertCircle className="w-4 h-4" />
+      ) : done ? (
+        <Check className="w-4 h-4" />
+      ) : (
+        <HandHelping className="w-4 h-4" />
+      )}
+    </button>
   );
 }

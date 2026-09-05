@@ -605,6 +605,12 @@
   margin-bottom: 1.25rem;
 }
 
+.sade-detail__top-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .sade-detail__back {
   display: grid;
   place-items: center;

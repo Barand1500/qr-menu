@@ -82,7 +82,14 @@ export default function AliveProductPage({
         <button type="button" onClick={onBack} className="alive-detail__back" aria-label="Geri">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <MenuColorModeToggle colorMode={colorMode} onToggle={toggleColorMode} />
+        <div className="alive-detail__top-actions">
+          <MenuColorModeToggle colorMode={colorMode} onToggle={toggleColorMode} />
+          <TableServiceButtons
+            lang={lang}
+            slug={slug}
+            enabled={product.menuFeatures?.tableService !== false}
+          />
+        </div>
       </div>
 
       <main className="alive-detail__main">
@@ -181,12 +188,6 @@ export default function AliveProductPage({
           </section>
         ) : null}
       </main>
-
-      <TableServiceButtons
-        lang={lang}
-        slug={slug}
-        enabled={product.menuFeatures?.tableService !== false}
-      />
     </div>
   );
 }

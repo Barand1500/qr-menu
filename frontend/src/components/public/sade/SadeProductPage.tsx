@@ -82,7 +82,14 @@ export default function SadeProductPage({
         <button type="button" onClick={onBack} className="sade-detail__back" aria-label="Geri">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <MenuColorModeToggle colorMode={colorMode} onToggle={toggleColorMode} />
+        <div className="sade-detail__top-actions">
+          <MenuColorModeToggle colorMode={colorMode} onToggle={toggleColorMode} />
+          <TableServiceButtons
+            lang={lang}
+            slug={slug}
+            enabled={product.menuFeatures?.tableService !== false}
+          />
+        </div>
       </div>
 
       <main className={`sade-detail__main${multi ? ' sade-detail__main--gallery' : ''}`}>
@@ -183,12 +190,6 @@ export default function SadeProductPage({
           </section>
         )}
       </main>
-
-      <TableServiceButtons
-        lang={lang}
-        slug={slug}
-        enabled={product.menuFeatures?.tableService !== false}
-      />
     </div>
   );
 }

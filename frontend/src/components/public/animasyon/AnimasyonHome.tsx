@@ -49,6 +49,7 @@ export default function AnimasyonHome({
   lang,
   campaignSlug,
   initialGroupId,
+  cartEnabled = true,
 }: {
   menu: MenuData;
   popularProducts: PopularProduct[];
@@ -58,6 +59,7 @@ export default function AnimasyonHome({
   initialGroupId?: number | null;
   displayShowcase?: unknown;
   displayStories?: unknown;
+  cartEnabled?: boolean;
 }) {
   const { slug } = useMenuSlug();
   const { addItem } = useSiparisCart();
@@ -458,6 +460,7 @@ export default function AnimasyonHome({
                 onAddQuick(active, media || e.currentTarget);
               }}
               aria-label="Sepete ekle"
+              hidden={!cartEnabled}
             >
               <Plus className="w-5 h-5" strokeWidth={2.5} />
             </button>
@@ -469,6 +472,7 @@ export default function AnimasyonHome({
         product={detail}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
+        cartEnabled={cartEnabled}
       />
     </div>
   );

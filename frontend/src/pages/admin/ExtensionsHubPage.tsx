@@ -6,16 +6,21 @@ import {
   Lock,
   ShoppingBag,
   QrCode,
+  Settings2,
   Sparkles,
   Languages,
 } from 'lucide-react';
 import { Button, Card, PageHeader, Spinner } from '@/components/ui';
 import UnlockAddonModal from '@/components/UnlockAddonModal';
 import SupportContactModal from '@/components/SupportContactModal';
+import LinearThemeSettingsModal from '@/components/LinearThemeSettingsModal';
+import AnimasyonThemeSettingsModal from '@/components/AnimasyonThemeSettingsModal';
 import { useAddons } from '@/hooks/useAddons';
 import MenuAssistantStylePicker from '@/components/MenuAssistantStylePicker';
 import type { AddonCategory, AddonProduct } from '@/addons';
 import type { MenuAssistantStyle } from '@/lib/menuAssistantStyle';
+import type { LinearThemeConfig } from '@/lib/menuLinearConfig';
+import type { AnimasyonThemeConfig } from '@/lib/menuAnimasyonConfig';
 
 type TabId = 'all' | 'welcome' | 'menu' | 'qr' | 'lang' | 'feature';
 
@@ -58,14 +63,28 @@ function parseTab(raw: string | null): TabId {
 }
 
 export default function ExtensionsHubPage() {
-  const { products, loading, unlock, setEnabled, menuAssistantStyle, setAssistantStyle } =
-    useAddons();
+  const {
+    products,
+    loading,
+    unlock,
+    setEnabled,
+    menuAssistantStyle,
+    setAssistantStyle,
+    linearConfig,
+    setLinearThemeConfig,
+    animasyonConfig,
+    setAnimasyonThemeConfig,
+  } = useAddons();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = parseTab(searchParams.get('tab'));
   const [selected, setSelected] = useState<AddonProduct | null>(null);
   const [unlocking, setUnlocking] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [savingStyle, setSavingStyle] = useState(false);
+  const [linearOpen, setLinearOpen] = useState(false);
+  const [animasyonOpen, setAnimasyonOpen] = useState(false);
+  const [savingLinear, setSavingLinear] = useState(false);
+  const [savingAnimasyon, setSavingAnimasyon] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
 
   const list = useMemo(
@@ -109,6 +128,26 @@ export default function ExtensionsHubPage() {
     }
   }
 
+  async function handleLinearSave(config: LinearThemeConfig) {
+    setSavingLinear(true);
+    try {
+      await setLinearThemeConfig(config);
+      setLinearOpen(false);
+    } finally {
+      setSavingLinear(false);
+    }
+  }
+
+  async function handleAnimasyonSave(config: AnimasyonThemeConfig) {
+    setSavingAnimasyon(true);
+    try {
+      await setAnimasyonThemeConfig(config);
+      setAnimasyonOpen(false);
+    } finally {
+      setSavingAnimasyon(false);
+    }
+  }
+
   function ownedAction(product: AddonProduct) {
     if (product.id === 'menu-assistant' && product.owned) {
       const on = Boolean(product.enabled);
@@ -131,6 +170,43 @@ export default function ExtensionsHubPage() {
             saving={savingStyle}
             onChange={(style) => void handleAssistantStyle(style)}
           />
+        </div>
+      );
+    }
+    if (product.id === 'menu-linear' && product.owned) {
+      return (
+        <div className="flex flex-col gap-2 w-full">
+          <Button type="button" variant="secondary" className="w-full" onClick={() => setLinearOpen(true)}>
+            <Settings2 className="w-4 h-4" />
+            Tema ayarları
+          </Button>
+          <Link to="/admin/startup/menu" className="w-full">
+            <Button type="button" className="w-full">
+              <Sparkles className="w-4 h-4" />
+              Temalarda kullan
+            </Button>
+          </Link>
+        </div>
+      );
+    }
+    if (product.id === 'menu-animasyon' && product.owned) {
+      return (
+        <div className="flex flex-col gap-2 w-full">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={() => setAnimasyonOpen(true)}
+          >
+            <Settings2 className="w-4 h-4" />
+            Tema ayarları
+          </Button>
+          <Link to="/admin/startup/menu" className="w-full">
+            <Button type="button" className="w-full">
+              <Sparkles className="w-4 h-4" />
+              Temalarda kullan
+            </Button>
+          </Link>
         </div>
       );
     }
@@ -302,6 +378,20 @@ export default function ExtensionsHubPage() {
         unlocking={unlocking}
         onClose={() => setSelected(null)}
         onUnlock={handleUnlock}
+      />
+      <LinearThemeSettingsModal
+        open={linearOpen}
+        initial={linearConfig}
+        saving={savingLinear}
+        onClose={() => setLinearOpen(false)}
+        onSave={handleLinearSave}
+      />
+      <AnimasyonThemeSettingsModal
+        open={animasyonOpen}
+        initial={animasyonConfig}
+        saving={savingAnimasyon}
+        onClose={() => setAnimasyonOpen(false)}
+        onSave={handleAnimasyonSave}
       />
       <SupportContactModal open={supportOpen} onClose={() => setSupportOpen(false)} />
     </div>

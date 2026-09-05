@@ -7,6 +7,7 @@ export type AddonProductId =
   | 'menu-alive'
   | 'menu-luxury'
   | 'menu-animasyon'
+  | 'menu-linear'
   | 'qr-pack'
   | 'lang-pack'
   | 'menu-assistant';

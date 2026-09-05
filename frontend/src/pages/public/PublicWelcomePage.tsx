@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { enteredKey, menuHomePath } from '@/lib/menuPaths';
+import { checkInTable } from '@/lib/tableCheckin';
 import { Volume2, VolumeX, Sparkles, MessageCircleHeart, Lightbulb } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { languageFlag } from '@/lib/languageFlags';
@@ -72,6 +73,10 @@ export default function PublicWelcomePage() {
     if (groupSlug) sessionStorage.setItem('menu_grup', groupSlug);
     if (campaignSlug) sessionStorage.setItem('menu_kampanya', campaignSlug);
   }, [tableNo, groupSlug, campaignSlug]);
+
+  useEffect(() => {
+    if (slug && tableNo) checkInTable(slug, tableNo, groupSlug);
+  }, [slug, tableNo, groupSlug]);
 
   useEffect(() => {
     if (slugError) {
