@@ -168,6 +168,7 @@ export default function TableFloorPage() {
   const [error, setError] = useState<string | null>(null);
   const [groupId, setGroupId] = useState<string>('');
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const [selectedGroupSlug, setSelectedGroupSlug] = useState<string>('');
   const [now, setNow] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
@@ -178,26 +179,44 @@ export default function TableFloorPage() {
   const [catalogGroup, setCatalogGroup] = useState<string>('all');
   const [guestName, setGuestName] = useState('');
   const [expectedAt, setExpectedAt] = useState('');
-  const [moveTarget, setMoveTarget] = useState('');
+  const [pickMode, setPickMode] = useState<null | 'move' | 'merge'>(null);
   const [mergePick, setMergePick] = useState<string[]>([]);
+  const [confirm, setConfirm] = useState<null | {
+    kind: 'move' | 'merge';
+    targetCode?: string;
+    targetName?: string;
+    targetGroupId?: string;
+    targetGroupName?: string;
+  }>(null);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
-    try {
-      const res = await api<FloorPayload>('/api/admin/table-floor');
-      setData(res);
-      setError(null);
-      setGroupId((prev) => {
-        if (prev && res.groups.some((g) => g.id === prev)) return prev;
-        return res.groups[0]?.id || '';
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Yüklenemedi');
-    } finally {
-      if (!silent) setLoading(false);
+    const attempts = silent ? 1 : 10;
+    let lastErr: unknown = null;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        const res = await api<FloorPayload>('/api/admin/table-floor');
+        setData(res);
+        setError(null);
+        setGroupId((prev) => {
+          if (prev && res.groups.some((g) => g.id === prev)) return prev;
+          return res.groups[0]?.id || '';
+        });
+        lastErr = null;
+        break;
+      } catch (err) {
+        lastErr = err;
+        if (i < attempts - 1) {
+          await new Promise((r) => window.setTimeout(r, 400 + i * 250));
+        }
+      }
     }
+    if (lastErr) {
+      setError(lastErr instanceof Error ? lastErr.message : 'Yüklenemedi');
+    }
+    if (!silent) setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -218,30 +237,86 @@ export default function TableFloorPage() {
     [data, groupId]
   );
 
+  const selectedGroup = useMemo(
+    () => data?.groups.find((g) => g.id === (selectedGroupSlug || groupId)) || null,
+    [data, selectedGroupSlug, groupId]
+  );
+
   const selected = useMemo(() => {
-    if (!activeGroup || !selectedCode) return null;
-    return activeGroup.tables.find((t) => t.code === selectedCode) || null;
-  }, [activeGroup, selectedCode]);
+    if (!selectedCode || !selectedGroup) return null;
+    return selectedGroup.tables.find((t) => t.code === selectedCode) || null;
+  }, [selectedGroup, selectedCode]);
+
+  const sourceGroupName = selectedGroup?.name || '';
 
   useEffect(() => {
     if (!selected) {
       setGuestName('');
       setExpectedAt('');
-      setMoveTarget('');
-      setMergePick([]);
       return;
     }
     setGuestName(selected.guestName || '');
     setExpectedAt(toLocalInputValue(selected.expectedAt));
-    setMoveTarget('');
-    setMergePick([]);
   }, [selected?.code, selected?.sessionId, selected?.guestName, selected?.expectedAt]);
 
   useEffect(() => {
-    if (selectedCode && activeGroup && !activeGroup.tables.some((t) => t.code === selectedCode)) {
-      setSelectedCode(null);
+    if (!pickMode && selectedCode && activeGroup && selectedGroupSlug === activeGroup.id) {
+      if (!activeGroup.tables.some((t) => t.code === selectedCode)) setSelectedCode(null);
     }
-  }, [activeGroup, selectedCode]);
+  }, [activeGroup, selectedCode, pickMode, selectedGroupSlug]);
+
+  function cancelPick() {
+    setPickMode(null);
+    setMergePick([]);
+    setConfirm(null);
+  }
+
+  function startMove() {
+    if (!selected || !selected.occupied || selected.status === 'merged') return;
+    setPickMode('move');
+    setMergePick([]);
+    setConfirm(null);
+  }
+
+  function startMerge() {
+    if (!selected || !selected.occupied || selected.status === 'merged') return;
+    setPickMode('merge');
+    setMergePick([]);
+    setConfirm(null);
+    // merge: stay on source group view
+    if (selectedGroupSlug) setGroupId(selectedGroupSlug);
+  }
+
+  function handleTableClick(table: FloorTable) {
+    if (pickMode === 'move') {
+      if (table.code === selectedCode && groupId === selectedGroupSlug) return;
+      if (table.occupied || table.status === 'merged') return;
+      setConfirm({
+        kind: 'move',
+        targetCode: table.code,
+        targetName: table.name,
+        targetGroupId: groupId,
+        targetGroupName: activeGroup?.name || '',
+      });
+      return;
+    }
+    if (pickMode === 'merge') {
+      if (groupId !== selectedGroupSlug) return;
+      if (table.code === selectedCode) return;
+      if (table.status === 'merged') return;
+      setMergePick((prev) =>
+        prev.includes(table.code) ? prev.filter((c) => c !== table.code) : [...prev, table.code]
+      );
+      return;
+    }
+    setSelectedCode(table.code);
+    setSelectedGroupSlug(groupId);
+  }
+
+  function openConfirmMerge() {
+    if (!mergePick.length || !selected) return;
+    setConfirm({ kind: 'merge' });
+  }
 
   async function openTable(table: FloorTable) {
     if (!activeGroup || busy) return;
@@ -249,7 +324,7 @@ export default function TableFloorPage() {
     try {
       await api('/api/admin/table-floor/open', {
         method: 'POST',
-        body: JSON.stringify({ tableNumber: table.code, groupSlug: activeGroup.id }),
+        body: JSON.stringify({ tableNumber: table.code, groupSlug: selectedGroupSlug || activeGroup.id }),
       });
       await load(true);
     } finally {
@@ -265,13 +340,15 @@ export default function TableFloorPage() {
         method: 'POST',
         body: JSON.stringify({
           tableNumber: table.code,
-          groupSlug: activeGroup.id,
+          groupSlug: selectedGroupSlug || activeGroup.id,
           sessionId: table.sessionId,
           paid,
         }),
       });
       await load(true);
-      if (paid) setSelectedCode(null);
+      if (paid) {
+        setSelectedCode(null);
+      }
     } finally {
       setBusy(false);
     }
@@ -285,7 +362,7 @@ export default function TableFloorPage() {
         method: 'POST',
         body: JSON.stringify({
           tableNumber: selected.code,
-          groupSlug: activeGroup.id,
+          groupSlug: selectedGroupSlug,
           guestName,
           expectedAt: expectedAt ? new Date(expectedAt).toISOString() : null,
         }),
@@ -297,18 +374,22 @@ export default function TableFloorPage() {
   }
 
   async function moveTable() {
-    if (!selected || !activeGroup || !moveTarget || busy) return;
+    if (!selected || !confirm || confirm.kind !== 'move' || !confirm.targetCode || busy) return;
     setBusy(true);
     try {
       await api('/api/admin/table-floor/move', {
         method: 'POST',
         body: JSON.stringify({
           fromTable: selected.code,
-          toTable: moveTarget,
-          groupSlug: activeGroup.id,
+          toTable: confirm.targetCode,
+          groupSlug: selectedGroupSlug,
+          toGroupSlug: confirm.targetGroupId,
         }),
       });
-      setSelectedCode(moveTarget);
+      setSelectedCode(confirm.targetCode);
+      setSelectedGroupSlug(confirm.targetGroupId || selectedGroupSlug);
+      if (confirm.targetGroupId) setGroupId(confirm.targetGroupId);
+      cancelPick();
       await load(true);
     } finally {
       setBusy(false);
@@ -316,7 +397,7 @@ export default function TableFloorPage() {
   }
 
   async function mergeTables() {
-    if (!selected || !activeGroup || !mergePick.length || busy) return;
+    if (!selected || !mergePick.length || busy) return;
     setBusy(true);
     try {
       await api('/api/admin/table-floor/merge', {
@@ -324,10 +405,10 @@ export default function TableFloorPage() {
         body: JSON.stringify({
           primaryTable: selected.code,
           otherTables: mergePick,
-          groupSlug: activeGroup.id,
+          groupSlug: selectedGroupSlug,
         }),
       });
-      setMergePick([]);
+      cancelPick();
       await load(true);
     } finally {
       setBusy(false);
@@ -343,7 +424,7 @@ export default function TableFloorPage() {
         body: JSON.stringify({
           primaryTable: selected.code,
           splitTable: code,
-          groupSlug: activeGroup.id,
+          groupSlug: selectedGroupSlug,
         }),
       });
       await load(true);
@@ -383,7 +464,7 @@ export default function TableFloorPage() {
         method: 'POST',
         body: JSON.stringify({
           tableNumber: selected.code,
-          groupSlug: activeGroup.id,
+          groupSlug: selectedGroupSlug,
           items,
         }),
       });
@@ -439,7 +520,10 @@ export default function TableFloorPage() {
               className={`table-floor__chip${g.id === activeGroup?.id ? ' is-active' : ''}`}
               onClick={() => {
                 setGroupId(g.id);
-                setSelectedCode(null);
+                if (!pickMode) {
+                  setSelectedCode(null);
+                  setSelectedGroupSlug('');
+                }
               }}
             >
               {g.name}
@@ -449,7 +533,35 @@ export default function TableFloorPage() {
         </div>
       </header>
 
-      <main className="table-floor__main">
+      {pickMode ? (
+        <div className={`table-floor__pickbar table-floor__pickbar--${pickMode}`}>
+          <div className="table-floor__pickbar-copy">
+            <strong>{pickMode === 'move' ? 'Masa taşı' : 'Masa birleştir'}</strong>
+            <span>
+              {pickMode === 'move'
+                ? `${selected?.name || 'Masa'} nereye taşınsın? Boş bir masaya tıklayın — grup değiştirebilirsiniz.`
+                : `${selected?.name || 'Masa'} ile birleştirilecek masaları seçin, sonra onaylayın.`}
+            </span>
+          </div>
+          <div className="table-floor__pickbar-actions">
+            {pickMode === 'merge' ? (
+              <button
+                type="button"
+                className="table-floor__pickbar-ok"
+                disabled={!mergePick.length}
+                onClick={openConfirmMerge}
+              >
+                Birleştir ({mergePick.length})
+              </button>
+            ) : null}
+            <button type="button" className="table-floor__pickbar-cancel" onClick={cancelPick}>
+              İptal
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <main className={`table-floor__main${pickMode ? ' is-picking' : ''}`}>
         {loading && !data ? (
           <div className="table-floor__empty">Masalar yükleniyor…</div>
         ) : error ? (
@@ -464,6 +576,20 @@ export default function TableFloorPage() {
               const menuUrl = `${origin}/menu?masa=${encodeURIComponent(table.code)}&grup=${activeGroup.id}`;
               const alerting = table.waiterAlertMs > 0;
               const qrColor = resolveQrColor(table.colorId);
+              const isSource =
+                selectedCode === table.code && selectedGroupSlug === activeGroup.id;
+              const isMergePick = pickMode === 'merge' && mergePick.includes(table.code);
+              const moveSelectable =
+                pickMode === 'move' && !table.occupied && table.status !== 'merged';
+              const mergeSelectable =
+                pickMode === 'merge' &&
+                selectedGroupSlug === groupId &&
+                table.code !== selectedCode &&
+                table.status !== 'merged';
+              const primaryName =
+                table.mergePrimary &&
+                activeGroup.tables.find((t) => t.code === table.mergePrimary)?.name;
+
               return (
                 <button
                   key={table.code}
@@ -472,10 +598,20 @@ export default function TableFloorPage() {
                     table.status === 'reserved' ? ' is-reserved' : ''
                   }${table.status === 'merged' ? ' is-merged' : ''}${
                     alerting ? ' is-alerting' : ''
-                  }${selectedCode === table.code ? ' is-selected' : ''}`}
-                  onClick={() => setSelectedCode(table.code)}
+                  }${isSource ? ' is-selected' : ''}${isMergePick ? ' is-merge-pick' : ''}${
+                    moveSelectable ? ' is-pickable' : ''
+                  }${pickMode && !moveSelectable && !mergeSelectable && !isSource ? ' is-dimmed' : ''}`}
+                  onClick={() => handleTableClick(table)}
                 >
                   <span className="floor-table__label">{table.name}</span>
+                  {table.status === 'merged' && primaryName ? (
+                    <span className="floor-table__link">{primaryName} ile</span>
+                  ) : null}
+                  {(table.mergedTables || []).length > 0 ? (
+                    <span className="floor-table__link">
+                      +{(table.mergedTables || []).length} birleşik
+                    </span>
+                  ) : null}
                   <span className="floor-table__chair floor-table__chair--n" aria-hidden />
                   <span className="floor-table__chair floor-table__chair--e" aria-hidden />
                   <span className="floor-table__chair floor-table__chair--s" aria-hidden />
@@ -511,19 +647,27 @@ export default function TableFloorPage() {
         )}
       </main>
 
-      <aside className={`table-floor__drawer${selected ? ' is-open' : ''}`} aria-hidden={!selected}>
-        {selected && activeGroup ? (
+      <aside
+        className={`table-floor__drawer${selected && !pickMode ? ' is-open' : ''}`}
+        aria-hidden={!selected || Boolean(pickMode)}
+      >
+        {selected && activeGroup && !pickMode ? (
           <>
             <div className="table-floor__drawer-head">
               <div>
-                <p className="table-floor__drawer-eyebrow">{activeGroup.name}</p>
+                <p className="table-floor__drawer-eyebrow">
+                  {sourceGroupName || activeGroup.name}
+                </p>
                 <h2>{selected.name}</h2>
               </div>
               <button
                 type="button"
                 className="table-floor__icon-btn"
                 aria-label="Kapat"
-                onClick={() => setSelectedCode(null)}
+                onClick={() => {
+                  setSelectedCode(null);
+                  setSelectedGroupSlug('');
+                }}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -583,110 +727,60 @@ export default function TableFloorPage() {
                   </div>
                 </div>
 
-                <div className="table-floor__tool">
-                  <h3>Rezervasyon</h3>
-                  <input
-                    type="text"
-                    className="table-floor__input"
-                    placeholder="Misafir adı"
-                    value={guestName}
-                    onChange={(e) => setGuestName(e.target.value)}
-                  />
-                  <input
-                    type="datetime-local"
-                    className="table-floor__input"
-                    value={expectedAt}
-                    onChange={(e) => setExpectedAt(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="table-floor__secondary"
-                    disabled={busy}
-                    onClick={() => void saveReservation()}
-                  >
-                    Rezervasyonu kaydet
-                  </button>
-                </div>
-
-                {selected.occupied && selected.status !== 'merged' ? (
+                {!selected.occupied || selected.status === 'reserved' ? (
                   <div className="table-floor__tool">
-                    <h3>Masa taşı</h3>
-                    <select
+                    <h3>Rezervasyon</h3>
+                    <input
+                      type="text"
                       className="table-floor__input"
-                      value={moveTarget}
-                      onChange={(e) => setMoveTarget(e.target.value)}
-                    >
-                      <option value="">Boş masa seç…</option>
-                      {activeGroup.tables
-                        .filter((t) => !t.occupied && t.code !== selected.code)
-                        .map((t) => (
-                          <option key={t.code} value={t.code}>
-                            {t.name}
-                          </option>
-                        ))}
-                    </select>
+                      placeholder="Misafir adı"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                    />
+                    <input
+                      type="datetime-local"
+                      className="table-floor__input"
+                      value={expectedAt}
+                      onChange={(e) => setExpectedAt(e.target.value)}
+                    />
                     <button
                       type="button"
                       className="table-floor__secondary"
-                      disabled={busy || !moveTarget}
-                      onClick={() => void moveTable()}
+                      disabled={busy}
+                      onClick={() => void saveReservation()}
                     >
-                      Taşı
+                      Rezervasyonu kaydet
                     </button>
                   </div>
                 ) : null}
 
-                {selected.occupied && selected.status !== 'merged' ? (
-                  <div className="table-floor__tool">
-                    <h3>Birleştir</h3>
-                    <div className="table-floor__merge-list">
-                      {activeGroup.tables
-                        .filter((t) => t.code !== selected.code && t.status !== 'merged')
-                        .map((t) => {
-                          const on = mergePick.includes(t.code);
-                          return (
-                            <label key={t.code} className={`table-floor__merge-item${on ? ' is-on' : ''}`}>
-                              <input
-                                type="checkbox"
-                                checked={on}
-                                onChange={() =>
-                                  setMergePick((prev) =>
-                                    on ? prev.filter((c) => c !== t.code) : [...prev, t.code]
-                                  )
-                                }
-                              />
-                              {t.name}
-                              {t.occupied ? ' · dolu' : ''}
-                            </label>
-                          );
-                        })}
-                    </div>
-                    <button
-                      type="button"
-                      className="table-floor__secondary"
-                      disabled={busy || !mergePick.length}
-                      onClick={() => void mergeTables()}
-                    >
-                      Seçilenleri birleştir
+                {selected.occupied && selected.status === 'open' ? (
+                  <div className="table-floor__action-row">
+                    <button type="button" className="table-floor__secondary" onClick={startMove}>
+                      Masa taşı
                     </button>
-                    {(selected.mergedTables || []).length > 0 ? (
-                      <div className="table-floor__split-row">
-                        {(selected.mergedTables || []).map((code) => {
-                          const t = activeGroup.tables.find((x) => x.code === code);
-                          return (
-                            <button
-                              key={code}
-                              type="button"
-                              className="table-floor__pill-btn"
-                              disabled={busy}
-                              onClick={() => void splitMerged(code)}
-                            >
-                              {t?.name || code} ayır
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : null}
+                    <button type="button" className="table-floor__secondary" onClick={startMerge}>
+                      Birleştir
+                    </button>
+                  </div>
+                ) : null}
+
+                {(selected.mergedTables || []).length > 0 ? (
+                  <div className="table-floor__split-row">
+                    {(selected.mergedTables || []).map((code) => {
+                      const t = selectedGroup?.tables.find((x) => x.code === code);
+                      return (
+                        <button
+                          key={code}
+                          type="button"
+                          className="table-floor__pill-btn"
+                          disabled={busy}
+                          onClick={() => void splitMerged(code)}
+                        >
+                          {t?.name || code} ayır
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : null}
 
@@ -776,13 +870,71 @@ export default function TableFloorPage() {
         ) : null}
       </aside>
 
-      {selected ? (
+      {selected && !pickMode ? (
         <button
           type="button"
           className="table-floor__scrim"
           aria-label="Paneli kapat"
-          onClick={() => setSelectedCode(null)}
+          onClick={() => {
+            setSelectedCode(null);
+            setSelectedGroupSlug('');
+          }}
         />
+      ) : null}
+
+      {confirm ? (
+        <div className="table-floor-modal table-floor-confirm" role="dialog" aria-modal="true">
+          <button
+            type="button"
+            className="table-floor-modal__backdrop"
+            aria-label="Kapat"
+            onClick={() => setConfirm(null)}
+          />
+          <div className="table-floor-modal__panel table-floor-confirm__panel">
+            <header>
+              <div>
+                <p>{confirm.kind === 'move' ? 'Masa taşı' : 'Masaları birleştir'}</p>
+                <h3>
+                  {confirm.kind === 'move'
+                    ? `${selected?.name} → ${confirm.targetName}`
+                    : `${selected?.name} + ${mergePick.length} masa`}
+                </h3>
+              </div>
+              <button type="button" className="table-floor__icon-btn" onClick={() => setConfirm(null)}>
+                <X className="w-5 h-5" />
+              </button>
+            </header>
+            <div className="table-floor-confirm__body">
+              {confirm.kind === 'move' ? (
+                <p>
+                  <strong>{selected?.name}</strong> masası{' '}
+                  <strong>
+                    {confirm.targetGroupName} / {confirm.targetName}
+                  </strong>{' '}
+                  konumuna taşınacak. Siparişler ve süre birlikte gider.
+                </p>
+              ) : (
+                <p>
+                  Seçilen masalar <strong>{selected?.name}</strong> hesabına birleşecek. Ortak
+                  sipariş listesi oluşur; birleşik masalar turuncu görünür.
+                </p>
+              )}
+            </div>
+            <footer className="table-floor-confirm__footer">
+              <button type="button" className="table-floor__secondary" onClick={() => setConfirm(null)}>
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                className="table-floor__primary"
+                disabled={busy}
+                onClick={() => void (confirm.kind === 'move' ? moveTable() : mergeTables())}
+              >
+                {busy ? 'İşleniyor…' : 'Onayla'}
+              </button>
+            </footer>
+          </div>
+        </div>
       ) : null}
 
       {orderOpen ? (

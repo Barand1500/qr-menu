@@ -272,32 +272,42 @@ router.post('/reserve', async (req, res) => {
   res.json({ ok: true, session: serializeSession(session) });
 });
 
-/** Masa taşı */
+/** Masa taşı (grup değişebilir) */
 router.post('/move', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const { fromTable, toTable, groupSlug } = req.body as {
+  const { fromTable, toTable, groupSlug, toGroupSlug } = req.body as {
     fromTable?: string;
     toTable?: string;
     groupSlug?: string;
+    toGroupSlug?: string;
   };
   const from = String(fromTable || '').trim();
   const to = String(toTable || '').trim();
-  const grup = groupSlug ? String(groupSlug).trim() : null;
+  const fromGrup = groupSlug ? String(groupSlug).trim() : null;
+  const toGrup =
+    toGroupSlug != null && String(toGroupSlug).trim()
+      ? String(toGroupSlug).trim()
+      : fromGrup;
   if (!from || !to) return res.status(400).json({ message: 'Kaynak ve hedef masa gerekli' });
-  if (from === to) return res.status(400).json({ message: 'Aynı masa' });
+  if (from === to && fromGrup === toGrup) {
+    return res.status(400).json({ message: 'Aynı masa' });
+  }
 
-  const source = await findActiveSession(restaurantId!, from, grup);
+  const source = await findActiveSession(restaurantId!, from, fromGrup);
   if (!source) return res.status(404).json({ message: 'Kaynak masa boş' });
   if (parseMergedJson(source.mergedJson).length) {
     return res.status(400).json({ message: 'Birleşik masayı önce ayırın' });
   }
 
-  const targetBusy = await findActiveSession(restaurantId!, to, grup);
+  const targetBusy = await findActiveSession(restaurantId!, to, toGrup);
   if (targetBusy) return res.status(409).json({ message: 'Hedef masa dolu' });
 
-  // Hedef başka birleşimde mi?
   const anyMerged = await prisma.tableFloorSession.findMany({
-    where: { restaurantId: restaurantId!, status: { in: [...ACTIVE_STATUSES] }, groupSlug: grup },
+    where: {
+      restaurantId: restaurantId!,
+      status: { in: [...ACTIVE_STATUSES] },
+      groupSlug: toGrup,
+    },
   });
   if (anyMerged.some((s) => parseMergedJson(s.mergedJson).includes(to))) {
     return res.status(409).json({ message: 'Hedef masa birleşik' });
@@ -305,7 +315,7 @@ router.post('/move', async (req, res) => {
 
   const updated = await prisma.tableFloorSession.update({
     where: { id: source.id },
-    data: { tableNumber: to },
+    data: { tableNumber: to, groupSlug: toGrup },
   });
   res.json({ ok: true, session: serializeSession(updated) });
 });
