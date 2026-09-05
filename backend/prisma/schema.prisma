@@ -282,10 +282,16 @@ model TableFloorSession {
   restaurantId Int       @map("restoran_id")
   tableNumber  String    @map("masa_no") @db.VarChar(40)
   groupSlug    String?   @map("grup_slug") @db.VarChar(100)
-  status       String    @default("open") @db.VarChar(20) /// open | closed
+  /// open | reserved | closed
+  status       String    @default("open") @db.VarChar(20)
   openedBy     String    @default("qr") @map("acilis") @db.VarChar(20) /// qr | admin
   openedAt     DateTime  @map("acilis_zamani")
   closedAt     DateTime? @map("kapanis_zamani")
+  guestName    String?   @map("misafir") @db.VarChar(120)
+  expectedAt   DateTime? @map("beklenen")
+  paidAt       DateTime? @map("odeme")
+  /// Ana masaya birleşen diğer masa kodları: ["4","6"]
+  mergedJson   String?   @map("birlesen") @db.Text
   /// [{ id, productId?, name, qty, price, createdAt, source }]
   ordersJson   String?   @map("siparis_json") @db.Text
   createdAt    DateTime  @default(now()) @map("olusturma")

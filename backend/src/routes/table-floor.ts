@@ -2,11 +2,13 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId } from '../lib/auth.js';
 import {
+  ACTIVE_STATUSES,
   appendOrdersToSession,
   closeSession,
-  findOpenSession,
+  findActiveSession,
   openOrGetSession,
   ordersTotal,
+  parseMergedJson,
   parseOrdersJson,
   tableCode,
   WAITER_ALERT_MS,
@@ -49,6 +51,36 @@ async function ensureDefaultGroups(restaurantId: number) {
   });
 }
 
+function serializeSession(session: {
+  id: number;
+  tableNumber: string;
+  groupSlug: string | null;
+  status: string;
+  openedAt: Date;
+  openedBy: string;
+  guestName: string | null;
+  expectedAt: Date | null;
+  paidAt: Date | null;
+  ordersJson: string | null;
+  mergedJson: string | null;
+}) {
+  const orders = parseOrdersJson(session.ordersJson);
+  const merged = parseMergedJson(session.mergedJson);
+  return {
+    sessionId: session.id,
+    status: session.status,
+    occupied: session.status === 'open' || session.status === 'reserved',
+    openedAt: session.openedAt.toISOString(),
+    openedBy: session.openedBy,
+    guestName: session.guestName,
+    expectedAt: session.expectedAt?.toISOString() || null,
+    paidAt: session.paidAt?.toISOString() || null,
+    orders,
+    total: ordersTotal(orders),
+    mergedTables: merged,
+  };
+}
+
 router.get('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   await ensureDefaultGroups(restaurantId!);
@@ -59,7 +91,7 @@ router.get('/', async (req, res) => {
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     }),
     prisma.tableFloorSession.findMany({
-      where: { restaurantId: restaurantId!, status: 'open' },
+      where: { restaurantId: restaurantId!, status: { in: [...ACTIVE_STATUSES] } },
     }),
     prisma.tableServiceRequest.findMany({
       where: {
@@ -75,16 +107,21 @@ router.get('/', async (req, res) => {
     }),
   ]);
 
-  const sessionMap = new Map(
-    sessions.map((s) => [`${s.groupSlug || ''}::${s.tableNumber}`, s])
-  );
+  const sessionMap = new Map(sessions.map((s) => [`${s.groupSlug || ''}::${s.tableNumber}`, s]));
+  const mergedOwner = new Map<string, (typeof sessions)[0]>();
+  for (const s of sessions) {
+    for (const code of parseMergedJson(s.mergedJson)) {
+      mergedOwner.set(`${s.groupSlug || ''}::${code}`, s);
+    }
+  }
+
   const waiterMap = new Map<string, Date>();
   for (const w of recentWaiters) {
     const key = `${w.groupSlug || ''}::${w.tableNumber}`;
     if (!waiterMap.has(key)) waiterMap.set(key, w.createdAt);
   }
 
-  const payload = {
+  res.json({
     restaurant,
     polledAt: new Date().toISOString(),
     groups: groups.map((g) => {
@@ -96,23 +133,33 @@ router.get('/', async (req, res) => {
         const code = tableCode(n, g.prefix || '');
         const style = styles[String(n)] || {};
         const key = `${g.slug}::${code}`;
-        const session = sessionMap.get(key);
-        const orders = session ? parseOrdersJson(session.ordersJson) : [];
+        const own = sessionMap.get(key);
+        const linked = !own ? mergedOwner.get(key) : null;
+        const session = own || linked || null;
+        const isSatellite = Boolean(linked && !own);
+        const orders = own ? parseOrdersJson(own.ordersJson) : [];
         const waiterAt = waiterMap.get(key);
         const alertMsLeft = waiterAt
           ? Math.max(0, WAITER_ALERT_MS - (Date.now() - waiterAt.getTime()))
           : 0;
+
         return {
           index: n,
           code,
           name: style.name?.trim() || `${g.name} ${n}`,
           colorId: style.colorId || 'black',
           occupied: Boolean(session),
-          openedAt: session?.openedAt?.toISOString() || null,
-          openedBy: session?.openedBy || null,
-          sessionId: session?.id || null,
+          status: own?.status || (isSatellite ? 'merged' : 'empty'),
+          openedAt: own?.openedAt?.toISOString() || null,
+          openedBy: own?.openedBy || null,
+          sessionId: own?.id || null,
+          guestName: own?.guestName || null,
+          expectedAt: own?.expectedAt?.toISOString() || null,
+          paidAt: own?.paidAt?.toISOString() || null,
           orders,
           total: ordersTotal(orders),
+          mergedTables: own ? parseMergedJson(own.mergedJson) : [],
+          mergePrimary: isSatellite && linked ? linked.tableNumber : null,
           waiterAlertMs: alertMsLeft,
         };
       });
@@ -124,9 +171,7 @@ router.get('/', async (req, res) => {
         tables,
       };
     }),
-  };
-
-  res.json(payload);
+  });
 });
 
 router.post('/open', async (req, res) => {
@@ -144,35 +189,31 @@ router.post('/open', async (req, res) => {
     groupSlug ? String(groupSlug).trim() : null,
     'admin'
   );
-  res.json({
-    ok: true,
-    session: {
-      id: session.id,
-      tableNumber: session.tableNumber,
-      groupSlug: session.groupSlug,
-      openedAt: session.openedAt.toISOString(),
-      openedBy: session.openedBy,
-    },
-  });
+  res.json({ ok: true, session: serializeSession(session) });
 });
 
 router.post('/close', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const { tableNumber, groupSlug, sessionId } = req.body as {
+  const { tableNumber, groupSlug, sessionId, paid } = req.body as {
     tableNumber?: string;
     groupSlug?: string;
     sessionId?: number;
+    paid?: boolean;
   };
 
   let session =
     sessionId != null
       ? await prisma.tableFloorSession.findFirst({
-          where: { id: Number(sessionId), restaurantId: restaurantId!, status: 'open' },
+          where: {
+            id: Number(sessionId),
+            restaurantId: restaurantId!,
+            status: { in: [...ACTIVE_STATUSES] },
+          },
         })
       : null;
 
   if (!session && tableNumber) {
-    session = await findOpenSession(
+    session = await findActiveSession(
       restaurantId!,
       String(tableNumber).trim(),
       groupSlug ? String(groupSlug).trim() : null
@@ -180,8 +221,163 @@ router.post('/close', async (req, res) => {
   }
   if (!session) return res.status(404).json({ message: 'Açık masa yok' });
 
-  await closeSession(session.id);
+  await closeSession(session.id, Boolean(paid));
   res.json({ ok: true });
+});
+
+/** Rezervasyon / beklenen saat */
+router.post('/reserve', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const { tableNumber, groupSlug, guestName, expectedAt } = req.body as {
+    tableNumber?: string;
+    groupSlug?: string;
+    guestName?: string;
+    expectedAt?: string;
+  };
+  const masa = String(tableNumber || '').trim();
+  if (!masa) return res.status(400).json({ message: 'Masa gerekli' });
+  const grup = groupSlug ? String(groupSlug).trim() : null;
+  const when = expectedAt ? new Date(expectedAt) : null;
+  if (when && Number.isNaN(when.getTime())) {
+    return res.status(400).json({ message: 'Geçersiz saat' });
+  }
+
+  let session = await findActiveSession(restaurantId!, masa, grup);
+  if (!session) {
+    session = await prisma.tableFloorSession.create({
+      data: {
+        restaurantId: restaurantId!,
+        tableNumber: masa,
+        groupSlug: grup,
+        status: 'reserved',
+        openedBy: 'admin',
+        openedAt: new Date(),
+        guestName: guestName?.trim().slice(0, 120) || null,
+        expectedAt: when,
+        ordersJson: '[]',
+        mergedJson: '[]',
+      },
+    });
+  } else {
+    session = await prisma.tableFloorSession.update({
+      where: { id: session.id },
+      data: {
+        guestName: guestName !== undefined ? guestName.trim().slice(0, 120) || null : session.guestName,
+        expectedAt: expectedAt !== undefined ? when : session.expectedAt,
+        status: session.status === 'open' ? 'open' : 'reserved',
+      },
+    });
+  }
+
+  res.json({ ok: true, session: serializeSession(session) });
+});
+
+/** Masa taşı */
+router.post('/move', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const { fromTable, toTable, groupSlug } = req.body as {
+    fromTable?: string;
+    toTable?: string;
+    groupSlug?: string;
+  };
+  const from = String(fromTable || '').trim();
+  const to = String(toTable || '').trim();
+  const grup = groupSlug ? String(groupSlug).trim() : null;
+  if (!from || !to) return res.status(400).json({ message: 'Kaynak ve hedef masa gerekli' });
+  if (from === to) return res.status(400).json({ message: 'Aynı masa' });
+
+  const source = await findActiveSession(restaurantId!, from, grup);
+  if (!source) return res.status(404).json({ message: 'Kaynak masa boş' });
+  if (parseMergedJson(source.mergedJson).length) {
+    return res.status(400).json({ message: 'Birleşik masayı önce ayırın' });
+  }
+
+  const targetBusy = await findActiveSession(restaurantId!, to, grup);
+  if (targetBusy) return res.status(409).json({ message: 'Hedef masa dolu' });
+
+  // Hedef başka birleşimde mi?
+  const anyMerged = await prisma.tableFloorSession.findMany({
+    where: { restaurantId: restaurantId!, status: { in: [...ACTIVE_STATUSES] }, groupSlug: grup },
+  });
+  if (anyMerged.some((s) => parseMergedJson(s.mergedJson).includes(to))) {
+    return res.status(409).json({ message: 'Hedef masa birleşik' });
+  }
+
+  const updated = await prisma.tableFloorSession.update({
+    where: { id: source.id },
+    data: { tableNumber: to },
+  });
+  res.json({ ok: true, session: serializeSession(updated) });
+});
+
+/** Masa birleştir — otherTables → primary */
+router.post('/merge', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const { primaryTable, otherTables, groupSlug } = req.body as {
+    primaryTable?: string;
+    otherTables?: string[];
+    groupSlug?: string;
+  };
+  const primary = String(primaryTable || '').trim();
+  const others = (otherTables || []).map((t) => String(t).trim()).filter((t) => t && t !== primary);
+  const grup = groupSlug ? String(groupSlug).trim() : null;
+  if (!primary || !others.length) {
+    return res.status(400).json({ message: 'Ana masa ve birleştirilecek masalar gerekli' });
+  }
+
+  let primarySession = await findActiveSession(restaurantId!, primary, grup);
+  if (!primarySession) {
+    primarySession = await openOrGetSession(restaurantId!, primary, grup, 'admin');
+  }
+
+  let orders = parseOrdersJson(primarySession.ordersJson);
+  const merged = new Set(parseMergedJson(primarySession.mergedJson));
+
+  for (const code of others) {
+    const other = await findActiveSession(restaurantId!, code, grup);
+    if (other) {
+      orders = [...orders, ...parseOrdersJson(other.ordersJson)];
+      for (const m of parseMergedJson(other.mergedJson)) merged.add(m);
+      await closeSession(other.id);
+    }
+    merged.add(code);
+  }
+
+  const updated = await prisma.tableFloorSession.update({
+    where: { id: primarySession.id },
+    data: {
+      status: 'open',
+      ordersJson: JSON.stringify(orders),
+      mergedJson: JSON.stringify([...merged]),
+    },
+  });
+
+  res.json({ ok: true, session: serializeSession(updated) });
+});
+
+/** Birleşik masadan ayır */
+router.post('/split', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const { primaryTable, splitTable, groupSlug } = req.body as {
+    primaryTable?: string;
+    splitTable?: string;
+    groupSlug?: string;
+  };
+  const primary = String(primaryTable || '').trim();
+  const split = String(splitTable || '').trim();
+  const grup = groupSlug ? String(groupSlug).trim() : null;
+  if (!primary || !split) return res.status(400).json({ message: 'Masa gerekli' });
+
+  const session = await findActiveSession(restaurantId!, primary, grup);
+  if (!session) return res.status(404).json({ message: 'Ana masa yok' });
+
+  const merged = parseMergedJson(session.mergedJson).filter((c) => c !== split);
+  await prisma.tableFloorSession.update({
+    where: { id: session.id },
+    data: { mergedJson: JSON.stringify(merged) },
+  });
+
+  res.json({ ok: true, splitTable: split, mergedTables: merged });
 });
 
 router.post('/orders', async (req, res) => {
@@ -243,7 +439,7 @@ router.post('/orders', async (req, res) => {
   const orders = parseOrdersJson(updated?.ordersJson);
 
   const totalPrice = ordersTotal(lineItems);
-  const notify = await prisma.tableServiceRequest.create({
+  await prisma.tableServiceRequest.create({
     data: {
       restaurantId: restaurantId!,
       type: 'waiter',
@@ -251,11 +447,7 @@ router.post('/orders', async (req, res) => {
       groupSlug: groupSlug ? String(groupSlug).trim() : null,
       note: 'Admin sipariş ekledi',
       orderJson: JSON.stringify({
-        items: lineItems.map((i) => ({
-          name: i.name,
-          qty: i.qty,
-          price: i.price,
-        })),
+        items: lineItems.map((i) => ({ name: i.name, qty: i.qty, price: i.price })),
         totalPrice,
         source: 'admin',
       }),
@@ -267,7 +459,6 @@ router.post('/orders', async (req, res) => {
     sessionId: session.id,
     orders,
     total: ordersTotal(orders),
-    notificationId: notify.id,
   });
 });
 
@@ -278,21 +469,27 @@ router.get('/products', async (req, res) => {
 
   const products = await prisma.product.findMany({
     where: { restaurantId: restaurantId!, isActive: true },
-    include: { group: true, currency: true },
+    include: {
+      group: { include: { parent: true } },
+      currency: true,
+    },
     orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
   });
 
   res.json(
-    products.map((p) => ({
-      id: p.id,
-      name: getProductField(p.i18n, langCode, 'name') || `Ürün #${p.id}`,
-      price: Number(p.price),
-      groupId: p.groupId,
-      groupName: (p.group ? getGroupName(p.group.i18n, langCode) : '') || '',
-      currency: p.currency
-        ? { code: p.currency.code, symbol: p.currency.symbol }
-        : null,
-    }))
+    products.map((p) => {
+      const root = p.group?.parent || p.group;
+      return {
+        id: p.id,
+        name: getProductField(p.i18n, langCode, 'name') || `Ürün #${p.id}`,
+        price: Number(p.price),
+        groupId: root?.id ?? p.groupId,
+        groupName: (root ? getGroupName(root.i18n, langCode) : '') || '',
+        currency: p.currency
+          ? { code: p.currency.code, symbol: p.currency.symbol }
+          : null,
+      };
+    })
   );
 });
 

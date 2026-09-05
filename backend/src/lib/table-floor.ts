@@ -11,6 +11,7 @@ export type FloorOrderItem = {
 };
 
 export const WAITER_ALERT_MS = 8_000;
+export const ACTIVE_STATUSES = ['open', 'reserved'] as const;
 
 export function parseOrdersJson(raw?: string | null): FloorOrderItem[] {
   if (!raw) return [];
@@ -33,11 +34,22 @@ export function parseOrdersJson(raw?: string | null): FloorOrderItem[] {
   }
 }
 
+export function parseMergedJson(raw?: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((x) => String(x).trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 export function ordersTotal(items: FloorOrderItem[]) {
   return items.reduce((sum, i) => sum + i.price * i.qty, 0);
 }
 
-export async function findOpenSession(
+export async function findActiveSession(
   restaurantId: number,
   tableNumber: string,
   groupSlug?: string | null
@@ -46,11 +58,20 @@ export async function findOpenSession(
     where: {
       restaurantId,
       tableNumber,
-      status: 'open',
+      status: { in: [...ACTIVE_STATUSES] },
       groupSlug: groupSlug || null,
     },
     orderBy: { openedAt: 'desc' },
   });
+}
+
+/** @deprecated alias — open/reserved */
+export async function findOpenSession(
+  restaurantId: number,
+  tableNumber: string,
+  groupSlug?: string | null
+) {
+  return findActiveSession(restaurantId, tableNumber, groupSlug);
 }
 
 export async function openOrGetSession(
@@ -59,8 +80,16 @@ export async function openOrGetSession(
   groupSlug: string | null | undefined,
   openedBy: 'qr' | 'admin'
 ) {
-  const existing = await findOpenSession(restaurantId, tableNumber, groupSlug || null);
-  if (existing) return existing;
+  const existing = await findActiveSession(restaurantId, tableNumber, groupSlug || null);
+  if (existing) {
+    if (existing.status === 'reserved') {
+      return prisma.tableFloorSession.update({
+        where: { id: existing.id },
+        data: { status: 'open', openedBy },
+      });
+    }
+    return existing;
+  }
 
   return prisma.tableFloorSession.create({
     data: {
@@ -71,29 +100,34 @@ export async function openOrGetSession(
       openedBy,
       openedAt: new Date(),
       ordersJson: '[]',
+      mergedJson: '[]',
     },
   });
 }
 
-export async function appendOrdersToSession(
-  sessionId: number,
-  items: FloorOrderItem[]
-) {
+export async function appendOrdersToSession(sessionId: number, items: FloorOrderItem[]) {
   if (!items.length) return null;
   const session = await prisma.tableFloorSession.findUnique({ where: { id: sessionId } });
-  if (!session || session.status !== 'open') return null;
+  if (!session || !ACTIVE_STATUSES.includes(session.status as 'open' | 'reserved')) return null;
   const current = parseOrdersJson(session.ordersJson);
   const next = [...current, ...items];
   return prisma.tableFloorSession.update({
     where: { id: sessionId },
-    data: { ordersJson: JSON.stringify(next) },
+    data: {
+      ordersJson: JSON.stringify(next),
+      status: 'open',
+    },
   });
 }
 
-export async function closeSession(sessionId: number) {
+export async function closeSession(sessionId: number, paid = false) {
   return prisma.tableFloorSession.update({
     where: { id: sessionId },
-    data: { status: 'closed', closedAt: new Date() },
+    data: {
+      status: 'closed',
+      closedAt: new Date(),
+      ...(paid ? { paidAt: new Date() } : {}),
+    },
   });
 }
 

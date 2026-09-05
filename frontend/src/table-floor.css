@@ -610,21 +610,28 @@
   flex-wrap: nowrap;
   gap: 0.4rem;
   overflow-x: auto;
-  padding: 0 1.1rem 0.7rem;
+  overflow-y: visible;
+  padding: 0.15rem 1.1rem 0.75rem;
   scrollbar-width: thin;
 }
 
 .table-floor-modal__pill {
   flex-shrink: 0;
-  padding: 0.35rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.85rem;
+  padding: 0.4rem 0.85rem;
   border-radius: 999px;
   border: 1px solid rgba(88, 60, 36, 0.14);
   background: rgba(255, 255, 255, 0.85);
   color: var(--tf-ink);
-  font-size: 0.72rem;
-  font-weight: 750;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
   cursor: pointer;
   white-space: nowrap;
+  overflow: visible;
 }
 
 .table-floor-modal__pill.is-active {

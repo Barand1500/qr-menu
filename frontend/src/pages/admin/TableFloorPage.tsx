@@ -30,11 +30,17 @@ type FloorTable = {
   name: string;
   colorId?: string;
   occupied: boolean;
+  status?: string;
   openedAt: string | null;
   openedBy: string | null;
   sessionId: number | null;
+  guestName?: string | null;
+  expectedAt?: string | null;
+  paidAt?: string | null;
   orders: FloorOrder[];
   total: number;
+  mergedTables?: string[];
+  mergePrimary?: string | null;
   waiterAlertMs: number;
 };
 
@@ -118,6 +124,43 @@ function formatDurationPrecise(openedAt: string | null, now: number) {
   return `${mins} dk ${secs} sn`;
 }
 
+function toLocalInputValue(iso: string | null | undefined) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function printBill(opts: {
+  restaurant: string;
+  tableName: string;
+  orders: FloorOrder[];
+  total: number;
+  guestName?: string | null;
+}) {
+  const rows = opts.orders
+    .map(
+      (o) =>
+        `<tr><td>${o.qty}× ${o.name}</td><td style="text-align:right">${formatMoney(o.price * o.qty)}</td></tr>`
+    )
+    .join('');
+  const html = `<!doctype html><html><head><title>Hesap</title>
+    <style>body{font-family:system-ui,sans-serif;padding:24px;color:#222}
+    h1{font-size:18px;margin:0 0 4px} p{margin:0 0 12px;color:#666;font-size:13px}
+    table{width:100%;border-collapse:collapse} td{padding:6px 0;border-bottom:1px solid #eee;font-size:14px}
+    .total{font-size:18px;font-weight:800;margin-top:16px;text-align:right}</style></head><body>
+    <h1>${opts.restaurant}</h1>
+    <p>${opts.tableName}${opts.guestName ? ` · ${opts.guestName}` : ''}</p>
+    <table>${rows || '<tr><td>Sipariş yok</td><td></td></tr>'}</table>
+    <div class="total">${formatMoney(opts.total)}</div>
+    <script>window.onload=()=>window.print()</script></body></html>`;
+  const w = window.open('', '_blank', 'noopener,noreferrer,width=420,height=640');
+  if (!w) return;
+  w.document.write(html);
+  w.document.close();
+}
+
 export default function TableFloorPage() {
   const { user } = useAuth();
   const [data, setData] = useState<FloorPayload | null>(null);
@@ -132,7 +175,11 @@ export default function TableFloorPage() {
   const [cart, setCart] = useState<Record<number, number>>({});
   const [orderSaving, setOrderSaving] = useState(false);
   const [productQuery, setProductQuery] = useState('');
-  const [catalogGroup, setCatalogGroup] = useState<string>('all'); // 'all' | groupId string
+  const [catalogGroup, setCatalogGroup] = useState<string>('all');
+  const [guestName, setGuestName] = useState('');
+  const [expectedAt, setExpectedAt] = useState('');
+  const [moveTarget, setMoveTarget] = useState('');
+  const [mergePick, setMergePick] = useState<string[]>([]);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
 
@@ -177,6 +224,20 @@ export default function TableFloorPage() {
   }, [activeGroup, selectedCode]);
 
   useEffect(() => {
+    if (!selected) {
+      setGuestName('');
+      setExpectedAt('');
+      setMoveTarget('');
+      setMergePick([]);
+      return;
+    }
+    setGuestName(selected.guestName || '');
+    setExpectedAt(toLocalInputValue(selected.expectedAt));
+    setMoveTarget('');
+    setMergePick([]);
+  }, [selected?.code, selected?.sessionId, selected?.guestName, selected?.expectedAt]);
+
+  useEffect(() => {
     if (selectedCode && activeGroup && !activeGroup.tables.some((t) => t.code === selectedCode)) {
       setSelectedCode(null);
     }
@@ -196,7 +257,7 @@ export default function TableFloorPage() {
     }
   }
 
-  async function closeTable(table: FloorTable) {
+  async function closeTable(table: FloorTable, paid = false) {
     if (!activeGroup || busy) return;
     setBusy(true);
     try {
@@ -206,6 +267,83 @@ export default function TableFloorPage() {
           tableNumber: table.code,
           groupSlug: activeGroup.id,
           sessionId: table.sessionId,
+          paid,
+        }),
+      });
+      await load(true);
+      if (paid) setSelectedCode(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveReservation() {
+    if (!selected || !activeGroup || busy) return;
+    setBusy(true);
+    try {
+      await api('/api/admin/table-floor/reserve', {
+        method: 'POST',
+        body: JSON.stringify({
+          tableNumber: selected.code,
+          groupSlug: activeGroup.id,
+          guestName,
+          expectedAt: expectedAt ? new Date(expectedAt).toISOString() : null,
+        }),
+      });
+      await load(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function moveTable() {
+    if (!selected || !activeGroup || !moveTarget || busy) return;
+    setBusy(true);
+    try {
+      await api('/api/admin/table-floor/move', {
+        method: 'POST',
+        body: JSON.stringify({
+          fromTable: selected.code,
+          toTable: moveTarget,
+          groupSlug: activeGroup.id,
+        }),
+      });
+      setSelectedCode(moveTarget);
+      await load(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function mergeTables() {
+    if (!selected || !activeGroup || !mergePick.length || busy) return;
+    setBusy(true);
+    try {
+      await api('/api/admin/table-floor/merge', {
+        method: 'POST',
+        body: JSON.stringify({
+          primaryTable: selected.code,
+          otherTables: mergePick,
+          groupSlug: activeGroup.id,
+        }),
+      });
+      setMergePick([]);
+      await load(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function splitMerged(code: string) {
+    if (!selected || !activeGroup || busy) return;
+    setBusy(true);
+    try {
+      await api('/api/admin/table-floor/split', {
+        method: 'POST',
+        body: JSON.stringify({
+          primaryTable: selected.code,
+          splitTable: code,
+          groupSlug: activeGroup.id,
         }),
       });
       await load(true);
@@ -331,6 +469,8 @@ export default function TableFloorPage() {
                   key={table.code}
                   type="button"
                   className={`floor-table${table.occupied ? ' is-occupied' : ''}${
+                    table.status === 'reserved' ? ' is-reserved' : ''
+                  }${table.status === 'merged' ? ' is-merged' : ''}${
                     alerting ? ' is-alerting' : ''
                   }${selectedCode === table.code ? ' is-selected' : ''}`}
                   onClick={() => setSelectedCode(table.code)}
@@ -351,7 +491,11 @@ export default function TableFloorPage() {
                         bgColor={qrColor.bg}
                       />
                     </span>
-                    {table.occupied ? (
+                    {table.status === 'reserved' ? (
+                      <span className="floor-table__meta">Rezerve</span>
+                    ) : table.status === 'merged' ? (
+                      <span className="floor-table__meta">Birleşik</span>
+                    ) : table.occupied ? (
                       <span className="floor-table__meta">
                         <Clock3 className="w-3 h-3" />
                         {formatDurationMinutes(table.openedAt, now)}
@@ -386,8 +530,22 @@ export default function TableFloorPage() {
             </div>
 
             <div className="table-floor__status-row">
-              <span className={`table-floor__pill${selected.occupied ? ' is-busy' : ''}`}>
-                {selected.occupied ? 'Dolu' : 'Boş'}
+              <span
+                className={`table-floor__pill${
+                  selected.status === 'reserved'
+                    ? ' is-wait'
+                    : selected.occupied
+                      ? ' is-busy'
+                      : ''
+                }`}
+              >
+                {selected.status === 'reserved'
+                  ? 'Rezerve'
+                  : selected.status === 'merged'
+                    ? `Birleşik → ${selected.mergePrimary}`
+                    : selected.occupied
+                      ? 'Dolu'
+                      : 'Boş'}
               </span>
               {selected.waiterAlertMs > 0 ? (
                 <span className="table-floor__pill is-wait">
@@ -402,72 +560,218 @@ export default function TableFloorPage() {
               ) : null}
             </div>
 
-            <div className="table-floor__stats">
-              <div>
-                <Clock3 className="w-4 h-4" />
-                <div>
-                  <span>Oturma</span>
-                  <strong>{formatDurationPrecise(selected.openedAt, now)}</strong>
+            {selected.status === 'merged' ? (
+              <p className="table-floor__hint">
+                Bu masa {selected.mergePrimary} hesabına birleşik. Ana masadan yönetin.
+              </p>
+            ) : (
+              <>
+                <div className="table-floor__stats">
+                  <div>
+                    <Clock3 className="w-4 h-4" />
+                    <div>
+                      <span>Oturma</span>
+                      <strong>{formatDurationPrecise(selected.openedAt, now)}</strong>
+                    </div>
+                  </div>
+                  <div>
+                    <Receipt className="w-4 h-4" />
+                    <div>
+                      <span>Toplam</span>
+                      <strong>{formatMoney(selected.total)}</strong>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <Receipt className="w-4 h-4" />
-                <div>
-                  <span>Toplam</span>
-                  <strong>{formatMoney(selected.total)}</strong>
-                </div>
-              </div>
-            </div>
 
-            <div className="table-floor__orders">
-              <div className="table-floor__orders-head">
-                <h3>Siparişler</h3>
-                <button type="button" className="table-floor__text-btn" onClick={() => void openOrderModal()}>
-                  <Plus className="w-4 h-4" />
-                  Yemek ekle
-                </button>
-              </div>
-              {selected.orders.length === 0 ? (
-                <p className="table-floor__hint">Henüz sipariş yok.</p>
-              ) : (
-                <ul>
-                  {selected.orders.map((o) => (
-                    <li key={o.id}>
-                      <div>
-                        <strong>
-                          {o.qty}× {o.name}
-                        </strong>
-                        <span>{o.source === 'admin' ? 'Admin' : 'Müşteri'}</span>
+                <div className="table-floor__tool">
+                  <h3>Rezervasyon</h3>
+                  <input
+                    type="text"
+                    className="table-floor__input"
+                    placeholder="Misafir adı"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                  />
+                  <input
+                    type="datetime-local"
+                    className="table-floor__input"
+                    value={expectedAt}
+                    onChange={(e) => setExpectedAt(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="table-floor__secondary"
+                    disabled={busy}
+                    onClick={() => void saveReservation()}
+                  >
+                    Rezervasyonu kaydet
+                  </button>
+                </div>
+
+                {selected.occupied && selected.status !== 'merged' ? (
+                  <div className="table-floor__tool">
+                    <h3>Masa taşı</h3>
+                    <select
+                      className="table-floor__input"
+                      value={moveTarget}
+                      onChange={(e) => setMoveTarget(e.target.value)}
+                    >
+                      <option value="">Boş masa seç…</option>
+                      {activeGroup.tables
+                        .filter((t) => !t.occupied && t.code !== selected.code)
+                        .map((t) => (
+                          <option key={t.code} value={t.code}>
+                            {t.name}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="table-floor__secondary"
+                      disabled={busy || !moveTarget}
+                      onClick={() => void moveTable()}
+                    >
+                      Taşı
+                    </button>
+                  </div>
+                ) : null}
+
+                {selected.occupied && selected.status !== 'merged' ? (
+                  <div className="table-floor__tool">
+                    <h3>Birleştir</h3>
+                    <div className="table-floor__merge-list">
+                      {activeGroup.tables
+                        .filter((t) => t.code !== selected.code && t.status !== 'merged')
+                        .map((t) => {
+                          const on = mergePick.includes(t.code);
+                          return (
+                            <label key={t.code} className={`table-floor__merge-item${on ? ' is-on' : ''}`}>
+                              <input
+                                type="checkbox"
+                                checked={on}
+                                onChange={() =>
+                                  setMergePick((prev) =>
+                                    on ? prev.filter((c) => c !== t.code) : [...prev, t.code]
+                                  )
+                                }
+                              />
+                              {t.name}
+                              {t.occupied ? ' · dolu' : ''}
+                            </label>
+                          );
+                        })}
+                    </div>
+                    <button
+                      type="button"
+                      className="table-floor__secondary"
+                      disabled={busy || !mergePick.length}
+                      onClick={() => void mergeTables()}
+                    >
+                      Seçilenleri birleştir
+                    </button>
+                    {(selected.mergedTables || []).length > 0 ? (
+                      <div className="table-floor__split-row">
+                        {(selected.mergedTables || []).map((code) => {
+                          const t = activeGroup.tables.find((x) => x.code === code);
+                          return (
+                            <button
+                              key={code}
+                              type="button"
+                              className="table-floor__pill-btn"
+                              disabled={busy}
+                              onClick={() => void splitMerged(code)}
+                            >
+                              {t?.name || code} ayır
+                            </button>
+                          );
+                        })}
                       </div>
-                      <em>{formatMoney(o.price * o.qty)}</em>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+                    ) : null}
+                  </div>
+                ) : null}
 
-            <div className="table-floor__drawer-actions">
-              {!selected.occupied ? (
-                <button
-                  type="button"
-                  className="table-floor__primary"
-                  disabled={busy}
-                  onClick={() => void openTable(selected)}
-                >
-                  <UtensilsCrossed className="w-4 h-4" />
-                  Masayı aç
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="table-floor__danger"
-                  disabled={busy}
-                  onClick={() => void closeTable(selected)}
-                >
-                  Masayı kapat / boşalt
-                </button>
-              )}
-            </div>
+                <div className="table-floor__orders">
+                  <div className="table-floor__orders-head">
+                    <h3>Siparişler</h3>
+                    <button
+                      type="button"
+                      className="table-floor__text-btn"
+                      onClick={() => void openOrderModal()}
+                    >
+                      <Plus className="w-4 h-4" />
+                      Yemek ekle
+                    </button>
+                  </div>
+                  {selected.orders.length === 0 ? (
+                    <p className="table-floor__hint">Henüz sipariş yok.</p>
+                  ) : (
+                    <ul>
+                      {selected.orders.map((o) => (
+                        <li key={o.id}>
+                          <div>
+                            <strong>
+                              {o.qty}× {o.name}
+                            </strong>
+                            <span>{o.source === 'admin' ? 'Admin' : 'Müşteri'}</span>
+                          </div>
+                          <em>{formatMoney(o.price * o.qty)}</em>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="table-floor__drawer-actions">
+                  <div className="table-floor__action-row">
+                    <button
+                      type="button"
+                      className="table-floor__secondary"
+                      onClick={() =>
+                        printBill({
+                          restaurant: data?.restaurant?.name || user?.restaurant?.name || 'Restoran',
+                          tableName: selected.name,
+                          orders: selected.orders,
+                          total: selected.total,
+                          guestName: selected.guestName,
+                        })
+                      }
+                    >
+                      Hesap yazdır
+                    </button>
+                    {selected.occupied ? (
+                      <button
+                        type="button"
+                        className="table-floor__primary"
+                        disabled={busy}
+                        onClick={() => void closeTable(selected, true)}
+                      >
+                        Ödeme alındı
+                      </button>
+                    ) : null}
+                  </div>
+                  {!selected.occupied ? (
+                    <button
+                      type="button"
+                      className="table-floor__primary"
+                      disabled={busy}
+                      onClick={() => void openTable(selected)}
+                    >
+                      <UtensilsCrossed className="w-4 h-4" />
+                      Masayı aç
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="table-floor__danger"
+                      disabled={busy}
+                      onClick={() => void closeTable(selected, false)}
+                    >
+                      Masayı kapat / boşalt
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </>
         ) : null}
       </aside>
