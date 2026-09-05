@@ -131,6 +131,7 @@ export default function TableFloorPage() {
   const [cart, setCart] = useState<Record<number, number>>({});
   const [orderSaving, setOrderSaving] = useState(false);
   const [productQuery, setProductQuery] = useState('');
+  const [catalogGroup, setCatalogGroup] = useState<string>('all');
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
 
@@ -216,6 +217,7 @@ export default function TableFloorPage() {
     setOrderOpen(true);
     setCart({});
     setProductQuery('');
+    setCatalogGroup('all');
     if (!catalog.length) {
       const list = await api<CatalogProduct[]>('/api/admin/table-floor/products');
       setCatalog(list);
@@ -254,7 +256,17 @@ export default function TableFloorPage() {
     }
   }
 
+  const catalogGroups = useMemo(() => {
+    const names = new Set<string>();
+    for (const p of catalog) {
+      const g = p.groupName?.trim();
+      if (g) names.add(g);
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b, 'tr'));
+  }, [catalog]);
+
   const filteredCatalog = catalog.filter((p) => {
+    if (catalogGroup !== 'all' && p.groupName !== catalogGroup) return false;
     const q = productQuery.trim().toLowerCase();
     if (!q) return true;
     return p.name.toLowerCase().includes(q) || p.groupName.toLowerCase().includes(q);
@@ -486,8 +498,38 @@ export default function TableFloorPage() {
               value={productQuery}
               onChange={(e) => setProductQuery(e.target.value)}
             />
+            {catalogGroups.length > 0 ? (
+              <div className="table-floor-modal__pills" role="tablist" aria-label="Ürün grupları">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={catalogGroup === 'all'}
+                  className={`table-floor-modal__pill${catalogGroup === 'all' ? ' is-active' : ''}`}
+                  onClick={() => setCatalogGroup('all')}
+                >
+                  Tümü
+                </button>
+                {catalogGroups.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    role="tab"
+                    aria-selected={catalogGroup === g}
+                    className={`table-floor-modal__pill${catalogGroup === g ? ' is-active' : ''}`}
+                    onClick={() => setCatalogGroup(g)}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <div className="table-floor-modal__list">
-              {filteredCatalog.map((p) => {
+              {filteredCatalog.length === 0 ? (
+                <p className="table-floor__hint" style={{ padding: '0.5rem 0.25rem' }}>
+                  Bu filtrede ürün yok.
+                </p>
+              ) : (
+                filteredCatalog.map((p) => {
                 const qty = cart[p.id] || 0;
                 return (
                   <div key={p.id} className="table-floor-modal__row">
@@ -516,7 +558,8 @@ export default function TableFloorPage() {
                     </div>
                   </div>
                 );
-              })}
+              })
+              )}
             </div>
             <footer>
               <button

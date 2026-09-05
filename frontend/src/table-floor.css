@@ -598,11 +598,39 @@
 }
 
 .table-floor-modal__search {
-  margin: 0 1.1rem 0.7rem;
+  margin: 0 1.1rem 0.55rem;
   padding: 0.7rem 0.85rem;
   border-radius: 0.85rem;
   border: 1px solid rgba(88, 60, 36, 0.14);
   background: #fff;
+}
+
+.table-floor-modal__pills {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding: 0 1.1rem 0.7rem;
+  scrollbar-width: thin;
+}
+
+.table-floor-modal__pill {
+  flex-shrink: 0;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(88, 60, 36, 0.14);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--tf-ink);
+  font-size: 0.72rem;
+  font-weight: 750;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.table-floor-modal__pill.is-active {
+  background: var(--tf-wood-deep);
+  color: #fff8ef;
+  border-color: transparent;
 }
 
 .table-floor-modal__list {
