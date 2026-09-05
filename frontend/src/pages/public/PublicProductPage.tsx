@@ -33,6 +33,7 @@ import SiparisProductPage from '@/components/public/siparis/SiparisProductPage';
 import SiparisCartSheet from '@/components/public/siparis/SiparisCartSheet';
 import AnimasyonCartSheet from '@/components/public/animasyon/AnimasyonCartSheet';
 import { SiparisCartProvider } from '@/hooks/useSiparisCart';
+import MaintenanceGate from '@/components/public/MaintenanceGate';
 import { useEffect, useState } from 'react';
 
 interface ProductDetail {
@@ -64,6 +65,15 @@ interface RelatedProduct {
 }
 
 export default function PublicProductPage() {
+  const { slug } = useMenuSlug();
+  return (
+    <MaintenanceGate slug={slug}>
+      <PublicProductPageInner />
+    </MaintenanceGate>
+  );
+}
+
+function PublicProductPageInner() {
   const { productId } = useParams();
   const { slug } = useMenuSlug();
   const navigate = useNavigate();

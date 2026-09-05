@@ -39,6 +39,8 @@ import {
   type CampaignCtx,
 } from '../lib/campaigns.js';
 import { distanceMeters, isWithinGeoLock, loadGeoLock } from '../lib/geo-lock.js';
+import { isMaintenanceEnabled } from '../lib/maintenance.js';
+import { addRunnerScore, getRunnerScores } from '../lib/maintenance-scores.js';
 
 const router = Router();
 
@@ -86,13 +88,49 @@ router.get('/resolve', async (_req, res) => {
   const restaurant = await prisma.restaurant.findFirst({ orderBy: { id: 'asc' } });
   if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
   const themes = await getRestaurantThemes(restaurant.id);
+  const maintenance = await isMaintenanceEnabled(restaurant.id);
   res.json({
     id: restaurant.id,
     name: restaurant.name,
     slug: restaurant.slug,
     logoUrl: restaurant.logoUrl,
     themes,
+    maintenance,
   });
+});
+
+/** Bakım modu durumu */
+router.get('/:slug/maintenance', async (req, res) => {
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug: req.params.slug } });
+  if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
+  const enabled = await isMaintenanceEnabled(restaurant.id);
+  res.json({
+    enabled,
+    restaurantName: restaurant.name,
+  });
+});
+
+/** Garson koşusu skor tablosu */
+router.get('/:slug/maintenance/scores', async (req, res) => {
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug: req.params.slug } });
+  if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
+  const scores = await getRunnerScores(restaurant.id);
+  res.json({ scores });
+});
+
+router.post('/:slug/maintenance/scores', async (req, res) => {
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug: req.params.slug } });
+  if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
+  try {
+    const scores = await addRunnerScore(
+      restaurant.id,
+      String(req.body?.name ?? ''),
+      Number(req.body?.score)
+    );
+    res.json({ scores });
+  } catch (e) {
+    res.status(400).json({ message: e instanceof Error ? e.message : 'Kayıt başarısız' });
+  }
 });
 
 /** Konum kilidi durumu (karşılama öncesi) */
@@ -1030,6 +1068,13 @@ router.post('/:slug/table-checkin', async (req, res) => {
 
   const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
   if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
+
+  if (await isMaintenanceEnabled(restaurant.id)) {
+    return res.status(503).json({
+      message: 'Menü bakımda',
+      code: 'MAINTENANCE',
+    });
+  }
 
   const masa = String(tableNumber || '').trim();
   if (!masa || masa === 'admin' || masa.length > 40) {

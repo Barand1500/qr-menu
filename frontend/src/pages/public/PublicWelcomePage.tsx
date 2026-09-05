@@ -4,6 +4,7 @@ import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { enteredKey, menuHomePath } from '@/lib/menuPaths';
 import GeoLockGate from '@/components/public/GeoLockGate';
 import GeoCheckInBridge from '@/components/public/GeoCheckInBridge';
+import MaintenanceGate from '@/components/public/MaintenanceGate';
 import type { GeoCoords } from '@/lib/geoLock';
 import { Volume2, VolumeX, Sparkles, MessageCircleHeart, Lightbulb } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
@@ -67,9 +68,11 @@ export default function PublicWelcomePage() {
   }
 
   return (
-    <GeoLockGate slug={slug}>
-      {({ coords }) => <PublicWelcomePageInner slug={slug} coords={coords} />}
-    </GeoLockGate>
+    <MaintenanceGate slug={slug}>
+      <GeoLockGate slug={slug}>
+        {({ coords }) => <PublicWelcomePageInner slug={slug} coords={coords} />}
+      </GeoLockGate>
+    </MaintenanceGate>
   );
 }
 

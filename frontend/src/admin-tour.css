@@ -19,6 +19,39 @@
   transform: translateY(-1px);
 }
 
+.sidebar-maintenance-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  cursor: pointer;
+}
+
+.sidebar-maintenance-btn:hover:not(:disabled) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.32);
+  transform: translateY(-1px);
+}
+
+.sidebar-maintenance-btn--on {
+  color: #fff7ed;
+  background: rgba(194, 65, 12, 0.92);
+  border-color: rgba(255, 237, 213, 0.45);
+  box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.35);
+}
+
+.sidebar-maintenance-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .admin-tour {
   position: fixed;
   inset: 0;

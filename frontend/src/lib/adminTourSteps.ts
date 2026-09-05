@@ -180,6 +180,15 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     placement: 'top',
   },
   {
+    id: 'maintenance',
+    title: 'Bakım modu',
+    body: 'Menüyü geçici olarak kapatmak istediğinizde bu düğmeye basın. Misafirler menü yerine kısa bir bakım ekranı ve “Garson Koşusu” oyununu görür; siz işinizi bitirince tekrar kapatırsınız.',
+    tip: 'Yenileme, tema değişimi veya acil durumlarda kullanın. Açıkken turuncu yanar.',
+    target: 'maintenance',
+    path: '/admin',
+    placement: 'top',
+  },
+  {
     id: 'header-theme',
     title: 'Gündüz / gece',
     body: 'Panel temasını buradan değiştirirsiniz. Göz yormayan gece modu uzun nöbetlerde işe yarar.',

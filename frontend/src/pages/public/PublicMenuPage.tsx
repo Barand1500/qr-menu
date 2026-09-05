@@ -17,6 +17,7 @@ import {
 } from '@/lib/demoData';
 import { checkInTable } from '@/lib/tableCheckin';
 import GeoLockGate from '@/components/public/GeoLockGate';
+import MaintenanceGate from '@/components/public/MaintenanceGate';
 import type { GeoCoords } from '@/lib/geoLock';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { useMenuColorMode } from '@/hooks/useMenuColorMode';
@@ -142,9 +143,11 @@ export default function PublicMenuPage() {
   }
 
   return (
-    <GeoLockGate slug={slug}>
-      {({ coords }) => <PublicMenuPageInner slug={slug} coords={coords} />}
-    </GeoLockGate>
+    <MaintenanceGate slug={slug}>
+      <GeoLockGate slug={slug}>
+        {({ coords }) => <PublicMenuPageInner slug={slug} coords={coords} />}
+      </GeoLockGate>
+    </MaintenanceGate>
   );
 }
 

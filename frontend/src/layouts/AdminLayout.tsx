@@ -10,6 +10,7 @@ import {
   RotateCcw,
   Puzzle,
   Armchair,
+  Construction,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -21,7 +22,6 @@ import AdminTour, { AdminTourHelpButton } from '@/components/admin/AdminTour';
 import type { TourOpenGroup } from '@/lib/adminTourSteps';
 import { adminPreviewMenuUrl } from '@/lib/tableContext';
 import '@/admin-tour.css';
-
 const mainNavBase = [
   { to: '/admin', label: 'Özet', end: true, tourId: 'nav-ozet' },
   { to: '/admin/groups', label: 'Gruplar', tourId: 'nav-groups' },
@@ -121,6 +121,8 @@ export default function AdminLayout() {
   const [startupOpen, setStartupOpen] = useState(false);
   const [resettingAddons, setResettingAddons] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
+  const [maintenanceOn, setMaintenanceOn] = useState(false);
+  const [maintenanceBusy, setMaintenanceBusy] = useState(false);
 
   const mainNav = [
     ...mainNavBase,
@@ -188,6 +190,27 @@ export default function AdminLayout() {
     if (startupActive) setStartupOpen(true);
   }, [startupActive]);
 
+  useEffect(() => {
+    api<{ enabled: boolean }>('/api/admin/settings/maintenance')
+      .then((r) => setMaintenanceOn(Boolean(r.enabled)))
+      .catch(() => setMaintenanceOn(false));
+  }, []);
+
+  async function toggleMaintenance() {
+    const next = !maintenanceOn;
+    setMaintenanceBusy(true);
+    try {
+      const res = await api<{ enabled: boolean }>('/api/admin/settings/maintenance', {
+        method: 'PUT',
+        body: JSON.stringify({ enabled: next }),
+      });
+      setMaintenanceOn(Boolean(res.enabled));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Bakım modu güncellenemedi');
+    } finally {
+      setMaintenanceBusy(false);
+    }
+  }
   const sidebar = (
     <aside
       className="flex flex-col w-full h-full overflow-hidden"
@@ -269,6 +292,20 @@ export default function AdminLayout() {
             {user?.restaurant.name}
           </p>
           <AdminTourHelpButton onClick={() => setTourOpen(true)} />
+          <button
+            type="button"
+            className={`sidebar-maintenance-btn shrink-0${
+              maintenanceOn ? ' sidebar-maintenance-btn--on' : ''
+            }`}
+            title={maintenanceOn ? 'Bakım modunu kapat' : 'Bakım modunu aç'}
+            aria-label={maintenanceOn ? 'Bakım modunu kapat' : 'Bakım modunu aç'}
+            aria-pressed={maintenanceOn}
+            disabled={maintenanceBusy}
+            data-tour="maintenance"
+            onClick={() => void toggleMaintenance()}
+          >
+            <Construction className="w-[18px] h-[18px]" strokeWidth={1.75} />
+          </button>
           <NavLink
             to="/admin/extensions"
             onClick={closeMobile}

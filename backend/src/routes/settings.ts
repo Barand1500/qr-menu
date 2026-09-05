@@ -29,6 +29,7 @@ import {
   serializeGeoLock,
   type GeoLockConfig,
 } from '../lib/geo-lock.js';
+import { isMaintenanceEnabled, setMaintenanceEnabled } from '../lib/maintenance.js';
 
 const router = Router();
 router.use(authRequired);
@@ -443,6 +444,19 @@ router.get('/geo-search', async (req, res) => {
   } catch {
     res.status(502).json({ message: 'Harita araması başarısız' });
   }
+});
+
+router.get('/maintenance', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const enabled = await isMaintenanceEnabled(restaurantId!);
+  res.json({ enabled });
+});
+
+router.put('/maintenance', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const enabled = Boolean((req.body as { enabled?: boolean }).enabled);
+  await setMaintenanceEnabled(restaurantId!, enabled);
+  res.json({ enabled });
 });
 
 export default router;
