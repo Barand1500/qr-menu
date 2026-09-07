@@ -24,4 +24,11 @@ export const WELCOME_THEMES: MenuThemeOption[] = [
     locked: true,
     previewClass: 'theme-preview--neon',
   },
+  {
+    id: 'kitty',
+    name: 'Kitty',
+    description: 'Şeftali üst sahne, bakan kedi silueti ve sade beyaz karşılama alanı.',
+    locked: true,
+    previewClass: 'theme-preview--kitty',
+  },
 ];

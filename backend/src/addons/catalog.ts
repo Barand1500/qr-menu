@@ -24,6 +24,13 @@ export const ADDON_PRODUCTS: AddonProductDef[] = [
     themeId: 'neon',
   },
   {
+    id: 'welcome-kitty',
+    category: 'welcome',
+    name: 'Kitty',
+    description: 'Şeftali üst sahne, bakan kedi silueti ve sade beyaz karşılama alanı.',
+    themeId: 'kitty',
+  },
+  {
     id: 'menu-sade',
     category: 'menu',
     name: 'Sade',

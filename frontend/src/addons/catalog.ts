@@ -28,6 +28,14 @@ export const ADDON_CATALOG: AddonProduct[] = [
     previewClass: 'theme-preview--neon',
   },
   {
+    id: 'welcome-kitty',
+    category: 'welcome',
+    name: 'Kitty',
+    description: 'Şeftali üst sahne, bakan kedi silueti ve sade beyaz karşılama alanı.',
+    themeId: 'kitty',
+    previewClass: 'theme-preview--kitty',
+  },
+  {
     id: 'menu-sade',
     category: 'menu',
     name: 'Sade',

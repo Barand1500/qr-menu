@@ -2,6 +2,7 @@ export type AddonProductId =
   | 'welcome-vibrant'
   | 'welcome-cinema'
   | 'welcome-neon'
+  | 'welcome-kitty'
   | 'menu-sade'
   | 'menu-siparis'
   | 'menu-alive'
