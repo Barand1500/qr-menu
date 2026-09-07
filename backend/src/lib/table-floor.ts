@@ -8,10 +8,31 @@ export type FloorOrderItem = {
   price: number;
   createdAt: string;
   source: 'admin' | 'customer';
+  note?: string;
+  /** ekstra / indirim */
+  adjustmentType?: 'extra' | 'discount' | null;
+  adjustmentMode?: 'fixed' | 'percent';
+  adjustmentValue?: number;
 };
 
 export const WAITER_ALERT_MS = 8_000;
 export const ACTIVE_STATUSES = ['open', 'reserved'] as const;
+
+export function lineTotal(item: {
+  price: number;
+  qty: number;
+  adjustmentType?: 'extra' | 'discount' | null;
+  adjustmentMode?: 'fixed' | 'percent';
+  adjustmentValue?: number;
+}) {
+  const base = (Number(item.price) || 0) * Math.max(1, Number(item.qty) || 1);
+  const val = Math.abs(Number(item.adjustmentValue) || 0);
+  if (!val || !item.adjustmentType) return base;
+  const delta = item.adjustmentMode === 'percent' ? (base * val) / 100 : val;
+  if (item.adjustmentType === 'extra') return base + delta;
+  if (item.adjustmentType === 'discount') return Math.max(0, base - delta);
+  return base;
+}
 
 export function parseOrdersJson(raw?: string | null): FloorOrderItem[] {
   if (!raw) return [];
@@ -19,15 +40,28 @@ export function parseOrdersJson(raw?: string | null): FloorOrderItem[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .map((row) => ({
-        id: String(row.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`),
-        productId: row.productId != null ? Number(row.productId) : null,
-        name: String(row.name || '').trim().slice(0, 120),
-        qty: Math.min(99, Math.max(1, Number(row.qty) || 1)),
-        price: Number(row.price) || 0,
-        createdAt: String(row.createdAt || new Date().toISOString()),
-        source: row.source === 'admin' ? ('admin' as const) : ('customer' as const),
-      }))
+      .map((row) => {
+        const adjustmentType =
+          row.adjustmentType === 'extra' || row.adjustmentType === 'discount'
+            ? (row.adjustmentType as 'extra' | 'discount')
+            : null;
+        const adjustmentMode: 'fixed' | 'percent' =
+          row.adjustmentMode === 'percent' ? 'percent' : 'fixed';
+        const adjustmentValue = Math.abs(Number(row.adjustmentValue) || 0);
+        return {
+          id: String(row.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`),
+          productId: row.productId != null ? Number(row.productId) : null,
+          name: String(row.name || '').trim().slice(0, 120),
+          qty: Math.min(99, Math.max(1, Number(row.qty) || 1)),
+          price: Number(row.price) || 0,
+          createdAt: String(row.createdAt || new Date().toISOString()),
+          source: row.source === 'admin' ? ('admin' as const) : ('customer' as const),
+          note: String(row.note || '').trim().slice(0, 240) || undefined,
+          adjustmentType,
+          adjustmentMode: adjustmentType ? adjustmentMode : undefined,
+          adjustmentValue: adjustmentType && adjustmentValue > 0 ? adjustmentValue : undefined,
+        };
+      })
       .filter((r) => r.name);
   } catch {
     return [];
@@ -46,7 +80,7 @@ export function parseMergedJson(raw?: string | null): string[] {
 }
 
 export function ordersTotal(items: FloorOrderItem[]) {
-  return items.reduce((sum, i) => sum + i.price * i.qty, 0);
+  return items.reduce((sum, i) => sum + lineTotal(i), 0);
 }
 
 export async function findActiveSession(

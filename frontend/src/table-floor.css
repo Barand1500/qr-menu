@@ -1198,14 +1198,29 @@
 }
 
 .table-floor-modal__row {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  align-items: center;
+  display: block;
   padding: 0.7rem 0.75rem;
   border-radius: 0.9rem;
   background: #fff;
   border: 1px solid rgba(88, 60, 36, 0.08);
+}
+
+.table-floor-modal__row.is-selected {
+  border-color: rgba(138, 90, 43, 0.28);
+  background: #fffdf9;
+}
+
+.table-floor-modal__row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.table-floor-modal__row-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
 }
 
 .table-floor-modal__row strong {
@@ -1216,6 +1231,59 @@
 .table-floor-modal__row span {
   font-size: 0.72rem;
   color: var(--tf-muted);
+}
+
+.table-floor-modal__extras {
+  display: grid;
+  gap: 0.45rem;
+  padding-top: 0.15rem;
+  border-top: 1px dashed rgba(88, 60, 36, 0.12);
+}
+
+.table-floor-modal__extras label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.table-floor-modal__extras label > span {
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--tf-muted);
+}
+
+.table-floor-modal__extras input,
+.table-floor-modal__extras select {
+  width: 100%;
+  height: 2.15rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(88, 60, 36, 0.14);
+  background: #fff;
+  padding: 0 0.65rem;
+  font-size: 0.84rem;
+  color: var(--tf-ink, #3b2a1c);
+}
+
+.table-floor-modal__adj {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 0.9fr;
+  gap: 0.4rem;
+}
+
+@media (max-width: 640px) {
+  .table-floor-modal__adj {
+    grid-template-columns: 1fr;
+  }
+}
+
+.table-floor__order-note {
+  display: block;
+  margin-top: 0.2rem;
+  font-style: normal;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #9a3412;
 }
 
 .table-floor-modal__qty {

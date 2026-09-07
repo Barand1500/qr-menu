@@ -22,7 +22,51 @@ type FloorOrder = {
   price: number;
   createdAt: string;
   source: 'admin' | 'customer';
+  note?: string;
+  adjustmentType?: 'extra' | 'discount' | null;
+  adjustmentMode?: 'fixed' | 'percent';
+  adjustmentValue?: number;
 };
+
+type CartLine = {
+  qty: number;
+  note: string;
+  adjType: 'none' | 'extra' | 'discount';
+  adjMode: 'fixed' | 'percent';
+  adjValue: string;
+};
+
+const emptyCartLine = (): CartLine => ({
+  qty: 0,
+  note: '',
+  adjType: 'none',
+  adjMode: 'fixed',
+  adjValue: '',
+});
+
+function lineTotal(o: {
+  price: number;
+  qty: number;
+  adjustmentType?: 'extra' | 'discount' | null;
+  adjustmentMode?: 'fixed' | 'percent';
+  adjustmentValue?: number;
+}) {
+  const base = (Number(o.price) || 0) * Math.max(1, Number(o.qty) || 1);
+  const val = Math.abs(Number(o.adjustmentValue) || 0);
+  if (!val || !o.adjustmentType) return base;
+  const delta = o.adjustmentMode === 'percent' ? (base * val) / 100 : val;
+  if (o.adjustmentType === 'extra') return base + delta;
+  if (o.adjustmentType === 'discount') return Math.max(0, base - delta);
+  return base;
+}
+
+function formatAdjLabel(o: FloorOrder) {
+  if (!o.adjustmentType || !o.adjustmentValue) return '';
+  const sign = o.adjustmentType === 'extra' ? '+' : '−';
+  const unit = o.adjustmentMode === 'percent' ? '%' : '₺';
+  const label = o.adjustmentType === 'extra' ? 'ekstra' : 'indirim';
+  return `${sign}${o.adjustmentValue}${unit} ${label}`;
+}
 
 type FloorTable = {
   index: number;
@@ -153,10 +197,15 @@ function printBill(opts: {
   guestName?: string | null;
 }) {
   const rows = opts.orders
-    .map(
-      (o) =>
-        `<tr><td>${o.qty}× ${o.name}</td><td style="text-align:right">${formatMoney(o.price * o.qty)}</td></tr>`
-    )
+    .map((o) => {
+      const note = o.note?.trim()
+        ? `<div style="font-size:12px;color:#666;margin-top:2px">${o.note}</div>`
+        : '';
+      const adj = formatAdjLabel(o)
+        ? `<div style="font-size:11px;color:#888">${formatAdjLabel(o)}</div>`
+        : '';
+      return `<tr><td>${o.qty}× ${o.name}${note}${adj}</td><td style="text-align:right">${formatMoney(lineTotal(o))}</td></tr>`;
+    })
     .join('');
   const html = `<!doctype html><html><head><title>Hesap</title>
     <style>body{font-family:system-ui,sans-serif;padding:24px;color:#222}
@@ -186,7 +235,7 @@ export default function TableFloorPage() {
   const [busy, setBusy] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
   const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
-  const [cart, setCart] = useState<Record<number, number>>({});
+  const [cart, setCart] = useState<Record<number, CartLine>>({});
   const [orderSaving, setOrderSaving] = useState(false);
   const [productQuery, setProductQuery] = useState('');
   const [catalogGroup, setCatalogGroup] = useState<string>('all');
@@ -460,14 +509,23 @@ export default function TableFloorPage() {
   async function submitOrder() {
     if (!selected || !activeGroup) return;
     const items = Object.entries(cart)
-      .filter(([, qty]) => qty > 0)
-      .map(([id, qty]) => {
+      .filter(([, line]) => line.qty > 0)
+      .map(([id, line]) => {
         const p = catalog.find((c) => c.id === Number(id));
+        const adjVal = Math.abs(Number(line.adjValue.replace(',', '.')) || 0);
         return {
           productId: Number(id),
           name: p?.name,
-          qty,
+          qty: line.qty,
           price: p?.price,
+          note: line.note.trim() || undefined,
+          ...(line.adjType !== 'none' && adjVal > 0
+            ? {
+                adjustmentType: line.adjType,
+                adjustmentMode: line.adjMode,
+                adjustmentValue: adjVal,
+              }
+            : {}),
         };
       });
     if (!items.length) return;
@@ -487,6 +545,29 @@ export default function TableFloorPage() {
     } finally {
       setOrderSaving(false);
     }
+  }
+
+  function setCartQty(productId: number, qty: number) {
+    setCart((c) => {
+      const prev = c[productId] || emptyCartLine();
+      if (qty <= 0) {
+        const next = { ...c };
+        delete next[productId];
+        return next;
+      }
+      return {
+        ...c,
+        [productId]: { ...prev, qty },
+      };
+    });
+  }
+
+  function patchCart(productId: number, patch: Partial<CartLine>) {
+    setCart((c) => {
+      const prev = c[productId] || emptyCartLine();
+      if (prev.qty <= 0 && !patch.qty) return c;
+      return { ...c, [productId]: { ...prev, ...patch } };
+    });
   }
 
   const catalogGroups = useMemo(() => {
@@ -836,9 +917,15 @@ export default function TableFloorPage() {
                             <strong>
                               {o.qty}× {o.name}
                             </strong>
-                            <span>{o.source === 'admin' ? 'Admin' : 'Müşteri'}</span>
+                            <span>
+                              {o.source === 'admin' ? 'Admin' : 'Müşteri'}
+                              {formatAdjLabel(o) ? ` · ${formatAdjLabel(o)}` : ''}
+                            </span>
+                            {o.note?.trim() ? (
+                              <em className="table-floor__order-note">{o.note}</em>
+                            ) : null}
                           </div>
-                          <em>{formatMoney(o.price * o.qty)}</em>
+                          <em>{formatMoney(lineTotal(o))}</em>
                         </li>
                       ))}
                     </ul>
@@ -1023,31 +1110,92 @@ export default function TableFloorPage() {
                   </p>
                 ) : (
                   filteredCatalog.map((p) => {
-                    const qty = cart[p.id] || 0;
+                    const line = cart[p.id] || emptyCartLine();
+                    const qty = line.qty;
                     return (
-                      <div key={p.id} className="table-floor-modal__row">
-                        <div>
-                          <strong>{p.name}</strong>
-                          <span>
-                            {p.groupName} · {formatMoney(p.price)}
-                          </span>
-                        </div>
-                        <div className="table-floor-modal__qty">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setCart((c) => ({ ...c, [p.id]: Math.max(0, (c[p.id] || 0) - 1) }))
-                            }
-                          >
-                            −
-                          </button>
-                          <em>{qty}</em>
-                          <button
-                            type="button"
-                            onClick={() => setCart((c) => ({ ...c, [p.id]: (c[p.id] || 0) + 1 }))}
-                          >
-                            +
-                          </button>
+                      <div
+                        key={p.id}
+                        className={`table-floor-modal__row${qty > 0 ? ' is-selected' : ''}`}
+                      >
+                        <div className="table-floor-modal__row-main">
+                          <div className="table-floor-modal__row-top">
+                            <div>
+                              <strong>{p.name}</strong>
+                              <span>
+                                {p.groupName} · {formatMoney(p.price)}
+                              </span>
+                            </div>
+                            <div className="table-floor-modal__qty">
+                              <button type="button" onClick={() => setCartQty(p.id, qty - 1)}>
+                                −
+                              </button>
+                              <em>{qty}</em>
+                              <button type="button" onClick={() => setCartQty(p.id, qty + 1)}>
+                                +
+                              </button>
+                            </div>
+                          </div>
+                          {qty > 0 ? (
+                            <div className="table-floor-modal__extras">
+                              <label>
+                                <span>Not</span>
+                                <input
+                                  type="text"
+                                  value={line.note}
+                                  maxLength={240}
+                                  placeholder="Örn. orta şekerli, az buz…"
+                                  onChange={(e) => patchCart(p.id, { note: e.target.value })}
+                                />
+                              </label>
+                              <div className="table-floor-modal__adj">
+                                <label>
+                                  <span>Fiyat ayarı</span>
+                                  <select
+                                    value={line.adjType}
+                                    onChange={(e) =>
+                                      patchCart(p.id, {
+                                        adjType: e.target.value as CartLine['adjType'],
+                                      })
+                                    }
+                                  >
+                                    <option value="none">Yok</option>
+                                    <option value="extra">Ekstra (+)</option>
+                                    <option value="discount">İndirim (−)</option>
+                                  </select>
+                                </label>
+                                {line.adjType !== 'none' ? (
+                                  <>
+                                    <label>
+                                      <span>Tür</span>
+                                      <select
+                                        value={line.adjMode}
+                                        onChange={(e) =>
+                                          patchCart(p.id, {
+                                            adjMode: e.target.value as CartLine['adjMode'],
+                                          })
+                                        }
+                                      >
+                                        <option value="fixed">₺ tutar</option>
+                                        <option value="percent">% yüzde</option>
+                                      </select>
+                                    </label>
+                                    <label>
+                                      <span>Değer</span>
+                                      <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={line.adjValue}
+                                        placeholder={line.adjMode === 'percent' ? '10' : '25'}
+                                        onChange={(e) =>
+                                          patchCart(p.id, { adjValue: e.target.value })
+                                        }
+                                      />
+                                    </label>
+                                  </>
+                                ) : null}
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     );
@@ -1059,7 +1207,7 @@ export default function TableFloorPage() {
               <button
                 type="button"
                 className="table-floor__primary"
-                disabled={orderSaving || !Object.values(cart).some((q) => q > 0)}
+                disabled={orderSaving || !Object.values(cart).some((line) => line.qty > 0)}
                 onClick={() => void submitOrder()}
               >
                 {orderSaving ? 'Kaydediliyor…' : 'Siparişi kaydet'}

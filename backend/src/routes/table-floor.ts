@@ -395,7 +395,16 @@ router.post('/orders', async (req, res) => {
   const { tableNumber, groupSlug, items } = req.body as {
     tableNumber?: string;
     groupSlug?: string;
-    items?: { productId?: number; name?: string; qty?: number; price?: number }[];
+    items?: {
+      productId?: number;
+      name?: string;
+      qty?: number;
+      price?: number;
+      note?: string;
+      adjustmentType?: 'extra' | 'discount' | null;
+      adjustmentMode?: 'fixed' | 'percent';
+      adjustmentValue?: number;
+    }[];
   };
 
   const masa = String(tableNumber || '').trim();
@@ -432,6 +441,13 @@ router.post('/orders', async (req, res) => {
       }
     }
     if (!name) continue;
+    const note = String(raw.note || '').trim().slice(0, 240);
+    const adjustmentType =
+      raw.adjustmentType === 'extra' || raw.adjustmentType === 'discount'
+        ? raw.adjustmentType
+        : null;
+    const adjustmentMode = raw.adjustmentMode === 'percent' ? 'percent' : 'fixed';
+    const adjustmentValue = Math.abs(Number(raw.adjustmentValue) || 0);
     lineItems.push({
       id: `adm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       productId,
@@ -440,6 +456,10 @@ router.post('/orders', async (req, res) => {
       price,
       createdAt: now,
       source: 'admin',
+      ...(note ? { note } : {}),
+      ...(adjustmentType && adjustmentValue > 0
+        ? { adjustmentType, adjustmentMode, adjustmentValue }
+        : {}),
     });
   }
 
@@ -457,7 +477,15 @@ router.post('/orders', async (req, res) => {
       groupSlug: groupSlug ? String(groupSlug).trim() : null,
       note: 'Admin sipariş ekledi',
       orderJson: JSON.stringify({
-        items: lineItems.map((i) => ({ name: i.name, qty: i.qty, price: i.price })),
+        items: lineItems.map((i) => ({
+          name: i.name,
+          qty: i.qty,
+          price: i.price,
+          note: i.note,
+          adjustmentType: i.adjustmentType,
+          adjustmentMode: i.adjustmentMode,
+          adjustmentValue: i.adjustmentValue,
+        })),
         totalPrice,
         source: 'admin',
       }),
