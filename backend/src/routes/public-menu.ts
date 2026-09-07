@@ -41,6 +41,7 @@ import {
 import { distanceMeters, isWithinGeoLock, loadGeoLock } from '../lib/geo-lock.js';
 import { isMaintenanceEnabled } from '../lib/maintenance.js';
 import { addRunnerScore, getRunnerScores } from '../lib/maintenance-scores.js';
+import { ABOUT_PAGE_KEY, parseAboutPage } from '../lib/about-page.js';
 
 const router = Router();
 
@@ -349,6 +350,7 @@ router.get('/:slug', async (req, res) => {
     storyShowcase,
     languages,
     aboutSetting,
+    aboutPageSetting,
     socialSetting,
     themes,
     menuAssistant,
@@ -385,6 +387,11 @@ router.get('/:slug', async (req, res) => {
     prisma.setting.findUnique({
       where: {
         restaurantId_key: { restaurantId: restaurant.id, key: 'company_about' },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurant.id, key: ABOUT_PAGE_KEY },
       },
     }),
     prisma.setting.findUnique({
@@ -478,6 +485,7 @@ router.get('/:slug', async (req, res) => {
     },
     welcomeMessage: getWelcomeMessage(restaurant.welcomeI18n, activeLang),
     about: aboutSetting?.value || '',
+    aboutPage: parseAboutPage(aboutPageSetting?.value, aboutSetting?.value || ''),
     languages: languages.map((l) => ({ code: l.code, name: l.name })),
     theme: themes.menu,
     campaign: campaignMeta(campaign),

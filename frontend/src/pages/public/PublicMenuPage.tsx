@@ -30,6 +30,9 @@ import {
   menuWelcomePath,
 } from '@/lib/menuPaths';
 import PublicSocialLinks from '@/components/public/PublicSocialLinks';
+import AboutPageView from '@/components/public/AboutPageView';
+import { parseAboutPage, type AboutPageConfig } from '@/lib/aboutPage';
+import '@/about-page.css';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import MenuAssistantModal from '@/components/public/MenuAssistantModal';
 import MenuMascot from '@/components/public/MenuMascot';
@@ -71,6 +74,7 @@ interface MenuData {
   restaurant: { id: number; name: string; slug: string; logoUrl?: string | null };
   welcomeMessage: string;
   about?: string;
+  aboutPage?: AboutPageConfig;
   languages: { code: string; name: string }[];
   showcase?: ShowcaseItem[];
   stories?: MenuStory[];
@@ -763,14 +767,19 @@ function PublicMenuPageInner({
           ))}
 
         {tab === 'about' && (
-          <div className="public-content-card max-w-2xl mx-auto">
-            <h2 className="public-content-card__title">{menu.restaurant.name}</h2>
-            <p className="public-content-card__text">
-              {menu.about || menu.welcomeMessage || 'Dijital menümüze hoş geldiniz.'}
-            </p>
-            {menu.socialLinks && menu.socialLinks.length > 0 && (
-              <PublicSocialLinks links={menu.socialLinks} className="mt-5" />
-            )}
+          <div className="max-w-2xl mx-auto w-full">
+            <AboutPageView
+              config={parseAboutPage(
+                menu.aboutPage ? JSON.stringify(menu.aboutPage) : null,
+                menu.about || menu.welcomeMessage || ''
+              )}
+              restaurantName={menu.restaurant.name}
+              social={
+                menu.socialLinks && menu.socialLinks.length > 0 ? (
+                  <PublicSocialLinks links={menu.socialLinks} className="mt-5" />
+                ) : null
+              }
+            />
           </div>
         )}
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check, MapPinned } from 'lucide-react';
+import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check, MapPinned, Maximize2 } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
@@ -11,7 +11,10 @@ import AddCurrencyModal from '@/components/AddCurrencyModal';
 import SocialBrandIcon from '@/components/SocialBrandIcon';
 import { SocialDisplayIcon, CUSTOM_ICONS } from '@/components/SocialDisplayIcon';
 import GeoLockMapEditor from '@/components/admin/GeoLockMapEditor';
+import AboutPageEditorModal from '@/components/admin/AboutPageEditorModal';
 import type { GeoLockConfig } from '@/lib/geoLock';
+import { DEFAULT_ABOUT_PAGE, parseAboutPage, type AboutPageConfig } from '@/lib/aboutPage';
+import '@/about-page.css';
 import { languageFlag } from '@/lib/languageFlags';
 import { catalogByCode, type CatalogLanguage } from '@/lib/languageCatalog';
 import { currencyCatalogByCode, type CatalogCurrency } from '@/lib/currencyCatalog';
@@ -121,6 +124,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [companyName, setCompanyName] = useState('');
   const [companyAbout, setCompanyAbout] = useState('');
+  const [aboutPage, setAboutPage] = useState<AboutPageConfig>(DEFAULT_ABOUT_PAGE);
+  const [aboutEditorOpen, setAboutEditorOpen] = useState(false);
   const [messages, setMessages] = useState<Record<number, string>>({});
   const [integrationEnabled, setIntegrationEnabled] = useState(false);
   const [openaiApiKey, setOpenaiApiKey] = useState('');
@@ -167,6 +172,9 @@ export default function SettingsPage() {
         setCurrencies(d.currencies?.length ? d.currencies : curs);
         setCompanyName(d.restaurant.name);
         setCompanyAbout(d.settings.company_about || '');
+        setAboutPage(
+          parseAboutPage(d.settings.company_about_page, d.settings.company_about || '')
+        );
         setMessages(Object.fromEntries(d.welcomeMessages.map((m) => [m.languageId, m.message])));
         setIntegrationEnabled(d.settings.integration_enabled === 'true');
         setOpenaiApiKey(d.settings.openai_api_key || '');
@@ -310,7 +318,11 @@ export default function SettingsPage() {
     try {
       await api('/api/admin/settings/company', {
         method: 'PUT',
-        body: JSON.stringify({ name: companyName, about: companyAbout }),
+        body: JSON.stringify({
+          name: companyName,
+          about: companyAbout,
+          aboutPage: { ...aboutPage, body: companyAbout },
+        }),
       });
       await api('/api/admin/settings/welcome-messages', {
         method: 'PUT',
@@ -918,13 +930,28 @@ export default function SettingsPage() {
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
               />
-              <Textarea
-                label="Hakkında"
-                value={companyAbout}
-                onChange={(e) => setCompanyAbout(e.target.value)}
-                className="flex-1 [&_.float-field]:h-full [&_.float-field__input]:min-h-[140px] [&_.float-field__input]:h-full [&_.float-field__input]:resize-none"
-                rows={6}
-              />
+              <div className="about-field-wrap flex-1 flex flex-col min-h-0">
+                <button
+                  type="button"
+                  className="about-expand-btn"
+                  title="Hakkında sayfasını özelleştir"
+                  aria-label="Hakkında sayfasını büyüt"
+                  onClick={() => setAboutEditorOpen(true)}
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+                <Textarea
+                  label="Hakkında"
+                  value={companyAbout}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setCompanyAbout(v);
+                    setAboutPage((p) => ({ ...p, body: v }));
+                  }}
+                  className="flex-1 [&_.float-field]:h-full [&_.float-field__input]:min-h-[140px] [&_.float-field__input]:h-full [&_.float-field__input]:resize-none"
+                  rows={6}
+                />
+              </div>
             </div>
 
             <div className="flex flex-col min-h-[240px]">
@@ -1319,6 +1346,37 @@ export default function SettingsPage() {
         saving={addingCurrency}
         onClose={() => setAddCurrencyOpen(false)}
         onAdd={handleAddCurrency}
+      />
+
+      <AboutPageEditorModal
+        open={aboutEditorOpen}
+        initial={{ ...aboutPage, body: companyAbout }}
+        restaurantName={companyName || data?.restaurant.name || 'Restoran'}
+        saving={saving}
+        onClose={() => setAboutEditorOpen(false)}
+        onSave={async (config) => {
+          setAboutPage(config);
+          setCompanyAbout(config.body);
+          setSaving(true);
+          try {
+            await api('/api/admin/settings/company', {
+              method: 'PUT',
+              body: JSON.stringify({
+                name: companyName,
+                about: config.body,
+                aboutPage: config,
+              }),
+            });
+            setAboutEditorOpen(false);
+          } catch {
+            /* keep open */
+          } finally {
+            setSaving(false);
+          }
+        }}
+        onCoverUploaded={(coverUrl) => {
+          setAboutPage((p) => ({ ...p, coverUrl }));
+        }}
       />
     </div>
   );

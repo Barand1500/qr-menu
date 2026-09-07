@@ -30,6 +30,8 @@ import {
   type GeoLockConfig,
 } from '../lib/geo-lock.js';
 import { isMaintenanceEnabled, setMaintenanceEnabled } from '../lib/maintenance.js';
+import { ABOUT_PAGE_KEY, parseAboutPage, serializeAboutPage } from '../lib/about-page.js';
+import type { AboutPageConfig } from '../lib/about-page.js';
 
 const router = Router();
 router.use(authRequired);
@@ -145,22 +147,71 @@ router.put('/welcome-messages', async (req, res) => {
 
 router.put('/company', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const { name, about } = req.body as { name?: string; about?: string };
+  const { name, about, aboutPage } = req.body as {
+    name?: string;
+    about?: string;
+    aboutPage?: AboutPageConfig;
+  };
 
   const restaurant = await prisma.restaurant.update({
     where: { id: restaurantId! },
     data: { ...(name !== undefined && { name }) },
   });
 
-  if (about !== undefined) {
+  let aboutText = about;
+  if (aboutPage && typeof aboutPage === 'object') {
+    const existingAbout = await prisma.setting.findUnique({
+      where: { restaurantId_key: { restaurantId: restaurantId!, key: 'company_about' } },
+    });
+    const parsed = parseAboutPage(JSON.stringify(aboutPage), existingAbout?.value || '');
+    if (aboutText === undefined) aboutText = parsed.body;
+    else parsed.body = aboutText;
+    await prisma.setting.upsert({
+      where: { restaurantId_key: { restaurantId: restaurantId!, key: ABOUT_PAGE_KEY } },
+      update: { value: serializeAboutPage({ ...parsed, body: aboutText || parsed.body }) },
+      create: {
+        restaurantId: restaurantId!,
+        key: ABOUT_PAGE_KEY,
+        value: serializeAboutPage({ ...parsed, body: aboutText || parsed.body }),
+      },
+    });
+  }
+
+  if (aboutText !== undefined) {
     await prisma.setting.upsert({
       where: { restaurantId_key: { restaurantId: restaurantId!, key: 'company_about' } },
-      update: { value: about },
-      create: { restaurantId: restaurantId!, key: 'company_about', value: about },
+      update: { value: aboutText },
+      create: { restaurantId: restaurantId!, key: 'company_about', value: aboutText },
     });
   }
 
   res.json(restaurant);
+});
+
+router.post('/about-cover', upload.single('cover'), async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  if (!req.file) return res.status(400).json({ message: 'Görsel gerekli' });
+  const coverUrl = `/uploads/${req.file.filename}`;
+
+  const aboutRow = await prisma.setting.findUnique({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: 'company_about' } },
+  });
+  const pageRow = await prisma.setting.findUnique({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: ABOUT_PAGE_KEY } },
+  });
+  const parsed = parseAboutPage(pageRow?.value, aboutRow?.value || '');
+  parsed.coverUrl = coverUrl;
+  await prisma.setting.upsert({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: ABOUT_PAGE_KEY } },
+    update: { value: serializeAboutPage(parsed) },
+    create: {
+      restaurantId: restaurantId!,
+      key: ABOUT_PAGE_KEY,
+      value: serializeAboutPage(parsed),
+    },
+  });
+
+  res.json({ coverUrl });
 });
 
 router.post('/logo', upload.single('logo'), async (req, res) => {
