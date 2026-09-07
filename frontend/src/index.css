@@ -5289,11 +5289,11 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 /* ── Kitty: şeftali üst / beyaz alt + bakan kedi ── */
 .welcome-scene[data-theme-welcome='kitty'] {
-  --kitty-peach: #f3b7a8;
+  --kitty-peach: #f4b9aa;
   --kitty-peach-deep: #e8a090;
   --kitty-ink: #121212;
   --kitty-muted: #5c534e;
-  --kitty-split: 44%;
+  --kitty-split: 48%;
   background: #fff;
   color: var(--kitty-ink);
   height: 100dvh;
@@ -5318,21 +5318,16 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  --kitty-split: inherit;
+  --kitty-split: 48%;
 }
 
-/* Tam genişlik hero: görselin beyaz şeridi zeminle birleşir */
-.welcome-scene__kitty-hero {
+.welcome-scene__kitty-sky {
   position: absolute;
-  top: 0;
   left: 0;
-  width: 100%;
+  right: 0;
+  top: 0;
   height: var(--kitty-split);
-  object-fit: cover;
-  object-position: center bottom;
-  user-select: none;
-  -webkit-user-drag: none;
-  pointer-events: none;
+  background: var(--kitty-peach, #f4b9aa);
 }
 
 .welcome-scene__kitty-floor {
@@ -5342,6 +5337,33 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   top: var(--kitty-split);
   bottom: 0;
   background: #fff;
+}
+
+/* Referans: kedi çizginin ortasında, şeftali gökyüzünden bakıyor */
+.welcome-scene__kitty-mascot {
+  position: absolute;
+  left: 50%;
+  top: var(--kitty-split);
+  width: min(72vw, 20rem);
+  transform: translate(-50%, -70%);
+  z-index: 2;
+  line-height: 0;
+  filter: drop-shadow(0 10px 18px rgba(40, 20, 10, 0.08));
+}
+
+.welcome-scene__kitty-photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1.25 / 1;
+  object-fit: cover;
+  /* Görseldeki kediyi çerçevele; alttaki beyaz şeridi dışarıda bırak */
+  object-position: center 36%;
+  clip-path: inset(0 8% 30% 8%);
+  margin-bottom: -18%;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
 }
 
 .welcome-scene[data-theme-welcome='kitty'] .welcome-scene__content {
@@ -5528,11 +5550,16 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 /* Tercih adımında kedi alanı küçülür — kaydırma olmasın */
 .welcome-scene[data-theme-welcome='kitty']:has(.welcome-card--prefs-active) {
-  --kitty-split: 26%;
+  --kitty-split: 28%;
 }
 
 .welcome-scene[data-theme-welcome='kitty']:has(.welcome-card--prefs-active) .welcome-scene__kitty {
-  --kitty-split: 26%;
+  --kitty-split: 28%;
+}
+
+.welcome-scene[data-theme-welcome='kitty']:has(.welcome-card--prefs-active) .welcome-scene__kitty-mascot {
+  width: min(42vw, 11rem);
+  transform: translate(-50%, -68%);
 }
 
 .welcome-scene[data-theme-welcome='kitty'] .public-social-links a {
@@ -5544,12 +5571,16 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 @media (max-width: 480px) {
   .welcome-scene[data-theme-welcome='kitty'],
   .welcome-scene__kitty {
-    --kitty-split: 38%;
+    --kitty-split: 42%;
   }
 
   .welcome-scene[data-theme-welcome='kitty']:has(.welcome-card--prefs-active),
   .welcome-scene[data-theme-welcome='kitty']:has(.welcome-card--prefs-active) .welcome-scene__kitty {
-    --kitty-split: 22%;
+    --kitty-split: 24%;
+  }
+
+  .welcome-scene__kitty-mascot {
+    width: min(78vw, 17rem);
   }
 
   .welcome-scene[data-theme-welcome='kitty'] .welcome-card__title {
@@ -8186,17 +8217,20 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 .theme-preview--kitty {
   position: relative;
-  background: #f3b7a8;
   overflow: hidden;
+  background: linear-gradient(180deg, #f4b9aa 0 55%, #ffffff 55%);
 }
 
 .theme-preview--kitty::after {
   content: '';
   position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(180deg, transparent 0%, transparent 52%, #fff 52%, #fff 100%),
-    url('/welcome/kitty-mascot.png') center 35% / cover no-repeat;
+  left: 50%;
+  top: 55%;
+  width: 52%;
+  height: 58%;
+  transform: translate(-50%, -72%);
+  background: url('/welcome/kitty-mascot.png') center 34% / cover no-repeat;
+  clip-path: inset(0 10% 32% 10%);
   pointer-events: none;
 }
 
