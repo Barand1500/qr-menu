@@ -5307,6 +5307,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
+  --kitty-split: 50%;
 }
 
 .welcome-scene__kitty-sky {
@@ -5314,60 +5315,40 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   left: 0;
   right: 0;
   top: 0;
-  height: 52%;
-  background: linear-gradient(180deg, #f8c9bc 0%, var(--kitty-peach) 70%, var(--kitty-peach-deep) 100%);
+  height: var(--kitty-split);
+  background: var(--kitty-peach);
 }
 
 .welcome-scene__kitty-floor {
   position: absolute;
   left: 0;
   right: 0;
-  top: 52%;
+  top: var(--kitty-split);
   bottom: 0;
   background: #fff;
 }
 
+/* Siluetin alt kenarı tam şeftali/beyaz çizgisine oturur */
 .welcome-scene__kitty-mascot {
   position: absolute;
   left: 50%;
-  top: 0;
-  width: 100%;
-  max-width: 42rem;
-  height: 52%;
-  transform: translateX(-50%);
-  z-index: 1;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  overflow: hidden;
+  top: var(--kitty-split);
+  width: min(86vw, 26rem);
+  transform: translate(-50%, -100%);
+  z-index: 2;
+  line-height: 0;
+  overflow: visible;
 }
 
 .welcome-scene__kitty-photo {
   display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 62%;
-  filter: none;
-  animation: welcome-kitty-bob 5.5s ease-in-out infinite;
+  height: auto;
+  object-fit: contain;
+  object-position: center bottom;
   user-select: none;
   -webkit-user-drag: none;
-}
-
-@keyframes welcome-kitty-bob {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -8px, 0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .welcome-scene__kitty-photo {
-    animation: none;
-  }
+  pointer-events: none;
 }
 
 .welcome-scene[data-theme-welcome='kitty'] {
@@ -5381,7 +5362,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 .welcome-scene[data-theme-welcome='kitty'] .welcome-scene__content {
   max-width: 26rem;
   width: 100%;
-  margin-top: clamp(42vh, 48vh, 54vh);
+  margin-top: clamp(46vh, 52vh, 56vh);
   padding-bottom: 0.5rem;
 }
 
@@ -5514,17 +5495,16 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 }
 
 @media (max-width: 480px) {
-  .welcome-scene__kitty-sky,
-  .welcome-scene__kitty-mascot {
-    height: 46%;
+  .welcome-scene__kitty {
+    --kitty-split: 44%;
   }
 
-  .welcome-scene__kitty-floor {
-    top: 46%;
+  .welcome-scene__kitty-mascot {
+    width: min(92vw, 20rem);
   }
 
   .welcome-scene[data-theme-welcome='kitty'] .welcome-scene__content {
-    margin-top: clamp(38vh, 44vh, 50vh);
+    margin-top: clamp(40vh, 46vh, 50vh);
   }
 }
 

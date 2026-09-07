@@ -84,7 +84,7 @@ export default function WelcomeSceneBackground({
             <div className="welcome-scene__kitty-floor" />
             <div className="welcome-scene__kitty-mascot">
               <img
-                src="/welcome/kitty-peek.png"
+                src="/welcome/kitty-peek.svg"
                 alt=""
                 className="welcome-scene__kitty-photo"
                 draggable={false}

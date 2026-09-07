@@ -1,18 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" fill="none" aria-hidden="true">
-  <!-- Peeking cat silhouette  cropped at baseline -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 360" fill="none" aria-hidden="true">
+  <!-- Flat black peeking cat; bottom edge y=360 = horizon line -->
   <path
-    fill="#0c0c0c"
-    d="M122 360V248c0-18 8-42 22-58 18-22 42-34 68-34 14 0 26 3 38 9 8-46 36-86 78-112 8-5 18-2 22 6l18 38c4-2 10-4 16-4s12 2 16 4l18-38c4-8 14-11 22-6 42 26 70 66 78 112 12-6 24-9 38-9 26 0 50 12 68 34 14 16 22 40 22 58v112H122Z"
+    fill="#0a0a0a"
+    d="M120 360V255c0-20 9-44 26-60 20-22 46-34 74-34h8
+       c8-48 40-92 86-120 9-5 20-1 24 8l20 46c5-2 11-4 18-4s13 2 18 4l20-46
+       c4-9 15-13 24-8 46 28 78 72 86 120h8c28 0 54 12 74 34 17 16 26 40 26 60v105H120Z"
   />
-  <!-- Left ear inner -->
-  <path fill="#0c0c0c" d="M198 210c8-28 28-52 52-68-18 22-30 48-34 76-6-2-12-4-18-8Z" opacity=".35"/>
-  <!-- Right ear inner -->
-  <path fill="#0c0c0c" d="M442 210c-8-28-28-52-52-68 18 22 30 48 34 76 6-2 12-4 18-8Z" opacity=".35"/>
-  <!-- Eyes -->
-  <ellipse cx="268" cy="268" rx="42" ry="46" fill="#fff"/>
-  <ellipse cx="372" cy="268" rx="42" ry="46" fill="#fff"/>
-  <ellipse cx="276" cy="276" rx="16" ry="20" fill="#0c0c0c"/>
-  <ellipse cx="364" cy="276" rx="16" ry="20" fill="#0c0c0c"/>
-  <circle cx="282" cy="268" r="5" fill="#fff" opacity=".9"/>
-  <circle cx="370" cy="268" r="5" fill="#fff" opacity=".9"/>
+  <!-- pointed ear tips -->
+  <path fill="#0a0a0a" d="M228 168l-22-56 48 36-26 20Zm344 0 22-56-48 36 26 20Z"/>
+  <circle cx="332" cy="268" r="44" fill="#fff"/>
+  <circle cx="468" cy="268" r="44" fill="#fff"/>
+  <circle cx="338" cy="276" r="16" fill="#0a0a0a"/>
+  <circle cx="462" cy="276" r="16" fill="#0a0a0a"/>
 </svg>
