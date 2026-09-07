@@ -426,26 +426,26 @@
   position: relative;
 }
 
+/* Hakkında legend’i gibi: üst çizginin sağ köşesinde soft flat ikon */
 .about-field-wrap .about-expand-btn {
   position: absolute;
-  top: 0.55rem;
-  right: 0.55rem;
-  z-index: 2;
-  height: 2.35rem;
-  padding: 0 0.85rem 0 0.7rem;
-  border: 1px solid color-mix(in srgb, var(--admin-accent, #3b82f6) 28%, transparent);
-  border-radius: 999px;
+  top: -0.55rem;
+  right: 0.7rem;
+  z-index: 3;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  justify-content: center;
+  padding: 0 0.35rem;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--admin-card, #fff);
+  color: var(--float-label-focus, var(--admin-accent, #2563eb));
+  box-shadow: none;
   cursor: pointer;
-  background: color-mix(in srgb, var(--admin-accent, #3b82f6) 12%, #fff);
-  color: var(--admin-accent, #2563eb);
-  font-size: 0.78rem;
-  font-weight: 750;
-  letter-spacing: 0.01em;
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--admin-accent, #3b82f6) 14%, transparent);
-  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  line-height: 0;
+  opacity: 0.88;
+  transition: opacity 0.15s ease, color 0.15s ease;
 }
 
 .about-field-wrap .about-expand-btn__icon {
@@ -455,20 +455,14 @@
 }
 
 .about-field-wrap .about-expand-btn:hover {
-  transform: translateY(-1px);
-  background: color-mix(in srgb, var(--admin-accent, #3b82f6) 18%, #fff);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--admin-accent, #3b82f6) 18%, transparent);
+  opacity: 1;
+  transform: none;
+  background: var(--admin-card, #fff);
+  box-shadow: none;
   filter: none;
 }
 
 .about-field-wrap .about-expand-btn:active {
-  transform: translateY(0);
-}
-
-.about-field-wrap .float-field__label {
-  padding-right: 7.5rem;
-}
-
-.about-field-wrap .float-field__input {
-  padding-top: 2.65rem;
+  opacity: 0.75;
+  transform: none;
 }

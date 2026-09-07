@@ -938,8 +938,7 @@ export default function SettingsPage() {
                   aria-label="Hakkında sayfasını özelleştir"
                   onClick={() => setAboutEditorOpen(true)}
                 >
-                  <Expand className="about-expand-btn__icon" strokeWidth={2.25} />
-                  <span>Özelleştir</span>
+                  <Expand className="about-expand-btn__icon" strokeWidth={2} />
                 </button>
                 <Textarea
                   label="Hakkında"
