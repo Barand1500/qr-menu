@@ -80,16 +80,13 @@ export default function WelcomeSceneBackground({
 
         {isKitty && (
           <div className="welcome-scene__kitty">
-            <div className="welcome-scene__kitty-sky" />
+            <img
+              src="/welcome/kitty-mascot.png"
+              alt=""
+              className="welcome-scene__kitty-hero"
+              draggable={false}
+            />
             <div className="welcome-scene__kitty-floor" />
-            <div className="welcome-scene__kitty-mascot">
-              <img
-                src="/welcome/kitty-peek.svg"
-                alt=""
-                className="welcome-scene__kitty-photo"
-                draggable={false}
-              />
-            </div>
           </div>
         )}
       </div>
