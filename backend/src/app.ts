@@ -23,6 +23,7 @@ import barcodeRouter from './routes/barcode.js';
 import campaignsRouter from './routes/campaigns.js';
 import bulkTranslateRouter from './routes/bulk-translate.js';
 import tableFloorRouter from './routes/table-floor.js';
+import mapTilesRouter from './routes/map-tiles.js';
 
 export function createApp() {
   const app = express();
@@ -68,6 +69,7 @@ export function createApp() {
   app.use('/api/admin/bulk-translate', bulkTranslateRouter);
   app.use('/api/admin/table-floor', tableFloorRouter);
   app.use('/api/menu', publicMenuRouter);
+  app.use('/api/map-tiles', mapTilesRouter);
 
   const publicDir = path.resolve(process.env.PUBLIC_DIR || './public');
   if (fs.existsSync(publicDir)) {

@@ -41,6 +41,36 @@
   color: var(--linear-olive);
 }
 
+/* Arama overlay: lacivert zemin + koyu ikon = görünmezdi */
+.public-menu-page[data-theme-menu='linear'] .public-search-overlay {
+  background: var(--linear-cream);
+}
+
+.public-menu-page[data-theme-menu='linear'] .public-search-overlay__head {
+  background: var(--linear-olive);
+  border-bottom: 1px solid rgba(246, 243, 236, 0.12);
+}
+
+.public-menu-page[data-theme-menu='linear'] .public-search-overlay__head .public-menu-header__icon-btn {
+  color: #f6f3ec;
+  background: rgba(246, 243, 236, 0.14);
+}
+
+.public-menu-page[data-theme-menu='linear'] .public-search-overlay__head .public-menu-header__icon-btn:hover {
+  background: rgba(246, 243, 236, 0.22);
+  color: #fff;
+}
+
+.public-menu-page[data-theme-menu='linear'] .public-search-input {
+  background: #fff;
+  color: var(--linear-ink);
+  border: 1px solid rgba(246, 243, 236, 0.35);
+}
+
+.public-menu-page[data-theme-menu='linear'] .public-search-input::placeholder {
+  color: rgba(28, 30, 22, 0.45);
+}
+
 .public-menu-page[data-theme-menu='linear'] .public-menu-header .text-white\/70,
 .public-menu-page[data-theme-menu='linear'] .public-menu-header .text-white {
   color: var(--linear-ink) !important;
