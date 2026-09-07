@@ -142,14 +142,10 @@ Ayarlar → Entegrasyon → lisans kutusu görünüyor mu kontrol et.
 
 YENİ ÖZELLİKLER (bu paket)
 ---------------------------
-- Garson / Hesap çağırma (masa_cagrilari tablosu)
-- Admin bildirim zili
-- Dashboard takvim + grafik carousel
-- Lisans / abonelik kutusu (restoranlar.lisans_bitis kolonu)
-- Karşılama müziği / çağırma ayarları toggle'ları
-
-İlk kez kuruyorsan ve lisans tarihi boşsa MySQL'de:
-  UPDATE restoranlar SET lisans_bitis = '2027-12-31' WHERE id = 1;
+- Bakım modu (sidebar inşaat ikonu) + rehber adımı
+- Bakım ekranı: Garson Koşusu oyunu + gerçek skor sıralaması
+- Karşılama logo animasyonu yumuşatma
+- Masa görünümü / konum kilidi / admin tur iyileştirmeleri
 
 UYARI: npm run db:seed veya db:reset ÇALIŞTIRMA — tüm canlı veriyi siler!
 `;

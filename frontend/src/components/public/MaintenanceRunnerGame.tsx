@@ -4,11 +4,12 @@ import { Trophy } from 'lucide-react';
 
 type Obstacle = { x: number; w: number; h: number; kind: 0 | 1 | 2 };
 type BoardEntry = { name: string; score: number; at: string };
+type Dust = { x: number; y: number; r: number; a: number; vx: number };
 
-const GROUND_RATIO = 0.74;
-const PLAYER_X = 48;
-const PLAYER_W = 28;
-const PLAYER_H = 36;
+const GROUND_RATIO = 0.72;
+const PLAYER_X = 52;
+const PLAYER_W = 30;
+const PLAYER_H = 40;
 const START_SPEED = 2.4;
 const MAX_SPEED = 5.2;
 const GRAVITY = 0.42;
@@ -55,6 +56,7 @@ export default function MaintenanceRunnerGame({ slug }: Props) {
     frame: 0,
     score: 0,
     blockRestart: false,
+    dust: [] as Dust[],
   });
   const resetRef = useRef<() => void>(() => {});
 
@@ -82,13 +84,13 @@ export default function MaintenanceRunnerGame({ slug }: Props) {
 
     let raf = 0;
     let cssW = canvas.clientWidth || 320;
-    let cssH = canvas.clientHeight || 160;
+    let cssH = canvas.clientHeight || 180;
     let groundY = Math.round(cssH * GROUND_RATIO);
 
     function resize() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       cssW = canvas.clientWidth || 320;
-      cssH = canvas.clientHeight || 160;
+      cssH = canvas.clientHeight || 180;
       groundY = Math.round(cssH * GROUND_RATIO);
       canvas.width = Math.floor(cssW * dpr);
       canvas.height = Math.floor(cssH * dpr);
@@ -101,6 +103,21 @@ export default function MaintenanceRunnerGame({ slug }: Props) {
     resize();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
     ro?.observe(canvas);
+
+    function seedDust() {
+      const dust: Dust[] = [];
+      for (let i = 0; i < 14; i++) {
+        dust.push({
+          x: Math.random() * cssW,
+          y: 20 + Math.random() * (groundY - 40),
+          r: 0.8 + Math.random() * 1.6,
+          a: 0.12 + Math.random() * 0.25,
+          vx: 0.15 + Math.random() * 0.35,
+        });
+      }
+      stateRef.current.dust = dust;
+    }
+    seedDust();
 
     function reset() {
       const s = stateRef.current;
@@ -116,6 +133,7 @@ export default function MaintenanceRunnerGame({ slug }: Props) {
       s.spawnIn = 100;
       s.frame = 0;
       s.score = 0;
+      seedDust();
       setAlive(true);
       setScore(0);
       setStarted(true);
@@ -151,89 +169,410 @@ export default function MaintenanceRunnerGame({ slug }: Props) {
     function spawnObstacle(s: typeof stateRef.current) {
       const kind = Math.floor(Math.random() * 3) as 0 | 1 | 2;
       const sizes = [
-        { w: 22, h: 28 },
-        { w: 30, h: 20 },
-        { w: 18, h: 34 },
+        { w: 26, h: 30 },
+        { w: 32, h: 22 },
+        { w: 22, h: 36 },
       ];
       const size = sizes[kind];
       s.obstacles.push({
-        x: cssW + 10,
+        x: cssW + 12,
         w: size.w,
         h: size.h,
         kind,
       });
     }
 
-    function drawWaiter(x: number, y: number, frame: number) {
-      const bob = Math.sin(frame / 5) * (stateRef.current.onGround ? 1.2 : 0);
-      ctx.fillStyle = '#fff8ef';
-      roundRect(ctx, x + 6, y + 10 + bob, 16, 18, 4);
-      ctx.fill();
-      ctx.fillStyle = '#8a5a2b';
-      roundRect(ctx, x + 8, y + 16 + bob, 12, 12, 3);
-      ctx.fill();
-      ctx.fillStyle = '#f2c9a0';
-      ctx.beginPath();
-      ctx.arc(x + 14, y + 8 + bob, 7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#f5f5f4';
-      roundRect(ctx, x + 7, y + bob, 14, 5, 2);
-      ctx.fill();
-      ctx.fillStyle = '#c0c7d1';
-      roundRect(ctx, x + 20, y + 14 + bob, 14, 3, 1.5);
-      ctx.fill();
-      ctx.fillStyle = '#c2410c';
-      ctx.beginPath();
-      ctx.arc(x + 27, y + 12 + bob, 3.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#3b2a1c';
-      ctx.lineWidth = 2.5;
-      ctx.lineCap = 'round';
-      const stride = Math.sin(frame / 4) * 4;
-      if (stateRef.current.onGround) {
+    function drawScene(s: typeof stateRef.current) {
+      // warm cafe sky / wall
+      const sky = ctx.createLinearGradient(0, 0, 0, groundY);
+      sky.addColorStop(0, '#ffd9b8');
+      sky.addColorStop(0.35, '#ffe8d2');
+      sky.addColorStop(0.75, '#f3e6d4');
+      sky.addColorStop(1, '#e8d5bc');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, cssW, groundY);
+
+      // soft window light blotches
+      const glow = ctx.createRadialGradient(cssW * 0.7, 18, 4, cssW * 0.7, 18, 70);
+      glow.addColorStop(0, 'rgba(255, 240, 200, 0.55)');
+      glow.addColorStop(1, 'rgba(255, 240, 200, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, cssW, groundY);
+
+      // far wall stripe
+      ctx.fillStyle = 'rgba(138, 90, 43, 0.07)';
+      ctx.fillRect(0, groundY - 52, cssW, 52);
+
+      // parallax shelves / frames
+      const scrollFar = (s.distance * 0.22) % 90;
+      for (let i = -1; i < Math.ceil(cssW / 90) + 2; i++) {
+        const sx = i * 90 - scrollFar;
+        // picture frame
+        ctx.fillStyle = 'rgba(120, 80, 45, 0.14)';
+        roundRect(ctx, sx + 14, 22, 34, 26, 4);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 248, 235, 0.35)';
+        roundRect(ctx, sx + 18, 26, 26, 18, 2);
+        ctx.fill();
+        // plant pot silhouette
+        ctx.fillStyle = 'rgba(90, 130, 70, 0.18)';
         ctx.beginPath();
-        ctx.moveTo(x + 11, y + 28 + bob);
-        ctx.lineTo(x + 9 - stride, y + 35);
-        ctx.moveTo(x + 17, y + 28 + bob);
-        ctx.lineTo(x + 19 + stride, y + 35);
+        ctx.ellipse(sx + 68, 48, 10, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(140, 90, 50, 0.2)';
+        roundRect(ctx, sx + 62, 48, 12, 10, 2);
+        ctx.fill();
+      }
+
+      // hanging pendant lights
+      const scrollMid = (s.distance * 0.4) % 120;
+      for (let i = -1; i < Math.ceil(cssW / 120) + 2; i++) {
+        const lx = i * 120 - scrollMid + 40;
+        ctx.strokeStyle = 'rgba(90, 60, 35, 0.25)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(lx, 0);
+        ctx.lineTo(lx, 14);
         ctx.stroke();
-      } else {
+        ctx.fillStyle = 'rgba(90, 60, 35, 0.35)';
         ctx.beginPath();
-        ctx.moveTo(x + 11, y + 28);
-        ctx.lineTo(x + 8, y + 34);
-        ctx.moveTo(x + 17, y + 28);
-        ctx.lineTo(x + 22, y + 33);
+        ctx.moveTo(lx - 8, 14);
+        ctx.lineTo(lx + 8, 14);
+        ctx.lineTo(lx + 5, 22);
+        ctx.lineTo(lx - 5, 22);
+        ctx.closePath();
+        ctx.fill();
+        const lamp = ctx.createRadialGradient(lx, 28, 2, lx, 30, 22);
+        lamp.addColorStop(0, 'rgba(255, 210, 120, 0.35)');
+        lamp.addColorStop(1, 'rgba(255, 210, 120, 0)');
+        ctx.fillStyle = lamp;
+        ctx.beginPath();
+        ctx.arc(lx, 30, 22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // wainscot rail
+      ctx.fillStyle = 'rgba(120, 80, 45, 0.22)';
+      ctx.fillRect(0, groundY - 18, cssW, 3);
+      ctx.fillStyle = 'rgba(160, 120, 75, 0.12)';
+      ctx.fillRect(0, groundY - 15, cssW, 15);
+
+      // dust motes
+      for (const d of s.dust) {
+        d.x -= d.vx * (s.running && !s.dead ? s.speed * 0.35 : 0.4);
+        if (d.x < -4) d.x = cssW + 4;
+        ctx.fillStyle = `rgba(255, 250, 240, ${d.a})`;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y + Math.sin((s.frame + d.x) / 30) * 2, d.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // wooden floor
+      const floor = ctx.createLinearGradient(0, groundY, 0, cssH);
+      floor.addColorStop(0, '#c9ad88');
+      floor.addColorStop(0.4, '#b99872');
+      floor.addColorStop(1, '#a8845f');
+      ctx.fillStyle = floor;
+      ctx.fillRect(0, groundY, cssW, cssH - groundY);
+
+      // floor edge highlight
+      ctx.fillStyle = 'rgba(255, 240, 210, 0.35)';
+      ctx.fillRect(0, groundY, cssW, 2);
+      ctx.fillStyle = 'rgba(90, 55, 30, 0.22)';
+      ctx.fillRect(0, groundY + 2, cssW, 2);
+
+      // plank lines
+      ctx.strokeStyle = 'rgba(88, 55, 30, 0.16)';
+      ctx.lineWidth = 1;
+      const plankScroll = s.distance % 36;
+      for (let i = -1; i < Math.ceil(cssW / 36) + 2; i++) {
+        const gx = i * 36 - plankScroll;
+        ctx.beginPath();
+        ctx.moveTo(gx, groundY + 6);
+        ctx.lineTo(gx, cssH);
+        ctx.stroke();
+      }
+      // horizontal grain
+      ctx.strokeStyle = 'rgba(255, 235, 200, 0.12)';
+      for (let y = groundY + 12; y < cssH; y += 10) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(cssW, y);
         ctx.stroke();
       }
     }
 
-    function drawObstacle(o: Obstacle) {
+    function drawShadow(cx: number, ry: number, rw: number) {
+      ctx.fillStyle = 'rgba(70, 40, 20, 0.22)';
+      ctx.beginPath();
+      ctx.ellipse(cx, groundY - 1, rw, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawWaiter(x: number, y: number, frame: number) {
+      const onGround = stateRef.current.onGround;
+      const bob = Math.sin(frame / 5) * (onGround ? 1.4 : 0);
+      const squash = onGround ? 1 : 0.92;
+      const stretch = onGround ? 1 : 1.06;
+      const stride = Math.sin(frame / 4) * (onGround ? 5 : 0);
+
+      drawShadow(x + 15, onGround ? 4.5 : 3, onGround ? 14 : 10);
+
+      ctx.save();
+      ctx.translate(x + 15, y + PLAYER_H);
+      ctx.scale(squash, stretch);
+      ctx.translate(-(x + 15), -(y + PLAYER_H));
+
+      // legs
+      ctx.strokeStyle = '#2c2118';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      if (onGround) {
+        ctx.beginPath();
+        ctx.moveTo(x + 12, y + 30 + bob);
+        ctx.lineTo(x + 10 - stride, y + 39);
+        ctx.moveTo(x + 18, y + 30 + bob);
+        ctx.lineTo(x + 20 + stride, y + 39);
+        ctx.stroke();
+        // shoes
+        ctx.fillStyle = '#1f1712';
+        roundRect(ctx, x + 6 - stride, y + 37, 8, 3.5, 1.5);
+        ctx.fill();
+        roundRect(ctx, x + 16 + stride, y + 37, 8, 3.5, 1.5);
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(x + 12, y + 30);
+        ctx.lineTo(x + 8, y + 37);
+        ctx.moveTo(x + 18, y + 30);
+        ctx.lineTo(x + 24, y + 35);
+        ctx.stroke();
+      }
+
+      // torso shirt
+      const shirt = ctx.createLinearGradient(x + 6, y + 10, x + 22, y + 32);
+      shirt.addColorStop(0, '#fffaf3');
+      shirt.addColorStop(1, '#efe4d4');
+      ctx.fillStyle = shirt;
+      roundRect(ctx, x + 7, y + 12 + bob, 16, 18, 5);
+      ctx.fill();
+
+      // apron
+      ctx.fillStyle = '#8b4f28';
+      roundRect(ctx, x + 9, y + 18 + bob, 12, 13, 3);
+      ctx.fill();
+      ctx.fillStyle = '#a86436';
+      roundRect(ctx, x + 10, y + 19 + bob, 10, 3, 1);
+      ctx.fill();
+
+      // arm + tray
+      ctx.strokeStyle = '#e8c4a0';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(x + 22, y + 16 + bob);
+      ctx.lineTo(x + 28, y + 18 + bob);
+      ctx.stroke();
+
+      // tray
+      ctx.fillStyle = '#9aa3af';
+      roundRect(ctx, x + 24, y + 16 + bob, 16, 3.5, 1.5);
+      ctx.fill();
+      ctx.fillStyle = '#c5ccd6';
+      roundRect(ctx, x + 25, y + 15.5 + bob, 14, 1.5, 1);
+      ctx.fill();
+
+      // coffee cup
+      ctx.fillStyle = '#fff8ef';
+      roundRect(ctx, x + 28, y + 9 + bob, 7, 7, 1.5);
+      ctx.fill();
+      ctx.fillStyle = '#6b3e24';
+      roundRect(ctx, x + 29, y + 10 + bob, 5, 4, 1);
+      ctx.fill();
+      // steam
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.lineWidth = 1.2;
+      const steam = Math.sin(frame / 8) * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x + 31.5, y + 8 + bob);
+      ctx.quadraticCurveTo(x + 33 + steam, y + 4 + bob, x + 30.5, y + 1 + bob);
+      ctx.stroke();
+
+      // head
+      ctx.fillStyle = '#f0c49a';
+      ctx.beginPath();
+      ctx.arc(x + 15, y + 9 + bob, 7.2, 0, Math.PI * 2);
+      ctx.fill();
+      // cheeks
+      ctx.fillStyle = 'rgba(232, 120, 100, 0.28)';
+      ctx.beginPath();
+      ctx.arc(x + 11, y + 10.5 + bob, 1.8, 0, Math.PI * 2);
+      ctx.arc(x + 19, y + 10.5 + bob, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      // eyes
+      ctx.fillStyle = '#2c2118';
+      ctx.beginPath();
+      ctx.arc(x + 12.5, y + 8.5 + bob, 1.1, 0, Math.PI * 2);
+      ctx.arc(x + 17.5, y + 8.5 + bob, 1.1, 0, Math.PI * 2);
+      ctx.fill();
+      // smile
+      ctx.strokeStyle = '#b07050';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(x + 15, y + 10.5 + bob, 2.4, 0.15, Math.PI - 0.15);
+      ctx.stroke();
+
+      // bow tie
+      ctx.fillStyle = '#c2410c';
+      ctx.beginPath();
+      ctx.moveTo(x + 15, y + 14.5 + bob);
+      ctx.lineTo(x + 11, y + 12.5 + bob);
+      ctx.lineTo(x + 11, y + 16.5 + bob);
+      ctx.closePath();
+      ctx.moveTo(x + 15, y + 14.5 + bob);
+      ctx.lineTo(x + 19, y + 12.5 + bob);
+      ctx.lineTo(x + 19, y + 16.5 + bob);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x + 15, y + 14.5 + bob, 1.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // chef hat
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, x + 8, y - 1 + bob, 14, 7, 3);
+      ctx.fill();
+      ctx.fillStyle = '#f5f5f4';
+      roundRect(ctx, x + 9.5, y + 4 + bob, 11, 3.5, 1.5);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(180, 160, 140, 0.5)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function drawObstacle(o: Obstacle, frame: number) {
       const y = groundY - o.h;
+      drawShadow(o.x + o.w / 2, 3.5, o.w * 0.42);
+
       if (o.kind === 0) {
-        ctx.fillStyle = '#b07a45';
-        roundRect(ctx, o.x, y + 8, o.w, o.h - 8, 3);
-        ctx.fill();
+        // cafe chair
         ctx.fillStyle = '#8a5a2b';
-        roundRect(ctx, o.x + 2, y, o.w - 4, 8, 2);
+        // backrest
+        roundRect(ctx, o.x + 3, y, o.w - 6, 10, 2);
         ctx.fill();
+        ctx.fillStyle = '#a06c38';
+        roundRect(ctx, o.x + 5, y + 2, o.w - 10, 6, 1.5);
+        ctx.fill();
+        // seat
+        ctx.fillStyle = '#b07a45';
+        roundRect(ctx, o.x, y + 10, o.w, 8, 2);
+        ctx.fill();
+        ctx.fillStyle = '#c9945c';
+        roundRect(ctx, o.x + 2, y + 11, o.w - 4, 3, 1);
+        ctx.fill();
+        // legs
+        ctx.strokeStyle = '#6b4220';
+        ctx.lineWidth = 2.2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(o.x + 4, y + 18);
+        ctx.lineTo(o.x + 3, y + o.h);
+        ctx.moveTo(o.x + o.w - 4, y + 18);
+        ctx.lineTo(o.x + o.w - 3, y + o.h);
+        ctx.stroke();
       } else if (o.kind === 1) {
+        // spilled soup bowl
+        ctx.fillStyle = '#d4d4d8';
+        ctx.beginPath();
+        ctx.ellipse(o.x + o.w / 2, groundY - 6, o.w / 2.2, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
         ctx.fillStyle = '#ea580c';
         ctx.beginPath();
-        ctx.ellipse(o.x + o.w / 2, groundY - 4, o.w / 2, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(o.x + o.w / 2, groundY - 8, o.w / 2.6, 4.5, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = '#fb923c';
         ctx.beginPath();
-        ctx.ellipse(o.x + o.w / 2 - 2, groundY - 6, 5, 3, 0, 0, Math.PI * 2);
+        ctx.ellipse(o.x + o.w / 2 - 3, groundY - 9, 4, 2.5, 0, 0, Math.PI * 2);
         ctx.fill();
+        // puddle
+        ctx.fillStyle = 'rgba(234, 88, 12, 0.35)';
+        ctx.beginPath();
+        ctx.ellipse(o.x + o.w / 2 + 6, groundY - 2, 10, 3, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        // steam
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.lineWidth = 1.2;
+        const st = Math.sin(frame / 10) * 2;
+        ctx.beginPath();
+        ctx.moveTo(o.x + o.w / 2 - 2, groundY - 14);
+        ctx.quadraticCurveTo(o.x + o.w / 2 + st, groundY - 20, o.x + o.w / 2 - 1, groundY - 24);
+        ctx.stroke();
       } else {
-        ctx.fillStyle = '#5b3d24';
-        ctx.fillRect(o.x + o.w / 2 - 2, y, 4, o.h);
+        // A-frame menu stand
+        ctx.strokeStyle = '#5b3d24';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        const mid = o.x + o.w / 2;
+        ctx.beginPath();
+        ctx.moveTo(mid - 8, groundY);
+        ctx.lineTo(mid, y + 4);
+        ctx.lineTo(mid + 8, groundY);
+        ctx.stroke();
+        // board
         ctx.fillStyle = '#fff7ed';
-        roundRect(ctx, o.x, y, o.w, 14, 2);
+        roundRect(ctx, o.x, y, o.w, 16, 2);
         ctx.fill();
         ctx.strokeStyle = '#c2410c';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(o.x + 3, y + 3, o.w - 6, 8);
+        ctx.lineWidth = 1.4;
+        roundRect(ctx, o.x + 2, y + 2, o.w - 4, 12, 1.5);
+        ctx.stroke();
+        // menu lines
+        ctx.strokeStyle = 'rgba(90, 60, 35, 0.35)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.moveTo(o.x + 4, y + 5 + i * 3);
+          ctx.lineTo(o.x + o.w - 4, y + 5 + i * 3);
+          ctx.stroke();
+        }
+      }
+    }
+
+    function drawHud(s: typeof stateRef.current) {
+      // score chip
+      ctx.fillStyle = 'rgba(59, 42, 28, 0.72)';
+      roundRect(ctx, 8, 8, 72, 22, 8);
+      ctx.fill();
+      ctx.fillStyle = '#fffaf4';
+      ctx.font = '700 12px system-ui, sans-serif';
+      ctx.fillText(`Skor ${s.score}`, 16, 23);
+    }
+
+    function drawOverlay(s: typeof stateRef.current) {
+      if (!s.running && !s.dead) {
+        ctx.fillStyle = 'rgba(40, 28, 18, 0.5)';
+        ctx.fillRect(0, 0, cssW, cssH);
+        const cw = Math.min(240, cssW - 32);
+        const cx = (cssW - cw) / 2;
+        const cy = cssH / 2 - 28;
+        ctx.fillStyle = 'rgba(255, 250, 244, 0.95)';
+        roundRect(ctx, cx, cy, cw, 56, 12);
+        ctx.fill();
+        ctx.fillStyle = '#3b2a1c';
+        ctx.font = '800 14px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Dokun veya Space = zıpla', cssW / 2, cy + 24);
+        ctx.font = '600 11px system-ui, sans-serif';
+        ctx.fillStyle = '#7a6554';
+        ctx.fillText('Garsonu engellerden koru', cssW / 2, cy + 42);
+        ctx.textAlign = 'left';
+      }
+
+      // Ölüm ekranı HTML overlay'de; canvas sadece karartır
+      if (s.dead) {
+        ctx.fillStyle = 'rgba(40, 28, 18, 0.42)';
+        ctx.fillRect(0, 0, cssW, cssH);
       }
     }
 
@@ -249,44 +588,16 @@ export default function MaintenanceRunnerGame({ slug }: Props) {
         }
         return next;
       });
-      if (finalScore >= 1) {
-        stateRef.current.blockRestart = true;
-        setPendingScore(finalScore);
-        setAwaitingName(true);
-      }
+      stateRef.current.blockRestart = true;
+      setPendingScore(finalScore);
+      setAwaitingName(finalScore >= 1);
     }
 
     function tick() {
       const s = stateRef.current;
       s.frame += 1;
 
-      const g = ctx.createLinearGradient(0, 0, 0, cssH);
-      g.addColorStop(0, '#ffe8d2');
-      g.addColorStop(0.55, '#f6efe6');
-      g.addColorStop(1, '#e8d9c4');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, cssW, cssH);
-
-      ctx.fillStyle = 'rgba(176, 122, 69, 0.12)';
-      for (let i = 0; i < 6; i++) {
-        const sx = i * 70 - ((s.distance * 0.3) % 70);
-        roundRect(ctx, sx, 28, 48, 36, 6);
-        ctx.fill();
-      }
-
-      ctx.fillStyle = '#d6c3a8';
-      ctx.fillRect(0, groundY, cssW, cssH - groundY);
-      ctx.fillStyle = '#c4ae8f';
-      ctx.fillRect(0, groundY, cssW, 3);
-      ctx.strokeStyle = 'rgba(88, 60, 36, 0.18)';
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 12; i++) {
-        const gx = i * 40 - (s.distance % 40);
-        ctx.beginPath();
-        ctx.moveTo(gx, groundY + 8);
-        ctx.lineTo(gx + 18, groundY + 8);
-        ctx.stroke();
-      }
+      drawScene(s);
 
       if (s.running && !s.dead) {
         s.vy += GRAVITY;
@@ -304,15 +615,15 @@ export default function MaintenanceRunnerGame({ slug }: Props) {
           s.spawnIn = 85 + Math.floor(Math.random() * 70) - Math.floor(s.speed * 3);
         }
         for (const o of s.obstacles) o.x -= s.speed;
-        s.obstacles = s.obstacles.filter((o) => o.x + o.w > -20);
+        s.obstacles = s.obstacles.filter((o) => o.x + o.w > -24);
 
         const px = PLAYER_X;
         const py = s.y;
         for (const o of s.obstacles) {
           const hit =
-            px + 4 < o.x + o.w - 4 &&
-            px + PLAYER_W - 4 > o.x + 4 &&
-            py + 6 < groundY - 2 &&
+            px + 5 < o.x + o.w - 4 &&
+            px + PLAYER_W - 5 > o.x + 4 &&
+            py + 8 < groundY - 2 &&
             py + PLAYER_H > groundY - o.h + 2;
           if (hit) {
             s.dead = true;
@@ -327,40 +638,10 @@ export default function MaintenanceRunnerGame({ slug }: Props) {
         if (s.frame % 6 === 0) setScore(liveScore);
       }
 
-      for (const o of s.obstacles) drawObstacle(o);
+      for (const o of s.obstacles) drawObstacle(o, s.frame);
       drawWaiter(PLAYER_X, s.y || groundY - PLAYER_H, s.frame);
-
-      ctx.fillStyle = '#3b2a1c';
-      ctx.font = '700 12px system-ui, sans-serif';
-      ctx.fillText(`Skor ${s.score}`, 12, 18);
-
-      if (!s.running && !s.dead) {
-        ctx.fillStyle = 'rgba(59, 42, 28, 0.55)';
-        ctx.fillRect(0, 0, cssW, cssH);
-        ctx.fillStyle = '#fffaf4';
-        ctx.font = '800 15px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Dokun / Space = zıpla', cssW / 2, cssH / 2 - 4);
-        ctx.font = '600 12px system-ui, sans-serif';
-        ctx.fillText('Garsonu engellerden koru', cssW / 2, cssH / 2 + 16);
-        ctx.textAlign = 'left';
-      }
-
-      if (s.dead) {
-        ctx.fillStyle = 'rgba(59, 42, 28, 0.45)';
-        ctx.fillRect(0, 0, cssW, cssH);
-        ctx.fillStyle = '#fffaf4';
-        ctx.font = '800 15px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Tepsi düştü!', cssW / 2, cssH / 2 - 8);
-        ctx.font = '600 12px system-ui, sans-serif';
-        ctx.fillText(
-          s.blockRestart ? 'İsmini yaz, sıralamaya gir' : 'Tekrar için dokun',
-          cssW / 2,
-          cssH / 2 + 14
-        );
-        ctx.textAlign = 'left';
-      }
+      drawHud(s);
+      drawOverlay(s);
 
       raf = requestAnimationFrame(tick);
     }
@@ -404,73 +685,74 @@ export default function MaintenanceRunnerGame({ slug }: Props) {
     }
   }
 
-  function skipName() {
-    stateRef.current.blockRestart = false;
-    setAwaitingName(false);
-    setSaveMsg('');
-  }
-
   function playAgain() {
     resetRef.current();
   }
+
+  const showDeathUi = started && !alive;
 
   return (
     <div className="maint-game">
       <div className="maint-game__head">
         <div>
           <strong>Garson Koşusu</strong>
-          <span>Menü yokken oyunumuz var</span>
+          <span>Menü yokken oyunumuz vardı :D</span>
         </div>
         <div className="maint-game__scores">
           <em>{score}</em>
           <span>rekor {best}</span>
         </div>
       </div>
-      <canvas
-        ref={canvasRef}
-        className="maint-game__canvas"
-        role="img"
-        aria-label="Garson koşu oyunu"
-      />
 
-      {awaitingName ? (
-        <form className="maint-game__submit" onSubmit={(e) => void submitScore(e)}>
-          <label htmlFor="maint-runner-name">
-            Skor {pendingScore} — sıralamaya isminle gir
-          </label>
-          <div className="maint-game__submit-row">
-            <input
-              id="maint-runner-name"
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              maxLength={24}
-              placeholder="Adın"
-              autoComplete="nickname"
-              autoFocus
-            />
-            <button type="submit" disabled={saving}>
-              {saving ? '…' : 'Kaydet'}
-            </button>
-          </div>
-          <div className="maint-game__submit-actions">
-            <button type="button" onClick={skipName}>
-              Atla
-            </button>
-            <button type="button" onClick={playAgain}>
+      <div className="maint-game__stage">
+        <canvas
+          ref={canvasRef}
+          className="maint-game__canvas"
+          role="img"
+          aria-label="Garson koşu oyunu"
+        />
+
+        {showDeathUi ? (
+          <div className="maint-game__over" onPointerDown={(e) => e.stopPropagation()}>
+            <strong>Tepsi düştü!</strong>
+            <span className="maint-game__over-score">Skor {pendingScore || score}</span>
+
+            {awaitingName ? (
+              <form
+                className="maint-game__over-form"
+                onSubmit={(e) => void submitScore(e)}
+              >
+                <input
+                  id="maint-runner-name"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  maxLength={24}
+                  placeholder="Adın (sıralama)"
+                  autoComplete="nickname"
+                  autoFocus
+                />
+                <button type="submit" disabled={saving}>
+                  {saving ? '…' : 'Kaydet'}
+                </button>
+              </form>
+            ) : null}
+
+            {saveMsg ? <p className="maint-game__submit-msg">{saveMsg}</p> : null}
+
+            <button type="button" className="maint-game__again" onClick={playAgain}>
               Tekrar oyna
             </button>
           </div>
-          {saveMsg ? <p className="maint-game__submit-msg">{saveMsg}</p> : null}
-        </form>
-      ) : (
+        ) : null}
+      </div>
+
+      {!showDeathUi ? (
         <p className="maint-game__hint">
           {started && alive
             ? 'Zıpla: dokun veya Space'
-            : started
-              ? 'Tekrar oynamak için dokun'
-              : 'Başlamak için dokun'}
+            : 'Başlamak için dokun'}
         </p>
-      )}
+      ) : null}
 
       <div className="maint-board">
         <div className="maint-board__title">
