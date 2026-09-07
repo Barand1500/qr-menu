@@ -2,6 +2,17 @@ import { imageUrl } from '@/lib/api';
 import type { AboutPageConfig } from '@/lib/aboutPage';
 import '@/about-page.css';
 
+function coverStyle(config: AboutPageConfig): React.CSSProperties {
+  return {
+    objectFit: config.coverFit || 'cover',
+    objectPosition: config.coverPosition || 'center',
+  };
+}
+
+function CoverImg({ src, config }: { src: string; config: AboutPageConfig }) {
+  return <img src={src} alt="" style={coverStyle(config)} />;
+}
+
 export default function AboutPageView({
   config,
   restaurantName,
@@ -25,7 +36,11 @@ export default function AboutPageView({
       {tpl === 'story' ? (
         <>
           <div className="about-page__hero">
-            {cover ? <img src={cover} alt="" /> : <div className="about-page__hero-fallback" />}
+            {cover ? (
+              <CoverImg src={cover} config={config} />
+            ) : (
+              <div className="about-page__hero-fallback" />
+            )}
             <div className="about-page__hero-copy">
               <h2>{title}</h2>
             </div>
@@ -38,7 +53,11 @@ export default function AboutPageView({
       ) : tpl === 'editorial' ? (
         <div className="about-page__editorial">
           <div className="about-page__editorial-media">
-            {cover ? <img src={cover} alt="" /> : <div className="about-page__hero-fallback" />}
+            {cover ? (
+              <CoverImg src={cover} config={config} />
+            ) : (
+              <div className="about-page__hero-fallback" />
+            )}
           </div>
           <div className="about-page__editorial-copy">
             <h2>{title}</h2>
@@ -50,7 +69,7 @@ export default function AboutPageView({
         <>
           {cover ? (
             <div className="about-page__cover">
-              <img src={cover} alt="" />
+              <CoverImg src={cover} config={config} />
             </div>
           ) : null}
           <div className="about-page__body">

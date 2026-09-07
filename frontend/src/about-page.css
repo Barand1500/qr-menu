@@ -139,7 +139,36 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
+}
+
+.about-editor__cover-opts {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.about-editor__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.about-editor__chip {
+  border: 1px solid var(--admin-card-border, #e5e7eb);
+  background: var(--admin-bg, #fafafa);
+  color: var(--admin-text, #111);
+  border-radius: 999px;
+  padding: 0.32rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.about-editor__chip.is-active {
+  border-color: var(--admin-accent, #8a5a2b);
+  background: color-mix(in srgb, var(--admin-accent, #8a5a2b) 12%, transparent);
+  color: var(--admin-accent, #8a5a2b);
 }
 
 .about-editor__cover-empty {
@@ -287,6 +316,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
 }
 

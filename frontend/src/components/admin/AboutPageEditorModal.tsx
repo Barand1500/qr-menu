@@ -3,9 +3,15 @@ import { ImagePlus, Maximize2, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { imageUrl } from '@/lib/api';
 import {
+  ABOUT_COVER_FIT_LABEL,
+  ABOUT_COVER_FITS,
+  ABOUT_COVER_POS_LABEL,
+  ABOUT_COVER_POSITIONS,
   ABOUT_TEMPLATE_META,
   ABOUT_TEMPLATES,
   applyAboutTemplate,
+  type AboutCoverFit,
+  type AboutCoverPosition,
   type AboutPageConfig,
   type AboutTemplateId,
 } from '@/lib/aboutPage';
@@ -103,7 +109,14 @@ export default function AboutPageEditorModal({
                   onChange={(e) => void onCoverFile(e.target.files?.[0] || null)}
                 />
                 {draft.coverUrl ? (
-                  <img src={imageUrl(draft.coverUrl)} alt="" />
+                  <img
+                    src={imageUrl(draft.coverUrl)}
+                    alt=""
+                    style={{
+                      objectFit: draft.coverFit,
+                      objectPosition: draft.coverPosition,
+                    }}
+                  />
                 ) : (
                   <span className="about-editor__cover-empty">
                     <ImagePlus className="w-7 h-7" />
@@ -112,14 +125,45 @@ export default function AboutPageEditorModal({
                 )}
               </button>
               {draft.coverUrl ? (
-                <button
-                  type="button"
-                  className="about-editor__cover-clear"
-                  onClick={() => setDraft((d) => ({ ...d, coverUrl: null }))}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Kapağı kaldır
-                </button>
+                <>
+                  <div className="about-editor__cover-opts">
+                    <p className="about-editor__label">Yerleşim</p>
+                    <div className="about-editor__chips">
+                      {ABOUT_COVER_FITS.map((fit) => (
+                        <button
+                          key={fit}
+                          type="button"
+                          className={`about-editor__chip${draft.coverFit === fit ? ' is-active' : ''}`}
+                          onClick={() => setDraft((d) => ({ ...d, coverFit: fit as AboutCoverFit }))}
+                        >
+                          {ABOUT_COVER_FIT_LABEL[fit]}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="about-editor__chips">
+                      {ABOUT_COVER_POSITIONS.map((pos) => (
+                        <button
+                          key={pos}
+                          type="button"
+                          className={`about-editor__chip${draft.coverPosition === pos ? ' is-active' : ''}`}
+                          onClick={() =>
+                            setDraft((d) => ({ ...d, coverPosition: pos as AboutCoverPosition }))
+                          }
+                        >
+                          {ABOUT_COVER_POS_LABEL[pos]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="about-editor__cover-clear"
+                    onClick={() => setDraft((d) => ({ ...d, coverUrl: null }))}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Kapağı kaldır
+                  </button>
+                </>
               ) : null}
             </section>
 
