@@ -1,0 +1,49 @@
+MENU QR — GIT İLE SUNUCU DEPLOY
+================================
+Repo: https://github.com/Barand1500/qr-menu.git
+Site: /home/guzelteknoloji-menu/htdocs/menu.guzelteknoloji.com
+Kaynak clone: /home/guzelteknoloji-menu/apps/menu-qr
+
+
+İLK KURULUM (SSH — bir kez)
+---------------------------
+
+mkdir -p /home/guzelteknoloji-menu/apps
+cd /home/guzelteknoloji-menu/apps
+git clone https://github.com/Barand1500/qr-menu.git menu-qr
+cd menu-qr
+chmod +x scripts/server-deploy.sh
+
+# Repo private ise GitHub token / SSH key gerekir.
+
+
+HER GÜNCELLEMEDE
+----------------
+1) Bilgisayarda: değişiklikleri git push et (main)
+2) SSH:
+
+/home/guzelteknoloji-menu/apps/menu-qr/scripts/server-deploy.sh
+
+Script otomatik:
+  - git pull
+  - frontend + backend build
+  - public/ dist/ prisma/ siteye kopyalar
+  - .env ve uploads/ DOKUNMAZ
+  - npm install + prisma setup
+  - port 3008 restart + health check
+
+
+İSTEĞE BAĞLI KISAYOL
+--------------------
+echo 'alias menu-deploy="/home/guzelteknoloji-menu/apps/menu-qr/scripts/server-deploy.sh"' >> ~/.bashrc
+source ~/.bashrc
+
+Sonra sadece:
+  menu-deploy
+
+
+NOTLAR
+------
+- Canlıda ASLA: npm run db:seed / db:reset
+- Branch değiştirmek için: BRANCH=develop ./scripts/server-deploy.sh
+- Farklı yol: REPO_DIR=... SITE_DIR=... ./scripts/server-deploy.sh
