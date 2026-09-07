@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check, MapPinned, Maximize2 } from 'lucide-react';
+import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check, MapPinned, Expand } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
@@ -935,10 +935,11 @@ export default function SettingsPage() {
                   type="button"
                   className="about-expand-btn"
                   title="Hakkında sayfasını özelleştir"
-                  aria-label="Hakkında sayfasını büyüt"
+                  aria-label="Hakkında sayfasını özelleştir"
                   onClick={() => setAboutEditorOpen(true)}
                 >
-                  <Maximize2 className="w-4 h-4" />
+                  <Expand className="about-expand-btn__icon" strokeWidth={2.25} />
+                  <span>Özelleştir</span>
                 </button>
                 <Textarea
                   label="Hakkında"
