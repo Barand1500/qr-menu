@@ -4,8 +4,10 @@ import {
   ArrowLeft,
   Clock3,
   Copy,
+  NotebookPen,
   Plus,
   Receipt,
+  Timer,
   UtensilsCrossed,
   X,
   HandHelping,
@@ -274,6 +276,8 @@ export default function TableFloorPage() {
   const [feeEnabled, setFeeEnabled] = useState(false);
   const [feeRate, setFeeRate] = useState('');
   const [feeUnit, setFeeUnit] = useState<'minute' | 'hour'>('minute');
+  const [feePanelOpen, setFeePanelOpen] = useState(false);
+  const [notePanelOpen, setNotePanelOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<FloorOrder | null>(null);
   const [editQty, setEditQty] = useState(1);
   const [editNote, setEditNote] = useState('');
@@ -349,6 +353,11 @@ export default function TableFloorPage() {
   }, [selectedGroup, selectedCode]);
 
   const sourceGroupName = selectedGroup?.name || '';
+
+  useEffect(() => {
+    setFeePanelOpen(false);
+    setNotePanelOpen(false);
+  }, [selected?.code, selected?.sessionId]);
 
   useEffect(() => {
     if (!selected) {
@@ -524,6 +533,7 @@ export default function TableFloorPage() {
           unit: feeUnit,
         }),
       });
+      setFeePanelOpen(false);
       await load(true);
     } finally {
       setBusy(false);
@@ -929,38 +939,143 @@ export default function TableFloorPage() {
             </div>
 
             <div className="table-floor__status-row">
-              <span
-                className={`table-floor__pill${
-                  selected.status === 'reserved'
-                    ? ' is-wait'
-                    : selected.occupied
-                      ? ' is-busy'
-                      : ''
-                }`}
-              >
-                {selected.status === 'reserved'
-                  ? 'Rezerve'
-                  : selected.status === 'merged'
-                    ? `Birleşik → ${selected.mergePrimary}`
-                    : selected.occupied
-                      ? 'Dolu'
-                      : 'Boş'}
-              </span>
-              {selected.waiterAlertMs > 0 ? (
-                <span className="table-floor__pill is-wait">
-                  <HandHelping className="w-3.5 h-3.5" />
-                  Garson
+              <div className="table-floor__status-pills">
+                <span
+                  className={`table-floor__pill${
+                    selected.status === 'reserved'
+                      ? ' is-wait'
+                      : selected.occupied
+                        ? ' is-busy'
+                        : ''
+                  }`}
+                >
+                  {selected.status === 'reserved'
+                    ? 'Rezerve'
+                    : selected.status === 'merged'
+                      ? `Birleşik → ${selected.mergePrimary}`
+                      : selected.occupied
+                        ? 'Dolu'
+                        : 'Boş'}
                 </span>
-              ) : null}
-              {selected.openedBy ? (
-                <span className="table-floor__pill is-muted">
-                  {selected.openedBy === 'admin' ? 'Admin açtı' : 'QR okutuldu'}
-                </span>
-              ) : null}
-              {selected.seatingFee?.enabled ? (
-                <span className="table-floor__pill is-fee">Ücretli oturma</span>
+                {selected.waiterAlertMs > 0 ? (
+                  <span className="table-floor__pill is-wait">
+                    <HandHelping className="w-3.5 h-3.5" />
+                    Garson
+                  </span>
+                ) : null}
+                {selected.openedBy ? (
+                  <span className="table-floor__pill is-muted">
+                    {selected.openedBy === 'admin' ? 'Admin açtı' : 'QR okutuldu'}
+                  </span>
+                ) : null}
+                {selected.seatingFee?.enabled ? (
+                  <span className="table-floor__pill is-fee">Ücretli</span>
+                ) : null}
+              </div>
+              {selected.status !== 'merged' ? (
+                <div className="table-floor__status-actions">
+                  {selected.reservationNote?.trim() && selected.status === 'open' ? (
+                    <button
+                      type="button"
+                      className={`table-floor__icon-btn is-compact${notePanelOpen ? ' is-active' : ''}`}
+                      title="Rezervasyon notu"
+                      aria-label="Rezervasyon notu"
+                      aria-expanded={notePanelOpen}
+                      onClick={() => {
+                        setNotePanelOpen((v) => !v);
+                        setFeePanelOpen(false);
+                      }}
+                    >
+                      <NotebookPen className="w-4 h-4" />
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className={`table-floor__icon-btn is-compact${
+                      feePanelOpen || selected.seatingFee?.enabled ? ' is-active' : ''
+                    }${selected.seatingFee?.enabled ? ' is-fee' : ''}`}
+                    title="Oturma ücreti"
+                    aria-label="Oturma ücreti ayarı"
+                    aria-expanded={feePanelOpen}
+                    onClick={() => {
+                      setFeePanelOpen((v) => !v);
+                      setNotePanelOpen(false);
+                    }}
+                  >
+                    <Timer className="w-4 h-4" />
+                  </button>
+                </div>
               ) : null}
             </div>
+
+            {feePanelOpen && selected.status !== 'merged' ? (
+              <div className="table-floor__pop">
+                <div className="table-floor__pop-head">
+                  <h3>Oturma ücreti</h3>
+                  <button
+                    type="button"
+                    className="table-floor__icon-btn is-tiny"
+                    aria-label="Kapat"
+                    onClick={() => setFeePanelOpen(false)}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <label className="table-floor__check">
+                  <input
+                    type="checkbox"
+                    checked={feeEnabled}
+                    onChange={(e) => setFeeEnabled(e.target.checked)}
+                  />
+                  Bu masa ücretli oturma
+                </label>
+                <div className="table-floor__fee-row">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className="table-floor__input"
+                    placeholder="Tutar"
+                    value={feeRate}
+                    disabled={!feeEnabled}
+                    onChange={(e) => setFeeRate(e.target.value)}
+                  />
+                  <select
+                    className="table-floor__input"
+                    value={feeUnit}
+                    disabled={!feeEnabled}
+                    onChange={(e) => setFeeUnit(e.target.value as 'minute' | 'hour')}
+                  >
+                    <option value="minute">₺ / dakika</option>
+                    <option value="hour">₺ / saat</option>
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  className="table-floor__secondary"
+                  disabled={busy}
+                  onClick={() => void saveSeatingFee()}
+                >
+                  Ücreti kaydet
+                </button>
+              </div>
+            ) : null}
+
+            {notePanelOpen && selected.reservationNote?.trim() ? (
+              <div className="table-floor__pop is-note">
+                <div className="table-floor__pop-head">
+                  <h3>Rezervasyon notu</h3>
+                  <button
+                    type="button"
+                    className="table-floor__icon-btn is-tiny"
+                    aria-label="Kapat"
+                    onClick={() => setNotePanelOpen(false)}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <p className="table-floor__hint">{selected.reservationNote}</p>
+              </div>
+            ) : null}
 
             {selected.status === 'merged' ? (
               <p className="table-floor__hint">
@@ -992,46 +1107,6 @@ export default function TableFloorPage() {
                       <strong>{formatMoney(liveTotal)}</strong>
                     </div>
                   </div>
-                </div>
-
-                <div className="table-floor__tool">
-                  <h3>Oturma ücreti</h3>
-                  <label className="table-floor__check">
-                    <input
-                      type="checkbox"
-                      checked={feeEnabled}
-                      onChange={(e) => setFeeEnabled(e.target.checked)}
-                    />
-                    Bu masa ücretli oturma
-                  </label>
-                  <div className="table-floor__fee-row">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      className="table-floor__input"
-                      placeholder="Tutar"
-                      value={feeRate}
-                      disabled={!feeEnabled}
-                      onChange={(e) => setFeeRate(e.target.value)}
-                    />
-                    <select
-                      className="table-floor__input"
-                      value={feeUnit}
-                      disabled={!feeEnabled}
-                      onChange={(e) => setFeeUnit(e.target.value as 'minute' | 'hour')}
-                    >
-                      <option value="minute">₺ / dakika</option>
-                      <option value="hour">₺ / saat</option>
-                    </select>
-                  </div>
-                  <button
-                    type="button"
-                    className="table-floor__secondary"
-                    disabled={busy}
-                    onClick={() => void saveSeatingFee()}
-                  >
-                    Ücreti kaydet
-                  </button>
                 </div>
 
                 {!selected.occupied || selected.status === 'reserved' ? (
@@ -1066,13 +1141,6 @@ export default function TableFloorPage() {
                     >
                       Rezervasyonu kaydet
                     </button>
-                  </div>
-                ) : null}
-
-                {selected.reservationNote?.trim() && selected.status === 'open' ? (
-                  <div className="table-floor__tool is-note">
-                    <h3>Rezervasyon notu</h3>
-                    <p className="table-floor__hint">{selected.reservationNote}</p>
                   </div>
                 ) : null}
 
