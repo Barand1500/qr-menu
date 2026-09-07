@@ -5293,7 +5293,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   --kitty-peach-deep: #e8a090;
   --kitty-ink: #121212;
   --kitty-muted: #5c534e;
-  --kitty-split: 48%;
+  --kitty-split: 46%;
   background: #fff;
   color: var(--kitty-ink);
   height: 100dvh;
@@ -5318,7 +5318,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  --kitty-split: 48%;
+  --kitty-split: 46%;
 }
 
 .welcome-scene__kitty-sky {
@@ -5344,23 +5344,18 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   position: absolute;
   left: 50%;
   top: var(--kitty-split);
-  width: min(72vw, 20rem);
-  transform: translate(-50%, -70%);
+  width: min(74vw, 23rem);
+  transform: translate(-50%, -100%);
   z-index: 2;
   line-height: 0;
-  filter: drop-shadow(0 10px 18px rgba(40, 20, 10, 0.08));
 }
 
 .welcome-scene__kitty-photo {
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 1.25 / 1;
-  object-fit: cover;
-  /* Görseldeki kediyi çerçevele; alttaki beyaz şeridi dışarıda bırak */
-  object-position: center 36%;
-  clip-path: inset(0 8% 30% 8%);
-  margin-bottom: -18%;
+  object-fit: contain;
+  object-position: center bottom;
   user-select: none;
   -webkit-user-drag: none;
   pointer-events: none;
@@ -5559,7 +5554,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 .welcome-scene[data-theme-welcome='kitty']:has(.welcome-card--prefs-active) .welcome-scene__kitty-mascot {
   width: min(42vw, 11rem);
-  transform: translate(-50%, -68%);
+  transform: translate(-50%, -100%);
 }
 
 .welcome-scene[data-theme-welcome='kitty'] .public-social-links a {
@@ -8226,11 +8221,10 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   position: absolute;
   left: 50%;
   top: 55%;
-  width: 52%;
-  height: 58%;
-  transform: translate(-50%, -72%);
-  background: url('/welcome/kitty-mascot.png') center 34% / cover no-repeat;
-  clip-path: inset(0 10% 32% 10%);
+  width: 46%;
+  aspect-ratio: 510 / 324;
+  transform: translate(-50%, -100%);
+  background: url('/welcome/kitty-mascot-transparent.png') center bottom / contain no-repeat;
   pointer-events: none;
 }
 
