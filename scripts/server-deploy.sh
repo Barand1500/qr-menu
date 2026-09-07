@@ -69,16 +69,22 @@ info "Port : $PORT"
 step "Git güncellemesi"
 cd "$REPO_DIR"
 
-# chmod sonrası dirty dosyayı temizle
-git checkout -- scripts/server-deploy.sh 2>/dev/null || true
-
 BEFORE=$(git rev-parse HEAD)
 BEFORE_SHORT=$(git rev-parse --short HEAD)
 info "Şu an: $BEFORE_SHORT — $(git log -1 --pretty=format:'%s')"
 
+# Deploy klonu: lokal npm/chmod kirini at, remote ile birebir eşle
 git fetch origin --quiet
 git checkout "$BRANCH" --quiet
-git pull --ff-only origin "$BRANCH" --quiet
+git reset --hard "origin/$BRANCH" --quiet
+# Build artıkları / lock değişiklikleri pull'u bozmasın
+git clean -fd --quiet \
+  -e node_modules \
+  -e frontend/node_modules \
+  -e backend/node_modules \
+  -e frontend/dist \
+  -e backend/dist \
+  2>/dev/null || true
 
 AFTER=$(git rev-parse HEAD)
 AFTER_SHORT=$(git rev-parse --short HEAD)
@@ -86,10 +92,10 @@ AFTER_SHORT=$(git rev-parse --short HEAD)
 if [[ "$BEFORE" == "$AFTER" ]]; then
   ok "Zaten güncel ($AFTER_SHORT) — yeni commit yok"
 else
-  COUNT=$(git rev-list --count "${BEFORE}..${AFTER}")
+  COUNT=$(git rev-list --count "${BEFORE}..${AFTER}" 2>/dev/null || echo "?")
   ok "$COUNT commit çekildi: $BEFORE_SHORT → $AFTER_SHORT"
   printf '\n  %sGelen değişiklikler:%s\n' "$C_CYAN" "$C_RESET"
-  git log --pretty=format:'  %C(yellow)%h%Creset  %s  %C(dim)(%an)%Creset' "${BEFORE}..${AFTER}"
+  git log --pretty=format:'  %C(yellow)%h%Creset  %s  %C(dim)(%an)%Creset' "${BEFORE}..${AFTER}" 2>/dev/null || true
   printf '\n'
 fi
 

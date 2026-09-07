@@ -47,9 +47,12 @@ export default function GeoLockMapEditor({ value, onChange }: Props) {
       zoomControl: true,
     });
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap',
-      maxZoom: 19,
+    // OSM.org tile sunucusu Referer zorunlu kılıyor; CloudPanel no-referrer ile 403 verir.
+    // Carto Voyager: OSM verisi + Referer istemez, watermark yok.
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 20,
     }).addTo(map);
 
     const marker = L.marker([value.lat, value.lng], {

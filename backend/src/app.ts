@@ -27,6 +27,12 @@ import tableFloorRouter from './routes/table-floor.js';
 export function createApp() {
   const app = express();
 
+  app.use((_req, res, next) => {
+    // OSM / harita karoları için Referer gönderilebilsin (no-referrer engelini gevşet)
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+  });
+
   app.use(
     cors({
       origin: config.corsOrigin.includes('*') ? true : config.corsOrigin,
