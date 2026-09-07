@@ -721,6 +721,87 @@
   font-size: 0.85rem;
 }
 
+.table-floor__orders li.is-fee {
+  background: #fff8f1;
+  border-color: rgba(180, 83, 9, 0.18);
+}
+
+.table-floor__order-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.table-floor__order-actions {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.table-floor__icon-btn.is-tiny {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 0.5rem;
+  padding: 0;
+}
+
+.table-floor__pill.is-fee {
+  color: #9a3412;
+  background: #ffedd5;
+}
+
+.table-floor__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: var(--tf-ink, #3b2a1c);
+  cursor: pointer;
+}
+
+.table-floor__fee-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.table-floor__textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+  padding: 0.55rem 0.7rem;
+  line-height: 1.35;
+  font-family: inherit;
+}
+
+.table-floor__tool.is-note {
+  background: #fff7ed;
+}
+
+.table-floor-modal__panel--sm {
+  max-width: 420px;
+}
+
+.table-floor-modal__edit-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem 0.25rem;
+}
+
+.table-floor-modal__edit-body > label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.table-floor-modal__edit-body > label > span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--tf-muted, #8a6f58);
+}
+
 .table-floor__tool {
   display: flex;
   flex-direction: column;

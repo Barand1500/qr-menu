@@ -289,6 +289,8 @@ model TableFloorSession {
   closedAt     DateTime? @map("kapanis_zamani")
   guestName    String?   @map("misafir") @db.VarChar(120)
   expectedAt   DateTime? @map("beklenen")
+  /// Rezervasyon notu (telefonla istenenler vb.)
+  reservationNote String? @map("rezervasyon_not") @db.Text
   paidAt       DateTime? @map("odeme")
   /// Ana masaya birleşen diğer masa kodları: ["4","6"]
   mergedJson   String?   @map("birlesen") @db.Text

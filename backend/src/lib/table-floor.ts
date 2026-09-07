@@ -83,6 +83,37 @@ export function ordersTotal(items: FloorOrderItem[]) {
   return items.reduce((sum, i) => sum + lineTotal(i), 0);
 }
 
+export type SeatingFeeConfig = {
+  enabled: boolean;
+  rate: number;
+  unit: 'minute' | 'hour';
+};
+
+export function parseSeatingFee(raw: unknown): SeatingFeeConfig | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  return {
+    enabled: Boolean(r.enabled),
+    rate: Math.abs(Number(r.rate) || 0),
+    unit: r.unit === 'hour' ? 'hour' : 'minute',
+  };
+}
+
+/** Açık oturumda birikmiş oturma ücreti (anlık) */
+export function seatingFeeAmount(
+  fee: SeatingFeeConfig | null | undefined,
+  openedAt: Date | string | null | undefined,
+  status?: string | null,
+  nowMs = Date.now()
+) {
+  if (!fee?.enabled || !fee.rate || status !== 'open' || !openedAt) return 0;
+  const start = new Date(openedAt).getTime();
+  if (!Number.isFinite(start)) return 0;
+  const elapsedMin = Math.max(0, (nowMs - start) / 60_000);
+  const amount = fee.unit === 'hour' ? (elapsedMin / 60) * fee.rate : elapsedMin * fee.rate;
+  return Math.round(amount * 100) / 100;
+}
+
 export async function findActiveSession(
   restaurantId: number,
   tableNumber: string,

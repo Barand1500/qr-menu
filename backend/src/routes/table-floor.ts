@@ -10,11 +10,15 @@ import {
   ordersTotal,
   parseMergedJson,
   parseOrdersJson,
+  parseSeatingFee,
+  seatingFeeAmount,
   tableCode,
   WAITER_ALERT_MS,
   type FloorOrderItem,
+  type SeatingFeeConfig,
 } from '../lib/table-floor.js';
 import { getProductField, getLanguages, getGroupName } from '../lib/i18n-json.js';
+import type { Prisma } from '@prisma/client';
 
 const router = Router();
 router.use(authRequired);
@@ -24,6 +28,7 @@ type TableStylePayload = {
   colorId?: string;
   withLogo?: boolean;
   frameId?: string;
+  seatingFee?: SeatingFeeConfig;
 };
 
 async function ensureDefaultGroups(restaurantId: number) {
@@ -60,6 +65,7 @@ function serializeSession(session: {
   openedBy: string;
   guestName: string | null;
   expectedAt: Date | null;
+  reservationNote: string | null;
   paidAt: Date | null;
   ordersJson: string | null;
   mergedJson: string | null;
@@ -74,6 +80,7 @@ function serializeSession(session: {
     openedBy: session.openedBy,
     guestName: session.guestName,
     expectedAt: session.expectedAt?.toISOString() || null,
+    reservationNote: session.reservationNote,
     paidAt: session.paidAt?.toISOString() || null,
     orders,
     total: ordersTotal(orders),
@@ -138,6 +145,11 @@ router.get('/', async (req, res) => {
         const session = own || linked || null;
         const isSatellite = Boolean(linked && !own);
         const orders = own ? parseOrdersJson(own.ordersJson) : [];
+        const seatingFee = parseSeatingFee(style.seatingFee);
+        const feeAmount =
+          own?.status === 'open'
+            ? seatingFeeAmount(seatingFee, own.openedAt, own.status)
+            : 0;
         const waiterAt = waiterMap.get(key);
         const alertMsLeft = waiterAt
           ? Math.max(0, WAITER_ALERT_MS - (Date.now() - waiterAt.getTime()))
@@ -155,9 +167,12 @@ router.get('/', async (req, res) => {
           sessionId: own?.id || null,
           guestName: own?.guestName || null,
           expectedAt: own?.expectedAt?.toISOString() || null,
+          reservationNote: own?.reservationNote || null,
           paidAt: own?.paidAt?.toISOString() || null,
           orders,
-          total: ordersTotal(orders),
+          seatingFee,
+          seatingFeeAmount: feeAmount,
+          total: ordersTotal(orders) + feeAmount,
           mergedTables: own ? parseMergedJson(own.mergedJson) : [],
           mergePrimary: isSatellite && linked ? linked.tableNumber : null,
           waiterAlertMs: alertMsLeft,
@@ -221,6 +236,50 @@ router.post('/close', async (req, res) => {
   }
   if (!session) return res.status(404).json({ message: 'Açık masa yok' });
 
+  // Kapanışta birikmiş oturma ücretini siparişe sabitle
+  if (session.status === 'open' && session.groupSlug) {
+    const group = await prisma.qrTableGroup.findFirst({
+      where: { restaurantId: restaurantId!, slug: session.groupSlug },
+    });
+    if (group) {
+      const styles = (
+        group.tableStyles && typeof group.tableStyles === 'object' ? group.tableStyles : {}
+      ) as Record<string, TableStylePayload>;
+      let tableIdx: number | null = null;
+      for (let n = 1; n <= group.tableCount; n++) {
+        if (tableCode(n, group.prefix || '') === session.tableNumber) {
+          tableIdx = n;
+          break;
+        }
+      }
+      if (tableIdx != null) {
+        const fee = parseSeatingFee(styles[String(tableIdx)]?.seatingFee);
+        const amount = seatingFeeAmount(fee, session.openedAt, session.status);
+        if (amount > 0) {
+          const orders = parseOrdersJson(session.ordersJson);
+          orders.push({
+            id: `seat-${Date.now()}`,
+            name: 'Oturma ücreti',
+            qty: 1,
+            price: amount,
+            createdAt: new Date().toISOString(),
+            source: 'admin',
+            note:
+              fee?.unit === 'hour'
+                ? `${fee.rate} ₺/saat`
+                : fee
+                  ? `${fee.rate} ₺/dk`
+                  : undefined,
+          });
+          await prisma.tableFloorSession.update({
+            where: { id: session.id },
+            data: { ordersJson: JSON.stringify(orders) },
+          });
+        }
+      }
+    }
+  }
+
   await closeSession(session.id, Boolean(paid));
   res.json({ ok: true });
 });
@@ -228,11 +287,12 @@ router.post('/close', async (req, res) => {
 /** Rezervasyon / beklenen saat */
 router.post('/reserve', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const { tableNumber, groupSlug, guestName, expectedAt } = req.body as {
+  const { tableNumber, groupSlug, guestName, expectedAt, reservationNote } = req.body as {
     tableNumber?: string;
     groupSlug?: string;
     guestName?: string;
     expectedAt?: string;
+    reservationNote?: string;
   };
   const masa = String(tableNumber || '').trim();
   if (!masa) return res.status(400).json({ message: 'Masa gerekli' });
@@ -241,6 +301,10 @@ router.post('/reserve', async (req, res) => {
   if (when && Number.isNaN(when.getTime())) {
     return res.status(400).json({ message: 'Geçersiz saat' });
   }
+  const note =
+    reservationNote !== undefined
+      ? String(reservationNote || '').trim().slice(0, 1000) || null
+      : undefined;
 
   let session = await findActiveSession(restaurantId!, masa, grup);
   if (!session) {
@@ -254,6 +318,7 @@ router.post('/reserve', async (req, res) => {
         openedAt: new Date(),
         guestName: guestName?.trim().slice(0, 120) || null,
         expectedAt: when,
+        reservationNote: note ?? null,
         ordersJson: '[]',
         mergedJson: '[]',
       },
@@ -264,12 +329,135 @@ router.post('/reserve', async (req, res) => {
       data: {
         guestName: guestName !== undefined ? guestName.trim().slice(0, 120) || null : session.guestName,
         expectedAt: expectedAt !== undefined ? when : session.expectedAt,
+        reservationNote: note !== undefined ? note : session.reservationNote,
         status: session.status === 'open' ? 'open' : 'reserved',
       },
     });
   }
 
   res.json({ ok: true, session: serializeSession(session) });
+});
+
+/** Masa kalıcı oturma ücreti ayarı (tableStyles içinde) */
+router.put('/seating-fee', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const { groupSlug, tableIndex, enabled, rate, unit } = req.body as {
+    groupSlug?: string;
+    tableIndex?: number;
+    enabled?: boolean;
+    rate?: number;
+    unit?: 'minute' | 'hour';
+  };
+  const slug = String(groupSlug || '').trim();
+  const idx = Number(tableIndex);
+  if (!slug || !Number.isFinite(idx) || idx < 1) {
+    return res.status(400).json({ message: 'Grup ve masa gerekli' });
+  }
+  const group = await prisma.qrTableGroup.findFirst({
+    where: { restaurantId: restaurantId!, slug },
+  });
+  if (!group) return res.status(404).json({ message: 'Grup yok' });
+
+  const styles = (
+    group.tableStyles && typeof group.tableStyles === 'object' ? group.tableStyles : {}
+  ) as Record<string, TableStylePayload>;
+  const key = String(idx);
+  const prev = styles[key] || {};
+  const nextFee: SeatingFeeConfig = {
+    enabled: Boolean(enabled),
+    rate: Math.max(0, Math.abs(Number(rate) || 0)),
+    unit: unit === 'hour' ? 'hour' : 'minute',
+  };
+  styles[key] = { ...prev, seatingFee: nextFee };
+
+  await prisma.qrTableGroup.update({
+    where: { id: group.id },
+    data: { tableStyles: styles as Prisma.InputJsonValue },
+  });
+
+  res.json({ ok: true, seatingFee: nextFee });
+});
+
+/** Sipariş satırı güncelle / çoğalt / adet artır */
+router.patch('/orders/item', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const { sessionId, itemId, action, patch } = req.body as {
+    sessionId?: number;
+    itemId?: string;
+    action?: 'update' | 'copy' | 'bump';
+    patch?: Partial<FloorOrderItem> & { qty?: number };
+  };
+  const sid = Number(sessionId);
+  const iid = String(itemId || '');
+  if (!sid || !iid) return res.status(400).json({ message: 'Oturum ve satır gerekli' });
+
+  const session = await prisma.tableFloorSession.findFirst({
+    where: { id: sid, restaurantId: restaurantId! },
+  });
+  if (!session || session.status !== 'open') {
+    return res.status(404).json({ message: 'Açık oturum yok' });
+  }
+
+  const orders = parseOrdersJson(session.ordersJson);
+  const idx = orders.findIndex((o) => o.id === iid);
+  if (idx < 0) return res.status(404).json({ message: 'Sipariş satırı yok' });
+
+  if (action === 'copy') {
+    const src = orders[idx];
+    orders.push({
+      ...src,
+      id: `adm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      createdAt: new Date().toISOString(),
+      source: 'admin',
+    });
+  } else if (action === 'bump') {
+    const delta = Number(patch?.qty) || 1;
+    orders[idx] = {
+      ...orders[idx],
+      qty: Math.min(99, Math.max(1, orders[idx].qty + delta)),
+    };
+  } else {
+    const cur = orders[idx];
+    const nextQty =
+      patch?.qty != null ? Math.min(99, Math.max(1, Number(patch.qty) || 1)) : cur.qty;
+    const note =
+      patch?.note !== undefined ? String(patch.note || '').trim().slice(0, 240) : cur.note;
+    const adjustmentType =
+      patch?.adjustmentType === 'extra' || patch?.adjustmentType === 'discount'
+        ? patch.adjustmentType
+        : patch?.adjustmentType === null
+          ? null
+          : cur.adjustmentType ?? null;
+    const adjustmentMode =
+      patch?.adjustmentMode === 'percent'
+        ? 'percent'
+        : patch?.adjustmentMode === 'fixed'
+          ? 'fixed'
+          : cur.adjustmentMode || 'fixed';
+    const adjustmentValue =
+      patch?.adjustmentValue !== undefined
+        ? Math.abs(Number(patch.adjustmentValue) || 0)
+        : cur.adjustmentValue || 0;
+    orders[idx] = {
+      ...cur,
+      qty: nextQty,
+      note: note || undefined,
+      ...(adjustmentType && adjustmentValue > 0
+        ? { adjustmentType, adjustmentMode, adjustmentValue }
+        : { adjustmentType: null, adjustmentMode: undefined, adjustmentValue: undefined }),
+    };
+  }
+
+  const updated = await prisma.tableFloorSession.update({
+    where: { id: session.id },
+    data: { ordersJson: JSON.stringify(orders) },
+  });
+
+  res.json({
+    ok: true,
+    orders: parseOrdersJson(updated.ordersJson),
+    total: ordersTotal(parseOrdersJson(updated.ordersJson)),
+  });
 });
 
 /** Masa taşı (grup değişebilir) */

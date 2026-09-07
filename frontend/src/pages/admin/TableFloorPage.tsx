@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
   Clock3,
+  Copy,
   Plus,
   Receipt,
   UtensilsCrossed,
@@ -26,6 +27,12 @@ type FloorOrder = {
   adjustmentType?: 'extra' | 'discount' | null;
   adjustmentMode?: 'fixed' | 'percent';
   adjustmentValue?: number;
+};
+
+type SeatingFeeConfig = {
+  enabled: boolean;
+  rate: number;
+  unit: 'minute' | 'hour';
 };
 
 type CartLine = {
@@ -60,6 +67,20 @@ function lineTotal(o: {
   return base;
 }
 
+function computeSeatingFee(
+  fee: SeatingFeeConfig | null | undefined,
+  openedAt: string | null | undefined,
+  status: string | null | undefined,
+  nowMs: number
+) {
+  if (!fee?.enabled || !fee.rate || status !== 'open' || !openedAt) return 0;
+  const start = new Date(openedAt).getTime();
+  if (!Number.isFinite(start)) return 0;
+  const elapsedMin = Math.max(0, (nowMs - start) / 60_000);
+  const amount = fee.unit === 'hour' ? (elapsedMin / 60) * fee.rate : elapsedMin * fee.rate;
+  return Math.round(amount * 100) / 100;
+}
+
 function formatAdjLabel(o: FloorOrder) {
   if (!o.adjustmentType || !o.adjustmentValue) return '';
   const sign = o.adjustmentType === 'extra' ? '+' : '−';
@@ -80,8 +101,11 @@ type FloorTable = {
   sessionId: number | null;
   guestName?: string | null;
   expectedAt?: string | null;
+  reservationNote?: string | null;
   paidAt?: string | null;
   orders: FloorOrder[];
+  seatingFee?: SeatingFeeConfig | null;
+  seatingFeeAmount?: number;
   total: number;
   mergedTables?: string[];
   mergePrimary?: string | null;
@@ -195,6 +219,7 @@ function printBill(opts: {
   orders: FloorOrder[];
   total: number;
   guestName?: string | null;
+  seatingFee?: number;
 }) {
   const rows = opts.orders
     .map((o) => {
@@ -207,6 +232,10 @@ function printBill(opts: {
       return `<tr><td>${o.qty}× ${o.name}${note}${adj}</td><td style="text-align:right">${formatMoney(lineTotal(o))}</td></tr>`;
     })
     .join('');
+  const feeRow =
+    opts.seatingFee && opts.seatingFee > 0
+      ? `<tr><td>Oturma ücreti</td><td style="text-align:right">${formatMoney(opts.seatingFee)}</td></tr>`
+      : '';
   const html = `<!doctype html><html><head><title>Hesap</title>
     <style>body{font-family:system-ui,sans-serif;padding:24px;color:#222}
     h1{font-size:18px;margin:0 0 4px} p{margin:0 0 12px;color:#666;font-size:13px}
@@ -214,7 +243,7 @@ function printBill(opts: {
     .total{font-size:18px;font-weight:800;margin-top:16px;text-align:right}</style></head><body>
     <h1>${opts.restaurant}</h1>
     <p>${opts.tableName}${opts.guestName ? ` · ${opts.guestName}` : ''}</p>
-    <table>${rows || '<tr><td>Sipariş yok</td><td></td></tr>'}</table>
+    <table>${rows || ''}${feeRow || (rows ? '' : '<tr><td>Sipariş yok</td><td></td></tr>')}</table>
     <div class="total">${formatMoney(opts.total)}</div>
     <script>window.onload=()=>window.print()</script></body></html>`;
   const w = window.open('', '_blank', 'noopener,noreferrer,width=420,height=640');
@@ -241,6 +270,16 @@ export default function TableFloorPage() {
   const [catalogGroup, setCatalogGroup] = useState<string>('all');
   const [guestName, setGuestName] = useState('');
   const [expectedAt, setExpectedAt] = useState('');
+  const [reservationNote, setReservationNote] = useState('');
+  const [feeEnabled, setFeeEnabled] = useState(false);
+  const [feeRate, setFeeRate] = useState('');
+  const [feeUnit, setFeeUnit] = useState<'minute' | 'hour'>('minute');
+  const [editingOrder, setEditingOrder] = useState<FloorOrder | null>(null);
+  const [editQty, setEditQty] = useState(1);
+  const [editNote, setEditNote] = useState('');
+  const [editAdjType, setEditAdjType] = useState<'none' | 'extra' | 'discount'>('none');
+  const [editAdjMode, setEditAdjMode] = useState<'fixed' | 'percent'>('fixed');
+  const [editAdjValue, setEditAdjValue] = useState('');
   const [pickMode, setPickMode] = useState<null | 'move' | 'merge'>(null);
   const [mergePick, setMergePick] = useState<string[]>([]);
   const [confirm, setConfirm] = useState<null | {
@@ -315,11 +354,46 @@ export default function TableFloorPage() {
     if (!selected) {
       setGuestName('');
       setExpectedAt('');
+      setReservationNote('');
+      setFeeEnabled(false);
+      setFeeRate('');
+      setFeeUnit('minute');
       return;
     }
     setGuestName(selected.guestName || '');
     setExpectedAt(toLocalInputValue(selected.expectedAt));
-  }, [selected?.code, selected?.sessionId, selected?.guestName, selected?.expectedAt]);
+    setReservationNote(selected.reservationNote || '');
+    setFeeEnabled(Boolean(selected.seatingFee?.enabled));
+    setFeeRate(
+      selected.seatingFee?.rate != null && selected.seatingFee.rate > 0
+        ? String(selected.seatingFee.rate)
+        : ''
+    );
+    setFeeUnit(selected.seatingFee?.unit === 'hour' ? 'hour' : 'minute');
+  }, [
+    selected?.code,
+    selected?.sessionId,
+    selected?.guestName,
+    selected?.expectedAt,
+    selected?.reservationNote,
+    selected?.seatingFee?.enabled,
+    selected?.seatingFee?.rate,
+    selected?.seatingFee?.unit,
+  ]);
+
+  const liveSeatingFee = useMemo(
+    () =>
+      selected
+        ? computeSeatingFee(selected.seatingFee, selected.openedAt, selected.status, now)
+        : 0,
+    [selected, now]
+  );
+
+  const liveTotal = useMemo(() => {
+    if (!selected) return 0;
+    const ordersSum = selected.orders.reduce((s, o) => s + lineTotal(o), 0);
+    return Math.round((ordersSum + liveSeatingFee) * 100) / 100;
+  }, [selected, liveSeatingFee]);
 
   useEffect(() => {
     if (!pickMode && selectedCode && activeGroup && selectedGroupSlug === activeGroup.id) {
@@ -427,8 +501,84 @@ export default function TableFloorPage() {
           groupSlug: selectedGroupSlug,
           guestName,
           expectedAt: expectedAt ? new Date(expectedAt).toISOString() : null,
+          reservationNote,
         }),
       });
+      await load(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveSeatingFee() {
+    if (!selected || !selectedGroupSlug || busy) return;
+    setBusy(true);
+    try {
+      await api('/api/admin/table-floor/seating-fee', {
+        method: 'PUT',
+        body: JSON.stringify({
+          groupSlug: selectedGroupSlug,
+          tableIndex: selected.index,
+          enabled: feeEnabled,
+          rate: Number(String(feeRate).replace(',', '.')) || 0,
+          unit: feeUnit,
+        }),
+      });
+      await load(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function orderItemAction(itemId: string, action: 'copy' | 'bump', qty = 1) {
+    if (!selected?.sessionId || busy) return;
+    setBusy(true);
+    try {
+      await api('/api/admin/table-floor/orders/item', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          sessionId: selected.sessionId,
+          itemId,
+          action,
+          patch: action === 'bump' ? { qty } : undefined,
+        }),
+      });
+      await load(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openOrderEdit(o: FloorOrder) {
+    setEditingOrder(o);
+    setEditQty(o.qty);
+    setEditNote(o.note || '');
+    setEditAdjType(o.adjustmentType || 'none');
+    setEditAdjMode(o.adjustmentMode || 'fixed');
+    setEditAdjValue(o.adjustmentValue != null ? String(o.adjustmentValue) : '');
+  }
+
+  async function saveOrderEdit() {
+    if (!selected?.sessionId || !editingOrder || busy) return;
+    setBusy(true);
+    try {
+      const adjVal = Math.abs(Number(String(editAdjValue).replace(',', '.')) || 0);
+      await api('/api/admin/table-floor/orders/item', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          sessionId: selected.sessionId,
+          itemId: editingOrder.id,
+          action: 'update',
+          patch: {
+            qty: editQty,
+            note: editNote,
+            adjustmentType: editAdjType === 'none' ? null : editAdjType,
+            adjustmentMode: editAdjMode,
+            adjustmentValue: editAdjType === 'none' ? 0 : adjVal,
+          },
+        }),
+      });
+      setEditingOrder(null);
       await load(true);
     } finally {
       setBusy(false);
@@ -728,7 +878,10 @@ export default function TableFloorPage() {
                         {formatDurationMinutes(table.openedAt, now)}
                       </span>
                     ) : (
-                      <span className="floor-table__meta floor-table__meta--free">Boş</span>
+                      <span className="floor-table__meta floor-table__meta--free">
+                        Boş
+                        {table.seatingFee?.enabled ? ' · Ücretli' : ''}
+                      </span>
                     )}
                   </span>
                   <span className="floor-table__caption">
@@ -804,6 +957,9 @@ export default function TableFloorPage() {
                   {selected.openedBy === 'admin' ? 'Admin açtı' : 'QR okutuldu'}
                 </span>
               ) : null}
+              {selected.seatingFee?.enabled ? (
+                <span className="table-floor__pill is-fee">Ücretli oturma</span>
+              ) : null}
             </div>
 
             {selected.status === 'merged' ? (
@@ -833,9 +989,49 @@ export default function TableFloorPage() {
                     <Receipt className="w-4 h-4" />
                     <div>
                       <span>Toplam</span>
-                      <strong>{formatMoney(selected.total)}</strong>
+                      <strong>{formatMoney(liveTotal)}</strong>
                     </div>
                   </div>
+                </div>
+
+                <div className="table-floor__tool">
+                  <h3>Oturma ücreti</h3>
+                  <label className="table-floor__check">
+                    <input
+                      type="checkbox"
+                      checked={feeEnabled}
+                      onChange={(e) => setFeeEnabled(e.target.checked)}
+                    />
+                    Bu masa ücretli oturma
+                  </label>
+                  <div className="table-floor__fee-row">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      className="table-floor__input"
+                      placeholder="Tutar"
+                      value={feeRate}
+                      disabled={!feeEnabled}
+                      onChange={(e) => setFeeRate(e.target.value)}
+                    />
+                    <select
+                      className="table-floor__input"
+                      value={feeUnit}
+                      disabled={!feeEnabled}
+                      onChange={(e) => setFeeUnit(e.target.value as 'minute' | 'hour')}
+                    >
+                      <option value="minute">₺ / dakika</option>
+                      <option value="hour">₺ / saat</option>
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    className="table-floor__secondary"
+                    disabled={busy}
+                    onClick={() => void saveSeatingFee()}
+                  >
+                    Ücreti kaydet
+                  </button>
                 </div>
 
                 {!selected.occupied || selected.status === 'reserved' ? (
@@ -854,6 +1050,14 @@ export default function TableFloorPage() {
                       value={expectedAt}
                       onChange={(e) => setExpectedAt(e.target.value)}
                     />
+                    <textarea
+                      className="table-floor__input table-floor__textarea"
+                      rows={3}
+                      maxLength={1000}
+                      placeholder="Not (telefonla istenenler, alerji, özel istek…)"
+                      value={reservationNote}
+                      onChange={(e) => setReservationNote(e.target.value)}
+                    />
                     <button
                       type="button"
                       className="table-floor__secondary"
@@ -862,6 +1066,13 @@ export default function TableFloorPage() {
                     >
                       Rezervasyonu kaydet
                     </button>
+                  </div>
+                ) : null}
+
+                {selected.reservationNote?.trim() && selected.status === 'open' ? (
+                  <div className="table-floor__tool is-note">
+                    <h3>Rezervasyon notu</h3>
+                    <p className="table-floor__hint">{selected.reservationNote}</p>
                   </div>
                 ) : null}
 
@@ -907,12 +1118,22 @@ export default function TableFloorPage() {
                       Yemek ekle
                     </button>
                   </div>
-                  {selected.orders.length === 0 ? (
+                  {selected.orders.length === 0 && liveSeatingFee <= 0 ? (
                     <p className="table-floor__hint">Henüz sipariş yok.</p>
                   ) : (
                     <ul>
                       {selected.orders.map((o) => (
-                        <li key={o.id}>
+                        <li
+                          key={o.id}
+                          onDoubleClick={() => {
+                            if (selected.status === 'open') openOrderEdit(o);
+                          }}
+                          title={
+                            selected.status === 'open'
+                              ? 'Çift tıkla: düzenle'
+                              : undefined
+                          }
+                        >
                           <div>
                             <strong>
                               {o.qty}× {o.name}
@@ -925,9 +1146,46 @@ export default function TableFloorPage() {
                               <em className="table-floor__order-note">{o.note}</em>
                             ) : null}
                           </div>
-                          <em>{formatMoney(lineTotal(o))}</em>
+                          <div className="table-floor__order-side">
+                            <em>{formatMoney(lineTotal(o))}</em>
+                            {selected.status === 'open' ? (
+                              <div className="table-floor__order-actions">
+                                <button
+                                  type="button"
+                                  className="table-floor__icon-btn is-tiny"
+                                  title="Kopyala"
+                                  disabled={busy}
+                                  onClick={() => void orderItemAction(o.id, 'copy')}
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="table-floor__icon-btn is-tiny"
+                                  title="Adet +1"
+                                  disabled={busy}
+                                  onClick={() => void orderItemAction(o.id, 'bump', 1)}
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : null}
+                          </div>
                         </li>
                       ))}
+                      {liveSeatingFee > 0 ? (
+                        <li className="is-fee">
+                          <div>
+                            <strong>Oturma ücreti</strong>
+                            <span>
+                              {selected.seatingFee?.rate}
+                              {selected.seatingFee?.unit === 'hour' ? ' ₺/saat' : ' ₺/dk'} ·
+                              birikiyor
+                            </span>
+                          </div>
+                          <em>{formatMoney(liveSeatingFee)}</em>
+                        </li>
+                      ) : null}
                     </ul>
                   )}
                 </div>
@@ -943,8 +1201,9 @@ export default function TableFloorPage() {
                             restaurant: data?.restaurant?.name || user?.restaurant?.name || 'Restoran',
                             tableName: selected.name,
                             orders: selected.orders,
-                            total: selected.total,
+                            total: liveTotal,
                             guestName: selected.guestName,
+                            seatingFee: liveSeatingFee,
                           })
                         }
                       >
@@ -1211,6 +1470,107 @@ export default function TableFloorPage() {
                 onClick={() => void submitOrder()}
               >
                 {orderSaving ? 'Kaydediliyor…' : 'Siparişi kaydet'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      ) : null}
+
+      {editingOrder ? (
+        <div className="table-floor-modal" role="dialog" aria-modal="true" aria-label="Sipariş düzenle">
+          <button
+            type="button"
+            className="table-floor-modal__backdrop"
+            aria-label="Kapat"
+            onClick={() => setEditingOrder(null)}
+          />
+          <div className="table-floor-modal__panel table-floor-modal__panel--sm">
+            <header>
+              <div>
+                <p>Sipariş düzenle</p>
+                <h3>{editingOrder.name}</h3>
+              </div>
+              <button
+                type="button"
+                className="table-floor__icon-btn"
+                onClick={() => setEditingOrder(null)}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </header>
+            <div className="table-floor-modal__edit-body">
+              <label>
+                <span>Adet</span>
+                <div className="table-floor-modal__qty">
+                  <button type="button" onClick={() => setEditQty((q) => Math.max(1, q - 1))}>
+                    −
+                  </button>
+                  <em>{editQty}</em>
+                  <button type="button" onClick={() => setEditQty((q) => Math.min(99, q + 1))}>
+                    +
+                  </button>
+                </div>
+              </label>
+              <label>
+                <span>Not</span>
+                <input
+                  type="text"
+                  className="table-floor__input"
+                  value={editNote}
+                  maxLength={240}
+                  onChange={(e) => setEditNote(e.target.value)}
+                />
+              </label>
+              <div className="table-floor-modal__adj">
+                <label>
+                  <span>Fiyat ayarı</span>
+                  <select
+                    className="table-floor__input"
+                    value={editAdjType}
+                    onChange={(e) =>
+                      setEditAdjType(e.target.value as 'none' | 'extra' | 'discount')
+                    }
+                  >
+                    <option value="none">Yok</option>
+                    <option value="extra">Ekstra (+)</option>
+                    <option value="discount">İndirim (−)</option>
+                  </select>
+                </label>
+                {editAdjType !== 'none' ? (
+                  <>
+                    <label>
+                      <span>Tür</span>
+                      <select
+                        className="table-floor__input"
+                        value={editAdjMode}
+                        onChange={(e) => setEditAdjMode(e.target.value as 'fixed' | 'percent')}
+                      >
+                        <option value="fixed">₺ tutar</option>
+                        <option value="percent">% yüzde</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Değer</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        className="table-floor__input"
+                        value={editAdjValue}
+                        onChange={(e) => setEditAdjValue(e.target.value)}
+                      />
+                    </label>
+                  </>
+                ) : null}
+              </div>
+            </div>
+            <footer>
+              <button
+                type="button"
+                className="table-floor__primary"
+                disabled={busy}
+                onClick={() => void saveOrderEdit()}
+              >
+                {busy ? 'Kaydediliyor…' : 'Kaydet'}
               </button>
             </footer>
           </div>
