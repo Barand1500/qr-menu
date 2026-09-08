@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { X, Search, Plus, Sparkles, AlertCircle, Check } from 'lucide-react';
 import { Button } from '@/components/ui';
+import LanguageFlag from '@/components/LanguageFlag';
 import {
   LANGUAGE_CATALOG,
   translateBadgeLabel,
@@ -182,7 +183,9 @@ export default function AddLanguageModal({
                     opacity: already ? 0.72 : 1,
                   }}
                 >
-                  <span className="text-2xl leading-none w-9 text-center shrink-0">{lang.flag}</span>
+                  <span className="w-9 h-7 inline-flex items-center justify-center shrink-0">
+                    <LanguageFlag code={lang.code} size={26} />
+                  </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-semibold text-[var(--admin-text)] truncate">

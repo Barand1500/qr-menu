@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { X, Home, Info, Globe, Leaf, ChevronDown, Check } from 'lucide-react';
 import PublicSocialLinks from '@/components/public/PublicSocialLinks';
 import type { PublicSocialLink } from '@/lib/socialCatalog';
-import { languageFlag } from '@/lib/languageFlags';
+import LanguageFlag from '@/components/LanguageFlag';
 import {
   preferenceUi,
   prefsActive,
@@ -150,7 +150,7 @@ export default function PublicSideMenu({
                 onClick={() => setLangOpen((v) => !v)}
               >
                 <span className="public-side-menu__lang-flag" aria-hidden>
-                  {languageFlag(activeLanguage?.code || activeLang)}
+                  <LanguageFlag code={activeLanguage?.code || activeLang} size={18} />
                 </span>
                 <span className="public-side-menu__lang-name">
                   {activeLanguage?.name || activeLang}
@@ -174,7 +174,7 @@ export default function PublicSideMenu({
                           }}
                         >
                           <span className="public-side-menu__lang-flag" aria-hidden>
-                            {languageFlag(l.code)}
+                            <LanguageFlag code={l.code} size={18} />
                           </span>
                           <span className="public-side-menu__lang-name">{l.name}</span>
                           {selected ? <Check className="w-4 h-4 shrink-0 opacity-90" /> : null}

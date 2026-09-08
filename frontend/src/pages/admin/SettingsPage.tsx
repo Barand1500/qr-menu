@@ -15,7 +15,7 @@ import AboutPageEditorModal from '@/components/admin/AboutPageEditorModal';
 import type { GeoLockConfig } from '@/lib/geoLock';
 import { DEFAULT_ABOUT_PAGE, parseAboutPage, type AboutPageConfig } from '@/lib/aboutPage';
 import '@/about-page.css';
-import { languageFlag } from '@/lib/languageFlags';
+import LanguageFlag from '@/components/LanguageFlag';
 import { catalogByCode, type CatalogLanguage } from '@/lib/languageCatalog';
 import { currencyCatalogByCode, type CatalogCurrency } from '@/lib/currencyCatalog';
 import {
@@ -627,8 +627,8 @@ export default function SettingsPage() {
                     style={{ borderBottom: '1px solid var(--admin-card-border)' }}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-xl leading-none shrink-0">
-                        {languageFlag(lang.code)}
+                      <span className="leading-none shrink-0 inline-flex">
+                        <LanguageFlag code={lang.code} size={22} />
                       </span>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-[var(--admin-text)] truncate">

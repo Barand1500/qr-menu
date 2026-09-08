@@ -115,6 +115,22 @@ body {
   color: var(--admin-text-subtle);
 }
 
+/* Dil bayrakları — emoji yerine PNG (Windows Chrome uyumu) */
+.lang-flag {
+  display: inline-block;
+  object-fit: cover;
+  border-radius: 0.2rem;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.lang-flag--globe {
+  font-size: 1em;
+  line-height: 1;
+  box-shadow: none;
+}
+
 .admin-accent {
   color: var(--admin-accent);
 }
@@ -2775,11 +2791,18 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 }
 
 .public-side-menu__lang-flag {
-  font-size: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   width: 1.5rem;
-  text-align: center;
   flex-shrink: 0;
+}
+
+.public-side-menu__lang-flag .lang-flag {
+  width: 1.15rem;
+  height: auto;
+  border-radius: 0.15rem;
 }
 
 .public-side-menu__lang-name {
@@ -5790,8 +5813,17 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 }
 
 .welcome-card__lang-flag {
-  font-size: 1.125rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
+  flex-shrink: 0;
+}
+
+.welcome-card__lang-flag .lang-flag {
+  width: 1.35rem;
+  height: auto;
+  border-radius: 0.2rem;
 }
 
 .welcome-card__lang.is-active {

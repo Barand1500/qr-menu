@@ -17,8 +17,8 @@ import { Button, Card, PageHeader, Spinner, Textarea } from '@/components/ui';
 import UnlockAddonModal from '@/components/UnlockAddonModal';
 import { useAddons } from '@/hooks/useAddons';
 import { api } from '@/lib/api';
-import { languageFlag } from '@/lib/languageFlags';
 import { adminPath } from '@/lib/adminPath';
+import LanguageFlag from '@/components/LanguageFlag';
 
 interface Language {
   id: number;
@@ -380,8 +380,8 @@ export default function BulkTranslatePage() {
                     <>
                       {' '}
                       · Hedef:{' '}
-                      <strong className="text-[var(--admin-text)]">
-                        {languageFlag(targetMeta.code)} {targetMeta.name}
+                      <strong className="text-[var(--admin-text)] inline-flex items-center gap-1.5">
+                        <LanguageFlag code={targetMeta.code} size={16} /> {targetMeta.name}
                       </strong>
                     </>
                   ) : null}
@@ -444,7 +444,7 @@ export default function BulkTranslatePage() {
                           : 'border-[var(--admin-card-border)] bg-[var(--admin-input-bg)] text-[var(--admin-text)] hover:border-[var(--admin-accent)]'
                       }`}
                     >
-                      <span className="text-base leading-none">{languageFlag(l.code)}</span>
+                      <LanguageFlag code={l.code} size={16} />
                       {l.name}
                     </button>
                   );

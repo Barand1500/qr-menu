@@ -8,7 +8,7 @@ import MaintenanceGate from '@/components/public/MaintenanceGate';
 import type { GeoCoords } from '@/lib/geoLock';
 import { Volume2, VolumeX, Sparkles, MessageCircleHeart, Lightbulb } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
-import { languageFlag } from '@/lib/languageFlags';
+import LanguageFlag from '@/components/LanguageFlag';
 import ComplaintBoxModal from '@/components/public/ComplaintBoxModal';
 import SuggestionBoxModal from '@/components/public/SuggestionBoxModal';
 import WelcomeSceneBackground from '@/components/public/WelcomeSceneBackground';
@@ -485,7 +485,7 @@ function PublicWelcomePageInner({
                     onClick={() => setSelectedLang(lang.code)}
                   >
                     <span className="welcome-card__lang-flag" aria-hidden>
-                      {languageFlag(lang.code)}
+                      <LanguageFlag code={lang.code} size={22} />
                     </span>
                     <span>{lang.name}</span>
                   </button>
