@@ -19,6 +19,7 @@ import MenuThemePage from '@/pages/admin/MenuThemePage';
 import ExtensionsHubPage from '@/pages/admin/ExtensionsHubPage';
 import BulkTranslatePage from '@/pages/admin/BulkTranslatePage';
 import TableFloorPage from '@/pages/admin/TableFloorPage';
+import ProductVariantsPage from '@/pages/admin/ProductVariantsPage';
 import PublicWelcomePage from '@/pages/public/PublicWelcomePage';
 import PublicMenuPage from '@/pages/public/PublicMenuPage';
 import PublicProductPage from '@/pages/public/PublicProductPage';
@@ -47,6 +48,7 @@ function AdminRoutes({ slug }: { slug: string }) {
   return (
     <Route element={<ProtectedRoute />}>
       <Route path={`${base}/masa-gorunumu`} element={<TableFloorPage />} />
+      <Route path={`${base}/urun-secenekleri`} element={<ProductVariantsPage />} />
       <Route path={base} element={<AdminLayout />}>
         <Route index element={<DashboardPage />} />
         <Route path="groups" element={<GroupsPage />} />

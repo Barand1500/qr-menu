@@ -136,6 +136,8 @@ model Product {
   sortOrder       Int      @default(0) @map("sira")
   isActive        Boolean  @default(true) @map("aktif")
   i18n            Json     @default("{}") @map("ceviriler")
+  /// Seçenek grupları: tek seçim / miktarlı ekstra (masa siparişi fiyat takibi)
+  optionGroups    Json     @default("[]") @map("secenek_gruplari")
   createdAt       DateTime @default(now()) @map("olusturma")
   updatedAt       DateTime @updatedAt @map("guncelleme")
 

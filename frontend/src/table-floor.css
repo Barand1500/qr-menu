@@ -1019,8 +1019,8 @@
 
 .table-floor-modal__panel {
   position: relative;
-  width: min(32rem, 100%);
-  max-height: min(85dvh, 40rem);
+  width: min(40rem, 100%);
+  max-height: min(90dvh, 48rem);
   background: #fffaf4;
   border-radius: 1.25rem 1.25rem 0 0;
   display: flex;
@@ -1407,6 +1407,57 @@
   padding: 0 0.65rem;
   font-size: 0.84rem;
   color: var(--tf-ink, #3b2a1c);
+}
+
+.table-floor-modal__multi {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.table-floor-modal__multi-title {
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--tf-muted);
+}
+
+.table-floor-modal__multi-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(88, 60, 36, 0.1);
+}
+
+.table-floor-modal__multi-row strong {
+  display: block;
+  font-size: 0.84rem;
+}
+
+.table-floor-modal__multi-row em {
+  display: block;
+  font-style: normal;
+  font-size: 0.72rem;
+  color: var(--tf-muted);
+}
+
+.table-floor-modal__qty--sm button {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.table-floor-modal__line-price {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: var(--tf-muted);
+}
+
+.table-floor-modal__line-price strong {
+  color: var(--tf-ink);
 }
 
 .table-floor-modal__adj {

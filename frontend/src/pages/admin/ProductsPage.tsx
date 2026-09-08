@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   Pencil,
   EyeOff,
   Eye,
+  Layers3,
 } from 'lucide-react';
 import { api, formatMoney, imageUrl } from '@/lib/api';
+import { adminPath } from '@/lib/adminPath';
 import { getActiveLanguages, type AdminLanguage } from '@/lib/languages';
 import {
   Badge,
@@ -444,10 +446,18 @@ export default function ProductsPage() {
       <PageHeader
         title="Ürünler"
         actions={
-          <Button onClick={openCreate}>
-            <Plus className="w-4 h-4" />
-            Yeni Ürün Ekle
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Link to={adminPath('urun-secenekleri')}>
+              <Button variant="secondary">
+                <Layers3 className="w-4 h-4" />
+                Varyant / seçenek
+              </Button>
+            </Link>
+            <Button onClick={openCreate}>
+              <Plus className="w-4 h-4" />
+              Yeni Ürün Ekle
+            </Button>
+          </div>
         }
       />
 

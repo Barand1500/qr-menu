@@ -24,6 +24,10 @@ import {
   sanitizeAllergenTagsForCatalog,
   sanitizeDietTagsForCatalog,
 } from '../lib/pref-catalog.js';
+import {
+  normalizeOptionGroups,
+  optionGroupsSummary,
+} from '../lib/product-options.js';
 
 const router = Router();
 router.use(authRequired);
@@ -106,6 +110,25 @@ router.get('/:id', async (req, res) => {
   ]);
   if (!product) return res.status(404).json({ message: 'Ürün bulunamadı' });
   res.json(await mapProduct(product, restaurantId!, languages));
+});
+
+router.put('/:id/option-groups', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const id = Number(req.params.id);
+  const product = await prisma.product.findFirst({
+    where: { id, restaurantId: restaurantId! },
+    include: { group: true, currency: true },
+  });
+  if (!product) return res.status(404).json({ message: 'Ürün bulunamadı' });
+
+  const groups = normalizeOptionGroups(req.body?.groups ?? req.body?.optionGroups ?? req.body);
+  const updated = await prisma.product.update({
+    where: { id: product.id },
+    data: { optionGroups: groups },
+    include: { group: true, currency: true },
+  });
+  const languages = await getLanguages();
+  res.json(await mapProduct(updated, restaurantId!, languages));
 });
 
 router.post('/', async (req, res) => {
@@ -426,6 +449,7 @@ async function mapProduct(
     sortOrder: number;
     isActive: boolean;
     i18n: unknown;
+    optionGroups?: unknown;
     group: { i18n: unknown };
     currency?: {
       id: number;
@@ -474,6 +498,8 @@ async function mapProduct(
     isValid: validation.valid,
     validationIssues: validation.issues,
     translations: toProductTranslations(product.i18n, languages),
+    optionGroups: normalizeOptionGroups(product.optionGroups),
+    optionSummary: optionGroupsSummary(product.optionGroups),
   };
 }
 

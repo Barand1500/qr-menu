@@ -18,6 +18,13 @@ import {
   type SeatingFeeConfig,
 } from '../lib/table-floor.js';
 import { getProductField, getLanguages, getGroupName } from '../lib/i18n-json.js';
+import {
+  activeOptionGroups,
+  computeUnitPrice,
+  formatSelectionsNote,
+  validateSelections,
+  type OptionSelectionInput,
+} from '../lib/product-options.js';
 import type { Prisma } from '@prisma/client';
 
 const router = Router();
@@ -589,6 +596,7 @@ router.post('/orders', async (req, res) => {
       qty?: number;
       price?: number;
       note?: string;
+      selections?: OptionSelectionInput[];
       adjustmentType?: 'extra' | 'discount' | null;
       adjustmentMode?: 'fixed' | 'percent';
       adjustmentValue?: number;
@@ -617,6 +625,7 @@ router.post('/orders', async (req, res) => {
     let name = String(raw.name || '').trim();
     let price = Number(raw.price) || 0;
     let productId = raw.productId != null ? Number(raw.productId) : null;
+    let note = String(raw.note || '').trim().slice(0, 240);
 
     if (productId) {
       const product = await prisma.product.findFirst({
@@ -626,10 +635,20 @@ router.post('/orders', async (req, res) => {
         name = getProductField(product.i18n, langCode, 'name') || name || 'Ürün';
         price = Number(product.price);
         productId = product.id;
+
+        const groups = activeOptionGroups(product.optionGroups);
+        if (groups.length) {
+          const checked = validateSelections(groups, raw.selections || []);
+          if (!checked.ok) {
+            return res.status(400).json({ message: `${name}: ${checked.message}` });
+          }
+          price = computeUnitPrice(Number(product.price), checked.picks);
+          const selNote = formatSelectionsNote(checked.picks);
+          note = [selNote, note].filter(Boolean).join(' · ').slice(0, 240);
+        }
       }
     }
     if (!name) continue;
-    const note = String(raw.note || '').trim().slice(0, 240);
     const adjustmentType =
       raw.adjustmentType === 'extra' || raw.adjustmentType === 'discount'
         ? raw.adjustmentType
@@ -714,6 +733,7 @@ router.get('/products', async (req, res) => {
         currency: p.currency
           ? { code: p.currency.code, symbol: p.currency.symbol }
           : null,
+        optionGroups: activeOptionGroups(p.optionGroups),
       };
     })
   );

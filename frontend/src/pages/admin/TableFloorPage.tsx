@@ -16,6 +16,10 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
+import {
+  computePreviewUnitPrice,
+  type ProductOptionGroup,
+} from '@/lib/productOptions';
 import '@/table-floor.css';
 
 type FloorOrder = {
@@ -40,19 +44,24 @@ type SeatingFeeConfig = {
 
 type CartLine = {
   qty: number;
-  note: string;
-  adjType: 'none' | 'extra' | 'discount';
-  adjMode: 'fixed' | 'percent';
-  adjValue: string;
+  /** groupId → seçimler */
+  selections: Record<string, { optionId: string; qty: number }[]>;
 };
 
 const emptyCartLine = (): CartLine => ({
   qty: 0,
-  note: '',
-  adjType: 'none',
-  adjMode: 'fixed',
-  adjValue: '',
+  selections: {},
 });
+
+function defaultSelections(groups: ProductOptionGroup[]): CartLine['selections'] {
+  const out: CartLine['selections'] = {};
+  for (const g of groups) {
+    if (g.type === 'single' && g.options[0]) {
+      out[g.id] = [{ optionId: g.options[0].id, qty: 1 }];
+    }
+  }
+  return out;
+}
 
 function lineTotal(o: {
   price: number;
@@ -136,6 +145,7 @@ type CatalogProduct = {
   groupId?: number;
   groupName: string;
   currency?: { code?: string; symbol?: string } | null;
+  optionGroups?: ProductOptionGroup[];
 };
 
 const QR_COLORS: { id: string; fg: string; bg: string }[] = [
@@ -661,9 +671,11 @@ export default function TableFloorPage() {
     setCart({});
     setProductQuery('');
     setCatalogGroup('all');
-    if (!catalog.length) {
+    try {
       const list = await api<CatalogProduct[]>('/api/admin/table-floor/products');
       setCatalog(list);
+    } catch {
+      /* keep previous catalog */
     }
   }
 
@@ -673,20 +685,23 @@ export default function TableFloorPage() {
       .filter(([, line]) => line.qty > 0)
       .map(([id, line]) => {
         const p = catalog.find((c) => c.id === Number(id));
-        const adjVal = Math.abs(Number(line.adjValue.replace(',', '.')) || 0);
+        const groups = p?.optionGroups || [];
+        const selections = Object.entries(line.selections).flatMap(([groupId, picks]) =>
+          picks.map((pick) => ({
+            groupId,
+            optionId: pick.optionId,
+            qty: pick.qty,
+          }))
+        );
+        const unit = groups.length
+          ? computePreviewUnitPrice(p?.price || 0, groups, line.selections)
+          : p?.price;
         return {
           productId: Number(id),
           name: p?.name,
           qty: line.qty,
-          price: p?.price,
-          note: line.note.trim() || undefined,
-          ...(line.adjType !== 'none' && adjVal > 0
-            ? {
-                adjustmentType: line.adjType,
-                adjustmentMode: line.adjMode,
-                adjustmentValue: adjVal,
-              }
-            : {}),
+          price: unit,
+          ...(selections.length ? { selections } : {}),
         };
       });
     if (!items.length) return;
@@ -703,6 +718,8 @@ export default function TableFloorPage() {
       setOrderOpen(false);
       setCart({});
       await load(true);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Sipariş eklenemedi');
     } finally {
       setOrderSaving(false);
     }
@@ -716,9 +733,15 @@ export default function TableFloorPage() {
         delete next[productId];
         return next;
       }
+      const product = catalog.find((p) => p.id === productId);
+      const groups = product?.optionGroups || [];
+      const selections =
+        prev.qty <= 0 && Object.keys(prev.selections).length === 0
+          ? defaultSelections(groups)
+          : prev.selections;
       return {
         ...c,
-        [productId]: { ...prev, qty },
+        [productId]: { ...prev, qty, selections },
       };
     });
   }
@@ -1463,65 +1486,101 @@ export default function TableFloorPage() {
                               </button>
                             </div>
                           </div>
-                          {qty > 0 ? (
+                          {qty > 0 && (p.optionGroups?.length || 0) > 0 ? (
                             <div className="table-floor-modal__extras">
-                              <label>
-                                <span>Not</span>
-                                <input
-                                  type="text"
-                                  value={line.note}
-                                  maxLength={240}
-                                  placeholder="Örn. orta şekerli, az buz…"
-                                  onChange={(e) => patchCart(p.id, { note: e.target.value })}
-                                />
-                              </label>
-                              <div className="table-floor-modal__adj">
-                                <label>
-                                  <span>Fiyat ayarı</span>
-                                  <select
-                                    value={line.adjType}
-                                    onChange={(e) =>
-                                      patchCart(p.id, {
-                                        adjType: e.target.value as CartLine['adjType'],
-                                      })
-                                    }
-                                  >
-                                    <option value="none">Yok</option>
-                                    <option value="extra">Ekstra (+)</option>
-                                    <option value="discount">İndirim (−)</option>
-                                  </select>
-                                </label>
-                                {line.adjType !== 'none' ? (
-                                  <>
-                                    <label>
-                                      <span>Tür</span>
+                              {(p.optionGroups || []).map((g) => {
+                                const picks = line.selections[g.id] || [];
+                                if (g.type === 'single') {
+                                  return (
+                                    <label key={g.id}>
+                                      <span>
+                                        {g.name}
+                                        {g.required ? ' *' : ''}
+                                      </span>
                                       <select
-                                        value={line.adjMode}
-                                        onChange={(e) =>
-                                          patchCart(p.id, {
-                                            adjMode: e.target.value as CartLine['adjMode'],
-                                          })
-                                        }
+                                        value={picks[0]?.optionId || ''}
+                                        onChange={(e) => {
+                                          const optionId = e.target.value;
+                                          const next = { ...line.selections };
+                                          if (!optionId) delete next[g.id];
+                                          else next[g.id] = [{ optionId, qty: 1 }];
+                                          patchCart(p.id, { selections: next });
+                                        }}
                                       >
-                                        <option value="fixed">₺ tutar</option>
-                                        <option value="percent">% yüzde</option>
+                                        {!g.required ? <option value="">Seçilmedi</option> : null}
+                                        {g.options.map((o) => (
+                                          <option key={o.id} value={o.id}>
+                                            {o.name}
+                                            {g.pricing === 'replace'
+                                              ? ` · ${formatMoney(o.price)}`
+                                              : o.price
+                                                ? ` · +${formatMoney(o.price)}`
+                                                : ''}
+                                          </option>
+                                        ))}
                                       </select>
                                     </label>
-                                    <label>
-                                      <span>Değer</span>
-                                      <input
-                                        type="text"
-                                        inputMode="decimal"
-                                        value={line.adjValue}
-                                        placeholder={line.adjMode === 'percent' ? '10' : '25'}
-                                        onChange={(e) =>
-                                          patchCart(p.id, { adjValue: e.target.value })
-                                        }
-                                      />
-                                    </label>
-                                  </>
-                                ) : null}
-                              </div>
+                                  );
+                                }
+                                return (
+                                  <div key={g.id} className="table-floor-modal__multi">
+                                    <span className="table-floor-modal__multi-title">
+                                      {g.name}
+                                      {g.required ? ' *' : ''}
+                                    </span>
+                                    {g.options.map((o) => {
+                                      const cur = picks.find((x) => x.optionId === o.id);
+                                      const q = cur?.qty || 0;
+                                      return (
+                                        <div key={o.id} className="table-floor-modal__multi-row">
+                                          <div>
+                                            <strong>{o.name}</strong>
+                                            <em>
+                                              {o.price > 0 ? `+${formatMoney(o.price)} / adet` : 'Ücretsiz'}
+                                            </em>
+                                          </div>
+                                          <div className="table-floor-modal__qty table-floor-modal__qty--sm">
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                const nextPicks = picks.filter((x) => x.optionId !== o.id);
+                                                if (q > 1) nextPicks.push({ optionId: o.id, qty: q - 1 });
+                                                const next = { ...line.selections };
+                                                if (nextPicks.length) next[g.id] = nextPicks;
+                                                else delete next[g.id];
+                                                patchCart(p.id, { selections: next });
+                                              }}
+                                            >
+                                              −
+                                            </button>
+                                            <em>{q}</em>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                const nextPicks = picks.filter((x) => x.optionId !== o.id);
+                                                nextPicks.push({ optionId: o.id, qty: q + 1 });
+                                                patchCart(p.id, {
+                                                  selections: { ...line.selections, [g.id]: nextPicks },
+                                                });
+                                              }}
+                                            >
+                                              +
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })}
+                              <p className="table-floor-modal__line-price">
+                                Birim:{' '}
+                                <strong>
+                                  {formatMoney(
+                                    computePreviewUnitPrice(p.price, p.optionGroups || [], line.selections)
+                                  )}
+                                </strong>
+                              </p>
                             </div>
                           ) : null}
                         </div>
