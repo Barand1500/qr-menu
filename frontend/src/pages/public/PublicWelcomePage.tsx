@@ -453,9 +453,6 @@ function PublicWelcomePageInner({
               )}
             </div>
 
-            {(data.theme || 'vibrant') === 'kitty' ? (
-              <p className="welcome-card__kitty-tag">Cat</p>
-            ) : null}
             <h1 className="welcome-card__title">{data.restaurant.name}</h1>
             {(tableNo || groupSlug || campaignSlug) && (
               <div className="welcome-card__context">

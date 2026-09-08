@@ -5293,8 +5293,8 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   --kitty-peach-deep: #e8a090;
   --kitty-ink: #121212;
   --kitty-muted: #5c534e;
-  /* Daha az üst boşluk — kedi çizgiye yakın, içerik hemen altında */
-  --kitty-split: 34%;
+  /* dvh: % margin genişliğe göre hesaplanır, boşluk şişerdi */
+  --kitty-split: 30dvh;
   background: #fff;
   color: var(--kitty-ink);
   height: 100dvh;
@@ -5319,7 +5319,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  --kitty-split: 34%;
+  --kitty-split: 30dvh;
 }
 
 .welcome-scene__kitty-sky {
@@ -5367,7 +5367,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   width: 100%;
   margin-top: var(--kitty-split);
   margin-bottom: 0;
-  padding-top: 0.15rem;
+  padding-top: 0.35rem;
   padding-bottom: 0;
   position: relative;
   z-index: 3;
@@ -5384,7 +5384,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  padding: 0.1rem 0.15rem 0.35rem;
+  padding: 0 0.15rem 0.35rem;
   border-radius: 0;
   overflow: hidden;
   max-height: 100%;
@@ -5402,17 +5402,8 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   line-height: 1.05;
   color: var(--kitty-ink);
   text-transform: uppercase;
+  margin-top: 0;
   margin-bottom: 0.3rem;
-}
-
-.welcome-scene[data-theme-welcome='kitty'] .welcome-card__kitty-tag {
-  margin: 0 0 0.05rem;
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-style: italic;
-  font-size: 0.88rem;
-  font-weight: 500;
-  color: var(--kitty-muted);
-  letter-spacing: 0.02em;
 }
 
 .welcome-scene[data-theme-welcome='kitty'] .welcome-card__message {
@@ -5594,7 +5585,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 @media (max-width: 480px) {
   .welcome-scene[data-theme-welcome='kitty'],
   .welcome-scene__kitty {
-    --kitty-split: 32%;
+    --kitty-split: 28dvh;
   }
 
   .welcome-scene__kitty-mascot {

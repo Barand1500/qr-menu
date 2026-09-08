@@ -1,5 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, EyeOff, Eye, X, UserCircle, ShieldAlert, Copy, Check, Shuffle } from 'lucide-react';
+import {
+  Plus,
+  Pencil,
+  EyeOff,
+  Eye,
+  X,
+  UserCircle,
+  Lock,
+  Copy,
+  Check,
+  Shuffle,
+  Search,
+  Link2,
+} from 'lucide-react';
 import { api } from '@/lib/api';
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Spinner } from '@/components/ui';
 import {
@@ -212,8 +225,11 @@ export default function UsersPage() {
 
   const pathChanged = normalizeDraft(pathDraft) !== panelPath;
 
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const draftSlug = normalizeDraft(pathDraft) || '…';
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <PageHeader
         title="Kullanıcılar"
         actions={
@@ -224,113 +240,164 @@ export default function UsersPage() {
         }
       />
 
-      <Card className="space-y-4">
-        <div className="flex items-start gap-3">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'var(--admin-accent-soft)' }}
-          >
-            <ShieldAlert className="w-5 h-5" style={{ color: 'var(--admin-accent)' }} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="font-bold text-[var(--admin-text)]">Panel giriş adresi</h3>
-            <p className="text-sm admin-text-muted mt-0.5">
-              Varsayılan <code className="text-xs">/admin</code>. Değiştirince eski adres kapanır;
-              yalnızca sizin bildiğiniz yol paneli açar.
-            </p>
-          </div>
-        </div>
-
+      <Card className="!p-0 overflow-hidden">
         <div
-          className="rounded-xl border px-3.5 py-3 text-sm space-y-1.5"
+          className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 border-b"
           style={{
-            borderColor: 'color-mix(in srgb, #b45309 35%, var(--admin-card-border))',
-            background: 'color-mix(in srgb, #f59e0b 12%, var(--admin-card))',
-            color: 'var(--admin-text)',
+            borderColor: 'var(--admin-card-border)',
+            background: 'color-mix(in srgb, var(--admin-accent-soft) 55%, var(--admin-card))',
           }}
         >
-          <p className="font-semibold text-amber-700 dark:text-amber-400">Dikkat</p>
-          <ul className="list-disc pl-4 space-y-1 admin-text-muted text-[0.8125rem]">
-            <li>Bu adresi herkese vermeyin; panelin gizli giriş kapısıdır.</li>
-            <li>Kaydettikten sonra eski <code>/admin</code> (veya önceki yol) çalışmaz.</li>
-            <li>Yeni yolu yer imlerine ekleyin; unutursanız panele giremezsiniz.</li>
-            <li>
-              <code>/login</code>, <code>/menu</code> gibi sistem yolları kullanılamaz.
-            </li>
-          </ul>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-          <div className="flex-1">
-            <Input
-              label="Panel yolu (slug)"
-              value={pathDraft}
-              onChange={(e) => {
-                setPathDraft(e.target.value);
-                setPathError(null);
-                setPathOk(null);
-              }}
-              placeholder="ornek: panel-7k2x"
-            />
-            <p className="text-xs admin-text-muted mt-1.5">
-              Tam adres:{' '}
-              <span className="font-medium text-[var(--admin-text)]">
-                {window.location.origin}/{normalizeDraft(pathDraft) || '…'}
-              </span>
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => {
-              setPathDraft(suggestAdminPath());
-              setPathError(null);
-              setPathOk(null);
-            }}
-          >
-            <Shuffle className="w-4 h-4" />
-            Öner
-          </Button>
-          <Button type="button" variant="secondary" onClick={() => void copyPanelUrl()}>
-            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            {copied ? 'Kopyalandı' : 'Kopyala'}
-          </Button>
-        </div>
-
-        {pathChanged ? (
-          <label className="flex items-start gap-2.5 cursor-pointer text-sm text-[var(--admin-text)]">
-            <input
-              type="checkbox"
-              checked={pathAck}
-              onChange={(e) => setPathAck(e.target.checked)}
-              className="mt-0.5 w-4 h-4 rounded accent-[var(--admin-accent)]"
-            />
-            <span>
-              Eski panel yolunun kapanacağını ve yeni adresi kaydedeceğimi biliyorum.
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: 'var(--admin-card)', border: '1px solid var(--admin-card-border)' }}
+            >
+              <Lock className="w-3.5 h-3.5" style={{ color: 'var(--admin-accent)' }} />
             </span>
-          </label>
-        ) : null}
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[var(--admin-text)] leading-tight">
+                Panel giriş adresi
+              </p>
+              <p className="text-[11px] admin-text-muted leading-snug">
+                Gizli tutun · Değişince eski yol kapanır · <code className="text-[10px]">/login</code>,{' '}
+                <code className="text-[10px]">/menu</code> yasak
+              </p>
+            </div>
+          </div>
+        </div>
 
-        {pathError ? <p className="text-sm text-red-600">{pathError}</p> : null}
-        {pathOk ? <p className="text-sm text-emerald-600">{pathOk}</p> : null}
+        <div className="px-4 py-3 space-y-3">
+          <div className="flex flex-col lg:flex-row gap-2 lg:items-center">
+            <div
+              className="flex-1 flex items-stretch rounded-xl overflow-hidden min-w-0"
+              style={{
+                border: '1px solid var(--admin-card-border)',
+                background: 'var(--admin-input-bg)',
+              }}
+            >
+              <span
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 text-xs admin-text-muted shrink-0 border-r"
+                style={{ borderColor: 'var(--admin-card-border)' }}
+                title={origin}
+              >
+                <Link2 className="w-3.5 h-3.5 opacity-60" />
+                <span className="truncate max-w-[11rem]">{origin}/</span>
+              </span>
+              <input
+                value={pathDraft}
+                onChange={(e) => {
+                  setPathDraft(e.target.value);
+                  setPathError(null);
+                  setPathOk(null);
+                }}
+                placeholder="panel-7k2x"
+                spellCheck={false}
+                autoCapitalize="off"
+                autoCorrect="off"
+                className="flex-1 min-w-0 px-3 py-2.5 text-sm font-medium outline-none bg-transparent text-[var(--admin-text)]"
+                aria-label="Panel yolu"
+              />
+            </div>
 
-        <Button disabled={pathSaving} onClick={() => void savePanelPath()}>
-          {pathSaving ? 'Kaydediliyor…' : 'Panel yolunu kaydet'}
-        </Button>
+            <div className="flex flex-wrap gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setPathDraft(suggestAdminPath());
+                  setPathError(null);
+                  setPathOk(null);
+                }}
+                className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-xs font-semibold transition hover:bg-[var(--admin-accent-soft)]"
+                style={{
+                  border: '1px solid var(--admin-card-border)',
+                  color: 'var(--admin-text)',
+                  background: 'var(--admin-card)',
+                }}
+                title="Güçlü yol öner"
+              >
+                <Shuffle className="w-3.5 h-3.5" />
+                Öner
+              </button>
+              <button
+                type="button"
+                onClick={() => void copyPanelUrl()}
+                className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-xs font-semibold transition hover:bg-[var(--admin-accent-soft)]"
+                style={{
+                  border: '1px solid var(--admin-card-border)',
+                  color: 'var(--admin-text)',
+                  background: 'var(--admin-card)',
+                }}
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? 'Kopyalandı' : 'Kopyala'}
+              </button>
+              <Button
+                size="sm"
+                className="h-10"
+                disabled={pathSaving}
+                onClick={() => void savePanelPath()}
+              >
+                {pathSaving ? '…' : 'Kaydet'}
+              </Button>
+            </div>
+          </div>
+
+          <p className="text-[11px] admin-text-muted sm:hidden">
+            Tam adres:{' '}
+            <span className="font-medium text-[var(--admin-text)]">
+              {origin}/{draftSlug}
+            </span>
+          </p>
+
+          {pathChanged ? (
+            <label
+              className="flex items-start gap-2.5 rounded-xl px-3 py-2.5 cursor-pointer text-[12px] leading-snug"
+              style={{
+                border: '1px solid color-mix(in srgb, #b45309 28%, var(--admin-card-border))',
+                background: 'color-mix(in srgb, #f59e0b 10%, var(--admin-card))',
+                color: 'var(--admin-text)',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={pathAck}
+                onChange={(e) => setPathAck(e.target.checked)}
+                className="mt-0.5 w-3.5 h-3.5 rounded accent-[var(--admin-accent)] shrink-0"
+              />
+              <span>
+                Eski yol (<code className="text-[11px]">/{panelPath}</code>) kapanacak; yeni adres{' '}
+                <code className="text-[11px]">/{draftSlug}</code>. Yer imine ekleyin — unutursanız
+                panele giremezsiniz.
+              </span>
+            </label>
+          ) : null}
+
+          {pathError ? <p className="text-xs text-red-600">{pathError}</p> : null}
+          {pathOk ? <p className="text-xs text-emerald-600">{pathOk}</p> : null}
+        </div>
       </Card>
 
       <Card className="overflow-hidden !p-0">
         <div
-          className="p-4 sm:p-5 border-b"
+          className="px-4 py-3 border-b flex flex-wrap items-center gap-3"
           style={{ borderColor: 'var(--admin-card-border)' }}
         >
-          <div className="max-w-md">
-            <Input
-              label="Ad, e-posta ara..."
+          <div className="relative flex-1 min-w-[12rem] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 admin-text-muted pointer-events-none" />
+            <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              placeholder="Ad veya e-posta ara…"
+              className="w-full h-10 pl-9 pr-3 rounded-xl text-sm outline-none"
+              style={{
+                background: 'var(--admin-input-bg)',
+                border: '1px solid var(--admin-card-border)',
+                color: 'var(--admin-text)',
+              }}
             />
           </div>
+          <p className="text-xs admin-text-muted ml-auto">{users.length} kullanıcı</p>
         </div>
 
         <div className="overflow-x-auto admin-scroll">
