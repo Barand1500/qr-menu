@@ -5293,7 +5293,8 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   --kitty-peach-deep: #e8a090;
   --kitty-ink: #121212;
   --kitty-muted: #5c534e;
-  --kitty-split: 46%;
+  /* Daha az üst boşluk — kedi çizgiye yakın, içerik hemen altında */
+  --kitty-split: 34%;
   background: #fff;
   color: var(--kitty-ink);
   height: 100dvh;
@@ -5302,9 +5303,9 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: center;
-  padding: 0 1.1rem 0.85rem;
+  padding: 0 1.1rem 0.75rem;
   overscroll-behavior: none;
 }
 
@@ -5318,7 +5319,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  --kitty-split: 46%;
+  --kitty-split: 34%;
 }
 
 .welcome-scene__kitty-sky {
@@ -5339,13 +5340,13 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   background: #fff;
 }
 
-/* Referans: kedi çizginin ortasında, şeftali gökyüzünden bakıyor */
+/* Referans: çene çizgiye yapışık — hafif overlap */
 .welcome-scene__kitty-mascot {
   position: absolute;
   left: 50%;
   top: var(--kitty-split);
-  width: min(74vw, 23rem);
-  transform: translate(-50%, -100%);
+  width: min(68vw, 18.5rem);
+  transform: translate(-50%, -96%);
   z-index: 2;
   line-height: 0;
 }
@@ -5364,8 +5365,9 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 .welcome-scene[data-theme-welcome='kitty'] .welcome-scene__content {
   max-width: 26rem;
   width: 100%;
-  margin-top: 0;
+  margin-top: var(--kitty-split);
   margin-bottom: 0;
+  padding-top: 0.15rem;
   padding-bottom: 0;
   position: relative;
   z-index: 3;
@@ -5373,7 +5375,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .welcome-scene[data-theme-welcome='kitty'] .welcome-card.login-glass {
@@ -5382,7 +5384,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  padding: 0.35rem 0.15rem 0.5rem;
+  padding: 0.1rem 0.15rem 0.35rem;
   border-radius: 0;
   overflow: hidden;
   max-height: 100%;
@@ -5394,20 +5396,20 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 .welcome-scene[data-theme-welcome='kitty'] .welcome-card__title {
   font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  font-size: clamp(1.85rem, 7vw, 2.6rem);
+  font-size: clamp(1.75rem, 6.5vw, 2.35rem);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.05;
   color: var(--kitty-ink);
   text-transform: uppercase;
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.3rem;
 }
 
 .welcome-scene[data-theme-welcome='kitty'] .welcome-card__kitty-tag {
-  margin: 0 0 0.2rem;
+  margin: 0 0 0.05rem;
   font-family: 'Cormorant Garamond', Georgia, serif;
   font-style: italic;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 500;
   color: var(--kitty-muted);
   letter-spacing: 0.02em;
@@ -5415,11 +5417,23 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 .welcome-scene[data-theme-welcome='kitty'] .welcome-card__message {
   font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  font-size: 0.98rem;
-  line-height: 1.55;
+  font-size: 0.95rem;
+  line-height: 1.45;
   color: var(--kitty-muted);
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.65rem;
   min-height: 0;
+}
+
+.welcome-scene[data-theme-welcome='kitty'] .welcome-card__context {
+  margin-bottom: 0.35rem;
+}
+
+.welcome-scene[data-theme-welcome='kitty'] .welcome-card__langs {
+  margin-bottom: 0.35rem;
+}
+
+.welcome-scene[data-theme-welcome='kitty'] .welcome-card__lang-grid {
+  margin-bottom: 0.85rem;
 }
 
 .welcome-scene[data-theme-welcome='kitty'] .welcome-card__langs-label {
@@ -5486,6 +5500,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   background: color-mix(in srgb, var(--kitty-peach) 35%, #fff);
   color: var(--kitty-ink);
   border: 1px solid rgba(18, 18, 18, 0.1);
+  margin-bottom: 0.4rem;
 }
 
 .welcome-scene[data-theme-welcome='kitty'] .welcome-prefs__eyebrow,
@@ -5498,25 +5513,32 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 .welcome-scene[data-theme-welcome='kitty'] .welcome-prefs__hint {
   color: var(--kitty-muted);
+  margin-bottom: 0.45rem;
 }
 
 .welcome-scene[data-theme-welcome='kitty'] .welcome-prefs__label {
   color: #111;
   font-weight: 750;
   opacity: 1;
+  margin-bottom: 0.35rem;
 }
 
 .welcome-scene[data-theme-welcome='kitty'] .welcome-prefs__title {
   color: #111;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
+  margin-bottom: 0.25rem;
+}
+
+.welcome-scene[data-theme-welcome='kitty'] .welcome-prefs__eyebrow {
+  margin-bottom: 0.2rem;
 }
 
 .welcome-scene[data-theme-welcome='kitty'] .welcome-prefs__chip {
   background: #fff;
   border-color: rgba(18, 18, 18, 0.12);
   color: var(--kitty-ink);
-  padding: 0.4rem 0.7rem;
-  font-size: 0.78rem;
+  padding: 0.32rem 0.6rem;
+  font-size: 0.74rem;
 }
 
 .welcome-scene[data-theme-welcome='kitty'] .welcome-prefs__chip.is-active {
@@ -5531,30 +5553,26 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 }
 
 .welcome-scene[data-theme-welcome='kitty'] .welcome-prefs__block + .welcome-prefs__block {
-  margin-top: 0.65rem;
-}
-
-.welcome-scene[data-theme-welcome='kitty'] .welcome-prefs__hint {
-  margin-bottom: 0.7rem;
+  margin-top: 0.45rem;
 }
 
 .welcome-scene[data-theme-welcome='kitty'] .welcome-prefs__actions {
-  margin-top: 0.75rem;
-  gap: 0.45rem;
+  margin-top: 0.55rem;
+  gap: 0.35rem;
 }
 
-/* Tercih adımında kedi alanı küçülür — kaydırma olmasın */
-.welcome-scene[data-theme-welcome='kitty']:has(.welcome-card--prefs-active) {
-  --kitty-split: 28%;
+.welcome-scene[data-theme-welcome='kitty'] .welcome-prefs__chips {
+  gap: 0.3rem;
 }
 
-.welcome-scene[data-theme-welcome='kitty']:has(.welcome-card--prefs-active) .welcome-scene__kitty {
-  --kitty-split: 28%;
-}
-
+/* Dil → tercih: aynı şeftali/beyaz oran, tema bozulmasın */
 .welcome-scene[data-theme-welcome='kitty']:has(.welcome-card--prefs-active) .welcome-scene__kitty-mascot {
-  width: min(42vw, 11rem);
-  transform: translate(-50%, -100%);
+  width: min(52vw, 13.5rem);
+  transform: translate(-50%, -96%);
+}
+
+.welcome-scene[data-theme-welcome='kitty']:has(.welcome-card--prefs-active) .welcome-card.login-glass {
+  padding-top: 0;
 }
 
 .welcome-scene[data-theme-welcome='kitty'] .public-social-links a {
@@ -5563,23 +5581,32 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   background: #fff;
 }
 
+.welcome-scene[data-theme-welcome='kitty'] .welcome-card__complaint-link,
+.welcome-scene[data-theme-welcome='kitty'] .welcome-card__feedback-link,
+.welcome-scene[data-theme-welcome='kitty'] .welcome-card__hint {
+  color: var(--kitty-muted);
+}
+
+.welcome-scene[data-theme-welcome='kitty'] .welcome-card__feedback-link--suggestion {
+  color: var(--kitty-ink);
+}
+
 @media (max-width: 480px) {
   .welcome-scene[data-theme-welcome='kitty'],
   .welcome-scene__kitty {
-    --kitty-split: 42%;
-  }
-
-  .welcome-scene[data-theme-welcome='kitty']:has(.welcome-card--prefs-active),
-  .welcome-scene[data-theme-welcome='kitty']:has(.welcome-card--prefs-active) .welcome-scene__kitty {
-    --kitty-split: 24%;
+    --kitty-split: 32%;
   }
 
   .welcome-scene__kitty-mascot {
-    width: min(78vw, 17rem);
+    width: min(72vw, 16rem);
+  }
+
+  .welcome-scene[data-theme-welcome='kitty']:has(.welcome-card--prefs-active) .welcome-scene__kitty-mascot {
+    width: min(48vw, 11.5rem);
   }
 
   .welcome-scene[data-theme-welcome='kitty'] .welcome-card__title {
-    font-size: 1.7rem;
+    font-size: 1.55rem;
   }
 
   .welcome-scene[data-theme-welcome='kitty'] .welcome-card__lang-grid {
@@ -8213,17 +8240,17 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 .theme-preview--kitty {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, #f4b9aa 0 55%, #ffffff 55%);
+  background: linear-gradient(180deg, #f4b9aa 0 40%, #ffffff 40%);
 }
 
 .theme-preview--kitty::after {
   content: '';
   position: absolute;
   left: 50%;
-  top: 55%;
+  top: 40%;
   width: 46%;
   aspect-ratio: 510 / 324;
-  transform: translate(-50%, -100%);
+  transform: translate(-50%, -96%);
   background: url('/welcome/kitty-mascot-transparent.png') center bottom / contain no-repeat;
   pointer-events: none;
 }
