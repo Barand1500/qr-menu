@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, HandHelping, Receipt, Trash2, X } from 'lucide-react';
+import { Bell, HandHelping, Receipt, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { api, formatMoney } from '@/lib/api';
 import { playAdminNotificationSound } from '@/lib/notificationSound';
 import { formatTableServiceLabel } from '@/lib/tableContext';
@@ -11,6 +11,15 @@ import {
 } from '@/lib/tableRequestNotify';
 import { adminPath } from '@/lib/adminPath';
 
+const MUTE_KEY = 'menu_qr_table_call_muted';
+
+function readMuted() {
+  try {
+    return localStorage.getItem(MUTE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 export interface TableServiceRequestRow {
   id: number;
   type: string;
@@ -47,9 +56,27 @@ export default function AdminNotificationBell() {
   const [totalCount, setTotalCount] = useState(0);
   const [clearing, setClearing] = useState(false);
   const [ringing, setRinging] = useState(false);
+  const [muted, setMuted] = useState(readMuted);
   const panelRef = useRef<HTMLDivElement>(null);
   const prevUnread = useRef(0);
   const initialLoad = useRef(true);
+  const mutedRef = useRef(muted);
+
+  useEffect(() => {
+    mutedRef.current = muted;
+  }, [muted]);
+
+  function toggleMute() {
+    setMuted((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem(MUTE_KEY, next ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
 
   const load = useCallback(async () => {
     try {
@@ -113,11 +140,15 @@ export default function AdminNotificationBell() {
       return;
     }
     if (unreadCount > prevUnread.current) {
-      playAdminNotificationSound();
-      setRinging(true);
-      const t = window.setTimeout(() => setRinging(false), 2400);
+      if (!mutedRef.current) {
+        playAdminNotificationSound();
+        setRinging(true);
+        const t = window.setTimeout(() => setRinging(false), 2400);
+        prevUnread.current = unreadCount;
+        return () => window.clearTimeout(t);
+      }
       prevUnread.current = unreadCount;
-      return () => window.clearTimeout(t);
+      return;
     }
     prevUnread.current = unreadCount;
   }, [unreadCount]);
@@ -181,15 +212,27 @@ export default function AdminNotificationBell() {
     <div className="admin-notify" ref={panelRef}>
       <button
         type="button"
-        className={`admin-notify__bell p-2 rounded-lg relative hover:bg-[var(--admin-accent-soft)] transition${ringing ? ' admin-notify__bell--ring' : ''}`}
+        className={`admin-notify__bell p-2 rounded-lg relative hover:bg-[var(--admin-accent-soft)] transition${
+          ringing && !muted ? ' admin-notify__bell--ring' : ''
+        }${muted ? ' admin-notify__bell--muted' : ''}`}
         onClick={() => {
           setOpen((v) => !v);
           if (!open) void load();
         }}
-        aria-label="Bildirimler"
+        aria-label={muted ? 'Bildirimler (ses kapalı)' : 'Bildirimler'}
         aria-expanded={open}
+        title={muted ? 'Ses kapalı' : 'Bildirimler'}
       >
-        <Bell className="w-[18px] h-[18px]" style={{ color: 'var(--admin-text-muted)' }} />
+        <span className="admin-notify__bell-icon">
+          <Bell className="w-[18px] h-[18px]" style={{ color: 'var(--admin-text-muted)' }} />
+          {muted ? (
+            <span className="admin-notify__zzz" aria-hidden>
+              <em>z</em>
+              <em>z</em>
+              <em>z</em>
+            </span>
+          ) : null}
+        </span>
         {unreadCount > 0 && (
           <span className="admin-notify__badge">
             {unreadCount > 9 ? '9+' : unreadCount}
@@ -207,6 +250,20 @@ export default function AdminNotificationBell() {
               )}
             </strong>
             <div className="admin-notify__head-actions">
+              <button
+                type="button"
+                className={`admin-notify__mute${muted ? ' is-muted' : ''}`}
+                onClick={toggleMute}
+                aria-label={muted ? 'Sesi aç' : 'Sessize al'}
+                title={muted ? 'Sesi aç' : 'Sessize al'}
+                aria-pressed={muted}
+              >
+                {muted ? (
+                  <VolumeX className="w-3.5 h-3.5" />
+                ) : (
+                  <Volume2 className="w-3.5 h-3.5" />
+                )}
+              </button>
               {totalCount > 0 && (
                 <button
                   type="button"
