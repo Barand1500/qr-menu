@@ -1667,12 +1667,7 @@ export default function TableFloorPage() {
 
       {editingOrder ? (
         <div className="table-floor-modal" role="dialog" aria-modal="true" aria-label="Sipariş düzenle">
-          <button
-            type="button"
-            className="table-floor-modal__backdrop"
-            aria-label="Kapat"
-            onClick={() => setEditingOrder(null)}
-          />
+          <div className="table-floor-modal__backdrop" aria-hidden />
           <div className="table-floor-modal__panel table-floor-modal__panel--edit">
             <header className="table-floor-edit-header">
               <div>
@@ -1803,40 +1798,76 @@ export default function TableFloorPage() {
               <div className="table-floor-edit-block">
                 <div className="table-floor-edit-row table-floor-edit-row--label">
                   <span className="table-floor-edit-label">Not</span>
-                  <em className="table-floor-edit-tag">opsiyonel</em>
+                  <em className="table-floor-edit-tag">opsiyonel · sonda +/− tutar</em>
                 </div>
-                <input
-                  className="table-floor-edit-input"
-                  value={editFreeNote}
-                  maxLength={240}
-                  placeholder="Bahşiş, borç, özel istek…"
-                  onChange={(e) => setEditFreeNote(e.target.value)}
-                />
-                <div className="table-floor-edit-money">
-                  <button
-                    type="button"
-                    className={`table-floor-edit-money__btn${editAdjType === 'extra' ? ' is-active' : ''}`}
-                    onClick={() => setEditAdjType((t) => (t === 'extra' ? 'none' : 'extra'))}
-                  >
-                    + Fiyat
-                  </button>
-                  <button
-                    type="button"
-                    className={`table-floor-edit-money__btn is-discount${editAdjType === 'discount' ? ' is-active' : ''}`}
-                    onClick={() => setEditAdjType((t) => (t === 'discount' ? 'none' : 'discount'))}
-                  >
-                    − İndirim
-                  </button>
-                  {editAdjType !== 'none' ? (
-                    <input
-                      className="table-floor-edit-input table-floor-edit-input--amount"
-                      type="text"
-                      inputMode="decimal"
-                      value={editAdjValue}
-                      placeholder="₺ tutar"
-                      onChange={(e) => setEditAdjValue(e.target.value)}
-                    />
-                  ) : null}
+                <div
+                  className={`table-floor-edit-note${editAdjType !== 'none' ? ' has-amount' : ''}`}
+                >
+                  <input
+                    className="table-floor-edit-note__text"
+                    value={editFreeNote}
+                    maxLength={240}
+                    placeholder="Bahşiş, borç, özel istek…"
+                    onChange={(e) => setEditFreeNote(e.target.value)}
+                  />
+                  <div className="table-floor-edit-note__tools" role="group" aria-label="Tutar">
+                    <button
+                      type="button"
+                      title="Fiyat ekle"
+                      className={`table-floor-edit-note__op${editAdjType === 'extra' ? ' is-active' : ''}`}
+                      onClick={() => setEditAdjType((t) => (t === 'extra' ? 'none' : 'extra'))}
+                    >
+                      +
+                    </button>
+                    <button
+                      type="button"
+                      title="İndirim"
+                      className={`table-floor-edit-note__op is-minus${editAdjType === 'discount' ? ' is-active' : ''}`}
+                      onClick={() => setEditAdjType((t) => (t === 'discount' ? 'none' : 'discount'))}
+                    >
+                      −
+                    </button>
+                    {editAdjType !== 'none' ? (
+                      <label className="table-floor-edit-note__amount-wrap">
+                        <span>
+                          {editAdjType === 'extra' ? 'Eklenecek tutar' : 'İndirim tutarı'}
+                        </span>
+                        <input
+                          className="table-floor-edit-note__amount"
+                          type="text"
+                          inputMode="decimal"
+                          value={editAdjValue}
+                          placeholder="0"
+                          aria-label={
+                            editAdjType === 'extra' ? 'Eklenecek tutar' : 'İndirim tutarı'
+                          }
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(',', '.');
+                            if (raw === '' || /^\d*\.?\d{0,2}$/.test(raw)) {
+                              setEditAdjValue(e.target.value.replace(/[^\d.,]/g, ''));
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.ctrlKey || e.metaKey || e.altKey) return;
+                            const ok = [
+                              'Backspace',
+                              'Delete',
+                              'Tab',
+                              'Escape',
+                              'Enter',
+                              'ArrowLeft',
+                              'ArrowRight',
+                              'Home',
+                              'End',
+                            ].includes(e.key);
+                            if (ok) return;
+                            if (/^\d$/.test(e.key) || e.key === '.' || e.key === ',') return;
+                            e.preventDefault();
+                          }}
+                        />
+                      </label>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </div>
