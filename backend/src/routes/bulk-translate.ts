@@ -8,7 +8,8 @@ import {
   getProductField,
   getRawField,
   getShowcaseTitles,
-  patchI18nField,
+  isI18nFieldReviewed,
+  patchI18nFieldReviewed,
   type GroupI18nEntry,
   type ProductI18nEntry,
   type ShowcaseI18nEntry,
@@ -17,6 +18,8 @@ import { sleep, translateText } from '../lib/translate-service.js';
 
 const router = Router();
 router.use(authRequired);
+
+const DEFAULT_SOURCE_LANG = 'tr';
 
 type GapCategory = 'groups' | 'products' | 'showcase' | 'stories';
 type GapField = 'name' | 'description' | 'ingredients' | 'allergens' | 'title1' | 'title2';
@@ -68,7 +71,30 @@ async function getOpenAiKey(restaurantId: number) {
   return row?.value?.trim() || null;
 }
 
-/** Boş veya kaynak dille birebir aynı (çevrilmemiş kopya) → eksik say */
+function parseTargetLang(raw: unknown): string {
+  return String(raw || '')
+    .toLowerCase()
+    .split('-')[0];
+}
+
+function rejectSourceAsTarget(
+  targetLang: string,
+  res: import('express').Response
+): boolean {
+  if (!targetLang) {
+    res.status(400).json({ message: 'Hedef dil gerekli' });
+    return true;
+  }
+  if (targetLang === DEFAULT_SOURCE_LANG) {
+    res.status(400).json({
+      message: 'Kaynak dil (Türkçe) hedef seçilemez — başka bir dil seçin',
+    });
+    return true;
+  }
+  return false;
+}
+
+/** Boş veya kaynak dille birebir aynı (henüz onaylanmamış kopya) → eksik say */
 function needsTranslation(
   json: unknown,
   targetLang: string,
@@ -88,8 +114,9 @@ function needsTranslation(
     return { sourceLang: source.lang, sourceText: source.text, reason: 'empty' };
   }
 
-  // Başka dildeki kaynakla birebir aynıysa muhtemelen çevrilmemiş kopya
+  // Kaynakla aynı ama toplu çeviride onaylandıysa eksik sayma (Latte→Latte vb.)
   if (raw === source.text && source.lang !== targetLang) {
+    if (isI18nFieldReviewed(json, targetLang, field)) return null;
     return { sourceLang: source.lang, sourceText: source.text, reason: 'same_as_source' };
   }
 
@@ -102,8 +129,8 @@ async function collectGaps(restaurantId: number, targetLang: string): Promise<Bu
     orderBy: { id: 'asc' },
   });
   const preferred = [
-    'tr',
-    ...languages.map((l) => l.code).filter((c) => c !== 'tr' && c !== targetLang),
+    DEFAULT_SOURCE_LANG,
+    ...languages.map((l) => l.code).filter((c) => c !== DEFAULT_SOURCE_LANG && c !== targetLang),
   ];
 
   const gaps: BulkGapItem[] = [];
@@ -198,10 +225,8 @@ router.get('/gaps', async (req, res) => {
   const restaurantId = await requireLangPack(req, res);
   if (!restaurantId) return;
 
-  const to = String(req.query.to || '').toLowerCase().split('-')[0];
-  if (!to) {
-    return res.status(400).json({ message: 'Hedef dil gerekli' });
-  }
+  const to = parseTargetLang(req.query.to);
+  if (rejectSourceAsTarget(to, res)) return;
 
   const active = await prisma.language.findFirst({
     where: { code: to, isActive: true },
@@ -229,12 +254,8 @@ router.post('/preview', async (req, res) => {
   if (!restaurantId) return;
 
   const { to, ids } = req.body as { to?: string; ids?: string[] };
-  const targetLang = String(to || '')
-    .toLowerCase()
-    .split('-')[0];
-  if (!targetLang) {
-    return res.status(400).json({ message: 'Hedef dil gerekli' });
-  }
+  const targetLang = parseTargetLang(to);
+  if (rejectSourceAsTarget(targetLang, res)) return;
 
   const active = await prisma.language.findFirst({
     where: { code: targetLang, isActive: true },
@@ -256,6 +277,11 @@ router.post('/preview', async (req, res) => {
 
   for (let i = 0; i < selected.length; i++) {
     const gap = selected[i];
+    // Kaynakla aynı metin (Latte vb.): API’ye gitmeden onaylanacak metni döndür
+    if (gap.reason === 'same_as_source') {
+      results.push({ ...gap, translatedText: gap.sourceText });
+      continue;
+    }
     try {
       const translatedText = await translateText(
         gap.sourceText,
@@ -299,10 +325,9 @@ router.post('/apply', async (req, res) => {
     }[];
   };
 
-  const targetLang = String(to || '')
-    .toLowerCase()
-    .split('-')[0];
-  if (!targetLang || !items?.length) {
+  const targetLang = parseTargetLang(to);
+  if (rejectSourceAsTarget(targetLang, res)) return;
+  if (!items?.length) {
     return res.status(400).json({ message: 'Kaydedilecek çeviri yok' });
   }
 
@@ -327,7 +352,7 @@ router.post('/apply', async (req, res) => {
       await prisma.group.update({
         where: { id: row.id },
         data: {
-          i18n: patchI18nField<GroupI18nEntry>(row.i18n, targetLang, 'name', text),
+          i18n: patchI18nFieldReviewed<GroupI18nEntry>(row.i18n, targetLang, 'name', text),
         },
       });
       saved += 1;
@@ -345,7 +370,7 @@ router.post('/apply', async (req, res) => {
       await prisma.product.update({
         where: { id: row.id },
         data: {
-          i18n: patchI18nField<ProductI18nEntry>(
+          i18n: patchI18nFieldReviewed<ProductI18nEntry>(
             row.i18n,
             targetLang,
             item.field as keyof ProductI18nEntry,
@@ -368,7 +393,12 @@ router.post('/apply', async (req, res) => {
       await prisma.showcaseImage.update({
         where: { id: row.id },
         data: {
-          i18n: patchI18nField<ShowcaseI18nEntry>(row.i18n, targetLang, item.field, text),
+          i18n: patchI18nFieldReviewed<ShowcaseI18nEntry>(
+            row.i18n,
+            targetLang,
+            item.field,
+            text
+          ),
         },
       });
       saved += 1;

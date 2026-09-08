@@ -20,6 +20,9 @@ const BLOCKED = new Set([
   'node_modules',
 ]);
 
+/** UI’da gösterilen yasaklı yollar (slug) */
+export const BLOCKED_ADMIN_PATHS = [...BLOCKED].sort((a, b) => a.localeCompare(b));
+
 let cachedSlug =
   (typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEY)) || DEFAULT_ADMIN_PATH;
 

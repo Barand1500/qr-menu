@@ -103,8 +103,8 @@ export default function BulkTranslatePage() {
 
   const activeLanguages = useMemo(
     () =>
-      [...languages.filter((l) => l.isActive)].sort((a, b) =>
-        a.code === 'tr' ? -1 : b.code === 'tr' ? 1 : a.name.localeCompare(b.name, 'tr')
+      [...languages.filter((l) => l.isActive && l.code !== 'tr')].sort((a, b) =>
+        a.name.localeCompare(b.name, 'tr')
       ),
     [languages]
   );
@@ -112,11 +112,10 @@ export default function BulkTranslatePage() {
   const loadLanguages = useCallback(async () => {
     const data = await api<{ languages: Language[] }>('/api/admin/settings');
     setLanguages(data.languages || []);
-    const active = (data.languages || []).filter((l) => l.isActive);
+    const active = (data.languages || []).filter((l) => l.isActive && l.code !== 'tr');
     setTargetLang((prev) => {
-      if (prev && active.some((l) => l.code === prev)) return prev;
-      const firstNonTr = active.find((l) => l.code !== 'tr');
-      return firstNonTr?.code || active[0]?.code || '';
+      if (prev && prev !== 'tr' && active.some((l) => l.code === prev)) return prev;
+      return active[0]?.code || '';
     });
   }, []);
 
@@ -198,8 +197,27 @@ export default function BulkTranslatePage() {
     }
   }
 
+  async function applyItems(items: PreviewItem[], lang: string) {
+    const payload = items
+      .filter((p) => p.translatedText?.trim() && !p.error)
+      .map((p) => ({
+        id: p.id,
+        entityType: p.entityType,
+        entityId: p.entityId,
+        field: p.field,
+        translatedText: p.translatedText.trim(),
+      }));
+    if (!payload.length) {
+      throw new Error('Kaydedilecek çeviri yok');
+    }
+    return api<{ saved: number; message: string }>('/api/admin/bulk-translate/apply', {
+      method: 'POST',
+      body: JSON.stringify({ to: lang, items: payload }),
+    });
+  }
+
   async function runPreview(ids?: string[]) {
-    if (!targetLang) return;
+    if (!targetLang || targetLang === 'tr') return;
     setLoadTitle('Çeviri sürüyor');
     setPreviewing(true);
     try {
@@ -210,9 +228,29 @@ export default function BulkTranslatePage() {
           ...(ids ? { ids } : {}),
         }),
       });
+      const items = res.items || [];
+      const ok = items.filter((p) => p.translatedText?.trim() && !p.error);
+      const fail = items.filter((p) => p.error || !p.translatedText?.trim());
+
+      // Hepsi başarılıysa doğrudan kaydet (Latte→Latte dahil onaylanır, sayı düşer)
+      if (ok.length && fail.length === 0) {
+        setLoadTitle('Çeviriler kaydediliyor');
+        setLoadProgress(96);
+        const saved = await applyItems(ok, targetLang);
+        setLoadProgress(100);
+        setPreview(null);
+        setSelectOpen(false);
+        alert(saved.message || `${saved.saved} çeviri kaydedildi`);
+        await loadGaps(targetLang);
+        return;
+      }
+
       setLoadProgress(100);
-      setPreview(res.items);
+      setPreview(items);
       setSelectOpen(false);
+      if (!ok.length) {
+        alert('Çeviri alınamadı. OpenAI anahtarını veya bağlantıyı kontrol edin.');
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Çeviri başlatılamadı');
     } finally {
@@ -222,29 +260,10 @@ export default function BulkTranslatePage() {
 
   async function handleSave() {
     if (!preview?.length || !targetLang) return;
-    const items = preview
-      .filter((p) => p.translatedText?.trim() && !p.error)
-      .map((p) => ({
-        id: p.id,
-        entityType: p.entityType,
-        entityId: p.entityId,
-        field: p.field,
-        translatedText: p.translatedText.trim(),
-      }));
-    if (!items.length) {
-      alert('Kaydedilecek çeviri yok');
-      return;
-    }
     setLoadTitle('Çeviriler kaydediliyor');
     setSaving(true);
     try {
-      const res = await api<{ saved: number; message: string }>(
-        '/api/admin/bulk-translate/apply',
-        {
-          method: 'POST',
-          body: JSON.stringify({ to: targetLang, items }),
-        }
-      );
+      const res = await applyItems(preview, targetLang);
       setLoadProgress(100);
       alert(res.message || `${res.saved} çeviri kaydedildi`);
       setPreview(null);
@@ -403,6 +422,9 @@ export default function BulkTranslatePage() {
           <div>
             <p className="text-xs font-bold uppercase tracking-wide admin-text-muted mb-2.5">
               Hedef dil
+              <span className="font-medium normal-case tracking-normal ml-1.5 opacity-70">
+                (kaynak: Türkçe)
+              </span>
             </p>
             {activeLanguages.length === 0 ? (
               <p className="text-sm admin-text-muted">Aktif dil yok. Ayarlar’dan dil ekleyin.</p>

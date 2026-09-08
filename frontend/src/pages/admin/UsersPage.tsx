@@ -17,6 +17,7 @@ import { api } from '@/lib/api';
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Spinner } from '@/components/ui';
 import {
   adminPath,
+  BLOCKED_ADMIN_PATHS,
   fetchAndCacheAdminPath,
   getAdminPathSlug,
   setAdminPathSlug,
@@ -260,8 +261,13 @@ export default function UsersPage() {
                 Panel giriş adresi
               </p>
               <p className="text-[11px] admin-text-muted leading-snug">
-                Gizli tutun · Değişince eski yol kapanır · <code className="text-[10px]">/login</code>,{' '}
-                <code className="text-[10px]">/menu</code> yasak
+                Gizli tutun · Değişince eski yol kapanır · Yasak:{' '}
+                {BLOCKED_ADMIN_PATHS.map((p, i) => (
+                  <span key={p}>
+                    {i > 0 ? ', ' : null}
+                    <code className="text-[10px] font-semibold text-red-600">/{p}</code>
+                  </span>
+                ))}
               </p>
             </div>
           </div>
@@ -277,12 +283,11 @@ export default function UsersPage() {
               }}
             >
               <span
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 text-xs admin-text-muted shrink-0 border-r"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 text-xs admin-text-muted shrink-0 border-r whitespace-nowrap"
                 style={{ borderColor: 'var(--admin-card-border)' }}
-                title={origin}
               >
-                <Link2 className="w-3.5 h-3.5 opacity-60" />
-                <span className="truncate max-w-[11rem]">{origin}/</span>
+                <Link2 className="w-3.5 h-3.5 opacity-60 shrink-0" />
+                <span>{origin}/</span>
               </span>
               <input
                 value={pathDraft}

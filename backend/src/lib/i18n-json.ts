@@ -96,6 +96,38 @@ export function patchI18nField<T extends Record<string, unknown>>(
   return map;
 }
 
+/** Toplu çeviride kaydedilen alan — kaynakla aynı kalsa bile tekrar “eksik” sayılmaz */
+const REVIEWED_KEY = '_reviewed';
+
+export function isI18nFieldReviewed(
+  json: unknown,
+  lang: string,
+  field: string
+): boolean {
+  const map = asMap<Record<string, unknown>>(json);
+  const entry = map[lang];
+  const reviewed = entry?.[REVIEWED_KEY];
+  return Array.isArray(reviewed) && reviewed.includes(field);
+}
+
+export function patchI18nFieldReviewed<T extends Record<string, unknown>>(
+  existing: unknown,
+  lang: string,
+  field: keyof T,
+  value: string
+): I18nMap<T> {
+  const map = { ...asMap<T>(existing) };
+  const prev = { ...(map[lang] || ({} as T)) } as Record<string, unknown>;
+  const reviewed = new Set(
+    Array.isArray(prev[REVIEWED_KEY]) ? (prev[REVIEWED_KEY] as string[]) : []
+  );
+  reviewed.add(String(field));
+  prev[String(field)] = value;
+  prev[REVIEWED_KEY] = [...reviewed];
+  map[lang] = prev as T;
+  return map;
+}
+
 export function getGroupName(json: unknown, lang = 'tr') {
   return getByLang<GroupI18nEntry>(json, lang, 'name');
 }
