@@ -9586,49 +9586,63 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 .admin-notify {
   position: relative;
 }
+.admin-notify__bell {
+  width: 2.125rem;
+  height: 2.125rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  box-sizing: border-box;
+}
 .admin-notify__bell--ring {
   animation: admin-notify-ring 0.55s ease-in-out 4;
 }
 .admin-notify__bell-icon {
   position: relative;
   display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
   line-height: 0;
+  flex-shrink: 0;
 }
 .admin-notify__bell--muted .admin-notify__bell-icon {
-  opacity: 0.72;
+  opacity: 0.9;
 }
 .admin-notify__zzz {
   position: absolute;
-  top: -0.35rem;
-  right: -0.55rem;
+  top: -0.4rem;
+  right: -0.5rem;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0;
   pointer-events: none;
-  line-height: 0.7;
+  line-height: 0.65;
   animation: admin-notify-zzz 1.8s ease-in-out infinite;
 }
 .admin-notify__zzz em {
   font-style: normal;
-  font-size: 0.48rem;
   font-weight: 800;
-  color: var(--admin-text-muted);
+  color: #ef4444;
   letter-spacing: 0.02em;
+  text-shadow: 0 0 0.5px rgba(255, 255, 255, 0.8);
 }
 .admin-notify__zzz em:nth-child(1) {
-  margin-left: 0.35rem;
-  opacity: 0.45;
-  font-size: 0.4rem;
+  margin-left: 0.32rem;
+  opacity: 0.55;
+  font-size: 0.38rem;
 }
 .admin-notify__zzz em:nth-child(2) {
-  margin-left: 0.18rem;
-  opacity: 0.7;
-  font-size: 0.46rem;
+  margin-left: 0.16rem;
+  opacity: 0.78;
+  font-size: 0.44rem;
 }
 .admin-notify__zzz em:nth-child(3) {
-  opacity: 0.95;
-  font-size: 0.52rem;
+  opacity: 1;
+  font-size: 0.5rem;
 }
 @keyframes admin-notify-zzz {
   0%,

@@ -224,7 +224,7 @@ export default function AdminNotificationBell() {
         title={muted ? 'Ses kapalı' : 'Bildirimler'}
       >
         <span className="admin-notify__bell-icon">
-          <Bell className="w-[18px] h-[18px]" style={{ color: 'var(--admin-text-muted)' }} />
+          <Bell className="w-[18px] h-[18px]" strokeWidth={1.75} style={{ color: 'var(--admin-accent)' }} />
           {muted ? (
             <span className="admin-notify__zzz" aria-hidden>
               <em>z</em>
