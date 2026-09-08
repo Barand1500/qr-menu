@@ -13,6 +13,9 @@ import {
   UtensilsCrossed,
   SlidersHorizontal,
   Lightbulb,
+  TextCursorInput,
+  Copy,
+  ClipboardPaste,
 } from 'lucide-react';
 
 export type GuideStepId =
@@ -24,7 +27,10 @@ export type GuideStepId =
   | 'type-max'
   | 'multi'
   | 'multi-max'
+  | 'choice'
   | 'exclude'
+  | 'copy'
+  | 'paste'
   | 'floor'
   | 'save';
 
@@ -48,11 +54,12 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
     title: 'Bu sayfa ne işe yarar?',
     body: 'Burada her ürüne özel sipariş seçenekleri kurarsın. Garson masadan sipariş eklerken bu seçenekler çıkar; fiyat da buna göre hesaplanır.',
     bullets: [
-      'Tek seçim → boy, tür, porsiyon (birini seçersin)',
-      'Ekstra + miktar → mantar ×2 gibi ekler',
-      'İstersen boya göre ekstra limiti ve “A seçilince B gizlensin”',
+      'Tek seçim → boy, tür, porsiyon',
+      'Ekstra + miktar → mantar ×2 gibi adetli ekler',
+      'Çoklu seçim → “maydanoz olmasın” gibi düz yazı istekler',
+      'Kopyala / yapıştır → bir üründen diğerine seçenek aktar',
     ],
-    tip: 'Şimdi pizza örneğiyle adım adım kuracağız. Örnek kaydedilmez; bitince ekran eski haline döner.',
+    tip: 'Şimdi pizza + istek örneğiyle adım adım gideceğiz. Örnek kaydedilmez; bitince ekran eski haline döner.',
     Icon: Sparkles,
   },
   {
@@ -71,12 +78,12 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
   {
     id: 'idea',
     title: 'Örnek senaryo: pizza',
-    body: 'Diyelim ki pizza satıyorsun. Müşteri önce boy seçsin, sonra üstüne ekstra eklesin. Büyük boyda en fazla 5 ekstra, Mega’da 7 ekstra olsun.',
+    body: 'Diyelim ki pizza satıyorsun. Müşteri önce boy seçsin, sonra ekstra eklesin, bir de “maydanoz olmasın” gibi istekleri işaretlesin.',
     bullets: [
-      '1) Boy grubu (tek seçim): Büyük / Mega',
-      '2) Her boya ayrı ekstra limiti',
-      '3) Ekstralar grubu: Mantar, Sucuk, Acılı…',
-      '4) İstersen Acılı seçilince “Çocuk porsiyonu” gizlensin',
+      '1) Boy (tek seçim): Büyük / Mega + ekstra limiti',
+      '2) Ekstralar (miktar): Mantar, Sucuk…',
+      '3) İstekler (çoklu seçim): Maydanoz olmasın, Ketçap olmasın…',
+      '4) İstersen Acılı seçilince başka seçenek gizlensin',
     ],
     tip: 'İleri’ye basınca bu senaryoyu ekranda parça parça kuracağız.',
     Icon: Lightbulb,
@@ -99,7 +106,7 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
     title: 'Grup satırındaki ayarlar',
     body: 'Her grubun üst satırında ne tür grup olduğu ve fiyatın nasıl işleneceği seçilir. Yanlış seçersen siparişte fiyat garip görünür.',
     bullets: [
-      'Tek seçim / Çoklu + miktar → grup tipi',
+      'Tek seçim / Çoklu + miktar / Çoklu seçim → grup tipi',
       'Fiyatı değiştir → boy fiyatı taban olur',
       'Fiyata ekle → ürün fiyatına eklenir',
       'Zorunlu → siparişte boş bırakılamaz',
@@ -118,7 +125,7 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
       '∞ / boş → bu boy özel limit koymaz',
       'Özel limit yoksa ekstralar grubundaki genel “Maks” geçerli olur',
     ],
-    tip: 'Limit sadece “çoklu ekstra” gruplarına uygulanır; boy seçimini kısıtlamaz.',
+    tip: 'Limit sadece “Ekstra + miktar” gruplarına uygulanır; istek (çoklu seçim) sayılmaz.',
     target: 'pv-groups',
     Icon: Layers3,
   },
@@ -150,6 +157,20 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
     Icon: ListChecks,
   },
   {
+    id: 'choice',
+    title: 'Çoklu seçim (düz yazı istekler)',
+    body: '“Çoklu seçim” döner / burger için “maydanoz olmasın”, “ketçap olmasın” gibi işaretlenebilir isteklerdir. Adet yok; chip’e basınca aç/kapa olur. Yanına fiyat koyabilirsin (çoğu zaman 0).',
+    bullets: [
+      'Grup adı örnekte: İstekler',
+      'Her satır düz yazı + isteğe bağlı fiyat',
+      'Birden fazla istek aynı anda seçilebilir',
+      'İleride online siparişte de aynı yapı kullanılır',
+    ],
+    tip: 'Ekstra (miktar) ile karıştırma: ekstra = adetli malzeme; çoklu seçim = işaretli istek.',
+    target: 'pv-add-choice',
+    Icon: TextCursorInput,
+  },
+  {
     id: 'exclude',
     title: '“Seçilince gizle” (sade koşul)',
     body: 'Karmaşık kural motoru yok. Bir seçeneğin altında diğer seçenek chip’lerine basarsın: o seçenek seçilince işaretlediklerin sipariş ekranından kaybolur.',
@@ -164,12 +185,41 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
     Icon: Ban,
   },
   {
+    id: 'copy',
+    title: 'Seçenekleri kopyala',
+    body: 'Soldaki listede her ürünün yanında kopyala ikonu var. Seçenekli bir üründe buna basınca sağdaki gruplar ikona doğru “emilerek” kopyalanır.',
+    bullets: [
+      'Önce seçenekleri olan ürünü bul',
+      'Soldaki kopyala ikonuna bas',
+      'Üstte “Kopya: …” yazısı çıkar',
+      'Aynı ikona tekrar basarsan kopya iptal olur',
+    ],
+    tip: 'Kaydedilmemiş düzenlemeyi kopyalarken o ürün seçiliyse ekrandaki (henüz kaydedilmemiş) hâli alınır.',
+    target: 'pv-list',
+    Icon: Copy,
+  },
+  {
+    id: 'paste',
+    title: 'Başka ürüne yapıştır',
+    body: 'Kopyadan sonra diğer ürünlerde yapıştır ikonu yanıp söner. Tıklayınca seçenekler o ürüne yazılır; kartlar ikondan çıkıp yerlerine oturur.',
+    bullets: [
+      'Hedef üründe zaten seçenek varsa üzerine yazma onayı istenir',
+      'Yapıştırınca otomatik kaydedilir (hemen API’ye gider)',
+      'Hedef ürün sağda açılır, sonucu görürsün',
+      'Üstteki X ile kopyayı temizleyebilirsin',
+    ],
+    tip: 'Aynı pizzayı birkaç ürüne kopyalamak için bir kez kopyala, sırayla yapıştır.',
+    target: 'pv-list',
+    Icon: ClipboardPaste,
+  },
+  {
     id: 'floor',
     title: 'Masada nasıl görünür?',
-    body: 'Masa / sipariş ekranında ürünü sepete alınca önce boy seçilir, sonra ekstralar çıkar. Büyük seçiliyse ekstra + butonu 5’te durur; Mega’da 7’ye kadar gider.',
+    body: 'Masa / sipariş ekranında ürünü sepete alınca önce boy, sonra istek chip’leri, sonra ekstralar çıkar. Büyük seçiliyse ekstra + butonu 5’te durur; Mega’da 7’ye kadar gider.',
     bullets: [
-      'Fiyat anlık güncellenir (boy + ekstralar)',
+      'Fiyat anlık güncellenir',
       'Gizlenen seçenekler listede görünmez',
+      'İstekler chip ile aç/kapa; ekstralar adetli',
       'Limit aşımı kayıttan da reddedilir',
     ],
     tip: 'Kurduktan sonra bir masadan denemek en net kontroldür.',
@@ -178,11 +228,11 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
   {
     id: 'save',
     title: 'Bitince Kaydet',
-    body: 'Kendi ürününde işin bitince sağ üstteki Kaydet’e bas. Kaydetmeden çıkarsan değişiklikler gitmez.',
+    body: 'Kendi ürününde elle kurduğun seçeneklerde işin bitince sağ üstteki Kaydet’e bas. (Yapıştır işlemi zaten kaydeder.)',
     bullets: [
-      'Bu rehberdeki pizza örneği ürüne yazılmaz',
+      'Bu rehberdeki örnek ürüne yazılmaz',
       'Rehberi kapatınca önceki ekran geri gelir',
-      'Gerçek kurulumunu yaptıktan sonra mutlaka Kaydet',
+      'Elle düzenlediysen mutlaka Kaydet',
     ],
     tip: 'Hazırsan Bitir’e bas. Sonra kendi ürününle aynı adımları uygula.',
     target: 'pv-save',
@@ -191,7 +241,9 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
 ];
 
 /** Rehber adımının hangi demo içeriğini göstereceği */
-export function guideDemoPhase(id: GuideStepId): 'empty' | 'boy' | 'boy-limits' | 'full' | 'full-exclude' {
+export function guideDemoPhase(
+  id: GuideStepId
+): 'empty' | 'boy' | 'boy-limits' | 'full' | 'full-choice' | 'full-all' {
   switch (id) {
     case 'welcome':
     case 'pick':
@@ -205,10 +257,14 @@ export function guideDemoPhase(id: GuideStepId): 'empty' | 'boy' | 'boy-limits' 
     case 'multi':
     case 'multi-max':
       return 'full';
+    case 'choice':
+      return 'full-choice';
     case 'exclude':
+    case 'copy':
+    case 'paste':
     case 'floor':
     case 'save':
-      return 'full-exclude';
+      return 'full-all';
     default:
       return 'empty';
   }

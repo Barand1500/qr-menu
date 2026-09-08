@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -12,12 +12,16 @@ import {
   CircleDot,
   BookOpen,
   TextCursorInput,
+  Copy,
+  ClipboardPaste,
+  X,
 } from 'lucide-react';
 import { api, formatMoney } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
 import {
   emptyGroup,
   emptyOption,
+  newOptionId,
   type OptionGroupType,
   type ProductOption,
   type ProductOptionGroup,
@@ -27,6 +31,11 @@ import {
   VARIANT_GUIDE_STEPS,
   guideDemoPhase,
 } from '@/pages/admin/ProductVariantsGuide';
+import {
+  animateCopySuck,
+  animatePasteBurst,
+  waitForGroupCards,
+} from '@/lib/productVariantsFly';
 import '@/product-variants.css';
 
 type ProductRow = {
@@ -44,6 +53,36 @@ type GuideSnapshot = {
   groups: ProductOptionGroup[];
   dirty: boolean;
 };
+
+type OptionsClipboard = {
+  fromId: number;
+  fromName: string;
+  groups: ProductOptionGroup[];
+};
+
+/** Kopyada yeni id’ler — exclude bağları korunur */
+function cloneOptionGroups(groups: ProductOptionGroup[]): ProductOptionGroup[] {
+  const idMap = new Map<string, string>();
+  for (const g of groups) {
+    idMap.set(g.id, newOptionId('grp'));
+    for (const o of g.options) idMap.set(o.id, newOptionId('opt'));
+  }
+  return groups.map((g, gi) => ({
+    ...g,
+    id: idMap.get(g.id) || newOptionId('grp'),
+    sortOrder: gi,
+    maxTotalQty: g.type === 'multi' ? Math.max(0, Number(g.maxTotalQty) || 0) : 0,
+    options: g.options.map((o, oi) => ({
+      ...o,
+      id: idMap.get(o.id) || newOptionId('opt'),
+      sortOrder: oi,
+      excludesOptionIds: (o.excludesOptionIds || [])
+        .map((id) => idMap.get(id))
+        .filter((id): id is string => Boolean(id)),
+      limitsMultiMaxTotalQty: Math.max(0, Number(o.limitsMultiMaxTotalQty) || 0),
+    })),
+  }));
+}
 
 function normalizeLoadedGroups(raw: ProductOptionGroup[] | undefined): ProductOptionGroup[] {
   return (raw || []).map((g, i) => ({
@@ -66,7 +105,11 @@ function buildDemoGroups(
 ): ProductOptionGroup[] {
   if (phase === 'empty') return [];
 
-  const withLimits = phase === 'boy-limits' || phase === 'full' || phase === 'full-exclude';
+  const withLimits =
+    phase === 'boy-limits' ||
+    phase === 'full' ||
+    phase === 'full-choice' ||
+    phase === 'full-all';
   const buyuk = emptyOption({
     id: 'demo_opt_buyuk',
     name: 'Büyük',
@@ -97,7 +140,7 @@ function buildDemoGroups(
     id: 'demo_opt_acili',
     name: 'Acılı',
     price: 0,
-    excludesOptionIds: phase === 'full-exclude' ? [cocuk.id] : [],
+    excludesOptionIds: phase === 'full-all' ? [cocuk.id] : [],
   });
 
   const extras = emptyGroup({
@@ -110,7 +153,29 @@ function buildDemoGroups(
     options: [mantar, sucuk, acili, cocuk],
   });
 
-  return [boy, extras];
+  if (phase === 'full') return [boy, extras];
+
+  const maydanoz = emptyOption({
+    id: 'demo_opt_maydanoz',
+    name: 'Maydanoz olmasın',
+    price: 0,
+  });
+  const ketcap = emptyOption({
+    id: 'demo_opt_ketcap',
+    name: 'Ketçap olmasın',
+    price: 0,
+  });
+  const istekler = emptyGroup({
+    id: 'demo_grp_istek',
+    type: 'choice',
+    pricing: 'add',
+    required: false,
+    name: 'İstekler',
+    maxTotalQty: 0,
+    options: [maydanoz, ketcap],
+  });
+
+  return [boy, extras, istekler];
 }
 
 function allOptionsFlat(groups: ProductOptionGroup[], exceptId?: string) {
@@ -141,6 +206,8 @@ export default function ProductVariantsPage() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [guideStep, setGuideStep] = useState(0);
   const guideSnapshot = useRef<GuideSnapshot | null>(null);
+  const [clipboard, setClipboard] = useState<OptionsClipboard | null>(null);
+  const [pasteBusyId, setPasteBusyId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -343,6 +410,96 @@ export default function ProductVariantsPage() {
     }
   }
 
+  async function handleCopyOptions(p: ProductRow, e: MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (guideOpen) return;
+    if (clipboard?.fromId === p.id) {
+      setClipboard(null);
+      setMessage(null);
+      return;
+    }
+    const sourceGroups =
+      p.id === selectedId ? groups : normalizeLoadedGroups(p.optionGroups);
+    if (!sourceGroups.length) {
+      alert('Bu üründe kopyalanacak seçenek yok.');
+      return;
+    }
+
+    // Animasyon için önce bu ürünü seç (sağ panel görünsün)
+    if (selectedId !== p.id) {
+      if (dirty) {
+        if (!confirm('Kaydedilmemiş değişiklikler var. Kopyalamak için ürün değişsin mi?')) {
+          return;
+        }
+      }
+      setSelectedId(p.id);
+      setGroups(sourceGroups);
+      setDirty(false);
+      await waitForGroupCards();
+    }
+
+    const icon = document.querySelector<HTMLElement>(`[data-clip-id="${p.id}"]`);
+    await animateCopySuck(icon);
+
+    setClipboard({
+      fromId: p.id,
+      fromName: p.name || `Ürün #${p.id}`,
+      groups: cloneOptionGroups(sourceGroups),
+    });
+    setMessage(`“${p.name || p.id}” seçenekleri kopyalandı`);
+  }
+
+  async function handlePasteOptions(p: ProductRow, e: MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!clipboard || clipboard.fromId === p.id || guideOpen || pasteBusyId) return;
+    const targetCount =
+      p.optionSummary?.groupCount ?? p.optionGroups?.length ?? 0;
+    if (targetCount > 0) {
+      if (
+        !confirm(
+          `“${p.name}” ürününde zaten seçenek var. Üzerine yazılsın mı?`
+        )
+      ) {
+        return;
+      }
+    }
+    const payload = cloneOptionGroups(clipboard.groups);
+    const pasteIcon = document.querySelector<HTMLElement>(`[data-paste-id="${p.id}"]`);
+    setPasteBusyId(p.id);
+    try {
+      const updated = await api<ProductRow>(`/api/admin/products/${p.id}/option-groups`, {
+        method: 'PUT',
+        body: JSON.stringify({ groups: payload }),
+      });
+      setProducts((prev) =>
+        prev.map((row) =>
+          row.id === p.id
+            ? {
+                ...row,
+                optionGroups: updated.optionGroups,
+                optionSummary: updated.optionSummary,
+              }
+            : row
+        )
+      );
+      setSelectedId(p.id);
+      setGroups(normalizeLoadedGroups(updated.optionGroups));
+      setDirty(false);
+      setMessage(`Seçenekler “${p.name}” ürününe yapıştırıldı`);
+
+      const cards = await waitForGroupCards();
+      const iconAfter =
+        document.querySelector<HTMLElement>(`[data-paste-id="${p.id}"]`) || pasteIcon;
+      await animatePasteBurst(iconAfter, cards);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Yapıştırılamadı');
+    } finally {
+      setPasteBusyId(null);
+    }
+  }
+
   function addGroup(type: OptionGroupType) {
     const defaults =
       type === 'single'
@@ -392,6 +549,19 @@ export default function ProductVariantsPage() {
           ) : null}
           {guideOpen ? (
             <span className="pv-toast pv-toast--guide">Örnek gösteriliyor · kaydedilmez</span>
+          ) : null}
+          {clipboard ? (
+            <span className="pv-toast pv-toast--clip">
+              Kopya: {clipboard.fromName}
+              <button
+                type="button"
+                className="pv-clip-clear"
+                title="Kopyayı temizle"
+                onClick={() => setClipboard(null)}
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </span>
           ) : null}
           <button
             type="button"
@@ -459,34 +629,69 @@ export default function ProductVariantsPage() {
                 const count = p.optionSummary?.optionCount ?? p.optionGroups?.flatMap((g) => g.options).length ?? 0;
                 const gCount = p.optionSummary?.groupCount ?? p.optionGroups?.length ?? 0;
                 const active = p.id === selectedId;
+                const isSource = clipboard?.fromId === p.id;
+                const showPaste = Boolean(clipboard && !isSource);
+                const canCopy =
+                  p.id === selectedId ? groups.length > 0 : gCount > 0;
                 return (
-                  <button
+                  <div
                     key={p.id}
-                    type="button"
-                    className={`pv-product${active ? ' is-active' : ''}`}
-                    disabled={guideOpen}
-                    onClick={() => {
-                      if (guideOpen) return;
-                      if (dirty && selectedId !== p.id) {
-                        if (!confirm('Kaydedilmemiş değişiklikler var. Yine de geçilsin mi?')) return;
-                      }
-                      setSelectedId(p.id);
-                    }}
+                    className={`pv-product${active ? ' is-active' : ''}${isSource ? ' is-clip-source' : ''}${showPaste ? ' has-paste' : ''}`}
                   >
-                    <div className="pv-product__main">
-                      <strong>{p.name || `Ürün #${p.id}`}</strong>
-                      <span>
-                        {p.groupName || 'Grup yok'} · {formatMoney(p.price)}
-                      </span>
-                    </div>
-                    {gCount > 0 ? (
-                      <em className="pv-product__badge">
-                        {gCount} grup · {count} seçenek
-                      </em>
+                    {showPaste ? (
+                      <button
+                        type="button"
+                        className="pv-product__clip is-paste"
+                        data-paste-id={p.id}
+                        title={`“${clipboard!.fromName}” seçeneklerini yapıştır`}
+                        disabled={guideOpen || pasteBusyId === p.id}
+                        onClick={(e) => void handlePasteOptions(p, e)}
+                      >
+                        {pasteBusyId === p.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <ClipboardPaste className="w-3.5 h-3.5" />
+                        )}
+                      </button>
                     ) : (
-                      <em className="pv-product__badge pv-product__badge--muted">Yok</em>
+                      <button
+                        type="button"
+                        className={`pv-product__clip${isSource ? ' is-source' : ''}`}
+                        data-clip-id={p.id}
+                        title={isSource ? 'Kopyayı iptal et' : 'Seçenekleri kopyala'}
+                        disabled={guideOpen || !canCopy}
+                        onClick={(e) => void handleCopyOptions(p, e)}
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
                     )}
-                  </button>
+                    <button
+                      type="button"
+                      className="pv-product__body"
+                      disabled={guideOpen}
+                      onClick={() => {
+                        if (guideOpen) return;
+                        if (dirty && selectedId !== p.id) {
+                          if (!confirm('Kaydedilmemiş değişiklikler var. Yine de geçilsin mi?')) return;
+                        }
+                        setSelectedId(p.id);
+                      }}
+                    >
+                      <div className="pv-product__main">
+                        <strong>{p.name || `Ürün #${p.id}`}</strong>
+                        <span>
+                          {p.groupName || 'Grup yok'} · {formatMoney(p.price)}
+                        </span>
+                      </div>
+                      {gCount > 0 ? (
+                        <em className="pv-product__badge">
+                          {gCount} grup · {count} seçenek
+                        </em>
+                      ) : (
+                        <em className="pv-product__badge pv-product__badge--muted">Yok</em>
+                      )}
+                    </button>
+                  </div>
                 );
               })
             )}
