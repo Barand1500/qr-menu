@@ -25,6 +25,7 @@ import {
   sanitizeSelections,
   type ProductOptionGroup,
 } from '@/lib/productOptions';
+import BillReceiptModal from '@/components/BillReceiptModal';
 import '@/table-floor.css';
 
 type FloorOrder = {
@@ -241,45 +242,6 @@ function toLocalInputValue(iso: string | null | undefined) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function printBill(opts: {
-  restaurant: string;
-  tableName: string;
-  orders: FloorOrder[];
-  total: number;
-  guestName?: string | null;
-  seatingFee?: number;
-}) {
-  const rows = opts.orders
-    .map((o) => {
-      const note = o.note?.trim()
-        ? `<div style="font-size:12px;color:#666;margin-top:2px">${o.note}</div>`
-        : '';
-      const adj = formatAdjLabel(o)
-        ? `<div style="font-size:11px;color:#888">${formatAdjLabel(o)}</div>`
-        : '';
-      return `<tr><td>${o.qty}× ${o.name}${note}${adj}</td><td style="text-align:right">${formatMoney(lineTotal(o))}</td></tr>`;
-    })
-    .join('');
-  const feeRow =
-    opts.seatingFee && opts.seatingFee > 0
-      ? `<tr><td>Oturma ücreti</td><td style="text-align:right">${formatMoney(opts.seatingFee)}</td></tr>`
-      : '';
-  const html = `<!doctype html><html><head><title>Hesap</title>
-    <style>body{font-family:system-ui,sans-serif;padding:24px;color:#222}
-    h1{font-size:18px;margin:0 0 4px} p{margin:0 0 12px;color:#666;font-size:13px}
-    table{width:100%;border-collapse:collapse} td{padding:6px 0;border-bottom:1px solid #eee;font-size:14px}
-    .total{font-size:18px;font-weight:800;margin-top:16px;text-align:right}</style></head><body>
-    <h1>${opts.restaurant}</h1>
-    <p>${opts.tableName}${opts.guestName ? ` · ${opts.guestName}` : ''}</p>
-    <table>${rows || ''}${feeRow || (rows ? '' : '<tr><td>Sipariş yok</td><td></td></tr>')}</table>
-    <div class="total">${formatMoney(opts.total)}</div>
-    <script>window.onload=()=>window.print()</script></body></html>`;
-  const w = window.open('', '_blank', 'noopener,noreferrer,width=420,height=640');
-  if (!w) return;
-  w.document.write(html);
-  w.document.close();
-}
-
 export default function TableFloorPage() {
   const { user } = useAuth();
   const [data, setData] = useState<FloorPayload | null>(null);
@@ -307,6 +269,7 @@ export default function TableFloorPage() {
   const [editingOrder, setEditingOrder] = useState<FloorOrder | null>(null);
   const [editQty, setEditQty] = useState(1);
   const [editFreeNote, setEditFreeNote] = useState('');
+  const [billOpen, setBillOpen] = useState(false);
   const [editAdjType, setEditAdjType] = useState<'none' | 'extra' | 'discount'>('none');
   const [editAdjValue, setEditAdjValue] = useState('');
   const [editSelections, setEditSelections] = useState<CartLine['selections']>({});
@@ -1367,16 +1330,7 @@ export default function TableFloorPage() {
                       <button
                         type="button"
                         className="table-floor__secondary"
-                        onClick={() =>
-                          printBill({
-                            restaurant: data?.restaurant?.name || user?.restaurant?.name || 'Restoran',
-                            tableName: selected.name,
-                            orders: selected.orders,
-                            total: liveTotal,
-                            guestName: selected.guestName,
-                            seatingFee: liveSeatingFee,
-                          })
-                        }
+                        onClick={() => setBillOpen(true)}
                       >
                         Hesap yazdır
                       </button>
@@ -1967,6 +1921,33 @@ export default function TableFloorPage() {
             </footer>
           </div>
         </div>
+      ) : null}
+
+      {selected && billOpen ? (
+        <BillReceiptModal
+          open={billOpen}
+          onClose={() => setBillOpen(false)}
+          restaurantName={data?.restaurant?.name || user?.restaurant?.name || 'Restoran'}
+          logoUrl={user?.restaurant?.logoUrl}
+          tableName={selected.name}
+          guestName={selected.guestName}
+          openedAt={selected.openedAt}
+          orders={selected.orders.map((o) => ({
+            id: o.id,
+            name: o.name,
+            qty: o.qty,
+            price: o.price,
+            note: o.note,
+            freeNote: o.freeNote,
+            selections: o.selections,
+            adjustmentType: o.adjustmentType,
+            adjustmentMode: o.adjustmentMode,
+            adjustmentValue: o.adjustmentValue,
+            createdAt: o.createdAt,
+          }))}
+          seatingFee={liveSeatingFee}
+          total={liveTotal}
+        />
       ) : null}
     </div>
   );
