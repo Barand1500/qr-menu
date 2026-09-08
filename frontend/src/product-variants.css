@@ -177,8 +177,10 @@
 .pv-guide__card {
   z-index: 82;
   pointer-events: auto;
-  width: min(22rem, calc(100vw - 1.5rem));
-  padding: 1.1rem 1.15rem 1rem;
+  width: min(26rem, calc(100vw - 1.5rem));
+  max-height: min(78dvh, 36rem);
+  overflow: auto;
+  padding: 1.15rem 1.2rem 1.05rem;
   border-radius: 1.15rem;
   background: #fffdf9;
   border: 1px solid rgba(28, 25, 23, 0.1);
@@ -237,24 +239,57 @@
 }
 
 .pv-guide__card h3 {
-  margin: 0 0 0.4rem;
-  font-size: 1.05rem;
+  margin: 0 0 0.45rem;
+  font-size: 1.08rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   padding-right: 1.5rem;
+  line-height: 1.25;
 }
 
-.pv-guide__card > p:not(.pv-guide__step) {
+.pv-guide__body {
+  margin: 0 0 0.7rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #44403c;
+}
+
+.pv-guide__bullets {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.75rem 0.55rem 1.35rem;
+  border-radius: 0.75rem;
+  background: var(--pv-soft);
+  list-style: disc;
+}
+
+.pv-guide__bullets li {
+  margin: 0.28rem 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--pv-ink);
+  font-weight: 600;
+}
+
+.pv-guide__tip {
   margin: 0 0 1rem;
-  font-size: 0.86rem;
-  line-height: 1.45;
-  color: var(--pv-muted);
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.7rem;
+  border-left: 3px solid var(--pv-accent);
+  background: rgba(15, 118, 110, 0.08);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #0f766e;
+  font-weight: 650;
 }
 
 .pv-guide__nav {
   display: flex;
   gap: 0.45rem;
   justify-content: flex-end;
+  position: sticky;
+  bottom: 0;
+  padding-top: 0.25rem;
+  background: linear-gradient(180deg, transparent, #fffdf9 30%);
 }
 
 .pv-guide__btn {

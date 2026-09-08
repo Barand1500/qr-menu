@@ -23,7 +23,7 @@ import {
 import {
   ProductVariantsGuideOverlay,
   VARIANT_GUIDE_STEPS,
-  type GuideStepId,
+  guideDemoPhase,
 } from '@/pages/admin/ProductVariantsGuide';
 import '@/product-variants.css';
 
@@ -58,20 +58,24 @@ function normalizeLoadedGroups(raw: ProductOptionGroup[] | undefined): ProductOp
 }
 
 /** Rehber örneği — sabit id’ler (adımlar arası flicker olmasın) */
-function buildDemoGroups(basePrice: number, phase: GuideStepId): ProductOptionGroup[] {
-  if (phase === 'welcome' || phase === 'pick') return [];
+function buildDemoGroups(
+  basePrice: number,
+  phase: ReturnType<typeof guideDemoPhase>
+): ProductOptionGroup[] {
+  if (phase === 'empty') return [];
 
+  const withLimits = phase === 'boy-limits' || phase === 'full' || phase === 'full-exclude';
   const buyuk = emptyOption({
     id: 'demo_opt_buyuk',
     name: 'Büyük',
     price: basePrice,
-    limitsMultiMaxTotalQty: phase === 'single' ? 0 : 5,
+    limitsMultiMaxTotalQty: withLimits ? 5 : 0,
   });
   const mega = emptyOption({
     id: 'demo_opt_mega',
     name: 'Mega',
     price: Math.round((basePrice + 40) * 100) / 100,
-    limitsMultiMaxTotalQty: phase === 'single' ? 0 : 7,
+    limitsMultiMaxTotalQty: withLimits ? 7 : 0,
   });
   const boy = emptyGroup({
     id: 'demo_grp_boy',
@@ -82,7 +86,7 @@ function buildDemoGroups(basePrice: number, phase: GuideStepId): ProductOptionGr
     options: [buyuk, mega],
   });
 
-  if (phase === 'single' || phase === 'type-max') return [boy];
+  if (phase === 'boy' || phase === 'boy-limits') return [boy];
 
   const mantar = emptyOption({ id: 'demo_opt_mantar', name: 'Mantar', price: 10 });
   const sucuk = emptyOption({ id: 'demo_opt_sucuk', name: 'Sucuk', price: 15 });
@@ -91,7 +95,7 @@ function buildDemoGroups(basePrice: number, phase: GuideStepId): ProductOptionGr
     id: 'demo_opt_acili',
     name: 'Acılı',
     price: 0,
-    excludesOptionIds: phase === 'exclude' || phase === 'save' ? [cocuk.id] : [],
+    excludesOptionIds: phase === 'full-exclude' ? [cocuk.id] : [],
   });
 
   const extras = emptyGroup({
@@ -205,20 +209,17 @@ export default function ProductVariantsPage() {
   }
 
   function applyGuideStep(index: number, productId: number | null, price: number) {
-    const phase = VARIANT_GUIDE_STEPS[index]?.id || 'welcome';
+    const step = VARIANT_GUIDE_STEPS[index];
+    const phase = guideDemoPhase(step?.id || 'welcome');
     setGuideStep(index);
-    if (phase === 'welcome') {
-      setGroups([]);
-      return;
-    }
-    if (phase === 'pick') {
-      if (productId) setSelectedId(productId);
+    if (phase === 'empty') {
+      if (step?.id === 'pick' && productId) setSelectedId(productId);
       setGroups([]);
       return;
     }
     setGroups(buildDemoGroups(price, phase));
     window.requestAnimationFrame(() => {
-      const target = VARIANT_GUIDE_STEPS[index]?.target;
+      const target = step?.target;
       if (!target) return;
       document
         .querySelector(`[data-tour="${target}"]`)
