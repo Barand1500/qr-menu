@@ -239,6 +239,81 @@ type Props = {
   onNext: () => void;
 };
 
+function isCompactViewport() {
+  return typeof window !== 'undefined' && window.innerWidth < 760;
+}
+
+function placeCard(rect: Rect | null): CSSProperties {
+  const margin = 12;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const cardW = Math.min(400, vw - margin * 2);
+  const maxH = Math.min(Math.floor(vh * 0.58), 440);
+
+  // Mobil / dar ekran: alt sheet — her zaman sığar
+  if (isCompactViewport() || !rect) {
+    if (isCompactViewport()) {
+      return {
+        position: 'fixed',
+        left: margin,
+        right: margin,
+        bottom: margin,
+        top: 'auto',
+        width: 'auto',
+        maxHeight: `min(58dvh, ${maxH}px)`,
+        transform: 'none',
+      };
+    }
+    return {
+      position: 'fixed',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: cardW,
+      maxHeight: `min(70dvh, ${maxH}px)`,
+    };
+  }
+
+  // Spot çok yüksekse (ürün listesi) kartı sağ-alta sabitle — taşma olmaz
+  if (rect.height > vh * 0.32) {
+    return {
+      position: 'fixed',
+      right: margin,
+      bottom: margin,
+      left: 'auto',
+      top: 'auto',
+      width: cardW,
+      maxHeight: `min(58dvh, ${maxH}px)`,
+      transform: 'none',
+    };
+  }
+
+  const spaceBelow = vh - (rect.top + rect.height) - margin;
+  const spaceAbove = rect.top - margin;
+  const preferBelow = spaceBelow >= Math.min(280, maxH) || spaceBelow >= spaceAbove;
+
+  let top = preferBelow ? rect.top + rect.height + 10 : rect.top - maxH - 10;
+  top = Math.max(margin, Math.min(top, vh - maxH - margin));
+
+  let left = rect.left;
+  left = Math.max(margin, Math.min(left, vw - cardW - margin));
+
+  return {
+    position: 'fixed',
+    top,
+    left,
+    width: cardW,
+    maxHeight: `min(58dvh, ${maxH}px)`,
+    transform: 'none',
+  };
+}
+
+function clampSpot(rect: Rect): Rect {
+  const vh = window.innerHeight;
+  const maxH = Math.min(rect.height, Math.floor(vh * 0.38));
+  return { ...rect, height: maxH };
+}
+
 export function ProductVariantsGuideOverlay({
   open,
   stepIndex,
@@ -248,10 +323,14 @@ export function ProductVariantsGuideOverlay({
 }: Props) {
   const step = VARIANT_GUIDE_STEPS[stepIndex];
   const [rect, setRect] = useState<Rect | null>(null);
+  const [compact, setCompact] = useState(false);
 
   useLayoutEffect(() => {
     if (!open || !step) return;
-    const update = () => setRect(measureTarget(step.target));
+    const update = () => {
+      setCompact(isCompactViewport());
+      setRect(measureTarget(step.target));
+    };
     update();
     const t = window.setTimeout(update, 80);
     const t2 = window.setTimeout(update, 320);
@@ -281,63 +360,49 @@ export function ProductVariantsGuideOverlay({
   const Icon = step.Icon;
   const isLast = stepIndex >= VARIANT_GUIDE_STEPS.length - 1;
   const isFirst = stepIndex <= 0;
-
-  const cardStyle: CSSProperties = (() => {
-    if (!rect) {
-      return {
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-      };
-    }
-    const cardH = 340;
-    const spaceBelow = window.innerHeight - (rect.top + rect.height);
-    const preferBelow = spaceBelow > cardH || rect.top < 180;
-    const top = preferBelow
-      ? Math.min(window.innerHeight - cardH - 12, rect.top + rect.height + 12)
-      : Math.max(12, rect.top - cardH - 8);
-    let left = rect.left;
-    left = Math.min(left, window.innerWidth - 400);
-    left = Math.max(12, left);
-    return { position: 'fixed', top, left };
-  })();
+  const spot = rect && !compact ? clampSpot(rect) : compact ? null : rect;
+  const cardStyle = placeCard(rect);
 
   return (
     <div className="pv-guide" role="dialog" aria-modal="true" aria-label="Varyant rehberi">
       <div className="pv-guide__dim" onClick={onClose} />
-      {rect ? (
+      {spot ? (
         <div
           className="pv-guide__spot"
           style={{
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height,
+            top: spot.top,
+            left: spot.left,
+            width: spot.width,
+            height: spot.height,
           }}
         />
       ) : null}
 
-      <div className="pv-guide__card" style={cardStyle}>
+      <div
+        className={`pv-guide__card${compact ? ' is-sheet' : ''}`}
+        style={cardStyle}
+      >
         <button type="button" className="pv-guide__close" onClick={onClose} aria-label="Kapat">
           <X className="w-4 h-4" />
         </button>
-        <div className="pv-guide__icon">
-          <Icon className="w-6 h-6" />
+        <div className="pv-guide__scroll">
+          <div className="pv-guide__icon">
+            <Icon className="w-6 h-6" />
+          </div>
+          <p className="pv-guide__step">
+            Adım {stepIndex + 1} / {VARIANT_GUIDE_STEPS.length}
+          </p>
+          <h3>{step.title}</h3>
+          <p className="pv-guide__body">{step.body}</p>
+          {step.bullets?.length ? (
+            <ul className="pv-guide__bullets">
+              {step.bullets.map((b) => (
+                <li key={b}>{b}</li>
+              ))}
+            </ul>
+          ) : null}
+          {step.tip ? <p className="pv-guide__tip">{step.tip}</p> : null}
         </div>
-        <p className="pv-guide__step">
-          Adım {stepIndex + 1} / {VARIANT_GUIDE_STEPS.length}
-        </p>
-        <h3>{step.title}</h3>
-        <p className="pv-guide__body">{step.body}</p>
-        {step.bullets?.length ? (
-          <ul className="pv-guide__bullets">
-            {step.bullets.map((b) => (
-              <li key={b}>{b}</li>
-            ))}
-          </ul>
-        ) : null}
-        {step.tip ? <p className="pv-guide__tip">{step.tip}</p> : null}
         <div className="pv-guide__nav">
           <button type="button" className="pv-guide__btn" disabled={isFirst} onClick={onPrev}>
             <ChevronLeft className="w-4 h-4" />
