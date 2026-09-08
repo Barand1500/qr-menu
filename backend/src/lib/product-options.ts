@@ -9,6 +9,8 @@ export type ProductOption = {
   price: number;
   isActive: boolean;
   sortOrder: number;
+  /** Bu seçenek seçilince gizlenecek / yasaklanacak diğer seçenek id’leri */
+  excludesOptionIds: string[];
 };
 
 export type ProductOptionGroup = {
@@ -19,6 +21,8 @@ export type ProductOptionGroup = {
   pricing: OptionPricingMode;
   required: boolean;
   sortOrder: number;
+  /** multi: toplam ekstra adet üst sınırı (0 = sınırsız) */
+  maxTotalQty: number;
   options: ProductOption[];
 };
 
@@ -54,18 +58,29 @@ export function normalizeOptionGroups(raw: unknown): ProductOptionGroup[] {
           const o = opt as Record<string, unknown>;
           const name = String(o.name || '').trim().slice(0, 80);
           if (!name) return null;
+          const excludesOptionIds = asArray(o.excludesOptionIds)
+            .map((id) => String(id || '').trim())
+            .filter(Boolean)
+            .slice(0, 40);
           return {
             id: String(o.id || newId('opt')).slice(0, 64),
             name,
             price: Math.max(0, Math.round((Number(o.price) || 0) * 100) / 100),
             isActive: o.isActive !== false,
             sortOrder: Number.isFinite(Number(o.sortOrder)) ? Number(o.sortOrder) : oi,
+            excludesOptionIds,
           } satisfies ProductOption;
         })
         .filter(Boolean) as ProductOption[];
 
       const name = String(r.name || '').trim().slice(0, 80);
       if (!name) return null;
+
+      const maxRaw = Number(r.maxTotalQty);
+      const maxTotalQty =
+        type === 'multi' && Number.isFinite(maxRaw) && maxRaw > 0
+          ? Math.min(99, Math.floor(maxRaw))
+          : 0;
 
       return {
         id: String(r.id || newId('grp')).slice(0, 64),
@@ -74,6 +89,7 @@ export function normalizeOptionGroups(raw: unknown): ProductOptionGroup[] {
         pricing,
         required: r.required === true || (type === 'single' && r.required !== false),
         sortOrder: Number.isFinite(Number(r.sortOrder)) ? Number(r.sortOrder) : gi,
+        maxTotalQty,
         options: options.sort((a, b) => a.sortOrder - b.sortOrder),
       } satisfies ProductOptionGroup;
     })
@@ -88,6 +104,26 @@ export function activeOptionGroups(raw: unknown): ProductOptionGroup[] {
       options: g.options.filter((o) => o.isActive),
     }))
     .filter((g) => g.options.length > 0);
+}
+
+/** Seçili seçeneklerin exclude listesinden yasaklı option id’leri */
+export function blockedOptionIds(
+  groups: ProductOptionGroup[],
+  selections: OptionSelectionInput[]
+): Set<string> {
+  const selectedIds = new Set(
+    (selections || []).map((s) => String(s.optionId || '')).filter(Boolean)
+  );
+  const blocked = new Set<string>();
+  for (const g of groups) {
+    for (const o of g.options) {
+      if (!selectedIds.has(o.id)) continue;
+      for (const hid of o.excludesOptionIds || []) {
+        if (hid && hid !== o.id) blocked.add(hid);
+      }
+    }
+  }
+  return blocked;
 }
 
 export function validateSelections(
@@ -126,11 +162,29 @@ export function validateSelections(
     if (group.required && chosen.length === 0) {
       return { ok: false, message: `"${group.name}" için en az bir seçim yapın` };
     }
+    let totalQty = 0;
     for (const c of chosen) {
       const opt = group.options.find((o) => o.id === String(c.optionId));
       if (!opt) return { ok: false, message: `"${group.name}" geçersiz seçenek` };
       const qty = Math.min(99, Math.max(1, Number(c.qty) || 1));
+      totalQty += qty;
       picks.push({ group, option: opt, qty });
+    }
+    if (group.maxTotalQty > 0 && totalQty > group.maxTotalQty) {
+      return {
+        ok: false,
+        message: `"${group.name}" en fazla ${group.maxTotalQty} adet olabilir`,
+      };
+    }
+  }
+
+  const blocked = blockedOptionIds(groups, selections || []);
+  for (const p of picks) {
+    if (blocked.has(p.option.id)) {
+      return {
+        ok: false,
+        message: `"${p.option.name}" şu anki seçimlerle birlikte kullanılamaz`,
+      };
     }
   }
 

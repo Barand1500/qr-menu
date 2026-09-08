@@ -970,6 +970,11 @@
   min-height: 2.15rem;
 }
 
+.table-floor-edit-extra.is-blocked {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .table-floor-edit-extra__text {
   min-width: 0;
   display: flex;
@@ -1718,6 +1723,15 @@
   color: var(--tf-muted);
 }
 
+.table-floor-modal__max-hint {
+  font-style: normal;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #0f766e;
+  opacity: 0.9;
+}
+
 .table-floor-modal__multi-row {
   display: flex;
   align-items: center;
@@ -1727,6 +1741,11 @@
   border-radius: 0.65rem;
   background: rgba(255, 255, 255, 0.75);
   border: 1px solid rgba(88, 60, 36, 0.1);
+}
+
+.table-floor-modal__multi-row.is-blocked {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 .table-floor-modal__multi-row strong {

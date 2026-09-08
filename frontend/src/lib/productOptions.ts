@@ -7,6 +7,7 @@ export type ProductOption = {
   price: number;
   isActive: boolean;
   sortOrder: number;
+  excludesOptionIds: string[];
 };
 
 export type ProductOptionGroup = {
@@ -16,6 +17,8 @@ export type ProductOptionGroup = {
   pricing: OptionPricingMode;
   required: boolean;
   sortOrder: number;
+  /** multi: 0 = sınırsız */
+  maxTotalQty: number;
   options: ProductOption[];
 };
 
@@ -32,6 +35,7 @@ export function emptyGroup(partial?: Partial<ProductOptionGroup>): ProductOption
     pricing: partial?.pricing || (type === 'single' ? 'replace' : 'add'),
     required: type === 'single',
     sortOrder: 0,
+    maxTotalQty: type === 'multi' ? 0 : 0,
     options: [],
     ...partial,
   };
@@ -44,8 +48,45 @@ export function emptyOption(partial?: Partial<ProductOption>): ProductOption {
     price: 0,
     isActive: true,
     sortOrder: 0,
+    excludesOptionIds: [],
     ...partial,
   };
+}
+
+export function selectionsFlat(
+  selections: Record<string, { optionId: string; qty: number }[]>
+) {
+  return Object.entries(selections).flatMap(([groupId, picks]) =>
+    picks.map((p) => ({ groupId, optionId: p.optionId, qty: p.qty }))
+  );
+}
+
+export function blockedOptionIds(
+  groups: ProductOptionGroup[],
+  selections: Record<string, { optionId: string; qty: number }[]>
+): Set<string> {
+  const selected = new Set(
+    Object.values(selections)
+      .flat()
+      .map((p) => p.optionId)
+  );
+  const blocked = new Set<string>();
+  for (const g of groups) {
+    for (const o of g.options) {
+      if (!selected.has(o.id)) continue;
+      for (const hid of o.excludesOptionIds || []) {
+        if (hid && hid !== o.id) blocked.add(hid);
+      }
+    }
+  }
+  return blocked;
+}
+
+export function groupSelectedQty(
+  selections: Record<string, { optionId: string; qty: number }[]>,
+  groupId: string
+) {
+  return (selections[groupId] || []).reduce((n, p) => n + Math.max(0, p.qty || 0), 0);
 }
 
 export function computePreviewUnitPrice(
@@ -68,4 +109,25 @@ export function computePreviewUnitPrice(
     }
   }
   return Math.round(unit * 100) / 100;
+}
+
+/** Yasaklı seçimleri temizle (koşul değişince) */
+export function pruneBlockedSelections(
+  groups: ProductOptionGroup[],
+  selections: Record<string, { optionId: string; qty: number }[]>
+) {
+  let next = { ...selections };
+  for (let i = 0; i < 5; i++) {
+    const blocked = blockedOptionIds(groups, next);
+    let changed = false;
+    const cleaned: typeof next = {};
+    for (const [gid, picks] of Object.entries(next)) {
+      const kept = picks.filter((p) => !blocked.has(p.optionId));
+      if (kept.length !== picks.length) changed = true;
+      if (kept.length) cleaned[gid] = kept;
+    }
+    next = cleaned;
+    if (!changed) break;
+  }
+  return next;
 }

@@ -16,6 +16,7 @@ import { adminPath } from '@/lib/adminPath';
 import {
   emptyGroup,
   emptyOption,
+  type ProductOption,
   type ProductOptionGroup,
 } from '@/lib/productOptions';
 import '@/product-variants.css';
@@ -29,6 +30,34 @@ type ProductRow = {
   optionGroups?: ProductOptionGroup[];
   optionSummary?: { groupCount: number; optionCount: number };
 };
+
+function normalizeLoadedGroups(raw: ProductOptionGroup[] | undefined): ProductOptionGroup[] {
+  return (raw || []).map((g, i) => ({
+    ...g,
+    sortOrder: i,
+    maxTotalQty: g.type === 'multi' ? Math.max(0, Number(g.maxTotalQty) || 0) : 0,
+    options: (g.options || []).map((o, j) => ({
+      ...o,
+      sortOrder: j,
+      excludesOptionIds: Array.isArray(o.excludesOptionIds) ? o.excludesOptionIds : [],
+    })),
+  }));
+}
+
+function allOptionsFlat(groups: ProductOptionGroup[], exceptId?: string) {
+  return groups.flatMap((g) =>
+    g.options
+      .filter((o) => o.id !== exceptId && o.name.trim())
+      .map((o) => ({ ...o, groupName: g.name || 'Grup' }))
+  );
+}
+
+function toggleExclude(opt: ProductOption, targetId: string): string[] {
+  const set = new Set(opt.excludesOptionIds || []);
+  if (set.has(targetId)) set.delete(targetId);
+  else set.add(targetId);
+  return [...set];
+}
 
 export default function ProductVariantsPage() {
   const [products, setProducts] = useState<ProductRow[]>([]);
@@ -72,13 +101,7 @@ export default function ProductVariantsPage() {
       setDirty(false);
       return;
     }
-    setGroups(
-      (selected.optionGroups || []).map((g, i) => ({
-        ...g,
-        sortOrder: i,
-        options: (g.options || []).map((o, j) => ({ ...o, sortOrder: j })),
-      }))
-    );
+    setGroups(normalizeLoadedGroups(selected.optionGroups));
     setDirty(false);
     setMessage(null);
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps -- reset editor when product changes
@@ -321,10 +344,10 @@ export default function ProductVariantsPage() {
               </div>
 
               <div className="pv-hint">
-                <strong>Tek seçim</strong> — makarna türü gibi kırılma; fiyat genelde ürün fiyatının
-                yerine geçer.
+                <strong>Tek seçim</strong> — tür / porsiyon kırılması.
                 <br />
-                <strong>Ekstra + miktar</strong> — ekstra et ×2 gibi; her adet birim fiyatı ekler.
+                <strong>Ekstra</strong> — miktarlı ekler; istersen maksimum adet ve “A seçilince B
+                gizlensin” kuralı koy.
               </div>
 
               {groups.length === 0 ? (
@@ -356,6 +379,7 @@ export default function ProductVariantsPage() {
                               type,
                               pricing: type === 'single' ? 'replace' : 'add',
                               required: type === 'single' ? true : g.required,
+                              maxTotalQty: type === 'multi' ? g.maxTotalQty : 0,
                             };
                             updateGroups(next);
                           }}
@@ -399,66 +423,125 @@ export default function ProductVariantsPage() {
                         </button>
                       </div>
 
-                      <div className="pv-options">
-                        {g.options.map((o, oi) => (
-                          <div key={o.id} className="pv-option">
+                      {g.type === 'multi' ? (
+                        <div className="pv-group__rules">
+                          <label className="pv-max">
+                            <span>Maks. ekstra adet</span>
                             <input
-                              value={o.name}
-                              placeholder="Seçenek adı"
+                              type="number"
+                              min={0}
+                              max={99}
+                              value={g.maxTotalQty || ''}
+                              placeholder="∞"
                               onChange={(e) => {
+                                const v = Math.max(0, Math.min(99, Math.floor(Number(e.target.value) || 0)));
                                 const next = [...groups];
-                                const opts = [...g.options];
-                                opts[oi] = { ...o, name: e.target.value };
-                                next[gi] = { ...g, options: opts };
+                                next[gi] = { ...g, maxTotalQty: v };
                                 updateGroups(next);
                               }}
                             />
-                            <div className="pv-option__price">
-                              <span>₺</span>
-                              <input
-                                type="number"
-                                min={0}
-                                step="0.01"
-                                value={o.price}
-                                onChange={(e) => {
-                                  const next = [...groups];
-                                  const opts = [...g.options];
-                                  opts[oi] = { ...o, price: Number(e.target.value) || 0 };
-                                  next[gi] = { ...g, options: opts };
-                                  updateGroups(next);
-                                }}
-                              />
+                            <em>0 = sınırsız</em>
+                          </label>
+                        </div>
+                      ) : null}
+
+                      <div className="pv-options">
+                        {g.options.map((o, oi) => {
+                          const others = allOptionsFlat(groups, o.id);
+                          return (
+                            <div key={o.id} className="pv-option-card">
+                              <div className="pv-option">
+                                <input
+                                  value={o.name}
+                                  placeholder="Seçenek adı"
+                                  onChange={(e) => {
+                                    const next = [...groups];
+                                    const opts = [...g.options];
+                                    opts[oi] = { ...o, name: e.target.value };
+                                    next[gi] = { ...g, options: opts };
+                                    updateGroups(next);
+                                  }}
+                                />
+                                <div className="pv-option__price">
+                                  <span>₺</span>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    step="0.01"
+                                    value={o.price}
+                                    onChange={(e) => {
+                                      const next = [...groups];
+                                      const opts = [...g.options];
+                                      opts[oi] = { ...o, price: Number(e.target.value) || 0 };
+                                      next[gi] = { ...g, options: opts };
+                                      updateGroups(next);
+                                    }}
+                                  />
+                                </div>
+                                <label className="pv-check">
+                                  <input
+                                    type="checkbox"
+                                    checked={o.isActive}
+                                    onChange={(e) => {
+                                      const next = [...groups];
+                                      const opts = [...g.options];
+                                      opts[oi] = { ...o, isActive: e.target.checked };
+                                      next[gi] = { ...g, options: opts };
+                                      updateGroups(next);
+                                    }}
+                                  />
+                                  Aktif
+                                </label>
+                                <button
+                                  type="button"
+                                  className="pv-icon-danger"
+                                  onClick={() => {
+                                    const next = [...groups];
+                                    next[gi] = {
+                                      ...g,
+                                      options: g.options.filter((_, i) => i !== oi),
+                                    };
+                                    updateGroups(next);
+                                  }}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+
+                              {others.length > 0 && o.name.trim() ? (
+                                <div className="pv-exclude">
+                                  <p>
+                                    <strong>{o.name || 'Bu seçenek'}</strong> seçilince gizle
+                                  </p>
+                                  <div className="pv-exclude__chips">
+                                    {others.map((other) => {
+                                      const on = (o.excludesOptionIds || []).includes(other.id);
+                                      return (
+                                        <button
+                                          key={other.id}
+                                          type="button"
+                                          className={`pv-exclude__chip${on ? ' is-on' : ''}`}
+                                          onClick={() => {
+                                            const next = [...groups];
+                                            const opts = [...g.options];
+                                            opts[oi] = {
+                                              ...o,
+                                              excludesOptionIds: toggleExclude(o, other.id),
+                                            };
+                                            next[gi] = { ...g, options: opts };
+                                            updateGroups(next);
+                                          }}
+                                        >
+                                          {other.name}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ) : null}
                             </div>
-                            <label className="pv-check">
-                              <input
-                                type="checkbox"
-                                checked={o.isActive}
-                                onChange={(e) => {
-                                  const next = [...groups];
-                                  const opts = [...g.options];
-                                  opts[oi] = { ...o, isActive: e.target.checked };
-                                  next[gi] = { ...g, options: opts };
-                                  updateGroups(next);
-                                }}
-                              />
-                              Aktif
-                            </label>
-                            <button
-                              type="button"
-                              className="pv-icon-danger"
-                              onClick={() => {
-                                const next = [...groups];
-                                next[gi] = {
-                                  ...g,
-                                  options: g.options.filter((_, i) => i !== oi),
-                                };
-                                updateGroups(next);
-                              }}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))}
+                          );
+                        })}
                         <button
                           type="button"
                           className="pv-add-opt"

@@ -18,7 +18,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
 import {
+  blockedOptionIds,
   computePreviewUnitPrice,
+  groupSelectedQty,
+  pruneBlockedSelections,
   type ProductOptionGroup,
 } from '@/lib/productOptions';
 import '@/table-floor.css';
@@ -59,11 +62,19 @@ const emptyCartLine = (): CartLine => ({
 function defaultSelections(groups: ProductOptionGroup[]): CartLine['selections'] {
   const out: CartLine['selections'] = {};
   for (const g of groups) {
-    if (g.type === 'single' && g.options[0]) {
-      out[g.id] = [{ optionId: g.options[0].id, qty: 1 }];
+    const first = g.options.find((o) => o.isActive !== false);
+    if (g.type === 'single' && first) {
+      out[g.id] = [{ optionId: first.id, qty: 1 }];
     }
   }
-  return out;
+  return pruneBlockedSelections(groups, out);
+}
+
+function withPrunedSelections(
+  groups: ProductOptionGroup[],
+  selections: CartLine['selections']
+) {
+  return pruneBlockedSelections(groups, selections);
 }
 
 function lineTotal(o: {
@@ -605,7 +616,7 @@ export default function TableFloorPage() {
           arr.push({ optionId: s.optionId, qty: s.qty });
           map[s.groupId] = arr;
         }
-        setEditSelections(map);
+        setEditSelections(withPrunedSelections(groups, map));
       } else {
         setEditSelections(defaultSelections(groups));
       }
@@ -811,7 +822,13 @@ export default function TableFloorPage() {
     setCart((c) => {
       const prev = c[productId] || emptyCartLine();
       if (prev.qty <= 0 && !patch.qty) return c;
-      return { ...c, [productId]: { ...prev, ...patch } };
+      const product = catalog.find((p) => p.id === productId);
+      const groups = product?.optionGroups || [];
+      const next = { ...prev, ...patch };
+      if (patch.selections) {
+        next.selections = withPrunedSelections(groups, patch.selections);
+      }
+      return { ...c, [productId]: next };
     });
   }
 
@@ -1551,7 +1568,12 @@ export default function TableFloorPage() {
                             <div className="table-floor-modal__extras">
                               {(p.optionGroups || []).map((g) => {
                                 const picks = line.selections[g.id] || [];
+                                const blocked = blockedOptionIds(p.optionGroups || [], line.selections);
+                                const activeOpts = g.options.filter((o) => o.isActive !== false);
                                 if (g.type === 'single') {
+                                  const visible = activeOpts.filter(
+                                    (o) => !blocked.has(o.id) || picks[0]?.optionId === o.id
+                                  );
                                   return (
                                     <label key={g.id}>
                                       <span>
@@ -1569,7 +1591,7 @@ export default function TableFloorPage() {
                                         }}
                                       >
                                         {!g.required ? <option value="">Seçilmedi</option> : null}
-                                        {g.options.map((o) => (
+                                        {visible.map((o) => (
                                           <option key={o.id} value={o.id}>
                                             {o.name}
                                             {g.pricing === 'replace'
@@ -1583,13 +1605,24 @@ export default function TableFloorPage() {
                                     </label>
                                   );
                                 }
+                                const groupQty = groupSelectedQty(line.selections, g.id);
+                                const maxQty = Math.max(0, Number(g.maxTotalQty) || 0);
+                                const atMax = maxQty > 0 && groupQty >= maxQty;
+                                const visible = activeOpts.filter((o) => !blocked.has(o.id));
                                 return (
                                   <div key={g.id} className="table-floor-modal__multi">
                                     <span className="table-floor-modal__multi-title">
                                       {g.name}
                                       {g.required ? ' *' : ''}
+                                      {maxQty > 0 ? (
+                                        <em className="table-floor-modal__max-hint">
+                                          {' '}
+                                          · en fazla {maxQty}
+                                          {groupQty > 0 ? ` (${groupQty})` : ''}
+                                        </em>
+                                      ) : null}
                                     </span>
-                                    {g.options.map((o) => {
+                                    {visible.map((o) => {
                                       const cur = picks.find((x) => x.optionId === o.id);
                                       const q = cur?.qty || 0;
                                       return (
@@ -1603,6 +1636,7 @@ export default function TableFloorPage() {
                                           <div className="table-floor-modal__qty table-floor-modal__qty--sm">
                                             <button
                                               type="button"
+                                              disabled={q <= 0}
                                               onClick={() => {
                                                 const nextPicks = picks.filter((x) => x.optionId !== o.id);
                                                 if (q > 1) nextPicks.push({ optionId: o.id, qty: q - 1 });
@@ -1617,7 +1651,9 @@ export default function TableFloorPage() {
                                             <em>{q}</em>
                                             <button
                                               type="button"
+                                              disabled={atMax}
                                               onClick={() => {
+                                                if (atMax) return;
                                                 const nextPicks = picks.filter((x) => x.optionId !== o.id);
                                                 nextPicks.push({ optionId: o.id, qty: q + 1 });
                                                 patchCart(p.id, {
@@ -1701,6 +1737,12 @@ export default function TableFloorPage() {
                 .filter((g) => g.type === 'single')
                 .map((g) => {
                   const picked = editSelections[g.id]?.[0]?.optionId || '';
+                  const blocked = blockedOptionIds(editGroups, editSelections);
+                  const visible = g.options.filter(
+                    (o) =>
+                      o.isActive !== false &&
+                      (!blocked.has(o.id) || picked === o.id)
+                  );
                   return (
                     <div key={g.id} className="table-floor-edit-block">
                       <div className="table-floor-edit-row table-floor-edit-row--label">
@@ -1708,7 +1750,7 @@ export default function TableFloorPage() {
                         {g.required ? <em className="table-floor-edit-tag">zorunlu</em> : null}
                       </div>
                       <div className="table-floor-edit-chips">
-                        {g.options.map((o) => {
+                        {visible.map((o) => {
                           const active = picked === o.id;
                           const priceText =
                             g.pricing === 'replace'
@@ -1722,10 +1764,12 @@ export default function TableFloorPage() {
                               type="button"
                               className={`table-floor-edit-chip${active ? ' is-active' : ''}`}
                               onClick={() =>
-                                setEditSelections((prev) => ({
-                                  ...prev,
-                                  [g.id]: [{ optionId: o.id, qty: 1 }],
-                                }))
+                                setEditSelections((prev) =>
+                                  withPrunedSelections(editGroups, {
+                                    ...prev,
+                                    [g.id]: [{ optionId: o.id, qty: 1 }],
+                                  })
+                                )
                               }
                             >
                               {o.name}
@@ -1742,13 +1786,26 @@ export default function TableFloorPage() {
                 .filter((g) => g.type === 'multi')
                 .map((g) => {
                   const picks = editSelections[g.id] || [];
+                  const blocked = blockedOptionIds(editGroups, editSelections);
+                  const groupQty = groupSelectedQty(editSelections, g.id);
+                  const maxQty = Math.max(0, Number(g.maxTotalQty) || 0);
+                  const atMax = maxQty > 0 && groupQty >= maxQty;
+                  const visible = g.options.filter(
+                    (o) => o.isActive !== false && !blocked.has(o.id)
+                  );
                   return (
                     <div key={g.id} className="table-floor-edit-block">
                       <div className="table-floor-edit-row table-floor-edit-row--label">
                         <span className="table-floor-edit-label">{g.name || 'Ekstralar'}</span>
+                        {maxQty > 0 ? (
+                          <em className="table-floor-edit-tag">
+                            en fazla {maxQty}
+                            {groupQty > 0 ? ` · ${groupQty}` : ''}
+                          </em>
+                        ) : null}
                       </div>
                       <div className="table-floor-edit-extras">
-                        {g.options.map((o) => {
+                        {visible.map((o) => {
                           const cur = picks.find((x) => x.optionId === o.id);
                           const q = cur?.qty || 0;
                           return (
@@ -1762,6 +1819,7 @@ export default function TableFloorPage() {
                               <div className="table-floor-modal__qty table-floor-modal__qty--compact">
                                 <button
                                   type="button"
+                                  disabled={q <= 0}
                                   onClick={() => {
                                     const next = picks.filter((x) => x.optionId !== o.id);
                                     if (q > 1) next.push({ optionId: o.id, qty: q - 1 });
@@ -1769,7 +1827,7 @@ export default function TableFloorPage() {
                                       const copy = { ...prev };
                                       if (next.length) copy[g.id] = next;
                                       else delete copy[g.id];
-                                      return copy;
+                                      return withPrunedSelections(editGroups, copy);
                                     });
                                   }}
                                 >
@@ -1778,10 +1836,17 @@ export default function TableFloorPage() {
                                 <em>{q}</em>
                                 <button
                                   type="button"
+                                  disabled={atMax}
                                   onClick={() => {
+                                    if (atMax) return;
                                     const next = picks.filter((x) => x.optionId !== o.id);
                                     next.push({ optionId: o.id, qty: q + 1 });
-                                    setEditSelections((prev) => ({ ...prev, [g.id]: next }));
+                                    setEditSelections((prev) =>
+                                      withPrunedSelections(editGroups, {
+                                        ...prev,
+                                        [g.id]: next,
+                                      })
+                                    );
                                   }}
                                 >
                                   +
