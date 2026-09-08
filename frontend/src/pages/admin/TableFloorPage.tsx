@@ -1674,14 +1674,10 @@ export default function TableFloorPage() {
             onClick={() => setEditingOrder(null)}
           />
           <div className="table-floor-modal__panel table-floor-modal__panel--edit">
-            <header>
+            <header className="table-floor-edit-header">
               <div>
                 <p>Sipariş düzenle</p>
                 <h3>{editingOrder.name}</h3>
-                <span className="table-floor-modal__edit-lead">
-                  Adet, seçenek ve tutarı buradan güncelle. Satır silmek için listedeki çöp kutusunu
-                  kullan.
-                </span>
               </div>
               <button
                 type="button"
@@ -1693,11 +1689,9 @@ export default function TableFloorPage() {
             </header>
 
             <div className="table-floor-modal__edit-scroll admin-scroll">
-              <section className="table-floor-edit-card">
-                <div className="table-floor-edit-card__head">
-                  <strong>Adet</strong>
-                </div>
-                <div className="table-floor-modal__qty table-floor-modal__qty--lg">
+              <div className="table-floor-edit-row">
+                <span className="table-floor-edit-label">Adet</span>
+                <div className="table-floor-modal__qty table-floor-modal__qty--compact">
                   <button type="button" onClick={() => setEditQty((q) => Math.max(1, q - 1))}>
                     −
                   </button>
@@ -1706,21 +1700,27 @@ export default function TableFloorPage() {
                     +
                   </button>
                 </div>
-              </section>
+              </div>
 
               {editGroups
                 .filter((g) => g.type === 'single')
                 .map((g) => {
                   const picked = editSelections[g.id]?.[0]?.optionId || '';
                   return (
-                    <section key={g.id} className="table-floor-edit-card">
-                      <div className="table-floor-edit-card__head">
-                        <strong>{g.name || 'Tür seçimi'}</strong>
-                        {g.required ? <em>zorunlu</em> : null}
+                    <div key={g.id} className="table-floor-edit-block">
+                      <div className="table-floor-edit-row table-floor-edit-row--label">
+                        <span className="table-floor-edit-label">{g.name || 'Tür seçimi'}</span>
+                        {g.required ? <em className="table-floor-edit-tag">zorunlu</em> : null}
                       </div>
                       <div className="table-floor-edit-chips">
                         {g.options.map((o) => {
                           const active = picked === o.id;
+                          const priceText =
+                            g.pricing === 'replace'
+                              ? formatMoney(o.price)
+                              : o.price
+                                ? `+${formatMoney(o.price)}`
+                                : '';
                           return (
                             <button
                               key={o.id}
@@ -1733,19 +1733,13 @@ export default function TableFloorPage() {
                                 }))
                               }
                             >
-                              <span>{o.name}</span>
-                              <small>
-                                {g.pricing === 'replace'
-                                  ? formatMoney(o.price)
-                                  : o.price
-                                    ? `+${formatMoney(o.price)}`
-                                    : 'Ücretsiz'}
-                              </small>
+                              {o.name}
+                              {priceText ? <small>{priceText}</small> : null}
                             </button>
                           );
                         })}
                       </div>
-                    </section>
+                    </div>
                   );
                 })}
 
@@ -1754,10 +1748,9 @@ export default function TableFloorPage() {
                 .map((g) => {
                   const picks = editSelections[g.id] || [];
                   return (
-                    <section key={g.id} className="table-floor-edit-card">
-                      <div className="table-floor-edit-card__head">
-                        <strong>{g.name || 'Ekstralar'}</strong>
-                        <em>miktarlı</em>
+                    <div key={g.id} className="table-floor-edit-block">
+                      <div className="table-floor-edit-row table-floor-edit-row--label">
+                        <span className="table-floor-edit-label">{g.name || 'Ekstralar'}</span>
                       </div>
                       <div className="table-floor-edit-extras">
                         {g.options.map((o) => {
@@ -1765,13 +1758,13 @@ export default function TableFloorPage() {
                           const q = cur?.qty || 0;
                           return (
                             <div key={o.id} className="table-floor-edit-extra">
-                              <div>
+                              <div className="table-floor-edit-extra__text">
                                 <strong>{o.name}</strong>
-                                <span>
-                                  {o.price > 0 ? `+${formatMoney(o.price)} / adet` : 'Ücretsiz'}
-                                </span>
+                                {o.price > 0 ? (
+                                  <span>+{formatMoney(o.price)}</span>
+                                ) : null}
                               </div>
-                              <div className="table-floor-modal__qty table-floor-modal__qty--sm">
+                              <div className="table-floor-modal__qty table-floor-modal__qty--compact">
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1803,90 +1796,73 @@ export default function TableFloorPage() {
                           );
                         })}
                       </div>
-                    </section>
+                    </div>
                   );
                 })}
 
-              <section className="table-floor-edit-card">
-                <div className="table-floor-edit-card__head">
-                  <strong>Not & tutar</strong>
-                  <em>opsiyonel</em>
+              <div className="table-floor-edit-block">
+                <div className="table-floor-edit-row table-floor-edit-row--label">
+                  <span className="table-floor-edit-label">Not</span>
+                  <em className="table-floor-edit-tag">opsiyonel</em>
                 </div>
-                <p className="table-floor-edit-hint">
-                  Bahşiş, dünden kalan borç veya özel istek için not yaz; yanında tutar ekle veya
-                  indir.
-                </p>
-                <fieldset className="float-field float-field--admin is-floated table-floor-modal__float">
-                  <legend className="float-field__legend">Not</legend>
-                  <input
-                    className="float-field__input"
-                    value={editFreeNote}
-                    maxLength={240}
-                    placeholder="Örn. dünden kalan, hizmet…"
-                    onChange={(e) => setEditFreeNote(e.target.value)}
-                  />
-                </fieldset>
-
+                <input
+                  className="table-floor-edit-input"
+                  value={editFreeNote}
+                  maxLength={240}
+                  placeholder="Bahşiş, borç, özel istek…"
+                  onChange={(e) => setEditFreeNote(e.target.value)}
+                />
                 <div className="table-floor-edit-money">
                   <button
                     type="button"
                     className={`table-floor-edit-money__btn${editAdjType === 'extra' ? ' is-active' : ''}`}
-                    onClick={() =>
-                      setEditAdjType((t) => (t === 'extra' ? 'none' : 'extra'))
-                    }
+                    onClick={() => setEditAdjType((t) => (t === 'extra' ? 'none' : 'extra'))}
                   >
-                    + Fiyat ekle
+                    + Fiyat
                   </button>
                   <button
                     type="button"
                     className={`table-floor-edit-money__btn is-discount${editAdjType === 'discount' ? ' is-active' : ''}`}
-                    onClick={() =>
-                      setEditAdjType((t) => (t === 'discount' ? 'none' : 'discount'))
-                    }
+                    onClick={() => setEditAdjType((t) => (t === 'discount' ? 'none' : 'discount'))}
                   >
                     − İndirim
                   </button>
-                </div>
-
-                {editAdjType !== 'none' ? (
-                  <fieldset className="float-field float-field--admin is-floated table-floor-modal__float">
-                    <legend className="float-field__legend">
-                      {editAdjType === 'extra' ? 'Eklenecek tutar (₺)' : 'İndirim tutarı (₺)'}
-                    </legend>
+                  {editAdjType !== 'none' ? (
                     <input
-                      className="float-field__input"
+                      className="table-floor-edit-input table-floor-edit-input--amount"
                       type="text"
                       inputMode="decimal"
                       value={editAdjValue}
-                      placeholder="10"
+                      placeholder="₺ tutar"
                       onChange={(e) => setEditAdjValue(e.target.value)}
                     />
-                  </fieldset>
-                ) : null}
-              </section>
-
-              <div className="table-floor-edit-summary">
-                <span>Satır toplamı</span>
-                <strong>{formatMoney(editPreviewTotal)}</strong>
+                  ) : null}
+                </div>
               </div>
             </div>
 
             <footer className="table-floor-modal__edit-footer">
-              <button
-                type="button"
-                className="table-floor__secondary"
-                onClick={() => setEditingOrder(null)}
-              >
-                Vazgeç
-              </button>
-              <button
-                type="button"
-                className="table-floor__primary"
-                disabled={busy}
-                onClick={() => void saveOrderEdit()}
-              >
-                {busy ? 'Kaydediliyor…' : 'Kaydet'}
-              </button>
+              <div className="table-floor-edit-summary">
+                <span>Toplam</span>
+                <strong>{formatMoney(editPreviewTotal)}</strong>
+              </div>
+              <div className="table-floor-edit-footer-actions">
+                <button
+                  type="button"
+                  className="table-floor__secondary"
+                  onClick={() => setEditingOrder(null)}
+                >
+                  Vazgeç
+                </button>
+                <button
+                  type="button"
+                  className="table-floor__primary"
+                  disabled={busy}
+                  onClick={() => void saveOrderEdit()}
+                >
+                  {busy ? '…' : 'Kaydet'}
+                </button>
+              </div>
             </footer>
           </div>
         </div>
