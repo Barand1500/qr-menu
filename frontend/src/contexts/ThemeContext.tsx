@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { morphAdminAccent } from '@/lib/adminAccentMorph';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -40,6 +41,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return saved === 'dark' ? 'dark' : 'light';
   });
   const [accent, setAccentState] = useState<AdminAccentId>(readAccent);
+  const accentRef = useRef(accent);
+  const themeRef = useRef(theme);
+
+  useEffect(() => {
+    themeRef.current = theme;
+  }, [theme]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -49,7 +56,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.setAttribute('data-accent', accent);
     localStorage.setItem(ACCENT_KEY, accent);
-  }, [accent]);
+  }, []);
 
   function setTheme(mode: ThemeMode) {
     setThemeState(mode);
@@ -60,7 +67,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }
 
   function setAccent(id: AdminAccentId) {
+    if (id === accentRef.current) return;
+    const from = accentRef.current;
+    accentRef.current = id;
     setAccentState(id);
+    localStorage.setItem(ACCENT_KEY, id);
+    morphAdminAccent(themeRef.current, from, id, () => {
+      document.documentElement.setAttribute('data-accent', id);
+    });
   }
 
   return (

@@ -45,8 +45,9 @@ import {
 import { api } from '@/lib/api';
 import { adminPreviewMenuUrl } from '@/lib/tableContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme, ADMIN_ACCENT_OPTIONS, type AdminAccentId } from '@/contexts/ThemeContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoData } from '@/contexts/DemoDataContext';
+import AdminAccentPicker from '@/components/admin/AdminAccentPicker';
 import {
   DEMO_SUMMARY,
   DEMO_TOP_GROUPS,
@@ -416,7 +417,6 @@ function FeaturedCard({
   onToggleEdit: () => void;
 }) {
   const { user } = useAuth();
-  const { accent, setAccent } = useTheme();
 
   function openMenu() {
     window.open(adminPreviewMenuUrl(), '_blank');
@@ -433,22 +433,7 @@ function FeaturedCard({
           <p className="text-xs font-semibold uppercase tracking-wider admin-text-subtle">
             Dijital Menü
           </p>
-          <label className="dash-accent-pick" title="Site tema rengi">
-            <span className="dash-accent-pick__swatch" aria-hidden style={{ background: 'var(--admin-accent)' }} />
-            <select
-              className="dash-accent-pick__select"
-              value={accent}
-              disabled={editMode}
-              aria-label="Site tema rengi"
-              onChange={(e) => setAccent(e.target.value as AdminAccentId)}
-            >
-              {ADMIN_ACCENT_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <AdminAccentPicker disabled={editMode} />
         </div>
         <div className="flex items-center gap-4">
           <div
