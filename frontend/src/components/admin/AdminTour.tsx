@@ -277,7 +277,7 @@ export function AdminTourHelpButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
-      className="sidebar-tour-btn"
+      className="sidebar-footer-btn"
       data-tour="tour-help"
       title="İnteraktif tanıtım"
       aria-label="İnteraktif tanıtım"

@@ -19,10 +19,12 @@ import { api } from '@/lib/api';
 import { useAddons } from '@/hooks/useAddons';
 import AdminNotificationBell from '@/components/AdminNotificationBell';
 import AdminTour, { AdminTourHelpButton } from '@/components/admin/AdminTour';
+import AdminAIChat, { AdminAIButton } from '@/components/admin/AdminAIChat';
 import type { TourOpenGroup } from '@/lib/adminTourSteps';
 import { adminPreviewMenuUrl } from '@/lib/tableContext';
 import { adminPath } from '@/lib/adminPath';
 import '@/admin-tour.css';
+import '@/admin-ai.css';
 
 function buildNav() {
   const base = adminPath();
@@ -126,6 +128,7 @@ export default function AdminLayout() {
   const [startupOpen, setStartupOpen] = useState(false);
   const [resettingAddons, setResettingAddons] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [maintenanceOn, setMaintenanceOn] = useState(false);
   const [maintenanceBusy, setMaintenanceBusy] = useState(false);
 
@@ -293,16 +296,11 @@ export default function AdminLayout() {
       </nav>
 
       <div className="px-5 py-4 border-t border-white/10 mt-auto">
-        <div className="flex items-center gap-2 min-w-0">
-          <p className="text-xs text-white/45 truncate flex-1 min-w-0">
-            {user?.restaurant.name}
-          </p>
+        <div className="sidebar-footer-actions">
           <AdminTourHelpButton onClick={() => setTourOpen(true)} />
           <button
             type="button"
-            className={`sidebar-maintenance-btn shrink-0${
-              maintenanceOn ? ' sidebar-maintenance-btn--on' : ''
-            }`}
+            className={`sidebar-footer-btn${maintenanceOn ? ' sidebar-footer-btn--on' : ''}`}
             title={maintenanceOn ? 'Bakım modunu kapat' : 'Bakım modunu aç'}
             aria-label={maintenanceOn ? 'Bakım modunu kapat' : 'Bakım modunu aç'}
             aria-pressed={maintenanceOn}
@@ -318,12 +316,11 @@ export default function AdminLayout() {
             data-tour="extensions"
             title="Eklentiler"
             aria-label="Eklentiler"
-            className={`sidebar-extensions-btn shrink-0 ${
-              extensionsActive ? 'sidebar-extensions-btn--active' : ''
-            }`}
+            className={`sidebar-footer-btn${extensionsActive ? ' sidebar-footer-btn--active' : ''}`}
           >
             <Puzzle className="w-[18px] h-[18px]" strokeWidth={1.75} />
           </NavLink>
+          <AdminAIButton onClick={() => setAiOpen(true)} />
         </div>
       </div>
     </aside>
@@ -462,6 +459,7 @@ export default function AdminLayout() {
         onOpenGroup={handleOpenTourGroup}
         onNeedMobileNav={() => setMobileOpen(true)}
       />
+      <AdminAIChat open={aiOpen} onClose={() => setAiOpen(false)} />
     </div>
   );
 }
