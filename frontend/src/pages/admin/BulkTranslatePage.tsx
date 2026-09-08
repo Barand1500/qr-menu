@@ -18,6 +18,7 @@ import UnlockAddonModal from '@/components/UnlockAddonModal';
 import { useAddons } from '@/hooks/useAddons';
 import { api } from '@/lib/api';
 import { languageFlag } from '@/lib/languageFlags';
+import { adminPath } from '@/lib/adminPath';
 
 interface Language {
   id: number;
@@ -300,7 +301,7 @@ export default function BulkTranslatePage() {
             açabilirsin.
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
-            <Link to="/admin/extensions?tab=lang">
+            <Link to={`${adminPath('extensions')}?tab=lang`}>
               <Button type="button" variant="secondary">
                 <Globe2 className="w-4 h-4" />
                 Eklentilere git
@@ -345,7 +346,7 @@ export default function BulkTranslatePage() {
                 <p className="text-sm admin-text-muted mt-1 leading-relaxed max-w-xl">
                   Hedef dili seç, boş alanları toplu çevir. Yeni dil için{' '}
                   <Link
-                    to="/admin/settings?focus=languages"
+                    to={`${adminPath('settings')}?focus=languages`}
                     className="font-bold underline underline-offset-2"
                     style={{ color: 'var(--admin-accent)' }}
                   >

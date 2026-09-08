@@ -9,6 +9,7 @@ import {
   subscribeTableRequestCreated,
   type TableRequestNotifyPayload,
 } from '@/lib/tableRequestNotify';
+import { adminPath } from '@/lib/adminPath';
 
 export interface TableServiceRequestRow {
   id: number;
@@ -151,7 +152,7 @@ export default function AdminNotificationBell() {
     if (item.groupSlug) params.set('grup', item.groupSlug);
     params.set('cagri', String(item.id));
     params.set('tip', item.type);
-    navigate(`/admin/barcode?${params}`);
+    navigate(`${adminPath('barcode')}?${params}`);
   }
 
   async function clearAll() {

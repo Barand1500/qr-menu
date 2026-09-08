@@ -2,7 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CircleHelp, Lightbulb, X } from 'lucide-react';
-import { ADMIN_TOUR_STEPS, type TourOpenGroup, type TourStep } from '@/lib/adminTourSteps';
+import { getAdminTourSteps, type TourOpenGroup, type TourStep } from '@/lib/adminTourSteps';
+import { adminPath } from '@/lib/adminPath';
 import '@/admin-tour.css';
 
 type Rect = { top: number; left: number; width: number; height: number };
@@ -17,8 +18,8 @@ type Props = {
 function pathMatches(current: string, expected?: string) {
   if (!expected) return true;
   if (current === expected) return true;
-  // /admin exact vs /admin/...
-  if (expected === '/admin') return current === '/admin' || current === '/admin/';
+  const home = adminPath();
+  if (expected === home) return current === home || current === `${home}/`;
   return current === expected || current.startsWith(`${expected}/`);
 }
 
@@ -94,8 +95,9 @@ export default function AdminTour({ open, onClose, onOpenGroup, onNeedMobileNav 
   const [rect, setRect] = useState<Rect | null>(null);
   const [busy, setBusy] = useState(false);
   const runId = useRef(0);
-  const step = ADMIN_TOUR_STEPS[index];
-  const total = ADMIN_TOUR_STEPS.length;
+  const steps = getAdminTourSteps();
+  const step = steps[index];
+  const total = steps.length;
 
   const refreshRect = useCallback(() => {
     setRect(readTargetRect(step?.target));

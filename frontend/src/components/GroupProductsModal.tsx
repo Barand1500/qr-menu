@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { X, Package, ChevronRight } from 'lucide-react';
 import { api, formatMoney, imageUrl } from '@/lib/api';
 import { Badge, Button, Spinner } from '@/components/ui';
+import { adminPath } from '@/lib/adminPath';
 
 interface ProductItem {
   id: number;
@@ -52,12 +53,12 @@ export default function GroupProductsModal({
 
   function goEdit(productId: number) {
     onClose();
-    navigate(`/admin/products?edit=${productId}`);
+    navigate(`${adminPath('products')}?edit=${productId}`);
   }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
     >
       <div className="absolute inset-0 bg-black/35 backdrop-blur-[6px]" />
 

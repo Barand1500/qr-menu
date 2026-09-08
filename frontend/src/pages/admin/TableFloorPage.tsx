@@ -15,6 +15,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
+import { adminPath } from '@/lib/adminPath';
 import '@/table-floor.css';
 
 type FloorOrder = {
@@ -755,7 +756,7 @@ export default function TableFloorPage() {
   return (
     <div className="table-floor">
       <header className="table-floor__top">
-        <Link to="/admin" className="table-floor__back" aria-label="Admin panele dön">
+        <Link to={adminPath()} className="table-floor__back" aria-label="Admin panele dön">
           <ArrowLeft className="w-5 h-5" />
           <span>Geri</span>
         </Link>

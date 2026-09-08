@@ -21,29 +21,34 @@ import AdminNotificationBell from '@/components/AdminNotificationBell';
 import AdminTour, { AdminTourHelpButton } from '@/components/admin/AdminTour';
 import type { TourOpenGroup } from '@/lib/adminTourSteps';
 import { adminPreviewMenuUrl } from '@/lib/tableContext';
+import { adminPath } from '@/lib/adminPath';
 import '@/admin-tour.css';
-const mainNavBase = [
-  { to: '/admin', label: 'Özet', end: true, tourId: 'nav-ozet' },
-  { to: '/admin/groups', label: 'Gruplar', tourId: 'nav-groups' },
-  { to: '/admin/products', label: 'Ürünler', tourId: 'nav-products' },
-  { to: '/admin/showcase', label: 'Vitrin Görselleri', tourId: 'nav-showcase' },
-  { to: '/admin/barcode', label: 'Barkod Yazdır', tourId: 'nav-barcode' },
-];
 
-const startupNav = [
-  { to: '/admin/startup/welcome', label: 'Karşılama Ekranı', tourId: 'nav-welcome-theme' },
-  { to: '/admin/startup/menu', label: 'Menü Ekranı', tourId: 'nav-menu-theme' },
-];
-
-const reportNav = [
-  { to: '/admin/stats', label: 'İstatistikler', tourId: 'nav-stats' },
-  { to: '/admin/suggestions', label: 'Öneri Kutusu', tourId: 'nav-suggestions' },
-  { to: '/admin/complaints', label: 'Şikayet Kutusu', tourId: 'nav-complaints' },
-];
-const managementNav = [
-  { to: '/admin/users', label: 'Kullanıcılar', tourId: 'nav-users' },
-  { to: '/admin/settings', label: 'Ayarlar', tourId: 'nav-settings' },
-];
+function buildNav() {
+  const base = adminPath();
+  return {
+    mainNavBase: [
+      { to: base, label: 'Özet', end: true, tourId: 'nav-ozet' },
+      { to: adminPath('groups'), label: 'Gruplar', tourId: 'nav-groups' },
+      { to: adminPath('products'), label: 'Ürünler', tourId: 'nav-products' },
+      { to: adminPath('showcase'), label: 'Vitrin Görselleri', tourId: 'nav-showcase' },
+      { to: adminPath('barcode'), label: 'Barkod Yazdır', tourId: 'nav-barcode' },
+    ],
+    startupNav: [
+      { to: adminPath('startup', 'welcome'), label: 'Karşılama Ekranı', tourId: 'nav-welcome-theme' },
+      { to: adminPath('startup', 'menu'), label: 'Menü Ekranı', tourId: 'nav-menu-theme' },
+    ],
+    reportNav: [
+      { to: adminPath('stats'), label: 'İstatistikler', tourId: 'nav-stats' },
+      { to: adminPath('suggestions'), label: 'Öneri Kutusu', tourId: 'nav-suggestions' },
+      { to: adminPath('complaints'), label: 'Şikayet Kutusu', tourId: 'nav-complaints' },
+    ],
+    managementNav: [
+      { to: adminPath('users'), label: 'Kullanıcılar', tourId: 'nav-users' },
+      { to: adminPath('settings'), label: 'Ayarlar', tourId: 'nav-settings' },
+    ],
+  };
+}
 
 function NavGroup({
   label,
@@ -124,10 +129,11 @@ export default function AdminLayout() {
   const [maintenanceOn, setMaintenanceOn] = useState(false);
   const [maintenanceBusy, setMaintenanceBusy] = useState(false);
 
+  const { mainNavBase, startupNav, reportNav, managementNav } = buildNav();
   const mainNav = [
     ...mainNavBase,
     ...(isOwned('lang-pack')
-      ? [{ to: '/admin/bulk-translate', label: 'Toplu Çeviri', tourId: 'nav-bulk' }]
+      ? [{ to: adminPath('bulk-translate'), label: 'Toplu Çeviri', tourId: 'nav-bulk' }]
       : []),
   ];
 
@@ -169,14 +175,14 @@ export default function AdminLayout() {
   }
 
   const reportsActive =
-    location.pathname.startsWith('/admin/stats') ||
-    location.pathname.startsWith('/admin/suggestions') ||
-    location.pathname.startsWith('/admin/complaints');
+    location.pathname.startsWith(adminPath('stats')) ||
+    location.pathname.startsWith(adminPath('suggestions')) ||
+    location.pathname.startsWith(adminPath('complaints'));
   const managementActive =
-    location.pathname.startsWith('/admin/users') ||
-    location.pathname.startsWith('/admin/settings');
-  const startupActive = location.pathname.startsWith('/admin/startup');
-  const extensionsActive = location.pathname.startsWith('/admin/extensions');
+    location.pathname.startsWith(adminPath('users')) ||
+    location.pathname.startsWith(adminPath('settings'));
+  const startupActive = location.pathname.startsWith(adminPath('startup'));
+  const extensionsActive = location.pathname.startsWith(adminPath('extensions'));
 
   useEffect(() => {
     if (reportsActive) setReportsOpen(true);
@@ -307,7 +313,7 @@ export default function AdminLayout() {
             <Construction className="w-[18px] h-[18px]" strokeWidth={1.75} />
           </button>
           <NavLink
-            to="/admin/extensions"
+            to={adminPath('extensions')}
             onClick={closeMobile}
             data-tour="extensions"
             title="Eklentiler"
@@ -371,7 +377,7 @@ export default function AdminLayout() {
 
             <button
               type="button"
-              onClick={() => navigate('/admin/masa-gorunumu')}
+              onClick={() => navigate(adminPath('masa-gorunumu'))}
               data-tour="header-floor"
               className="p-2 rounded-lg hover:bg-[var(--admin-accent-soft)] transition"
               title="Masa görünümü"

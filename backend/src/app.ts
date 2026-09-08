@@ -24,6 +24,7 @@ import campaignsRouter from './routes/campaigns.js';
 import bulkTranslateRouter from './routes/bulk-translate.js';
 import tableFloorRouter from './routes/table-floor.js';
 import mapTilesRouter from './routes/map-tiles.js';
+import publicConfigRouter from './routes/public-config.js';
 
 export function createApp() {
   const app = express();
@@ -70,6 +71,7 @@ export function createApp() {
   app.use('/api/admin/table-floor', tableFloorRouter);
   app.use('/api/menu', publicMenuRouter);
   app.use('/api/map-tiles', mapTilesRouter);
+  app.use('/api/public', publicConfigRouter);
 
   const publicDir = path.resolve(process.env.PUBLIC_DIR || './public');
   if (fs.existsSync(publicDir)) {

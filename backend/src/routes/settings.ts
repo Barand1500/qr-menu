@@ -32,6 +32,12 @@ import {
 import { isMaintenanceEnabled, setMaintenanceEnabled } from '../lib/maintenance.js';
 import { ABOUT_PAGE_KEY, parseAboutPage, serializeAboutPage } from '../lib/about-page.js';
 import type { AboutPageConfig } from '../lib/about-page.js';
+import {
+  ADMIN_PATH_KEY,
+  DEFAULT_ADMIN_PATH,
+  normalizeAdminPath,
+  validateAdminPath,
+} from '../lib/admin-path.js';
 
 const router = Router();
 router.use(authRequired);
@@ -508,6 +514,28 @@ router.put('/maintenance', async (req, res) => {
   const enabled = Boolean((req.body as { enabled?: boolean }).enabled);
   await setMaintenanceEnabled(restaurantId!, enabled);
   res.json({ enabled });
+});
+
+router.get('/admin-path', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const row = await prisma.setting.findUnique({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: ADMIN_PATH_KEY } },
+  });
+  res.json({ path: normalizeAdminPath(row?.value) || DEFAULT_ADMIN_PATH });
+});
+
+router.put('/admin-path', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const checked = validateAdminPath((req.body as { path?: string }).path);
+  if (!checked.ok) return res.status(400).json({ message: checked.message });
+
+  await prisma.setting.upsert({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: ADMIN_PATH_KEY } },
+    update: { value: checked.path },
+    create: { restaurantId: restaurantId!, key: ADMIN_PATH_KEY, value: checked.path },
+  });
+
+  res.json({ path: checked.path });
 });
 
 export default router;

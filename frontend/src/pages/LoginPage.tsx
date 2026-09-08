@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { QrCode, X, Building2 } from 'lucide-react';
 import { Input } from '@/components/ui';
+import { adminPath } from '@/lib/adminPath';
 
 function ContactModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   useEffect(() => {
@@ -173,7 +174,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
 
-  if (user) return <Navigate to="/admin" replace />;
+  if (user) return <Navigate to={adminPath()} replace />;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

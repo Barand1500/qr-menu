@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, EyeOff, Eye, X, UserCircle } from 'lucide-react';
+import { Plus, Pencil, EyeOff, Eye, X, UserCircle, ShieldAlert, Copy, Check, Shuffle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Spinner } from '@/components/ui';
+import {
+  adminPath,
+  fetchAndCacheAdminPath,
+  getAdminPathSlug,
+  setAdminPathSlug,
+  suggestAdminPath,
+  validateAdminPath,
+} from '@/lib/adminPath';
 
 interface UserItem {
   id: number;
@@ -18,6 +26,8 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<UserItem | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState({
     email: '',
     password: '',
@@ -27,8 +37,16 @@ export default function UsersPage() {
     isActive: true,
   });
 
+  const [panelPath, setPanelPath] = useState(getAdminPathSlug());
+  const [pathDraft, setPathDraft] = useState(getAdminPathSlug());
+  const [pathAck, setPathAck] = useState(false);
+  const [pathSaving, setPathSaving] = useState(false);
+  const [pathError, setPathError] = useState<string | null>(null);
+  const [pathOk, setPathOk] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
   async function load() {
-    const params = search ? `?search=${search}` : '';
+    const params = search ? `?search=${encodeURIComponent(search)}` : '';
     const res = await api<{ data: UserItem[] }>(`/api/admin/users${params}`);
     setUsers(res.data);
   }
@@ -36,6 +54,21 @@ export default function UsersPage() {
   useEffect(() => {
     load().finally(() => setLoading(false));
   }, [search]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await api<{ path: string }>('/api/admin/settings/admin-path');
+        const p = setAdminPathSlug(res.path);
+        setPanelPath(p);
+        setPathDraft(p);
+      } catch {
+        const p = await fetchAndCacheAdminPath();
+        setPanelPath(p);
+        setPathDraft(p);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (!modalOpen) return;
@@ -48,46 +81,73 @@ export default function UsersPage() {
 
   function openCreate() {
     setEditing(null);
+    setFormError(null);
     setForm({ email: '', password: '', fullName: '', phone: '', role: 'staff', isActive: true });
     setModalOpen(true);
   }
 
   function openEdit(user: UserItem) {
     setEditing(user);
+    setFormError(null);
     setForm({
       email: user.email,
       password: '',
       fullName: user.fullName,
       phone: user.phone || '',
-      role: user.role,
+      role: user.role === 'admin' ? 'admin' : 'staff',
       isActive: user.isActive,
     });
     setModalOpen(true);
   }
 
   async function handleSave() {
+    setFormError(null);
+    if (!form.fullName.trim()) {
+      setFormError('Ad soyad gerekli');
+      return;
+    }
+    if (!form.email.trim()) {
+      setFormError('E-posta gerekli');
+      return;
+    }
+    if (!editing && !form.password) {
+      setFormError('Yeni kullanıcı için şifre gerekli');
+      return;
+    }
+    if (form.password && form.password.length < 6) {
+      setFormError('Şifre en az 6 karakter olmalı');
+      return;
+    }
+
     const payload = {
-      email: form.email,
-      fullName: form.fullName,
+      email: form.email.trim(),
+      fullName: form.fullName.trim(),
       phone: form.phone,
       role: form.role,
       isActive: form.isActive,
       ...(form.password && { password: form.password }),
     };
 
-    if (editing) {
-      await api(`/api/admin/users/${editing.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-      });
-    } else {
-      await api('/api/admin/users', {
-        method: 'POST',
-        body: JSON.stringify({ ...payload, password: form.password }),
-      });
+    setSaving(true);
+    try {
+      if (editing) {
+        await api(`/api/admin/users/${editing.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await api('/api/admin/users', {
+          method: 'POST',
+          body: JSON.stringify({ ...payload, password: form.password }),
+        });
+      }
+      setModalOpen(false);
+      await load();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Kaydedilemedi');
+    } finally {
+      setSaving(false);
     }
-    setModalOpen(false);
-    await load();
   }
 
   async function handleToggle(user: UserItem) {
@@ -102,7 +162,55 @@ export default function UsersPage() {
     }
   }
 
+  async function savePanelPath() {
+    setPathError(null);
+    setPathOk(null);
+    const checked = validateAdminPath(pathDraft);
+    if (!checked.ok) {
+      setPathError(checked.message);
+      return;
+    }
+    if (checked.path !== panelPath && !pathAck) {
+      setPathError('Devam etmek için uyarı kutusunu onaylayın');
+      return;
+    }
+    setPathSaving(true);
+    try {
+      const res = await api<{ path: string }>('/api/admin/settings/admin-path', {
+        method: 'PUT',
+        body: JSON.stringify({ path: checked.path }),
+      });
+      const next = setAdminPathSlug(res.path);
+      setPanelPath(next);
+      setPathDraft(next);
+      setPathAck(false);
+      setPathOk(`Panel yolu kaydedildi. Yeni adres: ${window.location.origin}${adminPath()}`);
+      if (next !== panelPath) {
+        window.setTimeout(() => {
+          window.location.assign(adminPath('users'));
+        }, 600);
+      }
+    } catch (err) {
+      setPathError(err instanceof Error ? err.message : 'Kaydedilemedi');
+    } finally {
+      setPathSaving(false);
+    }
+  }
+
+  async function copyPanelUrl() {
+    const url = `${window.location.origin}${adminPath()}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setPathError('Kopyalanamadı');
+    }
+  }
+
   if (loading) return <Spinner />;
+
+  const pathChanged = normalizeDraft(pathDraft) !== panelPath;
 
   return (
     <div className="space-y-5">
@@ -115,6 +223,101 @@ export default function UsersPage() {
           </Button>
         }
       />
+
+      <Card className="space-y-4">
+        <div className="flex items-start gap-3">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'var(--admin-accent-soft)' }}
+          >
+            <ShieldAlert className="w-5 h-5" style={{ color: 'var(--admin-accent)' }} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-bold text-[var(--admin-text)]">Panel giriş adresi</h3>
+            <p className="text-sm admin-text-muted mt-0.5">
+              Varsayılan <code className="text-xs">/admin</code>. Değiştirince eski adres kapanır;
+              yalnızca sizin bildiğiniz yol paneli açar.
+            </p>
+          </div>
+        </div>
+
+        <div
+          className="rounded-xl border px-3.5 py-3 text-sm space-y-1.5"
+          style={{
+            borderColor: 'color-mix(in srgb, #b45309 35%, var(--admin-card-border))',
+            background: 'color-mix(in srgb, #f59e0b 12%, var(--admin-card))',
+            color: 'var(--admin-text)',
+          }}
+        >
+          <p className="font-semibold text-amber-700 dark:text-amber-400">Dikkat</p>
+          <ul className="list-disc pl-4 space-y-1 admin-text-muted text-[0.8125rem]">
+            <li>Bu adresi herkese vermeyin; panelin gizli giriş kapısıdır.</li>
+            <li>Kaydettikten sonra eski <code>/admin</code> (veya önceki yol) çalışmaz.</li>
+            <li>Yeni yolu yer imlerine ekleyin; unutursanız panele giremezsiniz.</li>
+            <li>
+              <code>/login</code>, <code>/menu</code> gibi sistem yolları kullanılamaz.
+            </li>
+          </ul>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+          <div className="flex-1">
+            <Input
+              label="Panel yolu (slug)"
+              value={pathDraft}
+              onChange={(e) => {
+                setPathDraft(e.target.value);
+                setPathError(null);
+                setPathOk(null);
+              }}
+              placeholder="ornek: panel-7k2x"
+            />
+            <p className="text-xs admin-text-muted mt-1.5">
+              Tam adres:{' '}
+              <span className="font-medium text-[var(--admin-text)]">
+                {window.location.origin}/{normalizeDraft(pathDraft) || '…'}
+              </span>
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setPathDraft(suggestAdminPath());
+              setPathError(null);
+              setPathOk(null);
+            }}
+          >
+            <Shuffle className="w-4 h-4" />
+            Öner
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => void copyPanelUrl()}>
+            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            {copied ? 'Kopyalandı' : 'Kopyala'}
+          </Button>
+        </div>
+
+        {pathChanged ? (
+          <label className="flex items-start gap-2.5 cursor-pointer text-sm text-[var(--admin-text)]">
+            <input
+              type="checkbox"
+              checked={pathAck}
+              onChange={(e) => setPathAck(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded accent-[var(--admin-accent)]"
+            />
+            <span>
+              Eski panel yolunun kapanacağını ve yeni adresi kaydedeceğimi biliyorum.
+            </span>
+          </label>
+        ) : null}
+
+        {pathError ? <p className="text-sm text-red-600">{pathError}</p> : null}
+        {pathOk ? <p className="text-sm text-emerald-600">{pathOk}</p> : null}
+
+        <Button disabled={pathSaving} onClick={() => void savePanelPath()}>
+          {pathSaving ? 'Kaydediliyor…' : 'Panel yolunu kaydet'}
+        </Button>
+      </Card>
 
       <Card className="overflow-hidden !p-0">
         <div
@@ -139,6 +342,7 @@ export default function UsersPage() {
               >
                 <th className="py-3.5 px-4 font-semibold">Ad Soyad</th>
                 <th className="py-3.5 px-4 font-semibold">E-posta</th>
+                <th className="py-3.5 px-4 font-semibold hidden md:table-cell">Rol</th>
                 <th className="py-3.5 px-4 font-semibold hidden sm:table-cell">GSM</th>
                 <th className="py-3.5 px-4 font-semibold">Durum</th>
                 <th className="py-3.5 px-4 font-semibold w-[100px]">İşlem</th>
@@ -147,7 +351,7 @@ export default function UsersPage() {
             <tbody>
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     <EmptyState message="Kullanıcı bulunamadı" />
                   </td>
                 </tr>
@@ -177,6 +381,17 @@ export default function UsersPage() {
                       </div>
                     </td>
                     <td className="py-3.5 px-4 admin-text-muted">{user.email}</td>
+                    <td className="py-3.5 px-4 hidden md:table-cell">
+                      <span
+                        className="inline-flex px-2 py-0.5 rounded-lg text-xs font-semibold"
+                        style={{
+                          background: 'var(--admin-accent-soft)',
+                          color: 'var(--admin-accent-text)',
+                        }}
+                      >
+                        {user.role === 'admin' ? 'Admin' : 'Personel'}
+                      </span>
+                    </td>
                     <td className="py-3.5 px-4 admin-text-muted hidden sm:table-cell">
                       {user.phone || '—'}
                     </td>
@@ -219,9 +434,7 @@ export default function UsersPage() {
       </Card>
 
       {modalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-        >
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-black/35 backdrop-blur-[6px]" />
           <div
             className="relative w-full sm:max-w-md rounded-t-[28px] sm:rounded-[28px] shadow-2xl animate-slide-up p-6"
@@ -243,7 +456,9 @@ export default function UsersPage() {
                   <h2 className="text-xl font-bold text-[var(--admin-text)]">
                     {editing ? 'Kullanıcı Düzenle' : 'Yeni Kullanıcı'}
                   </h2>
-                  <p className="text-sm admin-text-muted mt-0.5">Panel erişim bilgileri</p>
+                  <p className="text-sm admin-text-muted mt-0.5">
+                    Panel girişi: e-posta + şifre → {window.location.origin}/login
+                  </p>
                 </div>
               </div>
               <button
@@ -277,25 +492,39 @@ export default function UsersPage() {
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
               />
-              <label
-                className="flex items-center gap-2.5 cursor-pointer text-sm text-[var(--admin-text)] py-1"
-              >
+              <label className="block text-sm text-[var(--admin-text)]">
+                <span className="admin-text-muted text-xs font-semibold uppercase tracking-wide">
+                  Rol
+                </span>
+                <select
+                  className="mt-1.5 w-full rounded-xl border px-3 py-2.5 bg-[var(--admin-input-bg)] text-[var(--admin-text)]"
+                  style={{ borderColor: 'var(--admin-card-border)' }}
+                  value={form.role}
+                  onChange={(e) => setForm({ ...form, role: e.target.value })}
+                >
+                  <option value="staff">Personel</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2.5 cursor-pointer text-sm text-[var(--admin-text)] py-1">
                 <input
                   type="checkbox"
                   checked={form.isActive}
                   onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
                   className="w-4 h-4 rounded accent-[var(--admin-accent)]"
                 />
-                Aktif kullanıcı
+                Aktif kullanıcı (pasif ise giriş yapamaz)
               </label>
             </div>
+
+            {formError ? <p className="text-sm text-red-600 mt-3">{formError}</p> : null}
 
             <div className="flex gap-3 mt-6">
               <Button variant="secondary" className="flex-1" onClick={() => setModalOpen(false)}>
                 İptal
               </Button>
-              <Button className="flex-1" onClick={handleSave}>
-                Kaydet
+              <Button className="flex-1" disabled={saving} onClick={() => void handleSave()}>
+                {saving ? 'Kaydediliyor…' : 'Kaydet'}
               </Button>
             </div>
           </div>
@@ -303,4 +532,12 @@ export default function UsersPage() {
       )}
     </div>
   );
+}
+
+function normalizeDraft(raw: string) {
+  return String(raw || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '');
 }

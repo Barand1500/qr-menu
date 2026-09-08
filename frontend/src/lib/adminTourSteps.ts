@@ -1,3 +1,5 @@
+import { adminPath } from '@/lib/adminPath';
+
 export type TourOpenGroup = 'startup' | 'reports' | 'management';
 
 export type TourStep = {
@@ -12,7 +14,12 @@ export type TourStep = {
   placement?: 'top' | 'bottom' | 'left' | 'right' | 'center';
 };
 
-export const ADMIN_TOUR_STEPS: TourStep[] = [
+type TourStepDef = Omit<TourStep, 'path'> & {
+  /** Segments after admin base; empty/omit for panel home */
+  pathSegments?: string[];
+};
+
+const TOUR_STEP_DEFS: TourStepDef[] = [
   {
     id: 'welcome',
     title: 'Panele hoş geldiniz',
@@ -26,7 +33,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     body: 'Müşterinin telefonunda gördüğü canlı menüyü buradan açarsınız. Ürün veya tema değiştirdikten sonra buraya basıp sonucu hemen kontrol edin.',
     tip: 'Yeni sekmede açılır; panel kapanmaz.',
     target: 'menu-preview',
-    path: '/admin',
+    pathSegments: [],
     placement: 'right',
   },
   {
@@ -34,7 +41,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     title: 'Özet paneli',
     body: 'Günün nabzı burada: popüler ürünler, görüntülenmeler ve hızlı istatistikler. Sabah açıp “bugün ne oluyor?” diye bakmak için ideal yer.',
     target: 'nav-ozet',
-    path: '/admin',
+    pathSegments: [],
     placement: 'right',
   },
   {
@@ -43,7 +50,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     body: 'Menünün iskeleti burası. Burgerler, İçecekler, Kahvaltı gibi kategorileri oluşturur; sürükleyerek sıralar ve alt gruplar eklersiniz.',
     tip: 'Önce grupları kurun, sonra ürün eklemek çok daha kolay olur.',
     target: 'nav-groups',
-    path: '/admin/groups',
+    pathSegments: ['groups'],
     placement: 'right',
   },
   {
@@ -51,7 +58,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     title: 'Ürünler',
     body: 'Her yemeği buraya eklersiniz: isim, fiyat, fotoğraf, açıklama, alerjen ve diyet etiketleri. Gruplara bağlayarak menüde doğru yerde görünmesini sağlarsınız.',
     target: 'nav-products',
-    path: '/admin/products',
+    pathSegments: ['products'],
     placement: 'right',
   },
   {
@@ -59,7 +66,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     title: 'Vitrin görselleri',
     body: 'Menünün üstündeki dikkat çekici banner ve hikâye görsellerini buradan yönetirsiniz. Kampanya veya öne çıkan ürün için kullanın.',
     target: 'nav-showcase',
-    path: '/admin/showcase',
+    pathSegments: ['showcase'],
     placement: 'right',
   },
   {
@@ -68,7 +75,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     body: 'Her masa için QR kod üretirsiniz. Renk seçer, yazdırır ve masaya koyarsınız. Misafir kamerayla okutunca menü o masaya bağlanır.',
     tip: 'Salon / teras gibi masa gruplarını da buradan tanımlarsınız.',
     target: 'nav-barcode',
-    path: '/admin/barcode',
+    pathSegments: ['barcode'],
     placement: 'right',
   },
   {
@@ -76,7 +83,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     title: 'Başlangıç ayarları',
     body: 'İlk izlenim burada şekillenir. Karşılama ekranı ve menü teması bu menünün altındadır — şimdi içine bakıyoruz.',
     target: 'nav-startup',
-    path: '/admin',
+    pathSegments: [],
     openGroup: 'startup',
     placement: 'right',
   },
@@ -85,7 +92,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     title: 'Karşılama ekranı',
     body: 'QR okutulunca ilk açılan ekran. Dil seçimi, karşılama metni ve tema buradan ayarlanır. Markanızın “merhaba”sı burada.',
     target: 'nav-welcome-theme',
-    path: '/admin/startup/welcome',
+    pathSegments: ['startup', 'welcome'],
     openGroup: 'startup',
     placement: 'right',
   },
@@ -95,7 +102,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     body: 'Asıl menü görünümü: sade, canlı, lüks ve diğer temalar. Restoran tarzınıza uyanı seçip önizleyebilirsiniz.',
     tip: 'Bazı temalar Eklentiler’den açılır.',
     target: 'nav-menu-theme',
-    path: '/admin/startup/menu',
+    pathSegments: ['startup', 'menu'],
     openGroup: 'startup',
     placement: 'right',
   },
@@ -104,7 +111,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     title: 'Raporlar',
     body: 'İşletmenin kulağı burada. İstatistikler ve müşteri kutuları bu grubun altında — tek tek geziyoruz.',
     target: 'nav-reports',
-    path: '/admin',
+    pathSegments: [],
     openGroup: 'reports',
     placement: 'right',
   },
@@ -113,7 +120,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     title: 'İstatistikler',
     body: 'Hangi ürün / grup ne kadar bakılmış, trend nasıl — grafikler ve sayılar burada. Menüyü neyin tuttuğunu anlarsınız.',
     target: 'nav-stats',
-    path: '/admin/stats',
+    pathSegments: ['stats'],
     openGroup: 'reports',
     placement: 'right',
   },
@@ -122,7 +129,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     title: 'Öneri kutusu',
     body: 'Misafirlerin “şunu da ekleseniz” dediği mesajlar buraya düşer. Yeni ürün fikirleri için altın değerinde.',
     target: 'nav-suggestions',
-    path: '/admin/suggestions',
+    pathSegments: ['suggestions'],
     openGroup: 'reports',
     placement: 'right',
   },
@@ -131,7 +138,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     title: 'Şikayet kutusu',
     body: 'Olumsuz geri bildirimleri kaçırmadan okur ve takip edersiniz. Hızlı yanıt için günde bir kez bakmak iyi olur.',
     target: 'nav-complaints',
-    path: '/admin/complaints',
+    pathSegments: ['complaints'],
     openGroup: 'reports',
     placement: 'right',
   },
@@ -140,7 +147,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     title: 'Yönetim',
     body: 'Panel kullanıcıları ve tüm sistem ayarları bu grubun altında. Konum kilidi de dahil birçok ayar Ayarlar’dadır.',
     target: 'nav-management',
-    path: '/admin',
+    pathSegments: [],
     openGroup: 'management',
     placement: 'right',
   },
@@ -149,7 +156,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     title: 'Kullanıcılar',
     body: 'Panele giren personeli buradan ekler veya yetkilerini yönetirsiniz. Garson / yönetici ayrımı için kullanın.',
     target: 'nav-users',
-    path: '/admin/users',
+    pathSegments: ['users'],
     openGroup: 'management',
     placement: 'right',
   },
@@ -159,7 +166,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     body: 'Dil, para birimi, logo, sosyal medya, müzik, garson çağır ve konum kilidi gibi her şey burada. Restoran kimliğinin merkezi.',
     tip: 'Konum kilidi ile menüyü sadece mekân civarında açtırabilirsiniz.',
     target: 'nav-settings',
-    path: '/admin/settings',
+    pathSegments: ['settings'],
     openGroup: 'management',
     placement: 'right',
   },
@@ -168,7 +175,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     title: 'Eklentiler',
     body: 'Ek temalar, dil paketi ve premium özellikler yapboz ikonundan açılır. Kod ile satın aldığınız eklentileri buradan aktifleştirirsiniz.',
     target: 'extensions',
-    path: '/admin/extensions',
+    pathSegments: ['extensions'],
     placement: 'top',
   },
   {
@@ -176,7 +183,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     title: 'Yardım her zaman burada',
     body: 'Bu soru işaretine her an tıklayıp turu yeniden başlatabilirsiniz. Yeni personel için de ideal.',
     target: 'tour-help',
-    path: '/admin',
+    pathSegments: [],
     placement: 'top',
   },
   {
@@ -185,7 +192,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     body: 'Menüyü geçici olarak kapatmak istediğinizde bu düğmeye basın. Misafirler menü yerine kısa bir bakım ekranı ve “Garson Koşusu” oyununu görür; siz işinizi bitirince tekrar kapatırsınız.',
     tip: 'Yenileme, tema değişimi veya acil durumlarda kullanın. Açıkken turuncu yanar.',
     target: 'maintenance',
-    path: '/admin',
+    pathSegments: [],
     placement: 'top',
   },
   {
@@ -193,7 +200,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     title: 'Gündüz / gece',
     body: 'Panel temasını buradan değiştirirsiniz. Göz yormayan gece modu uzun nöbetlerde işe yarar.',
     target: 'header-theme',
-    path: '/admin',
+    pathSegments: [],
     placement: 'bottom',
   },
   {
@@ -202,7 +209,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     body: 'Canlı salon haritası: dolu / boş masalar, süre, sipariş ekleme, rezervasyon, masa taşıma ve birleştirme burada.',
     tip: 'Servis sırasında en çok kullanacağınız ekranlardan biri.',
     target: 'header-floor',
-    path: '/admin',
+    pathSegments: [],
     placement: 'bottom',
   },
   {
@@ -210,7 +217,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     title: 'Bildirimler',
     body: 'Garson çağrıları ve önemli uyarılar zilde birikir. Kırmızı nokta görürseniz bakmayı unutmayın.',
     target: 'header-bell',
-    path: '/admin',
+    pathSegments: [],
     placement: 'bottom',
   },
   {
@@ -221,3 +228,13 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     placement: 'center',
   },
 ];
+
+export function getAdminTourSteps(): TourStep[] {
+  return TOUR_STEP_DEFS.map(({ pathSegments, ...rest }) => {
+    if (pathSegments === undefined) return rest;
+    return { ...rest, path: adminPath(...pathSegments) };
+  });
+}
+
+/** @deprecated Prefer getAdminTourSteps() — kept for callers that need a static name */
+export const ADMIN_TOUR_STEPS: TourStep[] = getAdminTourSteps();

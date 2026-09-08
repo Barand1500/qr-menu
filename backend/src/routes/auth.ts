@@ -56,8 +56,8 @@ router.get('/me', authRequired, async (req, res) => {
     include: { restaurant: true },
   });
 
-  if (!user) {
-    return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
+  if (!user || !user.isActive) {
+    return res.status(401).json({ message: 'Oturum geçersiz veya hesap pasif' });
   }
 
   res.json({

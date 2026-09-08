@@ -17,6 +17,7 @@ import {
 } from '@/addons';
 import type { LinearThemeConfig } from '@/lib/menuLinearConfig';
 import type { AnimasyonThemeConfig } from '@/lib/menuAnimasyonConfig';
+import { adminPath } from '@/lib/adminPath';
 
 interface ThemePickerPageProps {
   kind: ThemeKind;
@@ -134,9 +135,7 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
           {message}{' '}
           {message.includes('Eklentiler') && (
             <Link
-              to={
-                kind === 'welcome' ? '/admin/extensions/welcome' : '/admin/extensions/menu'
-              }
+              to={adminPath('extensions', kind === 'welcome' ? 'welcome' : 'menu')}
               className="underline font-semibold"
             >
               Eklentiler’e git
@@ -193,13 +192,7 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
                   </p>
                   <div className="mt-4 flex flex-col gap-2">
                     {locked ? (
-                      <Link
-                        to={
-                          kind === 'welcome'
-                            ? '/admin/extensions/welcome'
-                            : '/admin/extensions/menu'
-                        }
-                      >
+                      <Link to={adminPath('extensions', kind === 'welcome' ? 'welcome' : 'menu')}>
                         <Button type="button" variant="secondary" className="w-full">
                           Eklentiler’de aç
                         </Button>

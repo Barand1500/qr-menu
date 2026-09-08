@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAddons } from '@/hooks/useAddons';
 import { Button, Card, Input, PageHeader, Select, Spinner } from '@/components/ui';
 import { api, imageUrl } from '@/lib/api';
+import { adminPath } from '@/lib/adminPath';
 import AddTableGroupModal from '@/components/AddTableGroupModal';
 import AddCampaignModal from '@/components/AddCampaignModal';
 import CampaignMenuModal from '@/components/CampaignMenuModal';
@@ -606,7 +607,7 @@ export default function BarcodePage() {
       {!qrPack && (
         <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Sade siyah QR ücretsiz. Renk, logo, masa ve kampanya için{' '}
-          <Link to="/admin/extensions/qr" className="font-semibold underline">
+          <Link to={adminPath('extensions', 'qr')} className="font-semibold underline">
             Eklentiler → QR
           </Link>{' '}
           paketini Kod Gir ile aç.

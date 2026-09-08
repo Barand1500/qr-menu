@@ -21,6 +21,7 @@ import type { AddonCategory, AddonProduct } from '@/addons';
 import type { MenuAssistantStyle } from '@/lib/menuAssistantStyle';
 import type { LinearThemeConfig } from '@/lib/menuLinearConfig';
 import type { AnimasyonThemeConfig } from '@/lib/menuAnimasyonConfig';
+import { adminPath } from '@/lib/adminPath';
 
 type TabId = 'all' | 'welcome' | 'menu' | 'qr' | 'lang' | 'feature';
 
@@ -180,7 +181,7 @@ export default function ExtensionsHubPage() {
             <Settings2 className="w-4 h-4" />
             Tema ayarları
           </Button>
-          <Link to="/admin/startup/menu" className="w-full">
+          <Link to={adminPath('startup', 'menu')} className="w-full">
             <Button type="button" className="w-full">
               <Sparkles className="w-4 h-4" />
               Temalarda kullan
@@ -201,7 +202,7 @@ export default function ExtensionsHubPage() {
             <Settings2 className="w-4 h-4" />
             Tema ayarları
           </Button>
-          <Link to="/admin/startup/menu" className="w-full">
+          <Link to={adminPath('startup', 'menu')} className="w-full">
             <Button type="button" className="w-full">
               <Sparkles className="w-4 h-4" />
               Temalarda kullan
@@ -229,7 +230,7 @@ export default function ExtensionsHubPage() {
     }
     if (product.category === 'qr') {
       return (
-        <Link to="/admin/barcode" className="w-full">
+        <Link to={adminPath('barcode')} className="w-full">
           <Button type="button" className="w-full">
             <QrCode className="w-4 h-4" />
             Barkod’a git
@@ -239,7 +240,7 @@ export default function ExtensionsHubPage() {
     }
     if (product.category === 'lang') {
       return (
-        <Link to="/admin/bulk-translate" className="w-full">
+        <Link to={adminPath('bulk-translate')} className="w-full">
           <Button type="button" className="w-full">
             <Languages className="w-4 h-4" />
             Toplu Çeviri’ye git
@@ -249,7 +250,11 @@ export default function ExtensionsHubPage() {
     }
     return (
       <Link
-        to={product.category === 'welcome' ? '/admin/startup/welcome' : '/admin/startup/menu'}
+        to={
+          product.category === 'welcome'
+            ? adminPath('startup', 'welcome')
+            : adminPath('startup', 'menu')
+        }
         className="w-full"
       >
         <Button type="button" className="w-full">

@@ -32,13 +32,27 @@ export function authRequired(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ message: 'Oturum gerekli' });
   }
 
-  try {
-    const decoded = jwt.verify(token, config.jwtSecret) as AuthPayload;
-    req.user = decoded;
-    next();
-  } catch {
-    return res.status(401).json({ message: 'Geçersiz oturum' });
-  }
+  void (async () => {
+    try {
+      const decoded = jwt.verify(token, config.jwtSecret) as AuthPayload;
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: { isActive: true, restaurantId: true, role: true, email: true },
+      });
+      if (!user || !user.isActive) {
+        return res.status(401).json({ message: 'Oturum geçersiz veya hesap pasif' });
+      }
+      req.user = {
+        userId: decoded.userId,
+        restaurantId: user.restaurantId,
+        email: user.email,
+        role: user.role,
+      };
+      next();
+    } catch {
+      return res.status(401).json({ message: 'Geçersiz oturum' });
+    }
+  })();
 }
 
 export async function getRestaurantId(req: Request): Promise<number | null> {
