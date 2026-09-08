@@ -1560,6 +1560,43 @@ export default function TableFloorPage() {
                                     </label>
                                   );
                                 }
+                                if (g.type === 'choice') {
+                                  const visible = activeOpts.filter((o) => !blocked.has(o.id));
+                                  return (
+                                    <div key={g.id} className="table-floor-modal__choice">
+                                      <span className="table-floor-modal__multi-title">
+                                        {g.name}
+                                        {g.required ? ' *' : ''}
+                                      </span>
+                                      <div className="table-floor-modal__choice-chips">
+                                        {visible.map((o) => {
+                                          const on = picks.some((x) => x.optionId === o.id);
+                                          return (
+                                            <button
+                                              key={o.id}
+                                              type="button"
+                                              className={`table-floor-modal__choice-chip${on ? ' is-on' : ''}`}
+                                              onClick={() => {
+                                                const nextPicks = on
+                                                  ? picks.filter((x) => x.optionId !== o.id)
+                                                  : [...picks, { optionId: o.id, qty: 1 }];
+                                                const next = { ...line.selections };
+                                                if (nextPicks.length) next[g.id] = nextPicks;
+                                                else delete next[g.id];
+                                                patchCart(p.id, { selections: next });
+                                              }}
+                                            >
+                                              {o.name}
+                                              {o.price > 0 ? (
+                                                <small>+{formatMoney(o.price)}</small>
+                                              ) : null}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                }
                                 const groupQty = groupSelectedQty(line.selections, g.id);
                                 const maxQty = effectiveMultiMaxTotalQty(
                                   p.optionGroups || [],
@@ -1733,6 +1770,51 @@ export default function TableFloorPage() {
                             >
                               {o.name}
                               {priceText ? <small>{priceText}</small> : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+
+              {editGroups
+                .filter((g) => g.type === 'choice')
+                .map((g) => {
+                  const picks = editSelections[g.id] || [];
+                  const blocked = blockedOptionIds(editGroups, editSelections);
+                  const visible = g.options.filter(
+                    (o) => o.isActive !== false && !blocked.has(o.id)
+                  );
+                  return (
+                    <div key={g.id} className="table-floor-edit-block">
+                      <div className="table-floor-edit-row table-floor-edit-row--label">
+                        <span className="table-floor-edit-label">{g.name || 'İstekler'}</span>
+                        {g.required ? <em className="table-floor-edit-tag">zorunlu</em> : null}
+                      </div>
+                      <div className="table-floor-edit-chips">
+                        {visible.map((o) => {
+                          const active = picks.some((x) => x.optionId === o.id);
+                          return (
+                            <button
+                              key={o.id}
+                              type="button"
+                              className={`table-floor-edit-chip${active ? ' is-active' : ''}`}
+                              onClick={() =>
+                                setEditSelections((prev) => {
+                                  const cur = prev[g.id] || [];
+                                  const nextPicks = active
+                                    ? cur.filter((x) => x.optionId !== o.id)
+                                    : [...cur, { optionId: o.id, qty: 1 }];
+                                  const copy = { ...prev };
+                                  if (nextPicks.length) copy[g.id] = nextPicks;
+                                  else delete copy[g.id];
+                                  return withPrunedSelections(editGroups, copy);
+                                })
+                              }
+                            >
+                              {o.name}
+                              {o.price > 0 ? <small>+{formatMoney(o.price)}</small> : null}
                             </button>
                           );
                         })}

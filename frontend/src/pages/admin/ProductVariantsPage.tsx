@@ -11,12 +11,14 @@ import {
   ListChecks,
   CircleDot,
   BookOpen,
+  TextCursorInput,
 } from 'lucide-react';
 import { api, formatMoney } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
 import {
   emptyGroup,
   emptyOption,
+  type OptionGroupType,
   type ProductOption,
   type ProductOptionGroup,
 } from '@/lib/productOptions';
@@ -341,18 +343,29 @@ export default function ProductVariantsPage() {
     }
   }
 
-  function addGroup(type: 'single' | 'multi') {
+  function addGroup(type: OptionGroupType) {
+    const defaults =
+      type === 'single'
+        ? { name: 'Tür seçimi', optName: 'Standart', price: selected?.price || 0, required: true }
+        : type === 'choice'
+          ? {
+              name: 'İstekler',
+              optName: 'Maydanoz olmasın',
+              price: 0,
+              required: false,
+            }
+          : { name: 'Ekstralar', optName: 'Ekstra', price: 10, required: false };
     updateGroups([
       ...groups,
       emptyGroup({
         type,
         pricing: type === 'single' ? 'replace' : 'add',
-        required: type === 'single',
-        name: type === 'single' ? 'Tür seçimi' : 'Ekstralar',
+        required: defaults.required,
+        name: defaults.name,
         options: [
           emptyOption({
-            name: type === 'single' ? 'Standart' : 'Ekstra',
-            price: type === 'single' ? selected?.price || 0 : 10,
+            name: defaults.optName,
+            price: defaults.price,
           }),
         ],
       }),
@@ -519,6 +532,16 @@ export default function ProductVariantsPage() {
                     <ListChecks className="w-4 h-4" />
                     Ekstra + miktar
                   </button>
+                  <button
+                    type="button"
+                    className="pv-btn"
+                    data-tour="pv-add-choice"
+                    disabled={guideOpen}
+                    onClick={() => addGroup('choice')}
+                  >
+                    <TextCursorInput className="w-4 h-4" />
+                    Çoklu seçim
+                  </button>
                 </div>
               </div>
 
@@ -528,11 +551,12 @@ export default function ProductVariantsPage() {
                 </div>
               ) : (
                 <div className="pv-hint">
-                  <strong>Tek seçim</strong> — boy / tür. İstersen her boya ayrı ekstra limiti koy
-                  (Büyük 5, Mega 7).
+                  <strong>Tek seçim</strong> — boy / tür (Büyük, Mega).
                   <br />
-                  <strong>Ekstra</strong> — miktarlı ekler; grupta genel maks veya türe göre limit.
-                  “A seçilince B gizlensin” chip’leriyle sade koşul.
+                  <strong>Ekstra + miktar</strong> — mantar ×2 gibi adetli ekler.
+                  <br />
+                  <strong>Çoklu seçim</strong> — düz yazı istekler: “maydanoz olmasın”, “ketçap
+                  olmasın”; birden fazla işaretlenir, yanına fiyat (çoğu zaman 0).
                 </div>
               )}
 
@@ -562,7 +586,7 @@ export default function ProductVariantsPage() {
                         <select
                           value={g.type}
                           onChange={(e) => {
-                            const type = e.target.value as 'single' | 'multi';
+                            const type = e.target.value as OptionGroupType;
                             const next = [...groups];
                             next[gi] = {
                               ...g,
@@ -576,6 +600,7 @@ export default function ProductVariantsPage() {
                         >
                           <option value="single">Tek seçim</option>
                           <option value="multi">Çoklu + miktar</option>
+                          <option value="choice">Çoklu seçim</option>
                         </select>
                         <select
                           value={g.pricing}
@@ -650,6 +675,8 @@ export default function ProductVariantsPage() {
                           const others = allOptionsFlat(groups, o.id);
                           const showTypeMax =
                             g.type === 'single' && groups.some((x) => x.type === 'multi');
+                          const namePlaceholder =
+                            g.type === 'choice' ? 'Örn. Maydanoz olmasın' : 'Seçenek adı';
                           return (
                             <div key={o.id} className="pv-option-card">
                               <div
@@ -657,7 +684,7 @@ export default function ProductVariantsPage() {
                               >
                                 <input
                                   value={o.name}
-                                  placeholder="Seçenek adı"
+                                  placeholder={namePlaceholder}
                                   onChange={(e) => {
                                     const next = [...groups];
                                     const opts = [...g.options];

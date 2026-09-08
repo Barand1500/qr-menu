@@ -1,6 +1,6 @@
-/** Ürün seçenek grupları — tek seçim (kırılma) veya miktarlı ekstra */
+/** Ürün seçenek grupları — tek seçim, miktarlı ekstra veya çoklu düz seçim (istekler) */
 
-export type OptionGroupType = 'single' | 'multi';
+export type OptionGroupType = 'single' | 'multi' | 'choice';
 export type OptionPricingMode = 'replace' | 'add';
 
 export type ProductOption = {
@@ -22,7 +22,7 @@ export type ProductOptionGroup = {
   id: string;
   name: string;
   type: OptionGroupType;
-  /** single: genelde replace (makarna tipi); multi: add (ekstra et) */
+  /** single: genelde replace; multi/choice: genelde add */
   pricing: OptionPricingMode;
   required: boolean;
   sortOrder: number;
@@ -50,13 +50,14 @@ export function normalizeOptionGroups(raw: unknown): ProductOptionGroup[] {
     .map((row, gi) => {
       if (!row || typeof row !== 'object') return null;
       const r = row as Record<string, unknown>;
-      const type: OptionGroupType = r.type === 'multi' ? 'multi' : 'single';
+      const type: OptionGroupType =
+        r.type === 'multi' ? 'multi' : r.type === 'choice' ? 'choice' : 'single';
       const pricing: OptionPricingMode =
         r.pricing === 'add' || r.pricing === 'replace'
           ? r.pricing
-          : type === 'multi'
-            ? 'add'
-            : 'replace';
+          : type === 'single'
+            ? 'replace'
+            : 'add';
       const options = asArray(r.options)
         .map((opt, oi) => {
           if (!opt || typeof opt !== 'object') return null;
@@ -205,7 +206,24 @@ export function validateSelections(
       continue;
     }
 
-    // multi
+    // choice: çoklu düz seçim (adet yok, her madde 0/1)
+    if (group.type === 'choice') {
+      if (group.required && chosen.length === 0) {
+        return { ok: false, message: `"${group.name}" için en az bir seçim yapın` };
+      }
+      const seen = new Set<string>();
+      for (const c of chosen) {
+        const oid = String(c.optionId);
+        if (seen.has(oid)) continue;
+        seen.add(oid);
+        const opt = group.options.find((o) => o.id === oid);
+        if (!opt) return { ok: false, message: `"${group.name}" geçersiz seçenek` };
+        picks.push({ group, option: opt, qty: 1 });
+      }
+      continue;
+    }
+
+    // multi: miktarlı ekstra
     if (group.required && chosen.length === 0) {
       return { ok: false, message: `"${group.name}" için en az bir seçim yapın` };
     }

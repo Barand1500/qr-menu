@@ -1,4 +1,4 @@
-export type OptionGroupType = 'single' | 'multi';
+export type OptionGroupType = 'single' | 'multi' | 'choice';
 export type OptionPricingMode = 'replace' | 'add';
 
 export type ProductOption = {
@@ -39,7 +39,7 @@ export function emptyGroup(partial?: Partial<ProductOptionGroup>): ProductOption
     pricing: partial?.pricing || (type === 'single' ? 'replace' : 'add'),
     required: type === 'single',
     sortOrder: 0,
-    maxTotalQty: type === 'multi' ? 0 : 0,
+    maxTotalQty: 0,
     options: [],
     ...partial,
   };

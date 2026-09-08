@@ -1715,6 +1715,48 @@
   gap: 0.4rem;
 }
 
+.table-floor-modal__choice {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.table-floor-modal__choice-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.table-floor-modal__choice-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 1.85rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(88, 60, 36, 0.16);
+  background: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--tf-ink, #3b2a1c);
+  cursor: pointer;
+}
+
+.table-floor-modal__choice-chip small {
+  font-size: 0.68rem;
+  font-weight: 650;
+  color: var(--tf-muted);
+}
+
+.table-floor-modal__choice-chip.is-on {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #fff;
+}
+
+.table-floor-modal__choice-chip.is-on small {
+  color: rgba(255, 255, 255, 0.85);
+}
+
 .table-floor-modal__multi-title {
   font-size: 0.68rem;
   font-weight: 750;
