@@ -45,7 +45,7 @@ import {
 import { api } from '@/lib/api';
 import { adminPreviewMenuUrl } from '@/lib/tableContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme, ADMIN_ACCENT_OPTIONS, type AdminAccentId } from '@/contexts/ThemeContext';
 import { useDemoData } from '@/contexts/DemoDataContext';
 import {
   DEMO_SUMMARY,
@@ -416,7 +416,7 @@ function FeaturedCard({
   onToggleEdit: () => void;
 }) {
   const { user } = useAuth();
-  const { theme } = useTheme();
+  const { accent, setAccent } = useTheme();
 
   function openMenu() {
     window.open(adminPreviewMenuUrl(), '_blank');
@@ -429,9 +429,27 @@ function FeaturedCard({
       }`}
     >
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider admin-text-subtle mb-4">
-          Dijital Menü
-        </p>
+        <div className="dash-menu-card__head">
+          <p className="text-xs font-semibold uppercase tracking-wider admin-text-subtle">
+            Dijital Menü
+          </p>
+          <label className="dash-accent-pick" title="Site tema rengi">
+            <span className="dash-accent-pick__swatch" aria-hidden style={{ background: 'var(--admin-accent)' }} />
+            <select
+              className="dash-accent-pick__select"
+              value={accent}
+              disabled={editMode}
+              aria-label="Site tema rengi"
+              onChange={(e) => setAccent(e.target.value as AdminAccentId)}
+            >
+              {ADMIN_ACCENT_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         <div className="flex items-center gap-4">
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold shrink-0"
@@ -456,7 +474,7 @@ function FeaturedCard({
           className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full transition hover:opacity-90 disabled:opacity-50"
           style={{
             background: 'var(--admin-accent)',
-            color: theme === 'dark' ? '#0c0c0c' : '#ffffff',
+            color: 'var(--admin-btn-primary-text)',
           }}
         >
           <ExternalLink className="w-4 h-4" />
@@ -474,7 +492,7 @@ function FeaturedCard({
           title={editMode ? 'Düzenlemeyi bitir' : 'Kutuları düzenle'}
         >
           {editMode ? (
-            <Check className="w-5 h-5 text-white" />
+            <Check className="w-5 h-5" style={{ color: 'var(--admin-btn-primary-text)' }} />
           ) : (
             <Settings className="w-5 h-5" style={{ color: 'var(--admin-accent)' }} />
           )}
@@ -499,11 +517,19 @@ function SurveyChart({
   demoMode: boolean;
   editMode: boolean;
 }) {
-  const { theme } = useTheme();
-  const accent = theme === 'light' ? '#2563eb' : '#facc15';
-  const secondary = theme === 'light' ? '#f59e0b' : '#ca8a04';
+  const { theme, accent: accentId } = useTheme();
+  const accentMap = {
+    light: { blue: '#2563eb', emerald: '#059669', violet: '#7c3aed' },
+    dark: { blue: '#60a5fa', emerald: '#34d399', violet: '#a78bfa' },
+  } as const;
+  const softMap = {
+    light: { blue: '#38bdf8', emerald: '#34d399', violet: '#a78bfa' },
+    dark: { blue: '#93c5fd', emerald: '#6ee7b7', violet: '#c4b5fd' },
+  } as const;
+  const accent = accentMap[theme][accentId];
+  const secondary = theme === 'light' ? '#f59e0b' : '#fbbf24';
   const muted = theme === 'light' ? '#94a3b8' : '#64748b';
-  const soft = theme === 'light' ? '#38bdf8' : '#eab308';
+  const soft = softMap[theme][accentId];
 
   const [prefs, setPrefs] = useState<ChartPrefs>(loadChartPrefs);
   const activeId = prefs.order[prefs.index] || prefs.order[0];

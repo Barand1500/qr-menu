@@ -10,7 +10,7 @@
   --font-sans: "Inter", system-ui, sans-serif;
 }
 
-/* Gündüz modu — beyaz + mavi */
+/* Gündüz modu — beyaz + vurgu (varsayılan mavi) */
 :root,
 [data-theme="light"] {
   --admin-bg: #eef1f6;
@@ -38,7 +38,7 @@
   --admin-btn-primary-text: #ffffff;
 }
 
-/* Gece modu — siyah + sarı */
+/* Gece modu — koyu zemin; vurgu data-accent ile */
 [data-theme="dark"] {
   --admin-bg: #0c0c0c;
   --admin-card: #161616;
@@ -46,22 +46,92 @@
   --admin-text: #f5f5f5;
   --admin-text-muted: #a3a3a3;
   --admin-text-subtle: #737373;
-  --admin-accent: #facc15;
-  --admin-accent-hover: #eab308;
-  --admin-accent-soft: rgba(250, 204, 21, 0.15);
-  --admin-accent-text: #facc15;
+  --admin-accent: #60a5fa;
+  --admin-accent-hover: #3b82f6;
+  --admin-accent-soft: rgba(96, 165, 250, 0.15);
+  --admin-accent-text: #93c5fd;
   --admin-sidebar: #141414;
   --admin-sidebar-dark: #0a0a0a;
   --admin-sidebar-text: rgba(255, 255, 255, 0.72);
-  --admin-sidebar-active-bg: #facc15;
+  --admin-sidebar-active-bg: #60a5fa;
   --admin-sidebar-active-text: #0c0c0c;
   --admin-header-bg: #111111;
   --admin-header-border: #2a2a2a;
   --admin-input-bg: #1a1a1a;
   --admin-input-border: #333333;
   --admin-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --admin-chart-secondary: #facc15;
-  --admin-badge: #facc15;
+  --admin-chart-secondary: #fbbf24;
+  --admin-badge: #60a5fa;
+  --admin-btn-primary-text: #0c0c0c;
+}
+
+/* —— Site tema rengi (localStorage → data-accent) —— */
+[data-theme="light"][data-accent="blue"],
+:root[data-accent="blue"] {
+  --admin-accent: #2563eb;
+  --admin-accent-hover: #1d4ed8;
+  --admin-accent-soft: #dbeafe;
+  --admin-accent-text: #1e40af;
+  --admin-sidebar: #1a73e8;
+  --admin-sidebar-dark: #1557b0;
+  --admin-sidebar-active-text: #1a56c4;
+  --admin-badge: #2563eb;
+}
+
+[data-theme="light"][data-accent="emerald"],
+:root[data-accent="emerald"] {
+  --admin-accent: #059669;
+  --admin-accent-hover: #047857;
+  --admin-accent-soft: #d1fae5;
+  --admin-accent-text: #065f46;
+  --admin-sidebar: #059669;
+  --admin-sidebar-dark: #047857;
+  --admin-sidebar-active-text: #047857;
+  --admin-badge: #059669;
+}
+
+[data-theme="light"][data-accent="violet"],
+:root[data-accent="violet"] {
+  --admin-accent: #7c3aed;
+  --admin-accent-hover: #6d28d9;
+  --admin-accent-soft: #ede9fe;
+  --admin-accent-text: #5b21b6;
+  --admin-sidebar: #7c3aed;
+  --admin-sidebar-dark: #6d28d9;
+  --admin-sidebar-active-text: #6d28d9;
+  --admin-badge: #7c3aed;
+}
+
+[data-theme="dark"][data-accent="blue"] {
+  --admin-accent: #60a5fa;
+  --admin-accent-hover: #3b82f6;
+  --admin-accent-soft: rgba(96, 165, 250, 0.15);
+  --admin-accent-text: #93c5fd;
+  --admin-sidebar-active-bg: #60a5fa;
+  --admin-sidebar-active-text: #0c0c0c;
+  --admin-badge: #60a5fa;
+  --admin-btn-primary-text: #0c0c0c;
+}
+
+[data-theme="dark"][data-accent="emerald"] {
+  --admin-accent: #34d399;
+  --admin-accent-hover: #10b981;
+  --admin-accent-soft: rgba(52, 211, 153, 0.15);
+  --admin-accent-text: #6ee7b7;
+  --admin-sidebar-active-bg: #34d399;
+  --admin-sidebar-active-text: #0c0c0c;
+  --admin-badge: #34d399;
+  --admin-btn-primary-text: #0c0c0c;
+}
+
+[data-theme="dark"][data-accent="violet"] {
+  --admin-accent: #a78bfa;
+  --admin-accent-hover: #8b5cf6;
+  --admin-accent-soft: rgba(167, 139, 250, 0.15);
+  --admin-accent-text: #c4b5fd;
+  --admin-sidebar-active-bg: #a78bfa;
+  --admin-sidebar-active-text: #0c0c0c;
+  --admin-badge: #a78bfa;
   --admin-btn-primary-text: #0c0c0c;
 }
 
@@ -198,6 +268,72 @@ body {
 .dashboard-edit-ring {
   outline: 2px dashed var(--admin-accent);
   outline-offset: 3px;
+}
+
+.dash-menu-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.dash-accent-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 9.5rem;
+  padding: 0.2rem 0.35rem 0.2rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--admin-card-border);
+  background: var(--admin-input-bg);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dash-accent-pick:hover,
+.dash-accent-pick:focus-within {
+  border-color: color-mix(in srgb, var(--admin-accent) 45%, var(--admin-card-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-accent) 14%, transparent);
+}
+
+.dash-accent-pick__swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.dash-accent-pick__select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--admin-text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  padding: 0.15rem 1rem 0.15rem 0;
+  margin: 0;
+  cursor: pointer;
+  min-width: 0;
+  max-width: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%6494a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.05rem center;
+  background-size: 0.7rem;
+}
+
+.dash-accent-pick__select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.dash-accent-pick__select:focus {
+  outline: none;
 }
 
 /* Login glassmorphism */
