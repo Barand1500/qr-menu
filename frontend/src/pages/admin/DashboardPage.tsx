@@ -208,16 +208,16 @@ const CHART_META: Record<
   { title: string; subtitle: string }
 > = {
   survey: {
-    title: 'Menü Görüntüleme Anketi',
-    subtitle: 'Grup ve ürün görüntüleme dağılımı',
+    title: 'Aylık Görüntülenme',
+    subtitle: 'Son 12 ay grup ve ürün görüntülemeleri',
   },
   'top-groups': {
     title: 'Popüler Gruplar',
-    subtitle: 'En çok görüntülenen kategoriler',
+    subtitle: 'Son 30 günde en çok görüntülenen kategoriler',
   },
   'top-products': {
     title: 'Popüler Ürünler',
-    subtitle: 'En çok görüntülenen ürünler',
+    subtitle: 'Son 30 günde en çok görüntülenen ürünler',
   },
   status: {
     title: 'Menü Durumu',
@@ -488,12 +488,14 @@ function SurveyChart({
   groups,
   products,
   summary,
+  monthly,
   demoMode,
   editMode,
 }: {
   groups: TopItem[];
   products: TopItem[];
   summary: DashboardSummary;
+  monthly: { month: string; label?: string; gruplar: number; urunler: number }[];
   demoMode: boolean;
   editMode: boolean;
 }) {
@@ -534,11 +536,13 @@ function SurveyChart({
   const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
   const surveyData = demoMode
     ? DEMO_CHART_MONTHS
-    : months.map((month, i) => ({
-        month,
-        gruplar: groups[i % Math.max(groups.length, 1)]?.count ?? 0,
-        urunler: products[i % Math.max(products.length, 1)]?.count ?? 0,
-      }));
+    : monthly.length > 0
+      ? monthly.map((m) => ({
+          month: m.label || m.month,
+          gruplar: m.gruplar,
+          urunler: m.urunler,
+        }))
+      : months.map((month) => ({ month, gruplar: 0, urunler: 0 }));
 
   const topGroupsData = groups.slice(0, 6).map((g) => ({
     name: g.name.length > 14 ? `${g.name.slice(0, 13)}…` : g.name,
@@ -940,7 +944,7 @@ const WIDGET_LABELS: Record<WidgetId, string> = {
   'stat-hatali': 'Hatalı Ürünler',
   'stat-goruntuleme': 'Görüntüleme',
   'stat-tekil': 'Tekil Ziyaretçi',
-  chart: 'Menü Görüntüleme Anketi',
+  chart: 'Aylık Görüntülenme',
   calendar: 'Takvim',
   'top-groups': 'Top Gruplar',
   'top-products': 'Top Ürünler',
@@ -954,6 +958,9 @@ export default function DashboardPage() {
   const [languages, setLanguages] = useState<TopItem[]>([]);
   const [operatingSystems, setOperatingSystems] = useState<TopItem[]>([]);
   const [devices, setDevices] = useState<TopItem[]>([]);
+  const [monthly, setMonthly] = useState<
+    { month: string; label?: string; gruplar: number; urunler: number }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [layout, setLayout] = useState<DashboardLayout>(loadLayout);
@@ -972,6 +979,7 @@ export default function DashboardPage() {
       setLanguages(DEMO_STATS.languages);
       setOperatingSystems(DEMO_STATS.operatingSystems);
       setDevices(DEMO_STATS.devices);
+      setMonthly(DEMO_CHART_MONTHS);
       setLoading(false);
       return;
     }
@@ -984,14 +992,20 @@ export default function DashboardPage() {
       api<TopItem[]>('/api/admin/stats/languages').catch(() => [] as TopItem[]),
       api<TopItem[]>('/api/admin/stats/operating-systems').catch(() => [] as TopItem[]),
       api<TopItem[]>('/api/admin/stats/devices').catch(() => [] as TopItem[]),
+      api<{ month: string; label?: string; gruplar: number; urunler: number }[]>(
+        '/api/admin/dashboard/monthly'
+      ).catch(
+        () => [] as { month: string; label?: string; gruplar: number; urunler: number }[]
+      ),
     ])
-      .then(([s, g, p, langs, os, devs]) => {
+      .then(([s, g, p, langs, os, devs, months]) => {
         setSummary(s);
         setTopGroups(g);
         setTopProducts(p);
         setLanguages(langs);
         setOperatingSystems(os);
         setDevices(devs);
+        setMonthly(months);
       })
       .finally(() => setLoading(false));
   }, [demoEnabled]);
@@ -1105,6 +1119,7 @@ export default function DashboardPage() {
           groups={displayTopGroups}
           products={displayTopProducts}
           summary={displaySummary!}
+          monthly={monthly}
           demoMode={demoEnabled}
           editMode={editMode}
         />

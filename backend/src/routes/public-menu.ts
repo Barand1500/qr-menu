@@ -1,5 +1,6 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { parseClientMeta } from '../lib/client-meta.js';
 import {
   getGroupName,
   getProductField,
@@ -78,10 +79,21 @@ async function trackView(
   restaurantId: number,
   entityType: 'group' | 'product' | 'showcase' | 'menu',
   entityId: number,
-  sessionId: string
+  sessionId: string,
+  req: Request,
+  lang?: string | null
 ) {
+  const meta = parseClientMeta(String(req.headers['user-agent'] || ''), lang);
   await prisma.viewEvent.create({
-    data: { restaurantId, entityType, entityId, sessionId },
+    data: {
+      restaurantId,
+      entityType,
+      entityId,
+      sessionId,
+      lang: meta.lang,
+      device: meta.device,
+      os: meta.os,
+    },
   });
 }
 
@@ -255,7 +267,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
   });
   if (!product) return res.status(404).json({ message: 'Ürün bulunamadı' });
 
-  await trackView(restaurant.id, 'product', productId, sessionId);
+  await trackView(restaurant.id, 'product', productId, sessionId, req, activeLang);
 
   const features = Array.isArray(product.features)
     ? product.features.filter((f): f is string => typeof f === 'string' && f.trim().length > 0)
@@ -423,7 +435,7 @@ router.get('/:slug', async (req, res) => {
     }),
   ]);
 
-  await trackView(restaurant.id, 'menu', restaurant.id, sessionId);
+  await trackView(restaurant.id, 'menu', restaurant.id, sessionId, req, activeLang);
 
   const campaignCounts = new Map<number, number>();
   if (campaign) {
@@ -659,7 +671,7 @@ router.get('/:slug/groups/:groupId/products', async (req, res) => {
     orderBy: { sortOrder: 'asc' },
   });
 
-  await trackView(restaurant.id, 'group', groupId, sessionId);
+  await trackView(restaurant.id, 'group', groupId, sessionId, req, activeLang);
 
   function mapProduct(p: (typeof allProducts)[number]) {
     const images = parseProductImages(p);
@@ -1114,13 +1126,20 @@ router.post('/:slug/table-checkin', async (req, res) => {
 
 router.post('/:slug/track', async (req, res) => {
   const slug = req.params.slug;
-  const { entityType, entityId, sessionId } = req.body;
+  const { entityType, entityId, sessionId, lang } = req.body;
 
   const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
   if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
 
   if (entityType && entityId && sessionId) {
-    await trackView(restaurant.id, entityType, Number(entityId), String(sessionId));
+    await trackView(
+      restaurant.id,
+      entityType,
+      Number(entityId),
+      String(sessionId),
+      req,
+      lang != null ? String(lang) : null
+    );
   }
 
   res.json({ ok: true });

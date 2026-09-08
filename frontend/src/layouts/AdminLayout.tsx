@@ -382,39 +382,43 @@ export default function AdminLayout() {
               <Armchair className="w-[18px] h-[18px]" style={{ color: 'var(--admin-accent)' }} />
             </button>
 
-            <button
-              onClick={toggleDemo}
-              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition ${
-                demoEnabled
-                  ? 'ring-2 ring-[var(--admin-accent)] ring-offset-1 ring-offset-[var(--admin-header-bg)]'
-                  : 'border border-[var(--admin-input-border)]'
-              }`}
-              style={
-                demoEnabled
-                  ? { background: 'var(--admin-accent)', color: '#ffffff' }
-                  : {
-                      background: 'var(--admin-input-bg)',
-                      color: 'var(--admin-text-muted)',
-                    }
-              }
-              title="Test için sahte veri göster"
-            >
-              Sahte Veri
-            </button>
+            {!import.meta.env.PROD && (
+              <button
+                onClick={toggleDemo}
+                className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+                  demoEnabled
+                    ? 'ring-2 ring-[var(--admin-accent)] ring-offset-1 ring-offset-[var(--admin-header-bg)]'
+                    : 'border border-[var(--admin-input-border)]'
+                }`}
+                style={
+                  demoEnabled
+                    ? { background: 'var(--admin-accent)', color: '#ffffff' }
+                    : {
+                        background: 'var(--admin-input-bg)',
+                        color: 'var(--admin-text-muted)',
+                      }
+                }
+                title="Test için sahte veri göster"
+              >
+                Sahte Veri
+              </button>
+            )}
 
-            <button
-              onClick={handleResetPurchases}
-              disabled={resettingAddons}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition border border-[var(--admin-input-border)] hover:border-amber-400 hover:text-amber-700 disabled:opacity-50"
-              style={{
-                background: 'var(--admin-input-bg)',
-                color: 'var(--admin-text-muted)',
-              }}
-              title="Test: tüm eklenti satın alımlarını sıfırla"
-            >
-              <RotateCcw className={`w-3.5 h-3.5 ${resettingAddons ? 'animate-spin' : ''}`} />
-              {resettingAddons ? 'Sıfırlanıyor…' : 'Satın alımları geri yükle'}
-            </button>
+            {!import.meta.env.PROD && (
+              <button
+                onClick={handleResetPurchases}
+                disabled={resettingAddons}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition border border-[var(--admin-input-border)] hover:border-amber-400 hover:text-amber-700 disabled:opacity-50"
+                style={{
+                  background: 'var(--admin-input-bg)',
+                  color: 'var(--admin-text-muted)',
+                }}
+                title="Test: tüm eklenti satın alımlarını sıfırla"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${resettingAddons ? 'animate-spin' : ''}`} />
+                {resettingAddons ? 'Sıfırlanıyor…' : 'Satın alımları geri yükle'}
+              </button>
+            )}
 
             <div data-tour="header-bell">
               <AdminNotificationBell />

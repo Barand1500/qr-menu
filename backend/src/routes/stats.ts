@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId } from '../lib/auth.js';
 import { getGroupName, getProductField } from '../lib/i18n-json.js';
+import { languageLabel } from '../lib/client-meta.js';
 
 const router = Router();
 router.use(authRequired);
@@ -61,6 +62,37 @@ async function topEntities(
   });
 }
 
+async function topByField(
+  restaurantId: number,
+  field: 'lang' | 'device' | 'os',
+  dateFilter?: { gte?: Date; lte?: Date }
+) {
+  const rows = await prisma.viewEvent.groupBy({
+    by: [field],
+    where: {
+      restaurantId,
+      [field]: { not: null },
+      ...(dateFilter && { viewedAt: dateFilter }),
+    },
+    _count: { _all: true },
+    orderBy: { _count: { [field]: 'desc' } },
+    take: 12,
+  });
+
+  return rows
+    .filter((r) => r[field])
+    .map((r, i) => {
+      const raw = String(r[field]);
+      const name = field === 'lang' ? languageLabel(raw) : raw;
+      return {
+        id: i + 1,
+        name,
+        count: r._count._all,
+        code: field === 'lang' ? raw : undefined,
+      };
+    });
+}
+
 router.get('/top-groups', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   const dateFilter = buildDateFilter(req.query.from, req.query.to);
@@ -73,16 +105,22 @@ router.get('/top-products', async (req, res) => {
   res.json(await topEntities(restaurantId!, 'product', dateFilter));
 });
 
-router.get('/languages', async (_req, res) => {
-  res.json([]);
+router.get('/languages', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const dateFilter = buildDateFilter(req.query.from, req.query.to);
+  res.json(await topByField(restaurantId!, 'lang', dateFilter));
 });
 
-router.get('/operating-systems', async (_req, res) => {
-  res.json([]);
+router.get('/operating-systems', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const dateFilter = buildDateFilter(req.query.from, req.query.to);
+  res.json(await topByField(restaurantId!, 'os', dateFilter));
 });
 
-router.get('/devices', async (_req, res) => {
-  res.json([]);
+router.get('/devices', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const dateFilter = buildDateFilter(req.query.from, req.query.to);
+  res.json(await topByField(restaurantId!, 'device', dateFilter));
 });
 
 export default router;

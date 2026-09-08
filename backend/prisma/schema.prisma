@@ -193,12 +193,18 @@ model ViewEvent {
   entityType   ViewEntityType @map("varlik_tipi")
   entityId     Int            @map("varlik_id")
   sessionId    String         @map("oturum_id") @db.VarChar(64)
+  lang         String?        @map("dil") @db.VarChar(10)
+  device       String?        @map("cihaz") @db.VarChar(20)
+  os           String?        @map("isletim_sistemi") @db.VarChar(40)
   viewedAt     DateTime       @default(now()) @map("goruntulenme")
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@index([restaurantId, entityType, viewedAt])
   @@index([restaurantId, sessionId, viewedAt])
+  @@index([restaurantId, lang, viewedAt])
+  @@index([restaurantId, device, viewedAt])
+  @@index([restaurantId, os, viewedAt])
   @@map("goruntuleme_kayitlari")
 }
 
