@@ -40,6 +40,7 @@ function normalizeLoadedGroups(raw: ProductOptionGroup[] | undefined): ProductOp
       ...o,
       sortOrder: j,
       excludesOptionIds: Array.isArray(o.excludesOptionIds) ? o.excludesOptionIds : [],
+      limitsMultiMaxTotalQty: Math.max(0, Number(o.limitsMultiMaxTotalQty) || 0),
     })),
   }));
 }
@@ -344,10 +345,11 @@ export default function ProductVariantsPage() {
               </div>
 
               <div className="pv-hint">
-                <strong>Tek seçim</strong> — tür / porsiyon kırılması.
+                <strong>Tek seçim</strong> — boy / tür. İstersen her boya ayrı ekstra limiti koy
+                (Büyük 5, Mega 7).
                 <br />
-                <strong>Ekstra</strong> — miktarlı ekler; istersen maksimum adet ve “A seçilince B
-                gizlensin” kuralı koy.
+                <strong>Ekstra</strong> — miktarlı ekler; grupta genel maks veya türe göre limit.
+                “A seçilince B gizlensin” chip’leriyle sade koşul.
               </div>
 
               {groups.length === 0 ? (
@@ -401,6 +403,38 @@ export default function ProductVariantsPage() {
                           <option value="replace">Fiyatı değiştir</option>
                           <option value="add">Fiyata ekle</option>
                         </select>
+                        {g.type === 'multi' ? (
+                          <div className="pv-max-group" title="Bu gruptaki toplam ekstra üst sınırı">
+                            <span className="pv-max-group__label">Maks</span>
+                            <label
+                              className={`pv-max-group__field${!(g.maxTotalQty > 0) ? ' is-empty' : ''}`}
+                            >
+                              <input
+                                type="number"
+                                min={0}
+                                max={99}
+                                value={g.maxTotalQty > 0 ? g.maxTotalQty : ''}
+                                aria-label="Maksimum ekstra adet"
+                                onChange={(e) => {
+                                  const raw = e.target.value.trim();
+                                  const v =
+                                    raw === ''
+                                      ? 0
+                                      : Math.max(0, Math.min(99, Math.floor(Number(raw) || 0)));
+                                  const next = [...groups];
+                                  next[gi] = { ...g, maxTotalQty: v };
+                                  updateGroups(next);
+                                }}
+                              />
+                              {!(g.maxTotalQty > 0) ? (
+                                <span className="pv-max-group__hint" aria-hidden>
+                                  <b>∞</b>
+                                  <i>sınırsız</i>
+                                </span>
+                              ) : null}
+                            </label>
+                          </div>
+                        ) : null}
                         <label className="pv-check">
                           <input
                             type="checkbox"
@@ -423,34 +457,16 @@ export default function ProductVariantsPage() {
                         </button>
                       </div>
 
-                      {g.type === 'multi' ? (
-                        <div className="pv-group__rules">
-                          <label className="pv-max">
-                            <span>Maks. ekstra adet</span>
-                            <input
-                              type="number"
-                              min={0}
-                              max={99}
-                              value={g.maxTotalQty || ''}
-                              placeholder="∞"
-                              onChange={(e) => {
-                                const v = Math.max(0, Math.min(99, Math.floor(Number(e.target.value) || 0)));
-                                const next = [...groups];
-                                next[gi] = { ...g, maxTotalQty: v };
-                                updateGroups(next);
-                              }}
-                            />
-                            <em>0 = sınırsız</em>
-                          </label>
-                        </div>
-                      ) : null}
-
                       <div className="pv-options">
                         {g.options.map((o, oi) => {
                           const others = allOptionsFlat(groups, o.id);
+                          const showTypeMax =
+                            g.type === 'single' && groups.some((x) => x.type === 'multi');
                           return (
                             <div key={o.id} className="pv-option-card">
-                              <div className="pv-option">
+                              <div
+                                className={`pv-option${showTypeMax ? ' pv-option--type-max' : ''}`}
+                              >
                                 <input
                                   value={o.name}
                                   placeholder="Seçenek adı"
@@ -478,6 +494,51 @@ export default function ProductVariantsPage() {
                                     }}
                                   />
                                 </div>
+                                {showTypeMax ? (
+                                  <div
+                                    className="pv-max-group pv-max-group--opt"
+                                    title="Bu boy/tür seçilince ekstra üst sınırı"
+                                  >
+                                    <span className="pv-max-group__label">Ekstra</span>
+                                    <label
+                                      className={`pv-max-group__field${
+                                        !(o.limitsMultiMaxTotalQty > 0) ? ' is-empty' : ''
+                                      }`}
+                                    >
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        max={99}
+                                        value={
+                                          o.limitsMultiMaxTotalQty > 0
+                                            ? o.limitsMultiMaxTotalQty
+                                            : ''
+                                        }
+                                        aria-label={`${o.name || 'Seçenek'} ekstra maksimum`}
+                                        onChange={(e) => {
+                                          const raw = e.target.value.trim();
+                                          const v =
+                                            raw === ''
+                                              ? 0
+                                              : Math.max(
+                                                  0,
+                                                  Math.min(99, Math.floor(Number(raw) || 0))
+                                                );
+                                          const next = [...groups];
+                                          const opts = [...g.options];
+                                          opts[oi] = { ...o, limitsMultiMaxTotalQty: v };
+                                          next[gi] = { ...g, options: opts };
+                                          updateGroups(next);
+                                        }}
+                                      />
+                                      {!(o.limitsMultiMaxTotalQty > 0) ? (
+                                        <span className="pv-max-group__hint" aria-hidden>
+                                          <b>∞</b>
+                                        </span>
+                                      ) : null}
+                                    </label>
+                                  </div>
+                                ) : null}
                                 <label className="pv-check">
                                   <input
                                     type="checkbox"

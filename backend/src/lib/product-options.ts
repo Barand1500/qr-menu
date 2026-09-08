@@ -11,6 +11,11 @@ export type ProductOption = {
   sortOrder: number;
   /** Bu seçenek seçilince gizlenecek / yasaklanacak diğer seçenek id’leri */
   excludesOptionIds: string[];
+  /**
+   * Tek seçim (boy/tür) için: seçilince çoklu ekstra gruplarına uygulanan maks adet.
+   * 0 = bu tür özel sınır koymaz (grubun kendi maxTotalQty’si kullanılır).
+   */
+  limitsMultiMaxTotalQty: number;
 };
 
 export type ProductOptionGroup = {
@@ -62,6 +67,9 @@ export function normalizeOptionGroups(raw: unknown): ProductOptionGroup[] {
             .map((id) => String(id || '').trim())
             .filter(Boolean)
             .slice(0, 40);
+          const limRaw = Number(o.limitsMultiMaxTotalQty);
+          const limitsMultiMaxTotalQty =
+            Number.isFinite(limRaw) && limRaw > 0 ? Math.min(99, Math.floor(limRaw)) : 0;
           return {
             id: String(o.id || newId('opt')).slice(0, 64),
             name,
@@ -69,6 +77,7 @@ export function normalizeOptionGroups(raw: unknown): ProductOptionGroup[] {
             isActive: o.isActive !== false,
             sortOrder: Number.isFinite(Number(o.sortOrder)) ? Number(o.sortOrder) : oi,
             excludesOptionIds,
+            limitsMultiMaxTotalQty,
           } satisfies ProductOption;
         })
         .filter(Boolean) as ProductOption[];
@@ -104,6 +113,44 @@ export function activeOptionGroups(raw: unknown): ProductOptionGroup[] {
       options: g.options.filter((o) => o.isActive),
     }))
     .filter((g) => g.options.length > 0);
+}
+
+/** Seçili boy/tür seçeneklerinden gelen ekstra üst sınırı (varsa en kısıtlayıcı) */
+export function typeLimitedMultiMax(
+  groups: ProductOptionGroup[],
+  selections: OptionSelectionInput[]
+): number {
+  const byGroup = new Map<string, OptionSelectionInput[]>();
+  for (const s of selections || []) {
+    const gid = String(s.groupId || '');
+    if (!gid) continue;
+    const list = byGroup.get(gid) || [];
+    list.push(s);
+    byGroup.set(gid, list);
+  }
+  const limits: number[] = [];
+  for (const g of groups) {
+    if (g.type !== 'single') continue;
+    const chosen = byGroup.get(g.id) || [];
+    for (const c of chosen) {
+      const opt = g.options.find((o) => o.id === String(c.optionId));
+      const lim = Math.max(0, Number(opt?.limitsMultiMaxTotalQty) || 0);
+      if (lim > 0) limits.push(lim);
+    }
+  }
+  if (!limits.length) return 0;
+  return Math.min(...limits);
+}
+
+/** Çoklu grup için geçerli maks: tür limiti varsa o, yoksa grubun maxTotalQty’si */
+export function effectiveMultiMaxTotalQty(
+  groups: ProductOptionGroup[],
+  selections: OptionSelectionInput[],
+  multiGroup: ProductOptionGroup
+): number {
+  const fromType = typeLimitedMultiMax(groups, selections);
+  if (fromType > 0) return fromType;
+  return Math.max(0, Number(multiGroup.maxTotalQty) || 0);
 }
 
 /** Seçili seçeneklerin exclude listesinden yasaklı option id’leri */
@@ -170,10 +217,11 @@ export function validateSelections(
       totalQty += qty;
       picks.push({ group, option: opt, qty });
     }
-    if (group.maxTotalQty > 0 && totalQty > group.maxTotalQty) {
+    const maxQty = effectiveMultiMaxTotalQty(groups, selections || [], group);
+    if (maxQty > 0 && totalQty > maxQty) {
       return {
         ok: false,
-        message: `"${group.name}" en fazla ${group.maxTotalQty} adet olabilir`,
+        message: `"${group.name}" en fazla ${maxQty} adet olabilir`,
       };
     }
   }

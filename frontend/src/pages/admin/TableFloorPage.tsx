@@ -20,8 +20,9 @@ import { adminPath } from '@/lib/adminPath';
 import {
   blockedOptionIds,
   computePreviewUnitPrice,
+  effectiveMultiMaxTotalQty,
   groupSelectedQty,
-  pruneBlockedSelections,
+  sanitizeSelections,
   type ProductOptionGroup,
 } from '@/lib/productOptions';
 import '@/table-floor.css';
@@ -67,14 +68,14 @@ function defaultSelections(groups: ProductOptionGroup[]): CartLine['selections']
       out[g.id] = [{ optionId: first.id, qty: 1 }];
     }
   }
-  return pruneBlockedSelections(groups, out);
+  return sanitizeSelections(groups, out);
 }
 
 function withPrunedSelections(
   groups: ProductOptionGroup[],
   selections: CartLine['selections']
 ) {
-  return pruneBlockedSelections(groups, selections);
+  return sanitizeSelections(groups, selections);
 }
 
 function lineTotal(o: {
@@ -1606,7 +1607,11 @@ export default function TableFloorPage() {
                                   );
                                 }
                                 const groupQty = groupSelectedQty(line.selections, g.id);
-                                const maxQty = Math.max(0, Number(g.maxTotalQty) || 0);
+                                const maxQty = effectiveMultiMaxTotalQty(
+                                  p.optionGroups || [],
+                                  line.selections,
+                                  g
+                                );
                                 const atMax = maxQty > 0 && groupQty >= maxQty;
                                 const visible = activeOpts.filter((o) => !blocked.has(o.id));
                                 return (
@@ -1788,7 +1793,7 @@ export default function TableFloorPage() {
                   const picks = editSelections[g.id] || [];
                   const blocked = blockedOptionIds(editGroups, editSelections);
                   const groupQty = groupSelectedQty(editSelections, g.id);
-                  const maxQty = Math.max(0, Number(g.maxTotalQty) || 0);
+                  const maxQty = effectiveMultiMaxTotalQty(editGroups, editSelections, g);
                   const atMax = maxQty > 0 && groupQty >= maxQty;
                   const visible = g.options.filter(
                     (o) => o.isActive !== false && !blocked.has(o.id)
