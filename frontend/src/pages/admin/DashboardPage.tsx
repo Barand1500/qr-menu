@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -10,6 +10,7 @@ import {
   Legend,
   Cell,
 } from 'recharts';
+import gsap from 'gsap';
 import {
   DndContext,
   DragOverlay,
@@ -511,14 +512,63 @@ function SurveyChart({
     light: { blue: '#38bdf8', emerald: '#34d399', violet: '#a78bfa' },
     dark: { blue: '#93c5fd', emerald: '#6ee7b7', violet: '#c4b5fd' },
   } as const;
-  const accent = accentMap[theme][accentId];
-  const secondary = theme === 'light' ? '#f59e0b' : '#fbbf24';
+  const targetAccent = accentMap[theme][accentId];
+  const targetSoft = softMap[theme][accentId];
+  const targetSecondary = theme === 'light' ? '#f59e0b' : '#fbbf24';
   const muted = theme === 'light' ? '#94a3b8' : '#64748b';
-  const soft = softMap[theme][accentId];
+
+  const [paint, setPaint] = useState({
+    accent: targetAccent,
+    soft: targetSoft,
+    secondary: targetSecondary,
+  });
+  const paintRef = useRef(paint);
+  const colorTween = useRef<gsap.core.Tween | null>(null);
+  const chartHostRef = useRef<HTMLDivElement>(null);
+  const barTween = useRef<gsap.core.Tween | null>(null);
+
+  useEffect(() => {
+    paintRef.current = paint;
+  }, [paint]);
+
+  /** Tema rengi değişince grafik boyaları bukalemun gibi kayar */
+  useEffect(() => {
+    const from = { ...paintRef.current };
+    const to = {
+      accent: targetAccent,
+      soft: targetSoft,
+      secondary: targetSecondary,
+    };
+    colorTween.current?.kill();
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setPaint(to);
+      return;
+    }
+
+    const proxy = { ...from };
+    colorTween.current = gsap.to(proxy, {
+      accent: to.accent,
+      soft: to.soft,
+      secondary: to.secondary,
+      duration: 0.9,
+      ease: 'power2.inOut',
+      onUpdate: () => setPaint({ ...proxy }),
+      onComplete: () => {
+        setPaint(to);
+        colorTween.current = null;
+      },
+    });
+
+    return () => {
+      colorTween.current?.kill();
+    };
+  }, [targetAccent, targetSoft, targetSecondary]);
 
   const [prefs, setPrefs] = useState<ChartPrefs>(loadChartPrefs);
   const activeId = prefs.order[prefs.index] || prefs.order[0];
   const meta = CHART_META[activeId];
+  const horizontalBars = activeId === 'top-groups' || activeId === 'top-products';
 
   function updatePrefs(next: ChartPrefs) {
     setPrefs(next);
@@ -568,15 +618,15 @@ function SurveyChart({
   }));
 
   const statusData = [
-    { name: 'Aktif grup', value: summary.groups.active, fill: accent },
+    { name: 'Aktif grup', value: summary.groups.active, fill: paint.accent },
     { name: 'Pasif grup', value: summary.groups.passive, fill: muted },
-    { name: 'Başarılı ürün', value: summary.products.valid, fill: soft },
-    { name: 'Hatalı ürün', value: summary.products.invalid, fill: secondary },
+    { name: 'Başarılı ürün', value: summary.products.valid, fill: paint.soft },
+    { name: 'Hatalı ürün', value: summary.products.invalid, fill: paint.secondary },
   ];
 
   const trafficData = [
-    { name: 'Toplam', value: summary.viewsToday.total, fill: accent },
-    { name: 'Tekil', value: summary.viewsToday.unique, fill: secondary },
+    { name: 'Toplam', value: summary.viewsToday.total, fill: paint.accent },
+    { name: 'Tekil', value: summary.viewsToday.unique, fill: paint.secondary },
   ];
 
   const tooltipStyle = {
@@ -585,6 +635,76 @@ function SurveyChart({
     borderRadius: 12,
     color: 'var(--admin-text)',
   };
+
+  /** Görünüm / veri değişince çubuklar aşağıdan (veya soldan) büyüsün */
+  useEffect(() => {
+    const host = chartHostRef.current;
+    if (!host) return;
+
+    barTween.current?.kill();
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let cancelled = false;
+    let attempts = 0;
+
+    const run = () => {
+      if (cancelled) return;
+      const bars = host.querySelectorAll<SVGElement>('.recharts-bar-rectangle');
+      if (!bars.length && attempts < 12) {
+        attempts += 1;
+        window.setTimeout(run, 40);
+        return;
+      }
+      if (!bars.length || reduce) return;
+
+      gsap.set(bars, {
+        transformBox: 'fill-box',
+        transformOrigin: horizontalBars ? 'left center' : 'center bottom',
+      });
+
+      barTween.current = gsap.fromTo(
+        bars,
+        {
+          scaleX: horizontalBars ? 0 : 1,
+          scaleY: horizontalBars ? 1 : 0,
+          opacity: 0.35,
+        },
+        {
+          scaleX: 1,
+          scaleY: 1,
+          opacity: 1,
+          duration: 0.65,
+          stagger: 0.045,
+          ease: 'power2.out',
+          onComplete: () => {
+            barTween.current = null;
+          },
+        }
+      );
+    };
+
+    const t = window.setTimeout(run, 30);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+      barTween.current?.kill();
+    };
+    // Renk morph'unda yeniden oynatma — sadece görünüm / veri
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeId,
+    horizontalBars,
+    demoMode,
+    groups,
+    products,
+    monthly,
+    summary.groups.active,
+    summary.groups.passive,
+    summary.products.valid,
+    summary.products.invalid,
+    summary.viewsToday.total,
+    summary.viewsToday.unique,
+  ]);
 
   function renderActiveChart() {
     if (activeId === 'survey') {
@@ -604,8 +724,20 @@ function SurveyChart({
           />
           <Tooltip contentStyle={tooltipStyle} />
           <Legend wrapperStyle={{ fontSize: 12, color: 'var(--admin-text-muted)' }} />
-          <Bar dataKey="gruplar" name="Gruplar" fill={accent} radius={[4, 4, 0, 0]} />
-          <Bar dataKey="urunler" name="Ürünler" fill={secondary} radius={[4, 4, 0, 0]} />
+          <Bar
+            dataKey="gruplar"
+            name="Gruplar"
+            fill={paint.accent}
+            radius={[4, 4, 0, 0]}
+            isAnimationActive={false}
+          />
+          <Bar
+            dataKey="urunler"
+            name="Ürünler"
+            fill={paint.secondary}
+            radius={[4, 4, 0, 0]}
+            isAnimationActive={false}
+          />
         </BarChart>
       );
     }
@@ -633,7 +765,13 @@ function SurveyChart({
               (payload?.[0]?.payload as { fullName?: string } | undefined)?.fullName || ''
             }
           />
-          <Bar dataKey="count" name="Görüntüleme" fill={accent} radius={[0, 4, 4, 0]} />
+          <Bar
+            dataKey="count"
+            name="Görüntüleme"
+            fill={paint.accent}
+            radius={[0, 4, 4, 0]}
+            isAnimationActive={false}
+          />
         </BarChart>
       );
     }
@@ -661,7 +799,13 @@ function SurveyChart({
               (payload?.[0]?.payload as { fullName?: string } | undefined)?.fullName || ''
             }
           />
-          <Bar dataKey="count" name="Görüntüleme" fill={secondary} radius={[0, 4, 4, 0]} />
+          <Bar
+            dataKey="count"
+            name="Görüntüleme"
+            fill={paint.secondary}
+            radius={[0, 4, 4, 0]}
+            isAnimationActive={false}
+          />
         </BarChart>
       );
     }
@@ -683,7 +827,7 @@ function SurveyChart({
             tickLine={false}
           />
           <Tooltip contentStyle={tooltipStyle} />
-          <Bar dataKey="value" name="Adet" radius={[4, 4, 0, 0]}>
+          <Bar dataKey="value" name="Adet" radius={[4, 4, 0, 0]} isAnimationActive={false}>
             {statusData.map((entry) => (
               <Cell key={entry.name} fill={entry.fill} />
             ))}
@@ -707,7 +851,7 @@ function SurveyChart({
           tickLine={false}
         />
         <Tooltip contentStyle={tooltipStyle} />
-        <Bar dataKey="value" name="Bugün" radius={[6, 6, 0, 0]} barSize={56}>
+        <Bar dataKey="value" name="Bugün" radius={[6, 6, 0, 0]} barSize={56} isAnimationActive={false}>
           {trafficData.map((entry) => (
             <Cell key={entry.name} fill={entry.fill} />
           ))}
@@ -783,13 +927,13 @@ function SurveyChart({
         </div>
       )}
 
-      <div className="h-[240px] mt-3">
+      <div className="h-[240px] mt-3 dash-survey__chart-host" ref={chartHostRef}>
         {empty ? (
           <p className="text-sm admin-text-subtle h-full flex items-center justify-center">
             Henüz veri yok
           </p>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" key={activeId}>
             {renderActiveChart() || <div />}
           </ResponsiveContainer>
         )}
