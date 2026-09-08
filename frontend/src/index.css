@@ -9787,6 +9787,8 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 .dash-survey__chart-host .recharts-bar-rectangle {
   transform-box: fill-box;
 }
+
+.dash-survey__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
