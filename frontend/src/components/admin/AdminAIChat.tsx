@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Send, X, ArrowUpRight, Loader2 } from 'lucide-react';
+import { Sparkles, Send, X, ArrowUpRight, Loader2, CircleHelp } from 'lucide-react';
 import { api } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
 import '@/admin-ai.css';
@@ -126,7 +126,7 @@ export default function AdminAIChat({
 
   return createPortal(
     <div className="admin-ai-root" role="dialog" aria-modal="true" aria-label="Yapay zeka asistanı">
-      <button type="button" className="admin-ai-backdrop" aria-label="Kapat" onClick={onClose} />
+      <div className="admin-ai-backdrop" aria-hidden />
       <div className="admin-ai-panel">
         <div className="admin-ai-glow" aria-hidden />
         <header className="admin-ai-header">
@@ -218,31 +218,48 @@ export default function AdminAIChat({
           )}
         </div>
 
-        <form className="admin-ai-composer" onSubmit={onSubmit}>
-          <textarea
-            ref={inputRef}
-            className="admin-ai-input"
-            rows={1}
-            placeholder="Bir şey sor veya yaz…"
-            value={input}
-            disabled={busy}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                void send(input);
-              }
-            }}
-          />
-          <button
-            type="submit"
-            className="admin-ai-send"
-            disabled={busy || !input.trim()}
-            aria-label="Gönder"
-          >
-            <Send className="w-4 h-4" strokeWidth={2} />
-          </button>
-        </form>
+        <div className="admin-ai-footer">
+          <form className="admin-ai-composer" onSubmit={onSubmit}>
+            <div className="admin-ai-composer-inner">
+              <textarea
+                ref={inputRef}
+                className="admin-ai-input"
+                rows={1}
+                placeholder="Bir şey sor veya yaz…"
+                value={input}
+                disabled={busy}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    void send(input);
+                  }
+                }}
+              />
+              <div className="admin-ai-composer-actions">
+                <button
+                  type="button"
+                  className="admin-ai-help"
+                  disabled={busy}
+                  title="Komutları göster"
+                  aria-label="Komutları göster"
+                  onClick={() => void send('yardım')}
+                >
+                  <CircleHelp className="w-4 h-4" strokeWidth={2} />
+                </button>
+                <button
+                  type="submit"
+                  className="admin-ai-send"
+                  disabled={busy || !input.trim()}
+                  aria-label="Gönder"
+                >
+                  <Send className="w-4 h-4" strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          </form>
+          <p className="admin-ai-footer-hint">Enter ile gönder · Esc ile kapat</p>
+        </div>
       </div>
     </div>,
     document.body

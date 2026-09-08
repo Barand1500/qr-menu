@@ -22,8 +22,15 @@ type AiResult = { reply: string; actions?: AiAction[] };
 function fold(text: string) {
   return String(text || '')
     .toLocaleLowerCase('tr-TR')
+    .replace(/ı/g, 'i')
+    .replace(/İ/g, 'i')
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
     .replace(/\s+/g, ' ')
     .trim();
 }
