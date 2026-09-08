@@ -1,5 +1,12 @@
 import { prisma } from './prisma.js';
 
+export type FloorOrderSelection = {
+  groupId: string;
+  optionId: string;
+  qty: number;
+  label?: string;
+};
+
 export type FloorOrderItem = {
   id: string;
   productId?: number | null;
@@ -8,7 +15,11 @@ export type FloorOrderItem = {
   price: number;
   createdAt: string;
   source: 'admin' | 'customer';
+  /** Görünen satır notu (seçenekler + serbest not) */
   note?: string;
+  /** Garsonun yazdığı serbest not */
+  freeNote?: string;
+  selections?: FloorOrderSelection[];
   /** ekstra / indirim */
   adjustmentType?: 'extra' | 'discount' | null;
   adjustmentMode?: 'fixed' | 'percent';
@@ -48,6 +59,17 @@ export function parseOrdersJson(raw?: string | null): FloorOrderItem[] {
         const adjustmentMode: 'fixed' | 'percent' =
           row.adjustmentMode === 'percent' ? 'percent' : 'fixed';
         const adjustmentValue = Math.abs(Number(row.adjustmentValue) || 0);
+        const selections = Array.isArray(row.selections)
+          ? row.selections
+              .map((s: Record<string, unknown>) => ({
+                groupId: String(s.groupId || ''),
+                optionId: String(s.optionId || ''),
+                qty: Math.min(99, Math.max(1, Number(s.qty) || 1)),
+                label: String(s.label || '').trim().slice(0, 80) || undefined,
+              }))
+              .filter((s: FloorOrderSelection) => s.groupId && s.optionId)
+          : undefined;
+        const freeNote = String(row.freeNote || '').trim().slice(0, 240) || undefined;
         return {
           id: String(row.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`),
           productId: row.productId != null ? Number(row.productId) : null,
@@ -57,6 +79,8 @@ export function parseOrdersJson(raw?: string | null): FloorOrderItem[] {
           createdAt: String(row.createdAt || new Date().toISOString()),
           source: row.source === 'admin' ? ('admin' as const) : ('customer' as const),
           note: String(row.note || '').trim().slice(0, 240) || undefined,
+          freeNote,
+          selections: selections?.length ? selections : undefined,
           adjustmentType,
           adjustmentMode: adjustmentType ? adjustmentMode : undefined,
           adjustmentValue: adjustmentType && adjustmentValue > 0 ? adjustmentValue : undefined,

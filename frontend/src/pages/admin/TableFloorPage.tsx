@@ -32,6 +32,8 @@ type FloorOrder = {
   createdAt: string;
   source: 'admin' | 'customer';
   note?: string;
+  freeNote?: string;
+  selections?: { groupId: string; optionId: string; qty: number; label?: string }[];
   adjustmentType?: 'extra' | 'discount' | null;
   adjustmentMode?: 'fixed' | 'percent';
   adjustmentValue?: number;
@@ -292,10 +294,12 @@ export default function TableFloorPage() {
   const [notePanelOpen, setNotePanelOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<FloorOrder | null>(null);
   const [editQty, setEditQty] = useState(1);
-  const [editNote, setEditNote] = useState('');
+  const [editFreeNote, setEditFreeNote] = useState('');
   const [editAdjType, setEditAdjType] = useState<'none' | 'extra' | 'discount'>('none');
-  const [editAdjMode, setEditAdjMode] = useState<'fixed' | 'percent'>('fixed');
   const [editAdjValue, setEditAdjValue] = useState('');
+  const [editSelections, setEditSelections] = useState<CartLine['selections']>({});
+  const [editGroups, setEditGroups] = useState<ProductOptionGroup[]>([]);
+  const [editBasePrice, setEditBasePrice] = useState(0);
   const [pickMode, setPickMode] = useState<null | 'move' | 'merge'>(null);
   const [mergePick, setMergePick] = useState<string[]>([]);
   const [confirm, setConfirm] = useState<null | {
@@ -572,20 +576,72 @@ export default function TableFloorPage() {
     }
   }
 
-  function openOrderEdit(o: FloorOrder) {
+  async function openOrderEdit(o: FloorOrder) {
     setEditingOrder(o);
     setEditQty(o.qty);
-    setEditNote(o.note || '');
+    setEditFreeNote(o.freeNote || (!o.selections?.length ? o.note || '' : ''));
     setEditAdjType(o.adjustmentType || 'none');
-    setEditAdjMode(o.adjustmentMode || 'fixed');
     setEditAdjValue(o.adjustmentValue != null ? String(o.adjustmentValue) : '');
+    setEditGroups([]);
+    setEditBasePrice(o.price);
+    setEditSelections({});
+
+    if (!o.productId) return;
+    try {
+      let list = catalog;
+      if (!list.length) {
+        list = await api<CatalogProduct[]>('/api/admin/table-floor/products');
+        setCatalog(list);
+      }
+      const product = list.find((p) => p.id === o.productId);
+      const groups = product?.optionGroups || [];
+      setEditGroups(groups);
+      setEditBasePrice(product?.price ?? o.price);
+
+      if (o.selections?.length) {
+        const map: CartLine['selections'] = {};
+        for (const s of o.selections) {
+          const arr = map[s.groupId] || [];
+          arr.push({ optionId: s.optionId, qty: s.qty });
+          map[s.groupId] = arr;
+        }
+        setEditSelections(map);
+      } else {
+        setEditSelections(defaultSelections(groups));
+      }
+    } catch {
+      /* ignore */
+    }
   }
+
+  const editPreviewUnit = useMemo(() => {
+    if (!editingOrder) return 0;
+    if (editGroups.length) {
+      return computePreviewUnitPrice(editBasePrice, editGroups, editSelections);
+    }
+    return editBasePrice || editingOrder.price;
+  }, [editingOrder, editGroups, editBasePrice, editSelections]);
+
+  const editPreviewTotal = useMemo(() => {
+    const base = editPreviewUnit * Math.max(1, editQty);
+    const val = Math.abs(Number(String(editAdjValue).replace(',', '.')) || 0);
+    if (!val || editAdjType === 'none') return base;
+    if (editAdjType === 'extra') return base + val;
+    return Math.max(0, base - val);
+  }, [editPreviewUnit, editQty, editAdjType, editAdjValue]);
 
   async function saveOrderEdit() {
     if (!selected?.sessionId || !editingOrder || busy) return;
     setBusy(true);
     try {
       const adjVal = Math.abs(Number(String(editAdjValue).replace(',', '.')) || 0);
+      const selections = Object.entries(editSelections).flatMap(([groupId, picks]) =>
+        picks.map((pick) => ({
+          groupId,
+          optionId: pick.optionId,
+          qty: pick.qty,
+        }))
+      );
       await api('/api/admin/table-floor/orders/item', {
         method: 'PATCH',
         body: JSON.stringify({
@@ -594,15 +650,18 @@ export default function TableFloorPage() {
           action: 'update',
           patch: {
             qty: editQty,
-            note: editNote,
+            freeNote: editFreeNote,
+            selections,
             adjustmentType: editAdjType === 'none' ? null : editAdjType,
-            adjustmentMode: editAdjMode,
+            adjustmentMode: 'fixed',
             adjustmentValue: editAdjType === 'none' ? 0 : adjVal,
           },
         }),
       });
       setEditingOrder(null);
       await load(true);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Kaydedilemedi');
     } finally {
       setBusy(false);
     }
@@ -1619,6 +1678,10 @@ export default function TableFloorPage() {
               <div>
                 <p>Sipariş düzenle</p>
                 <h3>{editingOrder.name}</h3>
+                <span className="table-floor-modal__edit-lead">
+                  Adet, seçenek ve tutarı buradan güncelle. Satır silmek için listedeki çöp kutusunu
+                  kullan.
+                </span>
               </div>
               <button
                 type="button"
@@ -1628,85 +1691,186 @@ export default function TableFloorPage() {
                 <X className="w-5 h-5" />
               </button>
             </header>
-            <div className="table-floor-modal__edit-body float-field-stack">
-              <div className="table-floor-modal__edit-qty-wrap">
+
+            <div className="table-floor-modal__edit-scroll admin-scroll">
+              <section className="table-floor-edit-card">
+                <div className="table-floor-edit-card__head">
+                  <strong>Adet</strong>
+                </div>
+                <div className="table-floor-modal__qty table-floor-modal__qty--lg">
+                  <button type="button" onClick={() => setEditQty((q) => Math.max(1, q - 1))}>
+                    −
+                  </button>
+                  <em>{editQty}</em>
+                  <button type="button" onClick={() => setEditQty((q) => Math.min(99, q + 1))}>
+                    +
+                  </button>
+                </div>
+              </section>
+
+              {editGroups
+                .filter((g) => g.type === 'single')
+                .map((g) => {
+                  const picked = editSelections[g.id]?.[0]?.optionId || '';
+                  return (
+                    <section key={g.id} className="table-floor-edit-card">
+                      <div className="table-floor-edit-card__head">
+                        <strong>{g.name || 'Tür seçimi'}</strong>
+                        {g.required ? <em>zorunlu</em> : null}
+                      </div>
+                      <div className="table-floor-edit-chips">
+                        {g.options.map((o) => {
+                          const active = picked === o.id;
+                          return (
+                            <button
+                              key={o.id}
+                              type="button"
+                              className={`table-floor-edit-chip${active ? ' is-active' : ''}`}
+                              onClick={() =>
+                                setEditSelections((prev) => ({
+                                  ...prev,
+                                  [g.id]: [{ optionId: o.id, qty: 1 }],
+                                }))
+                              }
+                            >
+                              <span>{o.name}</span>
+                              <small>
+                                {g.pricing === 'replace'
+                                  ? formatMoney(o.price)
+                                  : o.price
+                                    ? `+${formatMoney(o.price)}`
+                                    : 'Ücretsiz'}
+                              </small>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
+                })}
+
+              {editGroups
+                .filter((g) => g.type === 'multi')
+                .map((g) => {
+                  const picks = editSelections[g.id] || [];
+                  return (
+                    <section key={g.id} className="table-floor-edit-card">
+                      <div className="table-floor-edit-card__head">
+                        <strong>{g.name || 'Ekstralar'}</strong>
+                        <em>miktarlı</em>
+                      </div>
+                      <div className="table-floor-edit-extras">
+                        {g.options.map((o) => {
+                          const cur = picks.find((x) => x.optionId === o.id);
+                          const q = cur?.qty || 0;
+                          return (
+                            <div key={o.id} className="table-floor-edit-extra">
+                              <div>
+                                <strong>{o.name}</strong>
+                                <span>
+                                  {o.price > 0 ? `+${formatMoney(o.price)} / adet` : 'Ücretsiz'}
+                                </span>
+                              </div>
+                              <div className="table-floor-modal__qty table-floor-modal__qty--sm">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = picks.filter((x) => x.optionId !== o.id);
+                                    if (q > 1) next.push({ optionId: o.id, qty: q - 1 });
+                                    setEditSelections((prev) => {
+                                      const copy = { ...prev };
+                                      if (next.length) copy[g.id] = next;
+                                      else delete copy[g.id];
+                                      return copy;
+                                    });
+                                  }}
+                                >
+                                  −
+                                </button>
+                                <em>{q}</em>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = picks.filter((x) => x.optionId !== o.id);
+                                    next.push({ optionId: o.id, qty: q + 1 });
+                                    setEditSelections((prev) => ({ ...prev, [g.id]: next }));
+                                  }}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
+                })}
+
+              <section className="table-floor-edit-card">
+                <div className="table-floor-edit-card__head">
+                  <strong>Not & tutar</strong>
+                  <em>opsiyonel</em>
+                </div>
+                <p className="table-floor-edit-hint">
+                  Bahşiş, dünden kalan borç veya özel istek için not yaz; yanında tutar ekle veya
+                  indir.
+                </p>
                 <fieldset className="float-field float-field--admin is-floated table-floor-modal__float">
-                  <legend className="float-field__legend">Adet</legend>
-                  <div className="table-floor-modal__qty table-floor-modal__qty--edit">
-                    <button type="button" onClick={() => setEditQty((q) => Math.max(1, q - 1))}>
-                      −
-                    </button>
-                    <em>{editQty}</em>
-                    <button type="button" onClick={() => setEditQty((q) => Math.min(99, q + 1))}>
-                      +
-                    </button>
-                  </div>
+                  <legend className="float-field__legend">Not</legend>
+                  <input
+                    className="float-field__input"
+                    value={editFreeNote}
+                    maxLength={240}
+                    placeholder="Örn. dünden kalan, hizmet…"
+                    onChange={(e) => setEditFreeNote(e.target.value)}
+                  />
                 </fieldset>
-                <button
-                  type="button"
-                  className="table-floor-modal__trash"
-                  title="Satırı sil"
-                  disabled={busy}
-                  onClick={() => void orderItemAction(editingOrder.id, 'remove')}
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Sil</span>
-                </button>
-              </div>
 
-              <fieldset className="float-field float-field--admin is-floated table-floor-modal__float">
-                <legend className="float-field__legend">Seçenek / not</legend>
-                <input
-                  className="float-field__input"
-                  value={editNote}
-                  maxLength={240}
-                  placeholder="Örn. 1.5 Porsiyon · Ekstra tavuk"
-                  onChange={(e) => setEditNote(e.target.value)}
-                />
-              </fieldset>
+                <div className="table-floor-edit-money">
+                  <button
+                    type="button"
+                    className={`table-floor-edit-money__btn${editAdjType === 'extra' ? ' is-active' : ''}`}
+                    onClick={() =>
+                      setEditAdjType((t) => (t === 'extra' ? 'none' : 'extra'))
+                    }
+                  >
+                    + Fiyat ekle
+                  </button>
+                  <button
+                    type="button"
+                    className={`table-floor-edit-money__btn is-discount${editAdjType === 'discount' ? ' is-active' : ''}`}
+                    onClick={() =>
+                      setEditAdjType((t) => (t === 'discount' ? 'none' : 'discount'))
+                    }
+                  >
+                    − İndirim
+                  </button>
+                </div>
 
-              <fieldset className="float-field float-field--admin is-floated table-floor-modal__float">
-                <legend className="float-field__legend">Fiyat ayarı</legend>
-                <select
-                  className="float-field__input float-field__select"
-                  value={editAdjType}
-                  onChange={(e) =>
-                    setEditAdjType(e.target.value as 'none' | 'extra' | 'discount')
-                  }
-                >
-                  <option value="none">Yok</option>
-                  <option value="extra">Ekstra (+)</option>
-                  <option value="discount">İndirim (−)</option>
-                </select>
-              </fieldset>
-
-              {editAdjType !== 'none' ? (
-                <div className="table-floor-modal__edit-adj-row">
+                {editAdjType !== 'none' ? (
                   <fieldset className="float-field float-field--admin is-floated table-floor-modal__float">
-                    <legend className="float-field__legend">Tür</legend>
-                    <select
-                      className="float-field__input float-field__select"
-                      value={editAdjMode}
-                      onChange={(e) => setEditAdjMode(e.target.value as 'fixed' | 'percent')}
-                    >
-                      <option value="fixed">₺ tutar</option>
-                      <option value="percent">% yüzde</option>
-                    </select>
-                  </fieldset>
-                  <fieldset className="float-field float-field--admin is-floated table-floor-modal__float">
-                    <legend className="float-field__legend">Değer</legend>
+                    <legend className="float-field__legend">
+                      {editAdjType === 'extra' ? 'Eklenecek tutar (₺)' : 'İndirim tutarı (₺)'}
+                    </legend>
                     <input
                       className="float-field__input"
                       type="text"
                       inputMode="decimal"
                       value={editAdjValue}
-                      placeholder={editAdjMode === 'percent' ? '10' : '25'}
+                      placeholder="10"
                       onChange={(e) => setEditAdjValue(e.target.value)}
                     />
                   </fieldset>
-                </div>
-              ) : null}
+                ) : null}
+              </section>
+
+              <div className="table-floor-edit-summary">
+                <span>Satır toplamı</span>
+                <strong>{formatMoney(editPreviewTotal)}</strong>
+              </div>
             </div>
+
             <footer className="table-floor-modal__edit-footer">
               <button
                 type="button"

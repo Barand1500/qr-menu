@@ -429,8 +429,56 @@ router.patch('/orders/item', async (req, res) => {
     const cur = orders[idx];
     const nextQty =
       patch?.qty != null ? Math.min(99, Math.max(1, Number(patch.qty) || 1)) : cur.qty;
+
+    const freeNote =
+      patch?.freeNote !== undefined
+        ? String(patch.freeNote || '').trim().slice(0, 240)
+        : cur.freeNote || '';
+
+    let nextPrice = cur.price;
+    let nextSelections = cur.selections;
+    let optionsNote = '';
+
+    const selectionInputs =
+      patch?.selections !== undefined
+        ? (patch.selections as OptionSelectionInput[])
+        : (cur.selections || []).map((s) => ({
+            groupId: s.groupId,
+            optionId: s.optionId,
+            qty: s.qty,
+          }));
+
+    if (cur.productId) {
+      const product = await prisma.product.findFirst({
+        where: { id: cur.productId, restaurantId: restaurantId! },
+      });
+      if (product) {
+        const groups = activeOptionGroups(product.optionGroups);
+        if (groups.length) {
+          const checked = validateSelections(groups, selectionInputs || []);
+          if (!checked.ok) {
+            return res.status(400).json({ message: checked.message });
+          }
+          nextPrice = computeUnitPrice(Number(product.price), checked.picks);
+          optionsNote = formatSelectionsNote(checked.picks);
+          nextSelections = checked.picks.map((p) => ({
+            groupId: p.group.id,
+            optionId: p.option.id,
+            qty: p.qty,
+            label: p.option.name,
+          }));
+        } else if (patch?.selections !== undefined) {
+          nextSelections = undefined;
+          nextPrice = Number(product.price);
+        }
+      }
+    }
+
     const note =
-      patch?.note !== undefined ? String(patch.note || '').trim().slice(0, 240) : cur.note;
+      patch?.note !== undefined && patch.selections === undefined && patch.freeNote === undefined
+        ? String(patch.note || '').trim().slice(0, 240)
+        : [optionsNote, freeNote].filter(Boolean).join(' · ').slice(0, 240);
+
     const adjustmentType =
       patch?.adjustmentType === 'extra' || patch?.adjustmentType === 'discount'
         ? patch.adjustmentType
@@ -447,9 +495,13 @@ router.patch('/orders/item', async (req, res) => {
       patch?.adjustmentValue !== undefined
         ? Math.abs(Number(patch.adjustmentValue) || 0)
         : cur.adjustmentValue || 0;
+
     orders[idx] = {
       ...cur,
       qty: nextQty,
+      price: nextPrice,
+      freeNote: freeNote || undefined,
+      selections: nextSelections?.length ? nextSelections : undefined,
       note: note || undefined,
       ...(adjustmentType && adjustmentValue > 0
         ? { adjustmentType, adjustmentMode, adjustmentValue }
@@ -598,6 +650,7 @@ router.post('/orders', async (req, res) => {
       qty?: number;
       price?: number;
       note?: string;
+      freeNote?: string;
       selections?: OptionSelectionInput[];
       adjustmentType?: 'extra' | 'discount' | null;
       adjustmentMode?: 'fixed' | 'percent';
@@ -627,7 +680,9 @@ router.post('/orders', async (req, res) => {
     let name = String(raw.name || '').trim();
     let price = Number(raw.price) || 0;
     let productId = raw.productId != null ? Number(raw.productId) : null;
-    let note = String(raw.note || '').trim().slice(0, 240);
+    const freeNote = String(raw.freeNote || raw.note || '').trim().slice(0, 240);
+    let optionsNote = '';
+    let storedSelections: FloorOrderItem['selections'];
 
     if (productId) {
       const product = await prisma.product.findFirst({
@@ -645,12 +700,18 @@ router.post('/orders', async (req, res) => {
             return res.status(400).json({ message: `${name}: ${checked.message}` });
           }
           price = computeUnitPrice(Number(product.price), checked.picks);
-          const selNote = formatSelectionsNote(checked.picks);
-          note = [selNote, note].filter(Boolean).join(' · ').slice(0, 240);
+          optionsNote = formatSelectionsNote(checked.picks);
+          storedSelections = checked.picks.map((p) => ({
+            groupId: p.group.id,
+            optionId: p.option.id,
+            qty: p.qty,
+            label: p.option.name,
+          }));
         }
       }
     }
     if (!name) continue;
+    const note = [optionsNote, freeNote].filter(Boolean).join(' · ').slice(0, 240);
     const adjustmentType =
       raw.adjustmentType === 'extra' || raw.adjustmentType === 'discount'
         ? raw.adjustmentType
@@ -666,6 +727,8 @@ router.post('/orders', async (req, res) => {
       createdAt: now,
       source: 'admin',
       ...(note ? { note } : {}),
+      ...(freeNote ? { freeNote } : {}),
+      ...(storedSelections?.length ? { selections: storedSelections } : {}),
       ...(adjustmentType && adjustmentValue > 0
         ? { adjustmentType, adjustmentMode, adjustmentValue }
         : {}),
