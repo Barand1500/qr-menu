@@ -1990,7 +1990,7 @@
   gap: 0.45rem 0.75rem;
 }
 
-.tf-receipt__meta > div:last-child:nth-child(3) {
+.tf-receipt__meta > div:nth-child(3) {
   grid-column: 1 / -1;
 }
 
@@ -2139,46 +2139,5 @@
 
   .tf-receipt__paper {
     width: 100%;
-  }
-}
-
-@media print {
-  @page {
-    margin: 8mm;
-    size: auto;
-  }
-
-  body * {
-    visibility: hidden !important;
-  }
-
-  .tf-receipt,
-  .tf-receipt * {
-    visibility: visible !important;
-  }
-
-  .tf-receipt {
-    position: static;
-    background: #fff;
-  }
-
-  .tf-receipt__backdrop,
-  .tf-receipt__chrome,
-  .no-print {
-    display: none !important;
-  }
-
-  .tf-receipt__stage {
-    padding: 0;
-    overflow: visible;
-    display: block;
-  }
-
-  .tf-receipt__paper {
-    width: 80mm;
-    max-width: 100%;
-    margin: 0 auto;
-    box-shadow: none;
-    background: #fff;
   }
 }
