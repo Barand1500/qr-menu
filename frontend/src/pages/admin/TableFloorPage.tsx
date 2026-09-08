@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Copy,
   NotebookPen,
@@ -28,6 +30,18 @@ import {
 import BillReceiptModal from '@/components/BillReceiptModal';
 import '@/table-floor.css';
 
+const FLOOR_SKIN_KEY = 'menu_qr_table_floor_skin';
+const FLOOR_SKIN_COUNT = 5;
+
+function readFloorSkin(): number {
+  try {
+    const n = Number(localStorage.getItem(FLOOR_SKIN_KEY));
+    if (Number.isInteger(n) && n >= 0 && n < FLOOR_SKIN_COUNT) return n;
+  } catch {
+    /* ignore */
+  }
+  return 0;
+}
 type FloorOrder = {
   id: string;
   productId?: number | null;
@@ -248,6 +262,7 @@ export default function TableFloorPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [groupId, setGroupId] = useState<string>('');
+  const [floorSkin, setFloorSkin] = useState(readFloorSkin);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [selectedGroupSlug, setSelectedGroupSlug] = useState<string>('');
   const [now, setNow] = useState(() => Date.now());
@@ -818,15 +833,50 @@ export default function TableFloorPage() {
     return p.name.toLowerCase().includes(q) || p.groupName.toLowerCase().includes(q);
   });
 
+  const cycleFloorSkin = (dir: -1 | 1) => {
+    setFloorSkin((prev) => {
+      const next = (prev + dir + FLOOR_SKIN_COUNT) % FLOOR_SKIN_COUNT;
+      try {
+        localStorage.setItem(FLOOR_SKIN_KEY, String(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
   return (
-    <div className="table-floor">
+    <div className={`table-floor table-floor--skin-${floorSkin}`}>
       <header className="table-floor__top">
         <Link to={adminPath()} className="table-floor__back" aria-label="Admin panele dön">
           <ArrowLeft className="w-5 h-5" />
           <span>Geri</span>
         </Link>
         <div className="table-floor__brand">
-          <p>Masa görünümü</p>
+          <div className="table-floor__brand-title">
+            <button
+              type="button"
+              className="table-floor__skin-btn"
+              aria-label="Önceki masa tasarımı"
+              title="Önceki tasarım"
+              onClick={() => cycleFloorSkin(-1)}
+            >
+              <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.5} />
+            </button>
+            <p>Masa görünümü</p>
+            <button
+              type="button"
+              className="table-floor__skin-btn"
+              aria-label="Sonraki masa tasarımı"
+              title="Sonraki tasarım"
+              onClick={() => cycleFloorSkin(1)}
+            >
+              <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+            </button>
+            <span className="table-floor__skin-index" aria-hidden>
+              {floorSkin + 1}/{FLOOR_SKIN_COUNT}
+            </span>
+          </div>
           <strong>{data?.restaurant?.name || user?.restaurant?.name || 'Restoran'}</strong>
         </div>
         <div className="table-floor__filters" role="tablist" aria-label="Masa grupları">

@@ -6,16 +6,241 @@
   --tf-muted: #7a6554;
   --tf-occupied: #c2410c;
   --tf-panel: #fffaf4;
-  min-height: 100dvh;
-  background:
-    radial-gradient(circle at 12% 10%, rgba(255, 248, 236, 0.9), transparent 42%),
+  --tf-top-bg: radial-gradient(circle at 32% 22%, rgba(255, 244, 225, 0.7), transparent 42%),
+    radial-gradient(circle at 70% 78%, rgba(90, 50, 20, 0.22), transparent 50%),
+    repeating-linear-gradient(118deg, rgba(255, 236, 210, 0.08) 0 2px, transparent 2px 7px),
+    linear-gradient(150deg, #e0b686 0%, #c4894f 42%, #8f5a2e 100%);
+  --tf-top-shadow: inset 0 0 0 5px rgba(120, 72, 36, 0.22), inset 0 0 0 7px rgba(255, 236, 210, 0.35),
+    inset 0 -14px 22px rgba(70, 40, 15, 0.28), inset 0 10px 18px rgba(255, 245, 230, 0.22),
+    0 10px 22px rgba(70, 40, 15, 0.24);
+  --tf-top-ring: rgba(255, 236, 210, 0.28);
+  --tf-top-occupied: radial-gradient(circle at 32% 22%, rgba(255, 220, 200, 0.45), transparent 42%),
+    radial-gradient(circle at 70% 78%, rgba(90, 20, 8, 0.28), transparent 50%),
+    linear-gradient(150deg, #ef8a55 0%, #d44a1a 48%, #8f2a0c 100%);
+  --tf-top-occupied-shadow: inset 0 0 0 5px rgba(120, 40, 18, 0.28),
+    inset 0 0 0 7px rgba(255, 220, 200, 0.28), inset 0 -14px 22px rgba(90, 25, 8, 0.3),
+    0 0 0 3px rgba(194, 65, 12, 0.22), 0 12px 26px rgba(154, 52, 18, 0.3);
+  --tf-top-reserved: radial-gradient(circle at 32% 22%, rgba(220, 245, 255, 0.55), transparent 42%),
+    radial-gradient(circle at 70% 78%, rgba(8, 50, 90, 0.28), transparent 50%),
+    linear-gradient(150deg, #5ec8f0 0%, #1f8fc9 48%, #0b5f8a 100%);
+  --tf-top-reserved-shadow: inset 0 0 0 5px rgba(20, 80, 120, 0.28),
+    inset 0 0 0 7px rgba(220, 245, 255, 0.3), inset 0 -14px 22px rgba(8, 50, 90, 0.28),
+    0 0 0 3px rgba(14, 165, 233, 0.25), 0 12px 26px rgba(2, 132, 199, 0.28);
+  --tf-top-merged: radial-gradient(circle at 32% 22%, rgba(255, 246, 210, 0.55), transparent 42%),
+    radial-gradient(circle at 70% 78%, rgba(90, 50, 8, 0.25), transparent 50%),
+    linear-gradient(150deg, #f6cb55 0%, #e08a14 48%, #9a4f0a 100%);
+  --tf-top-merged-shadow: inset 0 0 0 5px rgba(120, 70, 18, 0.26),
+    inset 0 0 0 7px rgba(255, 246, 210, 0.32), inset 0 -14px 22px rgba(90, 50, 8, 0.28),
+    0 0 0 3px rgba(217, 119, 6, 0.22), 0 12px 26px rgba(180, 83, 9, 0.28);
+  --tf-chair: linear-gradient(180deg, #e2b788 0%, #b07845 55%, #7d4f28 100%);
+  --tf-chair-back: linear-gradient(180deg, #c99563 0%, #8f5d32 100%);
+  --tf-chair-leg: #6b4022;
+  --tf-chair-busy: linear-gradient(180deg, #d4a06a 0%, #9a6235 55%, #6d3f1c 100%);
+  --tf-chair-reserved: linear-gradient(180deg, #9ec9df 0%, #5a8fad 55%, #3a6580 100%);
+  --tf-chair-reserved-back: linear-gradient(180deg, #7eb0cb 0%, #4a7a96 100%);
+  --tf-chair-reserved-leg: #2f5368;
+  --tf-table-radius: 999px;
+  --tf-shadow-oval: rgba(55, 32, 12, 0.28);
+  --tf-page-bg: radial-gradient(circle at 12% 10%, rgba(255, 248, 236, 0.9), transparent 42%),
     radial-gradient(circle at 88% 18%, rgba(214, 184, 146, 0.28), transparent 40%),
     linear-gradient(160deg, #efe4d4 0%, #e4d4c0 48%, #dcc9b2 100%);
+  --tf-header-bg: rgba(255, 250, 244, 0.82);
+  --tf-header-border: rgba(88, 60, 36, 0.12);
+  min-height: 100dvh;
+  background: var(--tf-page-bg);
   color: var(--tf-ink);
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
+}
+
+.table-floor--skin-1 .table-floor__back {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--tf-ink);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.table-floor--skin-1 .table-floor__chip {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--tf-ink);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.table-floor--skin-1 .table-floor__chip em {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.table-floor--skin-1 .table-floor__chip.is-active {
+  background: var(--tf-wood-deep);
+  color: #e8f4fa;
+}
+
+.table-floor--skin-1 .floor-table__label {
+  color: var(--tf-ink);
+}
+
+.table-floor--skin-1 .floor-table__qr {
+  background: #0f1419;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08),
+    0 6px 14px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* 2 — Gece */
+.table-floor--skin-1 {
+  --tf-ink: #e8eef4;
+  --tf-muted: #93a4b5;
+  --tf-wood: #5b8fa8;
+  --tf-wood-deep: #3d6f86;
+  --tf-occupied: #f87171;
+  --tf-panel: #1a222c;
+  --tf-page-bg: radial-gradient(circle at 18% 12%, rgba(56, 110, 140, 0.28), transparent 42%),
+    radial-gradient(circle at 90% 20%, rgba(120, 80, 160, 0.12), transparent 40%),
+    linear-gradient(165deg, #121820 0%, #1a222c 45%, #0e141a 100%);
+  --tf-header-bg: rgba(22, 30, 40, 0.88);
+  --tf-header-border: rgba(255, 255, 255, 0.08);
+  --tf-table-radius: 1.35rem;
+  --tf-shadow-oval: rgba(0, 0, 0, 0.55);
+  --tf-top-bg: radial-gradient(circle at 30% 20%, rgba(180, 210, 230, 0.35), transparent 45%),
+    linear-gradient(155deg, #6a8498 0%, #3f5466 48%, #243440 100%);
+  --tf-top-shadow: inset 0 0 0 4px rgba(20, 30, 40, 0.45), inset 0 0 0 6px rgba(180, 210, 230, 0.18),
+    inset 0 -12px 20px rgba(0, 0, 0, 0.35), 0 12px 28px rgba(0, 0, 0, 0.4);
+  --tf-top-ring: rgba(200, 220, 235, 0.2);
+  --tf-top-occupied: linear-gradient(155deg, #f08070 0%, #c43c3c 50%, #7a1e1e 100%);
+  --tf-top-occupied-shadow: inset 0 0 0 4px rgba(80, 20, 20, 0.4), 0 0 0 3px rgba(248, 113, 113, 0.3),
+    0 14px 28px rgba(180, 40, 40, 0.35);
+  --tf-top-reserved: linear-gradient(155deg, #5eead4 0%, #14b8a6 50%, #0f766e 100%);
+  --tf-top-reserved-shadow: inset 0 0 0 4px rgba(15, 80, 70, 0.35), 0 0 0 3px rgba(45, 212, 191, 0.28),
+    0 14px 28px rgba(20, 150, 130, 0.3);
+  --tf-top-merged: linear-gradient(155deg, #c4b5fd 0%, #8b5cf6 50%, #5b21b6 100%);
+  --tf-top-merged-shadow: inset 0 0 0 4px rgba(60, 30, 100, 0.35), 0 0 0 3px rgba(167, 139, 250, 0.28),
+    0 14px 28px rgba(100, 60, 200, 0.3);
+  --tf-chair: linear-gradient(180deg, #7a93a8 0%, #4a6072 55%, #2c3d4a 100%);
+  --tf-chair-back: linear-gradient(180deg, #5f7a8e 0%, #384d5c 100%);
+  --tf-chair-leg: #1e2a34;
+  --tf-chair-busy: linear-gradient(180deg, #c07068 0%, #8a3a38 55%, #4a2020 100%);
+  --tf-chair-reserved: linear-gradient(180deg, #7dd3c4 0%, #3a9e90 55%, #24665c 100%);
+  --tf-chair-reserved-back: linear-gradient(180deg, #5bb8a8 0%, #2d7a70 100%);
+  --tf-chair-reserved-leg: #1a4a44;
+}
+
+/* 3 — Mermer */
+.table-floor--skin-2 {
+  --tf-ink: #1e293b;
+  --tf-muted: #64748b;
+  --tf-wood: #64748b;
+  --tf-wood-deep: #334155;
+  --tf-occupied: #e11d48;
+  --tf-panel: #f8fafc;
+  --tf-page-bg: radial-gradient(circle at 10% 8%, rgba(255, 255, 255, 0.95), transparent 40%),
+    radial-gradient(circle at 85% 15%, rgba(148, 163, 184, 0.25), transparent 42%),
+    linear-gradient(160deg, #e8eef4 0%, #d5dde8 50%, #c8d0dc 100%);
+  --tf-header-bg: rgba(248, 250, 252, 0.9);
+  --tf-header-border: rgba(51, 65, 85, 0.12);
+  --tf-table-radius: 0.85rem;
+  --tf-shadow-oval: rgba(30, 41, 59, 0.22);
+  --tf-top-bg: radial-gradient(circle at 28% 18%, rgba(255, 255, 255, 0.9), transparent 40%),
+    repeating-linear-gradient(125deg, rgba(100, 116, 139, 0.06) 0 1px, transparent 1px 6px),
+    linear-gradient(150deg, #f1f5f9 0%, #cbd5e1 45%, #94a3b8 100%);
+  --tf-top-shadow: inset 0 0 0 4px rgba(148, 163, 184, 0.45), inset 0 0 0 6px rgba(255, 255, 255, 0.55),
+    inset 0 -10px 18px rgba(71, 85, 105, 0.18), 0 10px 24px rgba(51, 65, 85, 0.18);
+  --tf-top-ring: rgba(255, 255, 255, 0.55);
+  --tf-top-occupied: linear-gradient(150deg, #fb7185 0%, #e11d48 50%, #9f1239 100%);
+  --tf-top-occupied-shadow: inset 0 0 0 4px rgba(136, 19, 55, 0.3), 0 0 0 3px rgba(244, 63, 94, 0.25),
+    0 12px 26px rgba(190, 24, 93, 0.28);
+  --tf-top-reserved: linear-gradient(150deg, #93c5fd 0%, #3b82f6 50%, #1d4ed8 100%);
+  --tf-top-reserved-shadow: inset 0 0 0 4px rgba(30, 64, 175, 0.28), 0 0 0 3px rgba(59, 130, 246, 0.25),
+    0 12px 26px rgba(37, 99, 235, 0.25);
+  --tf-top-merged: linear-gradient(150deg, #fcd34d 0%, #f59e0b 50%, #b45309 100%);
+  --tf-top-merged-shadow: inset 0 0 0 4px rgba(146, 64, 14, 0.28), 0 0 0 3px rgba(245, 158, 11, 0.25),
+    0 12px 26px rgba(217, 119, 6, 0.25);
+  --tf-chair: linear-gradient(180deg, #e2e8f0 0%, #94a3b8 55%, #64748b 100%);
+  --tf-chair-back: linear-gradient(180deg, #cbd5e1 0%, #64748b 100%);
+  --tf-chair-leg: #475569;
+  --tf-chair-busy: linear-gradient(180deg, #fda4af 0%, #e11d48 55%, #9f1239 100%);
+  --tf-chair-reserved: linear-gradient(180deg, #bfdbfe 0%, #60a5fa 55%, #2563eb 100%);
+  --tf-chair-reserved-back: linear-gradient(180deg, #93c5fd 0%, #3b82f6 100%);
+  --tf-chair-reserved-leg: #1e40af;
+}
+
+/* 4 — Bakır */
+.table-floor--skin-3 {
+  --tf-ink: #2a1610;
+  --tf-muted: #8a5c48;
+  --tf-wood: #c45c2a;
+  --tf-wood-deep: #9a3d18;
+  --tf-occupied: #b91c1c;
+  --tf-panel: #fff5ef;
+  --tf-page-bg: radial-gradient(circle at 15% 10%, rgba(255, 220, 190, 0.7), transparent 42%),
+    radial-gradient(circle at 88% 22%, rgba(180, 60, 40, 0.18), transparent 40%),
+    linear-gradient(160deg, #f0d5c4 0%, #e0b8a0 48%, #d4a088 100%);
+  --tf-header-bg: rgba(255, 245, 239, 0.88);
+  --tf-header-border: rgba(120, 50, 30, 0.14);
+  --tf-table-radius: 40% 40% 42% 42% / 48% 48% 52% 52%;
+  --tf-shadow-oval: rgba(80, 30, 15, 0.32);
+  --tf-top-bg: radial-gradient(circle at 30% 20%, rgba(255, 230, 200, 0.65), transparent 42%),
+    linear-gradient(150deg, #e8a070 0%, #c45c2a 45%, #7a3010 100%);
+  --tf-top-shadow: inset 0 0 0 5px rgba(120, 40, 15, 0.28), inset 0 0 0 7px rgba(255, 220, 180, 0.3),
+    inset 0 -14px 22px rgba(80, 25, 8, 0.32), 0 12px 26px rgba(100, 40, 15, 0.28);
+  --tf-top-ring: rgba(255, 220, 180, 0.35);
+  --tf-top-occupied: linear-gradient(150deg, #f87171 0%, #b91c1c 50%, #7f1d1d 100%);
+  --tf-top-occupied-shadow: inset 0 0 0 5px rgba(100, 20, 20, 0.35), 0 0 0 3px rgba(220, 38, 38, 0.28),
+    0 12px 28px rgba(153, 27, 27, 0.32);
+  --tf-top-reserved: linear-gradient(150deg, #67e8f9 0%, #0891b2 50%, #155e75 100%);
+  --tf-top-reserved-shadow: inset 0 0 0 5px rgba(15, 70, 90, 0.3), 0 0 0 3px rgba(6, 182, 212, 0.28),
+    0 12px 28px rgba(8, 145, 178, 0.28);
+  --tf-top-merged: linear-gradient(150deg, #fde047 0%, #ca8a04 50%, #854d0e 100%);
+  --tf-top-merged-shadow: inset 0 0 0 5px rgba(100, 60, 10, 0.3), 0 0 0 3px rgba(202, 138, 4, 0.28),
+    0 12px 28px rgba(161, 98, 7, 0.28);
+  --tf-chair: linear-gradient(180deg, #e8a878 0%, #b85a30 55%, #7a3018 100%);
+  --tf-chair-back: linear-gradient(180deg, #d48850 0%, #8a3c1c 100%);
+  --tf-chair-leg: #5a2410;
+  --tf-chair-busy: linear-gradient(180deg, #f0a090 0%, #c04040 55%, #701818 100%);
+  --tf-chair-reserved: linear-gradient(180deg, #a5f3fc 0%, #22d3ee 55%, #0e7490 100%);
+  --tf-chair-reserved-back: linear-gradient(180deg, #67e8f9 0%, #0891b2 100%);
+  --tf-chair-reserved-leg: #155e75;
+}
+
+/* 5 — Adaçayı */
+.table-floor--skin-4 {
+  --tf-ink: #1c2e24;
+  --tf-muted: #5f7a68;
+  --tf-wood: #5f8f6e;
+  --tf-wood-deep: #3d6b4c;
+  --tf-occupied: #c2410c;
+  --tf-panel: #f4faf6;
+  --tf-page-bg: radial-gradient(circle at 14% 10%, rgba(220, 245, 230, 0.85), transparent 42%),
+    radial-gradient(circle at 88% 18%, rgba(100, 150, 120, 0.22), transparent 40%),
+    linear-gradient(160deg, #dce8df 0%, #c5d6c8 48%, #b4c8b8 100%);
+  --tf-header-bg: rgba(244, 250, 246, 0.88);
+  --tf-header-border: rgba(40, 80, 55, 0.12);
+  --tf-table-radius: 999px;
+  --tf-shadow-oval: rgba(30, 55, 40, 0.28);
+  --tf-top-bg: radial-gradient(circle at 32% 22%, rgba(230, 250, 235, 0.55), transparent 42%),
+    repeating-linear-gradient(110deg, rgba(255, 255, 255, 0.08) 0 2px, transparent 2px 8px),
+    linear-gradient(150deg, #8fbf9a 0%, #5f8f6e 45%, #3a5f48 100%);
+  --tf-top-shadow: inset 0 0 0 5px rgba(40, 80, 55, 0.28), inset 0 0 0 7px rgba(220, 245, 230, 0.28),
+    inset 0 -14px 22px rgba(25, 50, 35, 0.28), 0 10px 24px rgba(30, 60, 40, 0.25);
+  --tf-top-ring: rgba(220, 245, 230, 0.32);
+  --tf-top-occupied: linear-gradient(150deg, #fb923c 0%, #ea580c 50%, #9a3412 100%);
+  --tf-top-occupied-shadow: inset 0 0 0 5px rgba(120, 50, 15, 0.3), 0 0 0 3px rgba(234, 88, 12, 0.28),
+    0 12px 26px rgba(194, 65, 12, 0.28);
+  --tf-top-reserved: linear-gradient(150deg, #7dd3fc 0%, #0ea5e9 50%, #0369a1 100%);
+  --tf-top-reserved-shadow: inset 0 0 0 5px rgba(15, 70, 110, 0.28), 0 0 0 3px rgba(14, 165, 233, 0.28),
+    0 12px 26px rgba(2, 132, 199, 0.28);
+  --tf-top-merged: linear-gradient(150deg, #fde68a 0%, #eab308 50%, #a16207 100%);
+  --tf-top-merged-shadow: inset 0 0 0 5px rgba(100, 70, 10, 0.28), 0 0 0 3px rgba(234, 179, 8, 0.28),
+    0 12px 26px rgba(161, 98, 7, 0.28);
+  --tf-chair: linear-gradient(180deg, #a8d0b2 0%, #6a9a78 55%, #3d6b4c 100%);
+  --tf-chair-back: linear-gradient(180deg, #8fbf9a 0%, #4a7a58 100%);
+  --tf-chair-leg: #2d4a38;
+  --tf-chair-busy: linear-gradient(180deg, #fdba74 0%, #ea580c 55%, #9a3412 100%);
+  --tf-chair-reserved: linear-gradient(180deg, #bae6fd 0%, #38bdf8 55%, #0284c7 100%);
+  --tf-chair-reserved-back: linear-gradient(180deg, #7dd3fc 0%, #0ea5e9 100%);
+  --tf-chair-reserved-leg: #075985;
 }
 
 .table-floor__top {
@@ -24,8 +249,8 @@
   gap: 0.75rem 1rem;
   align-items: center;
   padding: 0.85rem 1rem;
-  background: rgba(255, 250, 244, 0.82);
-  border-bottom: 1px solid rgba(88, 60, 36, 0.12);
+  background: var(--tf-header-bg);
+  border-bottom: 1px solid var(--tf-header-border);
   backdrop-filter: blur(10px);
   z-index: 5;
 }
@@ -59,6 +284,43 @@
   text-transform: uppercase;
   color: var(--tf-muted);
   font-weight: 700;
+}
+
+.table-floor__brand-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.table-floor__skin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.3rem;
+  background: transparent;
+  color: var(--tf-muted);
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.table-floor__skin-btn:hover {
+  opacity: 1;
+  color: var(--tf-ink);
+  background: color-mix(in srgb, var(--tf-ink) 8%, transparent);
+}
+
+.table-floor__skin-index {
+  margin-left: 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--tf-muted);
+  opacity: 0.7;
 }
 
 .table-floor__brand strong {
@@ -203,7 +465,6 @@
   text-align: center;
 }
 
-/* Soft oval shadow under table */
 .floor-table::after {
   content: '';
   position: absolute;
@@ -212,7 +473,7 @@
   top: 58%;
   height: 0.85rem;
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(55, 32, 12, 0.28), transparent 72%);
+  background: radial-gradient(ellipse at center, var(--tf-shadow-oval), transparent 72%);
   pointer-events: none;
   z-index: 0;
 }
@@ -223,26 +484,13 @@
   left: 16%;
   right: 16%;
   height: 62%;
-  border-radius: 999px;
+  border-radius: var(--tf-table-radius);
   z-index: 1;
-  background:
-    radial-gradient(circle at 32% 22%, rgba(255, 244, 225, 0.7), transparent 42%),
-    radial-gradient(circle at 70% 78%, rgba(90, 50, 20, 0.22), transparent 50%),
-    repeating-linear-gradient(
-      118deg,
-      rgba(255, 236, 210, 0.08) 0 2px,
-      transparent 2px 7px
-    ),
-    linear-gradient(150deg, #e0b686 0%, #c4894f 42%, #8f5a2e 100%);
-  box-shadow:
-    inset 0 0 0 5px rgba(120, 72, 36, 0.22),
-    inset 0 0 0 7px rgba(255, 236, 210, 0.35),
-    inset 0 -14px 22px rgba(70, 40, 15, 0.28),
-    inset 0 10px 18px rgba(255, 245, 230, 0.22),
-    0 10px 22px rgba(70, 40, 15, 0.24);
+  background: var(--tf-top-bg);
+  box-shadow: var(--tf-top-shadow);
   display: grid;
   place-items: center;
-  transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease, border-radius 0.25s ease;
 }
 
 .floor-table__top::before {
@@ -250,48 +498,24 @@
   position: absolute;
   inset: 11%;
   border-radius: inherit;
-  border: 1px solid rgba(255, 236, 210, 0.28);
-  box-shadow: inset 0 0 18px rgba(90, 50, 20, 0.12);
+  border: 1px solid var(--tf-top-ring);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.08);
   pointer-events: none;
 }
 
 .floor-table.is-occupied .floor-table__top {
-  background:
-    radial-gradient(circle at 32% 22%, rgba(255, 220, 200, 0.45), transparent 42%),
-    radial-gradient(circle at 70% 78%, rgba(90, 20, 8, 0.28), transparent 50%),
-    linear-gradient(150deg, #ef8a55 0%, #d44a1a 48%, #8f2a0c 100%);
-  box-shadow:
-    inset 0 0 0 5px rgba(120, 40, 18, 0.28),
-    inset 0 0 0 7px rgba(255, 220, 200, 0.28),
-    inset 0 -14px 22px rgba(90, 25, 8, 0.3),
-    0 0 0 3px rgba(194, 65, 12, 0.22),
-    0 12px 26px rgba(154, 52, 18, 0.3);
+  background: var(--tf-top-occupied);
+  box-shadow: var(--tf-top-occupied-shadow);
 }
 
 .floor-table.is-reserved .floor-table__top {
-  background:
-    radial-gradient(circle at 32% 22%, rgba(220, 245, 255, 0.55), transparent 42%),
-    radial-gradient(circle at 70% 78%, rgba(8, 50, 90, 0.28), transparent 50%),
-    linear-gradient(150deg, #5ec8f0 0%, #1f8fc9 48%, #0b5f8a 100%);
-  box-shadow:
-    inset 0 0 0 5px rgba(20, 80, 120, 0.28),
-    inset 0 0 0 7px rgba(220, 245, 255, 0.3),
-    inset 0 -14px 22px rgba(8, 50, 90, 0.28),
-    0 0 0 3px rgba(14, 165, 233, 0.25),
-    0 12px 26px rgba(2, 132, 199, 0.28);
+  background: var(--tf-top-reserved);
+  box-shadow: var(--tf-top-reserved-shadow);
 }
 
 .floor-table.is-merged .floor-table__top {
-  background:
-    radial-gradient(circle at 32% 22%, rgba(255, 246, 210, 0.55), transparent 42%),
-    radial-gradient(circle at 70% 78%, rgba(90, 50, 8, 0.25), transparent 50%),
-    linear-gradient(150deg, #f6cb55 0%, #e08a14 48%, #9a4f0a 100%);
-  box-shadow:
-    inset 0 0 0 5px rgba(120, 70, 18, 0.26),
-    inset 0 0 0 7px rgba(255, 246, 210, 0.32),
-    inset 0 -14px 22px rgba(90, 50, 8, 0.28),
-    0 0 0 3px rgba(217, 119, 6, 0.22),
-    0 12px 26px rgba(180, 83, 9, 0.28);
+  background: var(--tf-top-merged);
+  box-shadow: var(--tf-top-merged-shadow);
 }
 
 .floor-table.is-selected .floor-table__top {
@@ -380,13 +604,12 @@
   width: 1.85rem;
   height: 0.72rem;
   border-radius: 0.55rem;
-  background:
-    linear-gradient(180deg, #e2b788 0%, #b07845 55%, #7d4f28 100%);
+  background: var(--tf-chair);
   box-shadow:
-    inset 0 1px 0 rgba(255, 236, 210, 0.45),
-    inset 0 -2px 4px rgba(70, 40, 15, 0.25),
-    0 3px 6px rgba(70, 40, 15, 0.22);
-  transition: filter 0.22s ease, transform 0.22s ease;
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2),
+    0 3px 6px rgba(0, 0, 0, 0.18);
+  transition: filter 0.22s ease, transform 0.22s ease, background 0.25s ease;
 }
 
 .floor-table__chair::before {
@@ -396,11 +619,10 @@
   right: 12%;
   height: 0.55rem;
   border-radius: 0.45rem 0.45rem 0.2rem 0.2rem;
-  background:
-    linear-gradient(180deg, #c99563 0%, #8f5d32 100%);
+  background: var(--tf-chair-back);
   box-shadow:
-    inset 0 1px 0 rgba(255, 236, 210, 0.35),
-    0 2px 4px rgba(70, 40, 15, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 2px 4px rgba(0, 0, 0, 0.14);
 }
 
 .floor-table__chair::after {
@@ -409,8 +631,8 @@
   width: 0.22rem;
   height: 0.38rem;
   border-radius: 0.1rem;
-  background: #6b4022;
-  box-shadow: 1.15rem 0 0 #6b4022;
+  background: var(--tf-chair-leg);
+  box-shadow: 1.15rem 0 0 var(--tf-chair-leg);
   opacity: 0.85;
 }
 
@@ -469,7 +691,7 @@
   left: 100%;
   width: 0.38rem;
   height: 0.22rem;
-  box-shadow: 0 1.15rem 0 #6b4022;
+  box-shadow: 0 1.15rem 0 var(--tf-chair-leg);
 }
 
 .floor-table__chair--w {
@@ -497,30 +719,30 @@
   left: auto;
   width: 0.38rem;
   height: 0.22rem;
-  box-shadow: 0 1.15rem 0 #6b4022;
+  box-shadow: 0 1.15rem 0 var(--tf-chair-leg);
 }
 
 .floor-table.is-occupied .floor-table__chair,
 .floor-table.is-merged .floor-table__chair {
-  background: linear-gradient(180deg, #d4a06a 0%, #9a6235 55%, #6d3f1c 100%);
+  background: var(--tf-chair-busy);
 }
 
 .floor-table.is-reserved .floor-table__chair {
-  background: linear-gradient(180deg, #9ec9df 0%, #5a8fad 55%, #3a6580 100%);
+  background: var(--tf-chair-reserved);
 }
 
 .floor-table.is-reserved .floor-table__chair::before {
-  background: linear-gradient(180deg, #7eb0cb 0%, #4a7a96 100%);
+  background: var(--tf-chair-reserved-back);
 }
 
 .floor-table.is-reserved .floor-table__chair::after {
-  background: #2f5368;
-  box-shadow: 1.15rem 0 0 #2f5368;
+  background: var(--tf-chair-reserved-leg);
+  box-shadow: 1.15rem 0 0 var(--tf-chair-reserved-leg);
 }
 
 .floor-table.is-reserved .floor-table__chair--e::after,
 .floor-table.is-reserved .floor-table__chair--w::after {
-  box-shadow: 0 1.15rem 0 #2f5368;
+  box-shadow: 0 1.15rem 0 var(--tf-chair-reserved-leg);
 }
 
 .table-floor__scrim {
