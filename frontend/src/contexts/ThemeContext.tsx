@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { morphAdminAccent } from '@/lib/adminAccentMorph';
+import { morphAdminAccent, clearAdminAccentInlineVars } from '@/lib/adminAccentMorph';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -51,6 +51,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem(THEME_KEY, theme);
+    // Gece/gündüz geçişinde morph’tan kalan inline sidebar renklerini temizle
+    clearAdminAccentInlineVars();
+    document.documentElement.setAttribute('data-accent', accentRef.current);
   }, [theme]);
 
   useEffect(() => {

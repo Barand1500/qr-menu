@@ -114,8 +114,12 @@ function paletteToVars(p: AccentPalette): Record<string, string> {
   return out;
 }
 
-function clearAccentInlineVars(root: HTMLElement) {
+export function clearAdminAccentInlineVars(root: HTMLElement = document.documentElement) {
   for (const { css } of VAR_MAP) root.style.removeProperty(css);
+}
+
+function clearAccentInlineVars(root: HTMLElement) {
+  clearAdminAccentInlineVars(root);
 }
 
 /** Bukalemun geçişi: vurgu renklerini yumuşak morph eder */
