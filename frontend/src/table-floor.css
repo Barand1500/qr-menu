@@ -846,11 +846,107 @@
   max-width: 420px;
 }
 
+.table-floor-modal__panel--edit {
+  width: min(26rem, 100%);
+  max-height: min(88dvh, 36rem);
+}
+
 .table-floor-modal__edit-body {
   display: flex;
   flex-direction: column;
+  gap: 1rem;
+  padding: 0.35rem 1.1rem 0.5rem;
+}
+
+.table-floor-modal__float {
+  --float-border: rgba(88, 60, 36, 0.18);
+  --float-border-focus: #0f766e;
+  --float-ring: rgba(15, 118, 110, 0.12);
+  --float-label-focus: #0f766e;
+  --float-bg: #fff;
+  margin-bottom: 0;
+}
+
+.table-floor-modal__float .float-field__legend {
+  font-size: 11px;
+  font-weight: 500;
+  background: #fffaf4;
+}
+
+.table-floor-modal__float .float-field__input,
+.table-floor-modal__float .float-field__select {
+  color: var(--tf-ink, #3b2a1c);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.table-floor-modal__edit-qty-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 0.55rem;
+}
+
+.table-floor-modal__edit-qty-wrap .table-floor-modal__float {
+  flex: 1;
+}
+
+.table-floor-modal__qty--edit {
+  padding: 0.55rem 0.65rem 0.7rem;
+  justify-content: flex-start;
+}
+
+.table-floor-modal__trash {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-width: 3.4rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 14px;
+  border: 1.5px solid rgba(185, 28, 28, 0.22);
+  background: #fff;
+  color: #b91c1c;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.table-floor-modal__trash:hover:not(:disabled) {
+  background: rgba(185, 28, 28, 0.06);
+}
+
+.table-floor-modal__trash:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.table-floor-modal__edit-adj-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.65rem;
-  padding: 0.85rem 1rem 0.25rem;
+}
+
+.table-floor-modal__edit-footer {
+  display: flex;
+  gap: 0.55rem;
+  padding: 0.85rem 1.1rem 1.1rem;
+  border-top: 1px solid rgba(88, 60, 36, 0.08);
+}
+
+.table-floor-modal__edit-footer .table-floor__secondary,
+.table-floor-modal__edit-footer .table-floor__primary {
+  flex: 1;
+}
+
+.table-floor__icon-btn.is-tiny.is-danger {
+  color: #b91c1c;
+}
+
+.table-floor__icon-btn.is-tiny.is-danger:hover:not(:disabled) {
+  background: rgba(185, 28, 28, 0.08);
 }
 
 .table-floor-modal__edit-body > label {

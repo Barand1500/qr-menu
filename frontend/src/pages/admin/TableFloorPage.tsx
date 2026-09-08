@@ -10,6 +10,7 @@ import {
   Timer,
   UtensilsCrossed,
   X,
+  Trash2,
   HandHelping,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -551,8 +552,9 @@ export default function TableFloorPage() {
     }
   }
 
-  async function orderItemAction(itemId: string, action: 'copy' | 'bump', qty = 1) {
+  async function orderItemAction(itemId: string, action: 'copy' | 'remove') {
     if (!selected?.sessionId || busy) return;
+    if (action === 'remove' && !confirm('Bu sipariş satırı silinsin mi?')) return;
     setBusy(true);
     try {
       await api('/api/admin/table-floor/orders/item', {
@@ -561,9 +563,9 @@ export default function TableFloorPage() {
           sessionId: selected.sessionId,
           itemId,
           action,
-          patch: action === 'bump' ? { qty } : undefined,
         }),
       });
+      if (editingOrder?.id === itemId) setEditingOrder(null);
       await load(true);
     } finally {
       setBusy(false);
@@ -1245,7 +1247,7 @@ export default function TableFloorPage() {
                                 <button
                                   type="button"
                                   className="table-floor__icon-btn is-tiny"
-                                  title="Kopyala"
+                                  title="Satırı çoğalt (aynı ürün ayrı satır)"
                                   disabled={busy}
                                   onClick={() => void orderItemAction(o.id, 'copy')}
                                 >
@@ -1253,12 +1255,12 @@ export default function TableFloorPage() {
                                 </button>
                                 <button
                                   type="button"
-                                  className="table-floor__icon-btn is-tiny"
-                                  title="Adet +1"
+                                  className="table-floor__icon-btn is-tiny is-danger"
+                                  title="Satırı sil"
                                   disabled={busy}
-                                  onClick={() => void orderItemAction(o.id, 'bump', 1)}
+                                  onClick={() => void orderItemAction(o.id, 'remove')}
                                 >
-                                  <Plus className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                             ) : null}
@@ -1612,7 +1614,7 @@ export default function TableFloorPage() {
             aria-label="Kapat"
             onClick={() => setEditingOrder(null)}
           />
-          <div className="table-floor-modal__panel table-floor-modal__panel--sm">
+          <div className="table-floor-modal__panel table-floor-modal__panel--edit">
             <header>
               <div>
                 <p>Sipariş düzenle</p>
@@ -1626,72 +1628,93 @@ export default function TableFloorPage() {
                 <X className="w-5 h-5" />
               </button>
             </header>
-            <div className="table-floor-modal__edit-body">
-              <label>
-                <span>Adet</span>
-                <div className="table-floor-modal__qty">
-                  <button type="button" onClick={() => setEditQty((q) => Math.max(1, q - 1))}>
-                    −
-                  </button>
-                  <em>{editQty}</em>
-                  <button type="button" onClick={() => setEditQty((q) => Math.min(99, q + 1))}>
-                    +
-                  </button>
-                </div>
-              </label>
-              <label>
-                <span>Not</span>
+            <div className="table-floor-modal__edit-body float-field-stack">
+              <div className="table-floor-modal__edit-qty-wrap">
+                <fieldset className="float-field float-field--admin is-floated table-floor-modal__float">
+                  <legend className="float-field__legend">Adet</legend>
+                  <div className="table-floor-modal__qty table-floor-modal__qty--edit">
+                    <button type="button" onClick={() => setEditQty((q) => Math.max(1, q - 1))}>
+                      −
+                    </button>
+                    <em>{editQty}</em>
+                    <button type="button" onClick={() => setEditQty((q) => Math.min(99, q + 1))}>
+                      +
+                    </button>
+                  </div>
+                </fieldset>
+                <button
+                  type="button"
+                  className="table-floor-modal__trash"
+                  title="Satırı sil"
+                  disabled={busy}
+                  onClick={() => void orderItemAction(editingOrder.id, 'remove')}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Sil</span>
+                </button>
+              </div>
+
+              <fieldset className="float-field float-field--admin is-floated table-floor-modal__float">
+                <legend className="float-field__legend">Seçenek / not</legend>
                 <input
-                  type="text"
-                  className="table-floor__input"
+                  className="float-field__input"
                   value={editNote}
                   maxLength={240}
+                  placeholder="Örn. 1.5 Porsiyon · Ekstra tavuk"
                   onChange={(e) => setEditNote(e.target.value)}
                 />
-              </label>
-              <div className="table-floor-modal__adj">
-                <label>
-                  <span>Fiyat ayarı</span>
-                  <select
-                    className="table-floor__input"
-                    value={editAdjType}
-                    onChange={(e) =>
-                      setEditAdjType(e.target.value as 'none' | 'extra' | 'discount')
-                    }
-                  >
-                    <option value="none">Yok</option>
-                    <option value="extra">Ekstra (+)</option>
-                    <option value="discount">İndirim (−)</option>
-                  </select>
-                </label>
-                {editAdjType !== 'none' ? (
-                  <>
-                    <label>
-                      <span>Tür</span>
-                      <select
-                        className="table-floor__input"
-                        value={editAdjMode}
-                        onChange={(e) => setEditAdjMode(e.target.value as 'fixed' | 'percent')}
-                      >
-                        <option value="fixed">₺ tutar</option>
-                        <option value="percent">% yüzde</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>Değer</span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className="table-floor__input"
-                        value={editAdjValue}
-                        onChange={(e) => setEditAdjValue(e.target.value)}
-                      />
-                    </label>
-                  </>
-                ) : null}
-              </div>
+              </fieldset>
+
+              <fieldset className="float-field float-field--admin is-floated table-floor-modal__float">
+                <legend className="float-field__legend">Fiyat ayarı</legend>
+                <select
+                  className="float-field__input float-field__select"
+                  value={editAdjType}
+                  onChange={(e) =>
+                    setEditAdjType(e.target.value as 'none' | 'extra' | 'discount')
+                  }
+                >
+                  <option value="none">Yok</option>
+                  <option value="extra">Ekstra (+)</option>
+                  <option value="discount">İndirim (−)</option>
+                </select>
+              </fieldset>
+
+              {editAdjType !== 'none' ? (
+                <div className="table-floor-modal__edit-adj-row">
+                  <fieldset className="float-field float-field--admin is-floated table-floor-modal__float">
+                    <legend className="float-field__legend">Tür</legend>
+                    <select
+                      className="float-field__input float-field__select"
+                      value={editAdjMode}
+                      onChange={(e) => setEditAdjMode(e.target.value as 'fixed' | 'percent')}
+                    >
+                      <option value="fixed">₺ tutar</option>
+                      <option value="percent">% yüzde</option>
+                    </select>
+                  </fieldset>
+                  <fieldset className="float-field float-field--admin is-floated table-floor-modal__float">
+                    <legend className="float-field__legend">Değer</legend>
+                    <input
+                      className="float-field__input"
+                      type="text"
+                      inputMode="decimal"
+                      value={editAdjValue}
+                      placeholder={editAdjMode === 'percent' ? '10' : '25'}
+                      onChange={(e) => setEditAdjValue(e.target.value)}
+                    />
+                  </fieldset>
+                </div>
+              ) : null}
             </div>
-            <footer>
+            <footer className="table-floor-modal__edit-footer">
+              <button
+                type="button"
+                className="table-floor__secondary"
+                onClick={() => setEditingOrder(null)}
+              >
+                Vazgeç
+              </button>
               <button
                 type="button"
                 className="table-floor__primary"

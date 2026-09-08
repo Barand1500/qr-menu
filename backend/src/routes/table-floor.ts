@@ -391,7 +391,7 @@ router.patch('/orders/item', async (req, res) => {
   const { sessionId, itemId, action, patch } = req.body as {
     sessionId?: number;
     itemId?: string;
-    action?: 'update' | 'copy' | 'bump';
+    action?: 'update' | 'copy' | 'bump' | 'remove';
     patch?: Partial<FloorOrderItem> & { qty?: number };
   };
   const sid = Number(sessionId);
@@ -417,6 +417,8 @@ router.patch('/orders/item', async (req, res) => {
       createdAt: new Date().toISOString(),
       source: 'admin',
     });
+  } else if (action === 'remove') {
+    orders.splice(idx, 1);
   } else if (action === 'bump') {
     const delta = Number(patch?.qty) || 1;
     orders[idx] = {

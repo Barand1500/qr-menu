@@ -173,6 +173,58 @@
   color: var(--pv-muted);
 }
 
+.pv-cats {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding: 0.35rem 0.85rem 0.55rem;
+  scrollbar-width: thin;
+}
+
+.pv-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  height: 2rem;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--pv-line);
+  background: #fff;
+  color: var(--pv-ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  max-width: 11rem;
+}
+
+.pv-cat span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pv-cat em {
+  font-style: normal;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--pv-muted);
+  background: var(--pv-soft);
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+}
+
+.pv-cat.is-active {
+  background: var(--pv-accent);
+  border-color: var(--pv-accent);
+  color: #fff;
+}
+
+.pv-cat.is-active em {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
 .pv-list {
   flex: 1;
   min-height: 0;

@@ -34,6 +34,7 @@ export default function ProductVariantsPage() {
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<string>('all');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [groups, setGroups] = useState<ProductOptionGroup[]>([]);
   const [dirty, setDirty] = useState(false);
@@ -82,15 +83,29 @@ export default function ProductVariantsPage() {
     setMessage(null);
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps -- reset editor when product changes
 
+  const categories = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of products) {
+      const key = (p.groupName || '').trim() || 'Diğer';
+      map.set(key, (map.get(key) || 0) + 1);
+    }
+    return [...map.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+  }, [products]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter(
-      (p) =>
+    return products.filter((p) => {
+      const gName = (p.groupName || '').trim() || 'Diğer';
+      if (category !== 'all' && gName !== category) return false;
+      if (!q) return true;
+      return (
         p.name.toLowerCase().includes(q) ||
-        (p.groupName || '').toLowerCase().includes(q)
-    );
-  }, [products, query]);
+        gName.toLowerCase().includes(q)
+      );
+    });
+  }, [products, query, category]);
 
   function updateGroups(next: ProductOptionGroup[]) {
     setGroups(next);
@@ -208,7 +223,31 @@ export default function ProductVariantsPage() {
               placeholder="Ürün veya grup ara…"
             />
           </div>
-          <p className="pv-list-meta">{filtered.length} ürün</p>
+          <div className="pv-cats" role="tablist" aria-label="Kategoriler">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={category === 'all'}
+              className={`pv-cat${category === 'all' ? ' is-active' : ''}`}
+              onClick={() => setCategory('all')}
+            >
+              Tümü
+              <em>{products.length}</em>
+            </button>
+            {categories.map((c) => (
+              <button
+                key={c.name}
+                type="button"
+                role="tab"
+                aria-selected={category === c.name}
+                className={`pv-cat${category === c.name ? ' is-active' : ''}`}
+                onClick={() => setCategory(c.name)}
+              >
+                <span>{c.name}</span>
+                <em>{c.count}</em>
+              </button>
+            ))}
+          </div>
           <div className="pv-list admin-scroll">
             {loading ? (
               <div className="pv-empty">Yükleniyor…</div>
