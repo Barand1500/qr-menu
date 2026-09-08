@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -10,6 +10,7 @@ import {
   Trash2,
   ListChecks,
   CircleDot,
+  BookOpen,
 } from 'lucide-react';
 import { api, formatMoney } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
@@ -19,6 +20,11 @@ import {
   type ProductOption,
   type ProductOptionGroup,
 } from '@/lib/productOptions';
+import {
+  ProductVariantsGuideOverlay,
+  VARIANT_GUIDE_STEPS,
+  type GuideStepId,
+} from '@/pages/admin/ProductVariantsGuide';
 import '@/product-variants.css';
 
 type ProductRow = {
@@ -29,6 +35,12 @@ type ProductRow = {
   isActive: boolean;
   optionGroups?: ProductOptionGroup[];
   optionSummary?: { groupCount: number; optionCount: number };
+};
+
+type GuideSnapshot = {
+  selectedId: number | null;
+  groups: ProductOptionGroup[];
+  dirty: boolean;
 };
 
 function normalizeLoadedGroups(raw: ProductOptionGroup[] | undefined): ProductOptionGroup[] {
@@ -43,6 +55,56 @@ function normalizeLoadedGroups(raw: ProductOptionGroup[] | undefined): ProductOp
       limitsMultiMaxTotalQty: Math.max(0, Number(o.limitsMultiMaxTotalQty) || 0),
     })),
   }));
+}
+
+/** Rehber örneği — sabit id’ler (adımlar arası flicker olmasın) */
+function buildDemoGroups(basePrice: number, phase: GuideStepId): ProductOptionGroup[] {
+  if (phase === 'welcome' || phase === 'pick') return [];
+
+  const buyuk = emptyOption({
+    id: 'demo_opt_buyuk',
+    name: 'Büyük',
+    price: basePrice,
+    limitsMultiMaxTotalQty: phase === 'single' ? 0 : 5,
+  });
+  const mega = emptyOption({
+    id: 'demo_opt_mega',
+    name: 'Mega',
+    price: Math.round((basePrice + 40) * 100) / 100,
+    limitsMultiMaxTotalQty: phase === 'single' ? 0 : 7,
+  });
+  const boy = emptyGroup({
+    id: 'demo_grp_boy',
+    type: 'single',
+    pricing: 'replace',
+    required: true,
+    name: 'Boy',
+    options: [buyuk, mega],
+  });
+
+  if (phase === 'single' || phase === 'type-max') return [boy];
+
+  const mantar = emptyOption({ id: 'demo_opt_mantar', name: 'Mantar', price: 10 });
+  const sucuk = emptyOption({ id: 'demo_opt_sucuk', name: 'Sucuk', price: 15 });
+  const cocuk = emptyOption({ id: 'demo_opt_cocuk', name: 'Çocuk porsiyonu', price: 0 });
+  const acili = emptyOption({
+    id: 'demo_opt_acili',
+    name: 'Acılı',
+    price: 0,
+    excludesOptionIds: phase === 'exclude' || phase === 'save' ? [cocuk.id] : [],
+  });
+
+  const extras = emptyGroup({
+    id: 'demo_grp_extras',
+    type: 'multi',
+    pricing: 'add',
+    required: false,
+    name: 'Ekstralar',
+    maxTotalQty: 0,
+    options: [mantar, sucuk, acili, cocuk],
+  });
+
+  return [boy, extras];
 }
 
 function allOptionsFlat(groups: ProductOptionGroup[], exceptId?: string) {
@@ -70,6 +132,9 @@ export default function ProductVariantsPage() {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [guideStep, setGuideStep] = useState(0);
+  const guideSnapshot = useRef<GuideSnapshot | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -97,6 +162,7 @@ export default function ProductVariantsPage() {
   );
 
   useEffect(() => {
+    if (guideOpen) return;
     if (!selected) {
       setGroups([]);
       setDirty(false);
@@ -132,13 +198,98 @@ export default function ProductVariantsPage() {
   }, [products, query, category]);
 
   function updateGroups(next: ProductOptionGroup[]) {
+    if (guideOpen) return;
     setGroups(next);
     setDirty(true);
     setMessage(null);
   }
 
+  function applyGuideStep(index: number, productId: number | null, price: number) {
+    const phase = VARIANT_GUIDE_STEPS[index]?.id || 'welcome';
+    setGuideStep(index);
+    if (phase === 'welcome') {
+      setGroups([]);
+      return;
+    }
+    if (phase === 'pick') {
+      if (productId) setSelectedId(productId);
+      setGroups([]);
+      return;
+    }
+    setGroups(buildDemoGroups(price, phase));
+    window.requestAnimationFrame(() => {
+      const target = VARIANT_GUIDE_STEPS[index]?.target;
+      if (!target) return;
+      document
+        .querySelector(`[data-tour="${target}"]`)
+        ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+  }
+
+  function startGuide() {
+    if (saving) return;
+    if (dirty && !guideOpen) {
+      if (!confirm('Kaydedilmemiş değişiklikler var. Rehber örneği geçici olarak gösterir; bitince eski haline döner. Devam?')) {
+        return;
+      }
+    }
+    const pickId = selectedId || products[0]?.id || null;
+    if (!pickId) {
+      alert('Rehber için önce en az bir ürün olmalı.');
+      return;
+    }
+    const product = products.find((p) => p.id === pickId) || products[0];
+    guideSnapshot.current = {
+      selectedId,
+      groups: groups.map((g) => ({
+        ...g,
+        options: g.options.map((o) => ({ ...o, excludesOptionIds: [...(o.excludesOptionIds || [])] })),
+      })),
+      dirty,
+    };
+    setSelectedId(product.id);
+    setDirty(false);
+    setMessage(null);
+    setGuideOpen(true);
+    applyGuideStep(0, product.id, product.price);
+  }
+
+  function stopGuide() {
+    const snap = guideSnapshot.current;
+    setGuideOpen(false);
+    setGuideStep(0);
+    guideSnapshot.current = null;
+    if (snap) {
+      setSelectedId(snap.selectedId);
+      setGroups(snap.groups);
+      setDirty(snap.dirty);
+    }
+    setMessage(null);
+  }
+
+  function guidePrev() {
+    if (guideStep <= 0) return;
+    const next = guideStep - 1;
+    const product = selected || products[0];
+    applyGuideStep(next, product?.id || null, product?.price || 0);
+  }
+
+  function guideNext() {
+    if (guideStep >= VARIANT_GUIDE_STEPS.length - 1) {
+      stopGuide();
+      return;
+    }
+    const next = guideStep + 1;
+    const product = selected || products[0];
+    applyGuideStep(next, product?.id || null, product?.price || 0);
+  }
+
   async function handleSave() {
     if (!selected) return;
+    if (guideOpen) {
+      alert('Rehber açıkken kaydedilmez. Bitir veya kapat.');
+      return;
+    }
     const cleaned = groups
       .map((g, gi) => ({
         ...g,
@@ -225,10 +376,22 @@ export default function ProductVariantsPage() {
               {message}
             </span>
           ) : null}
+          {guideOpen ? (
+            <span className="pv-toast pv-toast--guide">Örnek gösteriliyor · kaydedilmez</span>
+          ) : null}
+          <button
+            type="button"
+            className={`pv-btn pv-btn--ghost${guideOpen ? ' is-active' : ''}`}
+            onClick={() => (guideOpen ? stopGuide() : startGuide())}
+          >
+            <BookOpen className="w-4 h-4" />
+            {guideOpen ? 'Rehberi kapat' : 'Rehber'}
+          </button>
           <button
             type="button"
             className="pv-btn pv-btn--primary"
-            disabled={!selected || !dirty || saving}
+            data-tour="pv-save"
+            disabled={!selected || !dirty || saving || guideOpen}
             onClick={() => void handleSave()}
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
@@ -272,7 +435,7 @@ export default function ProductVariantsPage() {
               </button>
             ))}
           </div>
-          <div className="pv-list admin-scroll">
+          <div className="pv-list admin-scroll" data-tour="pv-list">
             {loading ? (
               <div className="pv-empty">Yükleniyor…</div>
             ) : filtered.length === 0 ? (
@@ -287,7 +450,9 @@ export default function ProductVariantsPage() {
                     key={p.id}
                     type="button"
                     className={`pv-product${active ? ' is-active' : ''}`}
+                    disabled={guideOpen}
                     onClick={() => {
+                      if (guideOpen) return;
                       if (dirty && selectedId !== p.id) {
                         if (!confirm('Kaydedilmemiş değişiklikler var. Yine de geçilsin mi?')) return;
                       }
@@ -333,31 +498,53 @@ export default function ProductVariantsPage() {
                   </p>
                 </div>
                 <div className="pv-add-row">
-                  <button type="button" className="pv-btn" onClick={() => addGroup('single')}>
+                  <button
+                    type="button"
+                    className="pv-btn"
+                    data-tour="pv-add-single"
+                    disabled={guideOpen}
+                    onClick={() => addGroup('single')}
+                  >
                     <CircleDot className="w-4 h-4" />
                     Tek seçim
                   </button>
-                  <button type="button" className="pv-btn" onClick={() => addGroup('multi')}>
+                  <button
+                    type="button"
+                    className="pv-btn"
+                    data-tour="pv-add-multi"
+                    disabled={guideOpen}
+                    onClick={() => addGroup('multi')}
+                  >
                     <ListChecks className="w-4 h-4" />
                     Ekstra + miktar
                   </button>
                 </div>
               </div>
 
-              <div className="pv-hint">
-                <strong>Tek seçim</strong> — boy / tür. İstersen her boya ayrı ekstra limiti koy
-                (Büyük 5, Mega 7).
-                <br />
-                <strong>Ekstra</strong> — miktarlı ekler; grupta genel maks veya türe göre limit.
-                “A seçilince B gizlensin” chip’leriyle sade koşul.
-              </div>
+              {guideOpen ? (
+                <div className="pv-demo-banner">
+                  Rehber örneği — pizza boy + ekstra senaryosu. Kaydetmezsen kaybolur.
+                </div>
+              ) : (
+                <div className="pv-hint">
+                  <strong>Tek seçim</strong> — boy / tür. İstersen her boya ayrı ekstra limiti koy
+                  (Büyük 5, Mega 7).
+                  <br />
+                  <strong>Ekstra</strong> — miktarlı ekler; grupta genel maks veya türe göre limit.
+                  “A seçilince B gizlensin” chip’leriyle sade koşul.
+                </div>
+              )}
 
               {groups.length === 0 ? (
                 <div className="pv-hero-empty pv-hero-empty--soft">
-                  <p>Henüz seçenek yok. Yukarıdan grup ekle.</p>
+                  <p>
+                    {guideOpen
+                      ? 'İleri’ye bas; örnek gruplar adım adım eklenecek.'
+                      : 'Henüz seçenek yok. Yukarıdan grup ekle.'}
+                  </p>
                 </div>
               ) : (
-                <div className="pv-groups admin-scroll">
+                <div className="pv-groups admin-scroll" data-tour="pv-groups">
                   {groups.map((g, gi) => (
                     <section key={g.id} className="pv-group">
                       <div className="pv-group__bar">
@@ -633,6 +820,14 @@ export default function ProductVariantsPage() {
           )}
         </main>
       </div>
+
+      <ProductVariantsGuideOverlay
+        open={guideOpen}
+        stepIndex={guideStep}
+        onClose={stopGuide}
+        onPrev={guidePrev}
+        onNext={guideNext}
+      />
     </div>
   );
 }
