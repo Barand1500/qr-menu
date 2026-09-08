@@ -8,7 +8,8 @@ import '@/admin-ai.css';
 
 type AiAction =
   | { type: 'navigate'; path: string; label: string }
-  | { type: 'created'; kind: 'group' | 'product' | 'user'; id: number; label: string };
+  | { type: 'created'; kind: 'group' | 'product' | 'user'; id: number; label: string }
+  | { type: 'reload' };
 
 type ChatMsg = {
   id: string;
@@ -102,6 +103,12 @@ export default function AdminAIChat({
       const nav = res.actions?.find((a) => a.type === 'navigate');
       if (nav && /sayfasina yonlendiriyorum|yönlendiriyorum/i.test(res.reply)) {
         window.setTimeout(() => runNavigate(nav.path), 650);
+      }
+
+      if (res.actions?.some((a) => a.type === 'reload')) {
+        window.setTimeout(() => {
+          window.location.reload();
+        }, 900);
       }
     } catch (err) {
       setMessages((m) => [

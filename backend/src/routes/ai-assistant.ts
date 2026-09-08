@@ -9,13 +9,15 @@ import {
   getLanguages,
 } from '../lib/i18n-json.js';
 import { ensureDefaultCurrency } from '../lib/currencies.js';
+import { resetOwnedAddons } from '../addons/ownership.js';
 
 const router = Router();
 router.use(authRequired);
 
 type AiAction =
   | { type: 'navigate'; path: string; label: string }
-  | { type: 'created'; kind: 'group' | 'product' | 'user'; id: number; label: string };
+  | { type: 'created'; kind: 'group' | 'product' | 'user'; id: number; label: string }
+  | { type: 'reload' };
 
 type AiResult = { reply: string; actions?: AiAction[] };
 
@@ -73,6 +75,19 @@ function isGreeting(q: string) {
 
 function isHelp(q: string) {
   return /^(yardim|help|ne yapabilirsin|neler yapabilirsin|komutlar|nasil kullan)/.test(q) || q === '?';
+}
+
+/** Dahili — yardım / rehberde yok */
+function isSecretResetPurchases(q: string) {
+  return q.replace(/\s+/g, ' ').trim() === '/admin satin alimlari geri yukle';
+}
+
+async function resetPurchases(restaurantId: number): Promise<AiResult> {
+  await resetOwnedAddons(restaurantId);
+  return {
+    reply: 'Satın alımlar geri yüklendi. Sayfa yenileniyor…',
+    actions: [{ type: 'reload' }],
+  };
 }
 
 function isReport(q: string) {
@@ -469,6 +484,10 @@ router.post('/chat', async (req, res) => {
     if (message.length > 2000) return res.status(400).json({ message: 'Mesaj çok uzun' });
 
     const q = fold(message);
+
+    if (isSecretResetPurchases(q)) {
+      return res.json(await resetPurchases(restaurantId));
+    }
 
     if (isGreeting(q)) {
       return res.json({
