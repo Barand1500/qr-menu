@@ -554,7 +554,7 @@ export default function TableFloorPage() {
 
   async function orderItemAction(itemId: string, action: 'copy' | 'remove') {
     if (!selected?.sessionId || busy) return;
-    if (action === 'remove' && !confirm('Bu sipariş satırı silinsin mi?')) return;
+    if (action === 'remove' && !window.confirm('Bu sipariş satırı silinsin mi?')) return;
     setBusy(true);
     try {
       await api('/api/admin/table-floor/orders/item', {
