@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BarChart3, CheckCheck, HandHelping, Receipt, Trash2 } from 'lucide-react';
+import {
+  BarChart3,
+  BellOff,
+  CheckCheck,
+  HandHelping,
+  History,
+  Receipt,
+  Trash2,
+} from 'lucide-react';
 import { api, formatMoney } from '@/lib/api';
 import { formatTableServiceLabel } from '@/lib/tableContext';
 import { parseOrderJson } from '@/lib/tableRequestNotify';
@@ -100,79 +108,137 @@ export default function GarsonCallsPanel({
 
   return (
     <div className="garson-panel">
-      <div className="garson-panel__head">
-        <div>
-          <p className="garson-panel__eyebrow">Garson merkezi</p>
-          <h2>
-            Çağrılar {unreadCount > 0 ? <em>{unreadCount}</em> : null}
-          </h2>
-        </div>
-        <button type="button" className="garson-panel__clear" onClick={() => void clearAll()}>
-          <Trash2 className="w-4 h-4" />
-          Temizle
-        </button>
-      </div>
-
-      <div className="garson-panel__tabs" role="tablist">
-        <button type="button" className={tab === 'live' ? 'is-active' : ''} onClick={() => setTab('live')}>
-          Canlı
-        </button>
-        <button type="button" className={tab === 'history' ? 'is-active' : ''} onClick={() => setTab('history')}>
-          Geçmiş
-        </button>
-        <button type="button" className={tab === 'report' ? 'is-active' : ''} onClick={() => setTab('report')}>
-          Rapor
-        </button>
-      </div>
-
-      {loading ? (
-        <p className="garson-panel__empty">Yükleniyor…</p>
-      ) : tab === 'report' ? (
-        <div className="garson-panel__report">
-          <div className="garson-panel__stat-grid">
-            <div>
-              <span>7 gün</span>
-              <strong>{stats?.total ?? 0}</strong>
-            </div>
-            <div>
-              <span>Garson</span>
-              <strong>{stats?.waiter ?? 0}</strong>
-            </div>
-            <div>
-              <span>Hesap</span>
-              <strong>{stats?.bill ?? 0}</strong>
-            </div>
+      <div className="garson-panel__shell">
+        <div className="garson-panel__head">
+          <div>
+            <p className="garson-panel__eyebrow">Garson merkezi</p>
+            <h2>
+              Çağrılar {unreadCount > 0 ? <em>{unreadCount}</em> : null}
+            </h2>
+            <p className="garson-panel__lead">
+              Masa çağrılarını buradan takip et; dokununca masaya gidersin.
+            </p>
           </div>
-          <h3>
-            <BarChart3 className="w-4 h-4" />
-            En çok çağıran masalar
-          </h3>
-          {!stats?.topTables?.length ? (
-            <p className="garson-panel__empty">Henüz veri yok</p>
-          ) : (
-            <ul className="garson-panel__rank">
-              {stats.topTables.map((row) => (
-                <li key={`${row.groupSlug}-${row.tableNumber}`}>
-                  <button
-                    type="button"
-                    onClick={() => onOpenTable?.(row.tableNumber, row.groupSlug)}
-                  >
-                    <span>{formatTableServiceLabel(row.tableNumber, row.groupSlug)}</span>
-                    <em>{row.count}</em>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <button
+            type="button"
+            className="garson-panel__clear"
+            onClick={() => void clearAll()}
+            disabled={!items.length}
+          >
+            <Trash2 className="w-4 h-4" />
+            Temizle
+          </button>
         </div>
-      ) : (
-        <ul className="garson-panel__list">
-          {(tab === 'live' ? live : history).length === 0 ? (
-            <li className="garson-panel__empty">
-              {tab === 'live' ? 'Bekleyen çağrı yok' : 'Geçmiş çağrı yok'}
-            </li>
-          ) : (
-            (tab === 'live' ? live : history).map((item) => {
+
+        <div className="garson-panel__summary" aria-label="Özet">
+          <div className={`garson-panel__summary-card${live.length ? ' is-alert' : ''}`}>
+            <span>Bekleyen</span>
+            <strong>{live.length}</strong>
+          </div>
+          <div className="garson-panel__summary-card">
+            <span>Kayıt</span>
+            <strong>{items.length}</strong>
+          </div>
+          <div className="garson-panel__summary-card">
+            <span>7 gün</span>
+            <strong>{stats?.total ?? '—'}</strong>
+          </div>
+        </div>
+
+        <div className="garson-panel__tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'live'}
+            className={tab === 'live' ? 'is-active' : ''}
+            onClick={() => setTab('live')}
+          >
+            Canlı
+            {live.length > 0 ? <i>{live.length}</i> : null}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'history'}
+            className={tab === 'history' ? 'is-active' : ''}
+            onClick={() => setTab('history')}
+          >
+            Geçmiş
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'report'}
+            className={tab === 'report' ? 'is-active' : ''}
+            onClick={() => setTab('report')}
+          >
+            Rapor
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="garson-panel__empty-card">
+            <p>Yükleniyor…</p>
+          </div>
+        ) : tab === 'report' ? (
+          <div className="garson-panel__report">
+            <div className="garson-panel__stat-grid">
+              <div>
+                <span>7 gün toplam</span>
+                <strong>{stats?.total ?? 0}</strong>
+              </div>
+              <div>
+                <span>Garson</span>
+                <strong>{stats?.waiter ?? 0}</strong>
+              </div>
+              <div>
+                <span>Hesap</span>
+                <strong>{stats?.bill ?? 0}</strong>
+              </div>
+            </div>
+            <h3>
+              <BarChart3 className="w-4 h-4" />
+              En çok çağıran masalar
+            </h3>
+            {!stats?.topTables?.length ? (
+              <div className="garson-panel__empty-card">
+                <History className="garson-panel__empty-icon" strokeWidth={1.75} />
+                <strong>Henüz veri yok</strong>
+                <p>Çağrılar geldikçe buraya sıralanır.</p>
+              </div>
+            ) : (
+              <ul className="garson-panel__rank">
+                {stats.topTables.map((row) => (
+                  <li key={`${row.groupSlug}-${row.tableNumber}`}>
+                    <button
+                      type="button"
+                      onClick={() => onOpenTable?.(row.tableNumber, row.groupSlug)}
+                    >
+                      <span>{formatTableServiceLabel(row.tableNumber, row.groupSlug)}</span>
+                      <em>{row.count}</em>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : (tab === 'live' ? live : history).length === 0 ? (
+          <div className="garson-panel__empty-card">
+            {tab === 'live' ? (
+              <BellOff className="garson-panel__empty-icon" strokeWidth={1.75} />
+            ) : (
+              <History className="garson-panel__empty-icon" strokeWidth={1.75} />
+            )}
+            <strong>{tab === 'live' ? 'Bekleyen çağrı yok' : 'Geçmiş çağrı yok'}</strong>
+            <p>
+              {tab === 'live'
+                ? 'Misafir garson çağırınca veya hesap isteyince burada anında görünür.'
+                : 'Okunan ve geçmiş çağrılar burada listelenir.'}
+            </p>
+          </div>
+        ) : (
+          <ul className="garson-panel__list">
+            {(tab === 'live' ? live : history).map((item) => {
               const order = parseOrderJson(item.orderJson);
               const Icon = item.type === 'bill' ? Receipt : HandHelping;
               const focused = focusCallId === item.id;
@@ -219,10 +285,10 @@ export default function GarsonCallsPanel({
                   ) : null}
                 </li>
               );
-            })
-          )}
-        </ul>
-      )}
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
