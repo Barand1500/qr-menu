@@ -38,4 +38,11 @@ export const WELCOME_THEMES: MenuThemeOption[] = [
     locked: true,
     previewClass: 'theme-preview--basketball',
   },
+  {
+    id: 'cups',
+    name: 'Üç Bardak',
+    description: 'Koyu lounge masasında anahtarı bul; bardaklar karışır, kilit açılır.',
+    locked: true,
+    previewClass: 'theme-preview--cups',
+  },
 ];

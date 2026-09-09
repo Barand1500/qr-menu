@@ -47,6 +47,10 @@ import {
   WELCOME_BASKETBALL_CONFIG_KEY,
   parseWelcomeBasketballConfig,
 } from '../lib/welcome-basketball-config.js';
+import {
+  WELCOME_CUPS_CONFIG_KEY,
+  parseWelcomeCupsConfig,
+} from '../lib/welcome-cups-config.js';
 
 const router = Router();
 
@@ -213,6 +217,7 @@ router.get('/:slug/welcome', async (req, res) => {
     campaign,
     prefCatalog,
     basketballSetting,
+    cupsSetting,
   ] = await Promise.all([
     prisma.language.findMany({ where: { isActive: true }, orderBy: { id: 'asc' } }),
     prisma.setting.findUnique({
@@ -233,6 +238,14 @@ router.get('/:slug/welcome', async (req, res) => {
         restaurantId_key: {
           restaurantId: restaurant.id,
           key: WELCOME_BASKETBALL_CONFIG_KEY,
+        },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: {
+          restaurantId: restaurant.id,
+          key: WELCOME_CUPS_CONFIG_KEY,
         },
       },
     }),
@@ -258,6 +271,7 @@ router.get('/:slug/welcome', async (req, res) => {
     socialLinks: publicSocialLinks(parseSocialLinks(socialSetting?.value), 'welcome'),
     prefCatalog,
     basketballConfig: parseWelcomeBasketballConfig(basketballSetting?.value),
+    cupsConfig: parseWelcomeCupsConfig(cupsSetting?.value),
   });
 });
 

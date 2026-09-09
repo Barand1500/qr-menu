@@ -7,6 +7,7 @@ import { useAddons } from '@/hooks/useAddons';
 import LinearThemeSettingsModal from '@/components/LinearThemeSettingsModal';
 import AnimasyonThemeSettingsModal from '@/components/AnimasyonThemeSettingsModal';
 import BasketballThemeSettingsModal from '@/components/BasketballThemeSettingsModal';
+import CupsThemeSettingsModal from '@/components/CupsThemeSettingsModal';
 import {
   themeAddonId,
   DEFAULT_MENU_THEME,
@@ -38,6 +39,8 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
     setAnimasyonThemeConfig,
     basketballConfig,
     setBasketballThemeConfig,
+    cupsConfig,
+    setCupsThemeConfig,
   } = useAddons();
   const [selected, setSelected] = useState(defaultId);
   const [saving, setSaving] = useState(false);
@@ -49,6 +52,8 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
   const [savingAnimasyon, setSavingAnimasyon] = useState(false);
   const [basketballOpen, setBasketballOpen] = useState(false);
   const [savingBasketball, setSavingBasketball] = useState(false);
+  const [cupsOpen, setCupsOpen] = useState(false);
+  const [savingCups, setSavingCups] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -131,15 +136,27 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
     }
   }
 
+  async function handleCupsSave(config: typeof cupsConfig) {
+    setSavingCups(true);
+    try {
+      await setCupsThemeConfig(config);
+      setCupsOpen(false);
+      setMessage('Üç Bardak ayarları kaydedildi.');
+    } finally {
+      setSavingCups(false);
+    }
+  }
+
   function openThemeSettings(theme: MenuThemeOption) {
     if (theme.id === 'linear') setLinearOpen(true);
     else if (theme.id === 'animasyon') setAnimasyonOpen(true);
     else if (theme.id === 'basketball') setBasketballOpen(true);
+    else if (theme.id === 'cups') setCupsOpen(true);
   }
 
   function hasThemeSettings(theme: MenuThemeOption) {
     if (isThemeLocked(theme)) return false;
-    if (kind === 'welcome') return theme.id === 'basketball';
+    if (kind === 'welcome') return theme.id === 'basketball' || theme.id === 'cups';
     return theme.id === 'linear' || theme.id === 'animasyon';
   }
 
@@ -252,13 +269,22 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
         </>
       ) : null}
       {kind === 'welcome' ? (
-        <BasketballThemeSettingsModal
-          open={basketballOpen}
-          initial={basketballConfig}
-          saving={savingBasketball}
-          onClose={() => setBasketballOpen(false)}
-          onSave={handleBasketballSave}
-        />
+        <>
+          <BasketballThemeSettingsModal
+            open={basketballOpen}
+            initial={basketballConfig}
+            saving={savingBasketball}
+            onClose={() => setBasketballOpen(false)}
+            onSave={handleBasketballSave}
+          />
+          <CupsThemeSettingsModal
+            open={cupsOpen}
+            initial={cupsConfig}
+            saving={savingCups}
+            onClose={() => setCupsOpen(false)}
+            onSave={handleCupsSave}
+          />
+        </>
       ) : null}
     </div>
   );

@@ -33,6 +33,12 @@ import {
   serializeWelcomeBasketballConfig,
   type WelcomeBasketballConfig,
 } from '../lib/welcome-basketball-config.js';
+import {
+  WELCOME_CUPS_CONFIG_KEY,
+  parseWelcomeCupsConfig,
+  serializeWelcomeCupsConfig,
+  type WelcomeCupsConfig,
+} from '../lib/welcome-cups-config.js';
 
 const router = Router();
 router.use(authRequired);
@@ -48,7 +54,8 @@ async function getMenuAssistantStyle(restaurantId: number) {
 
 router.get('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const [owned, disabled, menuAssistantStyle, linearRow, animasyonRow, basketballRow] = await Promise.all([
+  const [owned, disabled, menuAssistantStyle, linearRow, animasyonRow, basketballRow, cupsRow] =
+    await Promise.all([
     getOwnedAddons(restaurantId!),
     getDisabledAddons(restaurantId!),
     getMenuAssistantStyle(restaurantId!),
@@ -67,6 +74,11 @@ router.get('/', async (req, res) => {
         restaurantId_key: { restaurantId: restaurantId!, key: WELCOME_BASKETBALL_CONFIG_KEY },
       },
     }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurantId!, key: WELCOME_CUPS_CONFIG_KEY },
+      },
+    }),
   ]);
   res.json({
     owned,
@@ -75,6 +87,7 @@ router.get('/', async (req, res) => {
     linearConfig: parseLinearThemeConfig(linearRow?.value),
     animasyonConfig: parseAnimasyonThemeConfig(animasyonRow?.value),
     basketballConfig: parseWelcomeBasketballConfig(basketballRow?.value),
+    cupsConfig: parseWelcomeCupsConfig(cupsRow?.value),
     products: ADDON_PRODUCTS.map((p) => {
       const isOwned = Boolean(p.free) || owned.includes(p.id);
       const enabled = isOwned && !disabled.includes(p.id);
@@ -234,6 +247,32 @@ router.patch('/welcome-basketball/config', async (req, res) => {
     create: {
       restaurantId: restaurantId!,
       key: WELCOME_BASKETBALL_CONFIG_KEY,
+      value,
+    },
+  });
+
+  res.json({ ok: true, config: parsed });
+});
+
+router.patch('/welcome-cups/config', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const owned = await ownsAddon(restaurantId!, 'welcome-cups');
+  if (!owned) {
+    return res.status(403).json({ message: 'Önce Üç Bardak temasını satın alın' });
+  }
+
+  const body = (req.body || {}) as Partial<WelcomeCupsConfig>;
+  const parsed = parseWelcomeCupsConfig(JSON.stringify(body));
+  const value = serializeWelcomeCupsConfig(parsed);
+
+  await prisma.setting.upsert({
+    where: {
+      restaurantId_key: { restaurantId: restaurantId!, key: WELCOME_CUPS_CONFIG_KEY },
+    },
+    update: { value },
+    create: {
+      restaurantId: restaurantId!,
+      key: WELCOME_CUPS_CONFIG_KEY,
       value,
     },
   });

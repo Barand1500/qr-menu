@@ -30,7 +30,9 @@ import {
 } from '@/lib/prefCatalog';
 import { resolveWelcomeMusic, youtubeEmbedSrc } from '@/lib/welcomeMusic';
 import BasketballWelcomeGame from '@/components/public/BasketballWelcomeGame';
+import CupsWelcomeGame from '@/components/public/CupsWelcomeGame';
 import type { WelcomeBasketballConfig } from '@/lib/welcomeBasketballConfig';
+import type { WelcomeCupsConfig } from '@/lib/welcomeCupsConfig';
 
 interface WelcomeData {
   restaurant: { id: number; name: string; slug: string; logoUrl?: string | null };
@@ -42,6 +44,7 @@ interface WelcomeData {
   socialLinks?: PublicSocialLink[];
   prefCatalog?: PrefCatalog;
   basketballConfig?: WelcomeBasketballConfig;
+  cupsConfig?: WelcomeCupsConfig;
 }
 
 export default function PublicWelcomePage() {
@@ -168,7 +171,7 @@ function PublicWelcomePageInner({
 
   useEffect(() => {
     if (!data) return;
-    if (data.theme === 'basketball') {
+    if (data.theme === 'basketball' || data.theme === 'cups') {
       audioRef.current?.pause();
       audioRef.current = null;
       setYtEmbedSrc(null);
@@ -250,7 +253,7 @@ function PublicWelcomePageInner({
   }, [musicOn, data]);
 
   useEffect(() => {
-    if (!data || !musicOn || data.theme === 'basketball') {
+    if (!data || !musicOn || data.theme === 'basketball' || data.theme === 'cups') {
       audioRef.current?.pause();
       setYtEmbedSrc(null);
       setMusicPlaying(false);
@@ -399,6 +402,25 @@ function PublicWelcomePageInner({
           languages={data.languages}
           initialLang="tr"
           config={data.basketballConfig}
+          onLanguageChange={(lang) => {
+            setSelectedLang(lang);
+            localStorage.setItem('menu_lang', lang);
+          }}
+          onComplete={(lang) => enterMenu(lang, { allergens: [], diets: [] })}
+        />
+      </div>
+    );
+  }
+
+  if (data.theme === 'cups') {
+    return (
+      <div className={`cups-welcome-host${entering ? ' cups-welcome-host--exit' : ''}`}>
+        <GeoCheckInBridge slug={slug} masa={tableNo} grup={groupSlug} coords={coords} />
+        <CupsWelcomeGame
+          restaurant={data.restaurant}
+          languages={data.languages}
+          initialLang="tr"
+          config={data.cupsConfig}
           onLanguageChange={(lang) => {
             setSelectedLang(lang);
             localStorage.setItem('menu_lang', lang);

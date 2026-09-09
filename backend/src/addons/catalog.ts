@@ -38,6 +38,13 @@ export const ADDON_PRODUCTS: AddonProductDef[] = [
     themeId: 'basketball',
   },
   {
+    id: 'welcome-cups',
+    category: 'welcome',
+    name: 'Üç Bardak',
+    description: 'Koyu lounge masasında anahtarı bul; bardaklar karışır, kilit açılır.',
+    themeId: 'cups',
+  },
+  {
     id: 'menu-sade',
     category: 'menu',
     name: 'Sade',

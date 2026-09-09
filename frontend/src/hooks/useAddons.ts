@@ -18,6 +18,11 @@ import {
   parseWelcomeBasketballConfig,
   type WelcomeBasketballConfig,
 } from '@/lib/welcomeBasketballConfig';
+import {
+  DEFAULT_WELCOME_CUPS_CONFIG,
+  parseWelcomeCupsConfig,
+  type WelcomeCupsConfig,
+} from '@/lib/welcomeCupsConfig';
 
 interface AddonsResponse {
   owned: string[];
@@ -26,6 +31,7 @@ interface AddonsResponse {
   linearConfig?: LinearThemeConfig;
   animasyonConfig?: AnimasyonThemeConfig;
   basketballConfig?: WelcomeBasketballConfig;
+  cupsConfig?: WelcomeCupsConfig;
   products: AddonProduct[];
 }
 
@@ -39,6 +45,7 @@ export function useAddons() {
   const [basketballConfig, setBasketballConfig] = useState<WelcomeBasketballConfig>(
     DEFAULT_WELCOME_BASKETBALL_CONFIG
   );
+  const [cupsConfig, setCupsConfig] = useState<WelcomeCupsConfig>(DEFAULT_WELCOME_CUPS_CONFIG);
   const [products, setProducts] = useState<AddonProduct[]>(ADDON_CATALOG);
   const [loading, setLoading] = useState(true);
 
@@ -52,6 +59,9 @@ export function useAddons() {
     if (res.animasyonConfig) setAnimasyonConfig(res.animasyonConfig);
     if (res.basketballConfig) {
       setBasketballConfig(parseWelcomeBasketballConfig(res.basketballConfig));
+    }
+    if (res.cupsConfig) {
+      setCupsConfig(parseWelcomeCupsConfig(res.cupsConfig));
     }
     setProducts(
       ADDON_CATALOG.map((p) => {
@@ -186,6 +196,15 @@ export function useAddons() {
     return res;
   }
 
+  async function setCupsThemeConfig(config: WelcomeCupsConfig) {
+    const res = await api<{ config: WelcomeCupsConfig }>('/api/admin/addons/welcome-cups/config', {
+      method: 'PATCH',
+      body: JSON.stringify(config),
+    });
+    setCupsConfig(parseWelcomeCupsConfig(res.config));
+    return res;
+  }
+
   return {
     owned,
     disabled,
@@ -194,6 +213,7 @@ export function useAddons() {
     linearConfig,
     animasyonConfig,
     basketballConfig,
+    cupsConfig,
     loading,
     reload,
     isOwned,
@@ -204,5 +224,6 @@ export function useAddons() {
     setLinearThemeConfig,
     setAnimasyonThemeConfig,
     setBasketballThemeConfig,
+    setCupsThemeConfig,
   };
 }

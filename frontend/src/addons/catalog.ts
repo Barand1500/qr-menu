@@ -44,6 +44,14 @@ export const ADDON_CATALOG: AddonProduct[] = [
     previewClass: 'theme-preview--basketball',
   },
   {
+    id: 'welcome-cups',
+    category: 'welcome',
+    name: 'Üç Bardak',
+    description: 'Koyu lounge masasında anahtarı bul; bardaklar karışır, kilit açılır.',
+    themeId: 'cups',
+    previewClass: 'theme-preview--cups',
+  },
+  {
     id: 'menu-sade',
     category: 'menu',
     name: 'Sade',
