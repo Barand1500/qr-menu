@@ -24,7 +24,7 @@ type Phase = 'language' | 'intro' | 'game' | 'success';
 type Point = { x: number; y: number };
 
 const BALL_SIZE_FALLBACK = 74;
-const GRAVITY = 1250;
+const GRAVITY = 1080;
 
 function makeAudio() {
   let ctx: AudioContext | null = null;
@@ -380,27 +380,35 @@ export default function BasketballWelcomeGame({
 
       const ballSize = ballSizeRef.current || getBallSize();
       const ballR = ballSize / 2;
+      // Görsel toptan biraz küçük çarpışma — ortadan geçiş daha kolay
+      const physR = ballR * 0.78;
       const stageRect = stage.getBoundingClientRect();
-      const hoopRect = hoop.getBoundingClientRect();
       const rimEl = hoop.querySelector('.basket-welcome__rim-wrap') as HTMLElement | null;
-      const rimRect = rimEl?.getBoundingClientRect() ?? hoopRect;
+      const rimRect = rimEl?.getBoundingClientRect() ?? hoop.getBoundingClientRect();
       const rimCenterY = rimRect.top - stageRect.top + rimRect.height * 0.45;
       const rimCenterX = rimRect.left - stageRect.left + rimRect.width / 2;
-      const rimInnerHalf = rimRect.width * 0.34;
-      const rimLeft = rimCenterX - rimInnerHalf;
-      const rimRight = rimCenterX + rimInnerHalf;
-      const padR = Math.max(10, rimRect.width * 0.09);
+      // Görsel delikten biraz daha geniş skor/açıklık
+      const openingHalf = rimRect.width * 0.42;
+      const rimLeft = rimCenterX - openingHalf;
+      const rimRight = rimCenterX + openingHalf;
+      const padR = Math.max(7, rimRect.width * 0.05);
       const leftPadX = rimLeft;
       const rightPadX = rimRight;
       const centerX = next.x + ballR;
       const centerY = next.y + ballR;
+      const inScoringLane = Math.abs(centerX - rimCenterX) < openingHalf - physR * 0.35;
 
-      // Pota kenarlıklarına çarpışma (sol/sağ rim)
-      const collidePad = (px: number, py: number) => {
+      // Pota kenarlıkları: sadece dıştan çarpanlar (ortayı tıkamaz)
+      const collidePad = (px: number, py: number, side: 'left' | 'right') => {
+        if (inScoringLane && velocityRef.current.y > 40) return false;
+        const outside =
+          side === 'left' ? centerX < rimLeft + physR * 0.2 : centerX > rimRight - physR * 0.2;
+        if (!outside && Math.abs(centerY - rimCenterY) < physR * 0.6) return false;
+
         const dx = centerX - px;
         const dy = centerY - py;
         const dist = Math.hypot(dx, dy) || 0.0001;
-        const minDist = ballR + padR;
+        const minDist = physR + padR;
         if (dist >= minDist) return false;
         const nx = dx / dist;
         const ny = dy / dist;
@@ -411,33 +419,43 @@ export default function BasketballWelcomeGame({
         const vy = velocityRef.current.y;
         const impact = vx * nx + vy * ny;
         if (impact < 0) {
-          velocityRef.current.x = (vx - 1.75 * impact * nx) * 0.72;
-          velocityRef.current.y = (vy - 1.75 * impact * ny) * 0.72;
+          // Yumuşak sekme — top ölmesin, bank / rebound mümkün olsun
+          velocityRef.current.x = (vx - 1.45 * impact * nx) * 0.88;
+          velocityRef.current.y = (vy - 1.45 * impact * ny) * 0.88;
           playSound('rim');
         }
         return true;
       };
 
-      collidePad(leftPadX, rimCenterY);
-      collidePad(rightPadX, rimCenterY);
+      collidePad(leftPadX, rimCenterY, 'left');
+      collidePad(rightPadX, rimCenterY, 'right');
 
       // Fileye girince skor (kenarlıkların arası)
       if (
         !scoredShotRef.current &&
-        velocityRef.current.y > 80 &&
+        velocityRef.current.y > 60 &&
         previousY + ballR <= rimCenterY &&
         centerY >= rimCenterY &&
-        centerX > rimLeft + padR * 0.35 &&
-        centerX < rimRight - padR * 0.35
+        centerX > rimLeft + padR * 0.15 &&
+        centerX < rimRight - padR * 0.15
       ) {
         registerScore();
       }
 
+      // Sol/sağ duvar — bank atış için güçlü sekme
       const wall = stage.clientWidth - ballSize;
-      if (next.x < 0 || next.x > wall) {
-        next.x = Math.max(0, Math.min(wall, next.x));
-        velocityRef.current.x *= -0.66;
-        playSound('rim');
+      if (next.x < 0) {
+        next.x = 0;
+        if (velocityRef.current.x < 0) {
+          velocityRef.current.x = Math.max(140, Math.abs(velocityRef.current.x) * 0.94);
+          playSound('rim');
+        }
+      } else if (next.x > wall) {
+        next.x = wall;
+        if (velocityRef.current.x > 0) {
+          velocityRef.current.x = -Math.max(140, Math.abs(velocityRef.current.x) * 0.94);
+          playSound('rim');
+        }
       }
 
       ballPosRef.current = next;
@@ -472,21 +490,23 @@ export default function BasketballWelcomeGame({
       if (!draggingRef.current || !dragStartRef.current || !stageRef.current) return;
       const stage = stageRef.current;
       const ballSize = ballSizeRef.current || getBallSize();
-      const maxPull = Math.min(120, Math.max(72, stage.clientHeight - ballStartRef.current.y - ballSize - 12));
-      const dx = Math.max(-110, Math.min(110, e.clientX - dragStartRef.current.x));
+      const maxPull = Math.min(140, Math.max(80, stage.clientHeight - ballStartRef.current.y - ballSize - 12));
+      const maxDx = Math.min(200, Math.max(130, stage.clientWidth * 0.42));
+      const dx = Math.max(-maxDx, Math.min(maxDx, e.clientX - dragStartRef.current.x));
       const dy = Math.max(0, Math.min(maxPull, e.clientY - dragStartRef.current.y));
       const next = {
-        x: ballStartRef.current.x + dx * 0.45,
-        y: ballStartRef.current.y + dy * 0.85,
+        x: ballStartRef.current.x + dx * 0.62,
+        y: ballStartRef.current.y + dy * 0.88,
       };
       // Sahne dışına taşma
       next.x = Math.max(4, Math.min(stage.clientWidth - ballSize - 4, next.x));
       next.y = Math.max(8, Math.min(stage.clientHeight - ballSize - 8, next.y));
       positionBall(next);
       const power = dy / Math.max(maxPull, 1);
+      // Sağa/sola daha güçlü atış + duvara bank için yeterli yatay hız
       velocityRef.current = {
-        x: -dx * 3.4,
-        y: -(720 + power * 980),
+        x: -dx * 5.2,
+        y: -(860 + power * 1120),
       };
     };
 
@@ -499,12 +519,12 @@ export default function BasketballWelcomeGame({
       const pull = dragStartRef.current ? e.clientY - dragStartRef.current.y : 0;
       dragStartRef.current = null;
       gsap.to(ballRef.current, { scale: 1, duration: 0.12 });
-      if (pull < 22) {
+      if (pull < 14) {
         resetBall(true);
         return;
       }
       if (Math.abs(velocityRef.current.x) < 1 && Math.abs(velocityRef.current.y) < 1) {
-        velocityRef.current = { x: 0, y: -900 };
+        velocityRef.current = { x: 0, y: -980 };
       }
       shotActiveRef.current = true;
       scoredShotRef.current = false;
