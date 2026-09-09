@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Clock3,
   Copy,
-  KeyRound,
   NotebookPen,
   Plus,
   Receipt,
@@ -885,13 +884,13 @@ export default function TableFloorPage() {
         method: 'POST',
         body: JSON.stringify({
           tableNumber: selected.code,
-          groupSlug: selectedGroupSlug || groupId,
-          sessionId: selected.sessionId,
+          groupSlug: selectedGroupSlug || activeGroup?.id || groupId || undefined,
+          sessionId: selected.sessionId || undefined,
         }),
       });
       await load(true);
-    } catch {
-      /* ignore */
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Kod üretilemedi');
     } finally {
       setBusy(false);
     }
@@ -1481,41 +1480,38 @@ export default function TableFloorPage() {
                 <div className="table-floor__drawer-actions">
                   {selected.occupied ? (
                     <div className="table-floor__access-code">
-                      <p className="table-floor__access-code-label">
-                        <KeyRound className="w-3.5 h-3.5" />
-                        Erişim kodu
-                        {selected.codeExpiresAt && selected.accessCode ? (
-                          <em>
-                            ·{' '}
-                            {new Date(selected.codeExpiresAt).toLocaleTimeString('tr-TR', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                            ’e kadar
-                          </em>
-                        ) : null}
-                      </p>
                       <div className="table-floor__access-code-row">
+                        <div
+                          className={`table-floor__input table-floor__access-code-field${
+                            selected.accessCode ? ' has-code' : ''
+                          }`}
+                          aria-live="polite"
+                        >
+                          {selected.accessCode || 'Erişim kodu'}
+                          {selected.accessCode && selected.codeExpiresAt ? (
+                            <small>
+                              {new Date(selected.codeExpiresAt).toLocaleTimeString('tr-TR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </small>
+                          ) : null}
+                        </div>
                         {selected.accessCode ? (
-                          <>
-                            <div className="table-floor__access-code-value" aria-live="polite">
-                              {selected.accessCode}
-                            </div>
-                            <button
-                              type="button"
-                              className="table-floor__icon-btn is-compact"
-                              disabled={busy}
-                              title="Kodu yenile"
-                              aria-label="Kodu yenile"
-                              onClick={() => void regenerateCode()}
-                            >
-                              <RefreshCw className="w-4 h-4" />
-                            </button>
-                          </>
+                          <button
+                            type="button"
+                            className="table-floor__icon-btn is-compact"
+                            disabled={busy}
+                            title="Kodu yenile"
+                            aria-label="Kodu yenile"
+                            onClick={() => void regenerateCode()}
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                          </button>
                         ) : (
                           <button
                             type="button"
-                            className="table-floor__secondary"
+                            className="table-floor__secondary table-floor__access-code-generate"
                             disabled={busy}
                             onClick={() => void regenerateCode()}
                           >

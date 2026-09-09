@@ -385,31 +385,8 @@
 }
 
 .table-floor__access-code {
-  display: grid;
-  gap: 0.35rem;
   width: 100%;
   margin: 0 0 0.55rem;
-}
-
-.table-floor__access-code-label {
-  margin: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--tf-muted);
-}
-
-.table-floor__access-code-label em {
-  font-style: normal;
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--tf-muted);
-  opacity: 0.85;
 }
 
 .table-floor__access-code-row {
@@ -418,27 +395,40 @@
   gap: 0.4rem;
 }
 
-.table-floor__access-code-row .table-floor__secondary {
+.table-floor__access-code-field {
   flex: 1;
+  min-width: 0;
   min-height: 2.35rem;
-  padding: 0.55rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--tf-muted);
+  font-weight: 650;
+  cursor: default;
 }
 
-.table-floor__access-code-value {
-  flex: 1;
-  min-height: 2.35rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.45rem 0.7rem;
-  border-radius: 0.8rem;
-  border: 1px solid color-mix(in srgb, #0284c7 28%, transparent);
-  background: color-mix(in srgb, #0ea5e9 10%, #fff);
+.table-floor__access-code-field.has-code {
   color: var(--tf-ink);
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 800;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.16em;
   font-variant-numeric: tabular-nums;
+}
+
+.table-floor__access-code-field small {
+  letter-spacing: 0;
+  font-size: 0.68rem;
+  font-weight: 650;
+  color: var(--tf-muted);
+  white-space: nowrap;
+}
+
+.table-floor__access-code-generate {
+  width: auto;
+  flex-shrink: 0;
+  min-height: 2.35rem;
+  padding: 0.45rem 0.9rem;
 }
 
 .table-floor__access-code-row .table-floor__icon-btn {

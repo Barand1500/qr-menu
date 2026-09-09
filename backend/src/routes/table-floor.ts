@@ -251,59 +251,64 @@ router.post('/open', async (req, res) => {
 });
 
 router.post('/regenerate-code', async (req, res) => {
-  const restaurantId = await getRestaurantId(req);
-  const { tableNumber, groupSlug, sessionId } = req.body as {
-    tableNumber?: string;
-    groupSlug?: string;
-    sessionId?: number;
-  };
+  try {
+    const restaurantId = await getRestaurantId(req);
+    const { tableNumber, groupSlug, sessionId } = req.body as {
+      tableNumber?: string;
+      groupSlug?: string;
+      sessionId?: number | string | null;
+    };
 
-  const codeCfg = await loadTableSessionCodeConfig(restaurantId!);
-  if (!codeCfg.enabled) {
-    return res.status(400).json({ message: 'Masa erişim kodu kapalı' });
+    const codeCfg = await loadTableSessionCodeConfig(restaurantId!);
+    const sid = sessionId != null && sessionId !== '' ? Number(sessionId) : NaN;
+
+    let session =
+      Number.isFinite(sid) && sid > 0
+        ? await prisma.tableFloorSession.findFirst({
+            where: {
+              id: sid,
+              restaurantId: restaurantId!,
+              status: { in: [...ACTIVE_STATUSES] },
+            },
+          })
+        : null;
+
+    if (!session) {
+      const masa = String(tableNumber || '').trim();
+      if (!masa) return res.status(400).json({ message: 'Masa gerekli' });
+      session = await findActiveSession(
+        restaurantId!,
+        masa,
+        groupSlug ? String(groupSlug).trim() : null
+      );
+    }
+
+    if (!session) {
+      const masa = String(tableNumber || '').trim();
+      if (!masa) return res.status(400).json({ message: 'Masa gerekli' });
+      session = await openOrGetSession(
+        restaurantId!,
+        masa,
+        groupSlug ? String(groupSlug).trim() : null,
+        'admin'
+      );
+    }
+
+    const accessCode = await generateUniqueAccessCode(restaurantId!);
+    const updated = await prisma.tableFloorSession.update({
+      where: { id: session.id },
+      data: {
+        accessCode,
+        codeExpiresAt: codeExpiryDate(codeCfg.ttlMinutes),
+        codeVerifiedAt: null,
+      },
+    });
+
+    res.json({ ok: true, session: serializeSession(updated) });
+  } catch (err) {
+    console.error('regenerate-code', err);
+    res.status(500).json({ message: 'Kod üretilemedi' });
   }
-
-  let session =
-    sessionId != null
-      ? await prisma.tableFloorSession.findFirst({
-          where: {
-            id: Number(sessionId),
-            restaurantId: restaurantId!,
-            status: { in: [...ACTIVE_STATUSES] },
-          },
-        })
-      : null;
-
-  if (!session) {
-    const masa = String(tableNumber || '').trim();
-    if (!masa) return res.status(400).json({ message: 'Masa gerekli' });
-    session = await findActiveSession(
-      restaurantId!,
-      masa,
-      groupSlug ? String(groupSlug).trim() : null
-    );
-  }
-
-  if (!session) {
-    session = await openOrGetSession(
-      restaurantId!,
-      String(tableNumber || '').trim(),
-      groupSlug ? String(groupSlug).trim() : null,
-      'admin'
-    );
-  }
-
-  const accessCode = await generateUniqueAccessCode(restaurantId!);
-  const updated = await prisma.tableFloorSession.update({
-    where: { id: session.id },
-    data: {
-      accessCode,
-      codeExpiresAt: codeExpiryDate(codeCfg.ttlMinutes),
-      codeVerifiedAt: null,
-    },
-  });
-
-  res.json({ ok: true, session: serializeSession(updated) });
 });
 
 router.post('/close', async (req, res) => {
