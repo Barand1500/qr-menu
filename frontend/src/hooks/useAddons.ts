@@ -14,6 +14,14 @@ import {
   type AnimasyonThemeConfig,
 } from '@/lib/menuAnimasyonConfig';
 import {
+  DEFAULT_SADE_CONFIG,
+  type SadeThemeConfig,
+} from '@/lib/menuSadeConfig';
+import {
+  DEFAULT_ALIVE_CONFIG,
+  type AliveThemeConfig,
+} from '@/lib/menuAliveConfig';
+import {
   DEFAULT_WELCOME_BASKETBALL_CONFIG,
   parseWelcomeBasketballConfig,
   type WelcomeBasketballConfig,
@@ -30,6 +38,8 @@ interface AddonsResponse {
   menuAssistantStyle?: string;
   linearConfig?: LinearThemeConfig;
   animasyonConfig?: AnimasyonThemeConfig;
+  sadeConfig?: SadeThemeConfig;
+  aliveConfig?: AliveThemeConfig;
   basketballConfig?: WelcomeBasketballConfig;
   cupsConfig?: WelcomeCupsConfig;
   products: AddonProduct[];
@@ -42,6 +52,8 @@ export function useAddons() {
   const [linearConfig, setLinearConfig] = useState<LinearThemeConfig>(DEFAULT_LINEAR_CONFIG);
   const [animasyonConfig, setAnimasyonConfig] =
     useState<AnimasyonThemeConfig>(DEFAULT_ANIMASYON_CONFIG);
+  const [sadeConfig, setSadeConfig] = useState<SadeThemeConfig>(DEFAULT_SADE_CONFIG);
+  const [aliveConfig, setAliveConfig] = useState<AliveThemeConfig>(DEFAULT_ALIVE_CONFIG);
   const [basketballConfig, setBasketballConfig] = useState<WelcomeBasketballConfig>(
     DEFAULT_WELCOME_BASKETBALL_CONFIG
   );
@@ -57,6 +69,8 @@ export function useAddons() {
     setMenuAssistantStyle(parseMenuAssistantStyle(res.menuAssistantStyle));
     if (res.linearConfig) setLinearConfig(res.linearConfig);
     if (res.animasyonConfig) setAnimasyonConfig(res.animasyonConfig);
+    if (res.sadeConfig) setSadeConfig(res.sadeConfig);
+    if (res.aliveConfig) setAliveConfig(res.aliveConfig);
     if (res.basketballConfig) {
       setBasketballConfig(parseWelcomeBasketballConfig(res.basketballConfig));
     }
@@ -184,6 +198,24 @@ export function useAddons() {
     return res;
   }
 
+  async function setSadeThemeConfig(config: SadeThemeConfig) {
+    const res = await api<{ config: SadeThemeConfig }>('/api/admin/addons/menu-sade/config', {
+      method: 'PATCH',
+      body: JSON.stringify(config),
+    });
+    setSadeConfig(res.config);
+    return res;
+  }
+
+  async function setAliveThemeConfig(config: AliveThemeConfig) {
+    const res = await api<{ config: AliveThemeConfig }>('/api/admin/addons/menu-alive/config', {
+      method: 'PATCH',
+      body: JSON.stringify(config),
+    });
+    setAliveConfig(res.config);
+    return res;
+  }
+
   async function setBasketballThemeConfig(config: WelcomeBasketballConfig) {
     const res = await api<{ config: WelcomeBasketballConfig }>(
       '/api/admin/addons/welcome-basketball/config',
@@ -212,6 +244,8 @@ export function useAddons() {
     menuAssistantStyle,
     linearConfig,
     animasyonConfig,
+    sadeConfig,
+    aliveConfig,
     basketballConfig,
     cupsConfig,
     loading,
@@ -223,6 +257,8 @@ export function useAddons() {
     setAssistantStyle,
     setLinearThemeConfig,
     setAnimasyonThemeConfig,
+    setSadeThemeConfig,
+    setAliveThemeConfig,
     setBasketballThemeConfig,
     setCupsThemeConfig,
   };

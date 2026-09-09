@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 import { formatMoney, imageUrl } from '@/lib/api';
 import MenuColorModeToggle from '@/components/public/MenuColorModeToggle';
 import TableServiceButtons from '@/components/public/TableServiceButtons';
 import SadeProductOptions from '@/components/public/sade/SadeProductOptions';
 import { menuGroupPath, menuProductPath } from '@/lib/menuPaths';
 import type { MenuColorMode } from '@/lib/menuColorMode';
-import type { ProductOptionGroup } from '@/lib/productOptions';
+import type { ProductOptionGroup, SelectionMap } from '@/lib/productOptions';
+import { useSiparisCart } from '@/hooks/useSiparisCart';
 import { gsap, prefersReducedMotion, useGSAP } from '@/lib/gsapSetup';
 
 type Product = {
@@ -24,8 +25,14 @@ type Product = {
   features: string[];
   group: { id: number; name: string };
   restaurant: { name: string };
-  menuFeatures?: { tableService?: boolean };
+  menuFeatures?: {
+    tableService?: boolean;
+    sadeCart?: boolean;
+    sadeVariants?: boolean;
+  };
   optionGroups?: ProductOptionGroup[];
+  imageUrl?: string | null;
+  images?: string[];
 };
 
 type Related = {
@@ -56,14 +63,32 @@ export default function SadeProductPage({
   onBack: () => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const addBtnRef = useRef<HTMLButtonElement>(null);
   const [activeIdx, setActiveIdx] = useState(0);
   const multi = galleryImages.length > 1;
   const activeImg = galleryImages[activeIdx] || galleryImages[0];
-  const optionGroups = product.optionGroups || [];
+  const variantsOn = product.menuFeatures?.sadeVariants !== false;
+  const cartEnabled = product.menuFeatures?.sadeCart === true;
+  const optionGroups = variantsOn ? product.optionGroups || [] : [];
+  const { addItem, setSheetOpen, enabled: cartCtxOn } = useSiparisCart();
+  const showCart = cartEnabled && cartCtxOn;
+
+  const [unitPrice, setUnitPrice] = useState(product.price);
+  const [optionLabel, setOptionLabel] = useState('');
+
+  const onOptionsChange = useCallback(
+    (next: { unitPrice: number; selections: SelectionMap; label: string }) => {
+      setUnitPrice(next.unitPrice);
+      setOptionLabel(next.label);
+    },
+    []
+  );
 
   useEffect(() => {
     setActiveIdx(0);
-  }, [product.id]);
+    setUnitPrice(product.price);
+    setOptionLabel('');
+  }, [product.id, product.price]);
 
   useGSAP(
     () => {
@@ -80,8 +105,24 @@ export default function SadeProductPage({
     { scope: rootRef, dependencies: [product.id] }
   );
 
+  function onAdd() {
+    const name = optionLabel ? `${product.name} (${optionLabel})` : product.name;
+    addItem(
+      {
+        productId: product.id,
+        name,
+        price: optionGroups.length ? unitPrice : product.price,
+        currency: product.currency,
+        imageUrl: galleryImages[0] || product.imageUrl || null,
+        calories: product.calories ?? null,
+      },
+      { qty: 1, fromEl: addBtnRef.current }
+    );
+    setSheetOpen(true);
+  }
+
   return (
-    <div className="sade-detail" ref={rootRef}>
+    <div className={`sade-detail${showCart ? ' sade-detail--cart' : ''}`} ref={rootRef}>
       <div className="sade-detail__top">
         <button type="button" onClick={onBack} className="sade-detail__back" aria-label="Geri">
           <ArrowLeft className="w-5 h-5" />
@@ -100,9 +141,9 @@ export default function SadeProductPage({
         <p className="sade-detail__group sade-detail__reveal">{product.group.name}</p>
         <h1 className="sade-detail__title sade-detail__reveal">{product.name}</h1>
         <p className="sade-detail__price sade-detail__reveal">
-          {formatMoney(product.price, product.currency)}
+          {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
           {optionGroups.length > 0 ? (
-            <span className="sade-detail__price-hint">başlangıç</span>
+            <span className="sade-detail__price-hint">seçime göre</span>
           ) : null}
         </p>
 
@@ -158,7 +199,20 @@ export default function SadeProductPage({
             groups={optionGroups}
             basePrice={product.price}
             currency={product.currency}
+            onChange={onOptionsChange}
           />
+        ) : null}
+
+        {showCart ? (
+          <button
+            ref={addBtnRef}
+            type="button"
+            className="sade-detail__add sade-detail__reveal"
+            onClick={onAdd}
+          >
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
+            Sepete ekle · {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
+          </button>
         ) : null}
 
         {product.ingredients ? (

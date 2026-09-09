@@ -8791,6 +8791,36 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   color: #5c6168;
 }
 
+.linear-settings__head--sade {
+  background: linear-gradient(115deg, #f3ebe4 0%, #f3ebe4 48%, rgba(139, 107, 93, 0.2) 48%);
+}
+
+.linear-settings__head--sade .linear-settings__eyebrow {
+  color: #8b6b5d;
+}
+
+.linear-settings__head--alive {
+  background: linear-gradient(115deg, #e8efe6 0%, #e8efe6 48%, rgba(45, 80, 55, 0.18) 48%);
+}
+
+.linear-settings__head--alive .linear-settings__eyebrow {
+  color: #2d5037;
+}
+
+.sade-settings__body,
+.alive-settings__body {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.sade-settings__hint,
+.alive-settings__hint {
+  margin: -0.2rem 0 0.55rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--admin-text-muted, #64748b);
+}
+
 .bulk-translate-hero {
   position: relative;
   overflow: hidden;

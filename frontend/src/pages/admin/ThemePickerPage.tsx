@@ -6,6 +6,8 @@ import { Button, Card, PageHeader } from '@/components/ui';
 import { useAddons } from '@/hooks/useAddons';
 import LinearThemeSettingsModal from '@/components/LinearThemeSettingsModal';
 import AnimasyonThemeSettingsModal from '@/components/AnimasyonThemeSettingsModal';
+import SadeThemeSettingsModal from '@/components/SadeThemeSettingsModal';
+import AliveThemeSettingsModal from '@/components/AliveThemeSettingsModal';
 import BasketballThemeSettingsModal from '@/components/BasketballThemeSettingsModal';
 import CupsThemeSettingsModal from '@/components/CupsThemeSettingsModal';
 import {
@@ -19,6 +21,8 @@ import {
 } from '@/addons';
 import type { LinearThemeConfig } from '@/lib/menuLinearConfig';
 import type { AnimasyonThemeConfig } from '@/lib/menuAnimasyonConfig';
+import type { SadeThemeConfig } from '@/lib/menuSadeConfig';
+import type { AliveThemeConfig } from '@/lib/menuAliveConfig';
 import { adminPath } from '@/lib/adminPath';
 
 interface ThemePickerPageProps {
@@ -37,6 +41,10 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
     setLinearThemeConfig,
     animasyonConfig,
     setAnimasyonThemeConfig,
+    sadeConfig,
+    setSadeThemeConfig,
+    aliveConfig,
+    setAliveThemeConfig,
     basketballConfig,
     setBasketballThemeConfig,
     cupsConfig,
@@ -48,8 +56,12 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
   const [loading, setLoading] = useState(true);
   const [linearOpen, setLinearOpen] = useState(false);
   const [animasyonOpen, setAnimasyonOpen] = useState(false);
+  const [sadeOpen, setSadeOpen] = useState(false);
+  const [aliveOpen, setAliveOpen] = useState(false);
   const [savingLinear, setSavingLinear] = useState(false);
   const [savingAnimasyon, setSavingAnimasyon] = useState(false);
+  const [savingSade, setSavingSade] = useState(false);
+  const [savingAlive, setSavingAlive] = useState(false);
   const [basketballOpen, setBasketballOpen] = useState(false);
   const [savingBasketball, setSavingBasketball] = useState(false);
   const [cupsOpen, setCupsOpen] = useState(false);
@@ -125,6 +137,28 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
     }
   }
 
+  async function handleSadeSave(config: SadeThemeConfig) {
+    setSavingSade(true);
+    try {
+      await setSadeThemeConfig(config);
+      setSadeOpen(false);
+      setMessage('Sade tema ayarları kaydedildi.');
+    } finally {
+      setSavingSade(false);
+    }
+  }
+
+  async function handleAliveSave(config: AliveThemeConfig) {
+    setSavingAlive(true);
+    try {
+      await setAliveThemeConfig(config);
+      setAliveOpen(false);
+      setMessage('Canlı tema ayarları kaydedildi.');
+    } finally {
+      setSavingAlive(false);
+    }
+  }
+
   async function handleBasketballSave(config: typeof basketballConfig) {
     setSavingBasketball(true);
     try {
@@ -150,6 +184,8 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
   function openThemeSettings(theme: MenuThemeOption) {
     if (theme.id === 'linear') setLinearOpen(true);
     else if (theme.id === 'animasyon') setAnimasyonOpen(true);
+    else if (theme.id === 'sade') setSadeOpen(true);
+    else if (theme.id === 'alive') setAliveOpen(true);
     else if (theme.id === 'basketball') setBasketballOpen(true);
     else if (theme.id === 'cups') setCupsOpen(true);
   }
@@ -157,7 +193,12 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
   function hasThemeSettings(theme: MenuThemeOption) {
     if (isThemeLocked(theme)) return false;
     if (kind === 'welcome') return theme.id === 'basketball' || theme.id === 'cups';
-    return theme.id === 'linear' || theme.id === 'animasyon';
+    return (
+      theme.id === 'linear' ||
+      theme.id === 'animasyon' ||
+      theme.id === 'sade' ||
+      theme.id === 'alive'
+    );
   }
 
   return (
@@ -265,6 +306,20 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
             saving={savingAnimasyon}
             onClose={() => setAnimasyonOpen(false)}
             onSave={handleAnimasyonSave}
+          />
+          <SadeThemeSettingsModal
+            open={sadeOpen}
+            initial={sadeConfig}
+            saving={savingSade}
+            onClose={() => setSadeOpen(false)}
+            onSave={handleSadeSave}
+          />
+          <AliveThemeSettingsModal
+            open={aliveOpen}
+            initial={aliveConfig}
+            saving={savingAlive}
+            onClose={() => setAliveOpen(false)}
+            onSave={handleAliveSave}
           />
         </>
       ) : null}

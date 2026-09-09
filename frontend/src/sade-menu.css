@@ -667,6 +667,34 @@
   color: var(--menu-text-muted);
 }
 
+.sade-detail__add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  max-width: 32rem;
+  min-height: 3rem;
+  margin-top: 0.25rem;
+  padding: 0.75rem 1.1rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--menu-text, #3d2c29);
+  color: #fff7f2;
+  font-size: 0.95rem;
+  font-weight: 750;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(61, 44, 41, 0.18);
+}
+
+.sade-detail__add:hover {
+  filter: brightness(1.06);
+}
+
+.sade-detail--cart {
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
+}
+
 /* ── Ürün seçenekleri (varyant / ekstra) ── */
 .sade-opts {
   margin-top: 0.35rem;

@@ -28,6 +28,18 @@ import {
   type AnimasyonThemeConfig,
 } from '../lib/menu-animasyon-config.js';
 import {
+  MENU_SADE_CONFIG_KEY,
+  parseSadeThemeConfig,
+  serializeSadeThemeConfig,
+  type SadeThemeConfig,
+} from '../lib/menu-sade-config.js';
+import {
+  MENU_ALIVE_CONFIG_KEY,
+  parseAliveThemeConfig,
+  serializeAliveThemeConfig,
+  type AliveThemeConfig,
+} from '../lib/menu-alive-config.js';
+import {
   WELCOME_BASKETBALL_CONFIG_KEY,
   parseWelcomeBasketballConfig,
   serializeWelcomeBasketballConfig,
@@ -54,8 +66,17 @@ async function getMenuAssistantStyle(restaurantId: number) {
 
 router.get('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const [owned, disabled, menuAssistantStyle, linearRow, animasyonRow, basketballRow, cupsRow] =
-    await Promise.all([
+  const [
+    owned,
+    disabled,
+    menuAssistantStyle,
+    linearRow,
+    animasyonRow,
+    sadeRow,
+    aliveRow,
+    basketballRow,
+    cupsRow,
+  ] = await Promise.all([
     getOwnedAddons(restaurantId!),
     getDisabledAddons(restaurantId!),
     getMenuAssistantStyle(restaurantId!),
@@ -67,6 +88,16 @@ router.get('/', async (req, res) => {
     prisma.setting.findUnique({
       where: {
         restaurantId_key: { restaurantId: restaurantId!, key: MENU_ANIMASYON_CONFIG_KEY },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurantId!, key: MENU_SADE_CONFIG_KEY },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurantId!, key: MENU_ALIVE_CONFIG_KEY },
       },
     }),
     prisma.setting.findUnique({
@@ -86,6 +117,8 @@ router.get('/', async (req, res) => {
     menuAssistantStyle,
     linearConfig: parseLinearThemeConfig(linearRow?.value),
     animasyonConfig: parseAnimasyonThemeConfig(animasyonRow?.value),
+    sadeConfig: parseSadeThemeConfig(sadeRow?.value),
+    aliveConfig: parseAliveThemeConfig(aliveRow?.value),
     basketballConfig: parseWelcomeBasketballConfig(basketballRow?.value),
     cupsConfig: parseWelcomeCupsConfig(cupsRow?.value),
     products: ADDON_PRODUCTS.map((p) => {
@@ -223,6 +256,50 @@ router.patch('/menu-animasyon/config', async (req, res) => {
     },
     update: { value },
     create: { restaurantId: restaurantId!, key: MENU_ANIMASYON_CONFIG_KEY, value },
+  });
+
+  res.json({ ok: true, config: parsed });
+});
+
+router.patch('/menu-sade/config', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const owned = await ownsAddon(restaurantId!, 'menu-sade');
+  if (!owned) {
+    return res.status(403).json({ message: 'Sade tema kullanılamıyor' });
+  }
+
+  const body = (req.body || {}) as Partial<SadeThemeConfig>;
+  const parsed = parseSadeThemeConfig(JSON.stringify(body));
+  const value = serializeSadeThemeConfig(parsed);
+
+  await prisma.setting.upsert({
+    where: {
+      restaurantId_key: { restaurantId: restaurantId!, key: MENU_SADE_CONFIG_KEY },
+    },
+    update: { value },
+    create: { restaurantId: restaurantId!, key: MENU_SADE_CONFIG_KEY, value },
+  });
+
+  res.json({ ok: true, config: parsed });
+});
+
+router.patch('/menu-alive/config', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const owned = await ownsAddon(restaurantId!, 'menu-alive');
+  if (!owned) {
+    return res.status(403).json({ message: 'Önce Canlı tema eklentisini satın alın' });
+  }
+
+  const body = (req.body || {}) as Partial<AliveThemeConfig>;
+  const parsed = parseAliveThemeConfig(JSON.stringify(body));
+  const value = serializeAliveThemeConfig(parsed);
+
+  await prisma.setting.upsert({
+    where: {
+      restaurantId_key: { restaurantId: restaurantId!, key: MENU_ALIVE_CONFIG_KEY },
+    },
+    update: { value },
+    create: { restaurantId: restaurantId!, key: MENU_ALIVE_CONFIG_KEY, value },
   });
 
   res.json({ ok: true, config: parsed });

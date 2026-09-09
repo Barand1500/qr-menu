@@ -15,12 +15,16 @@ import UnlockAddonModal from '@/components/UnlockAddonModal';
 import SupportContactModal from '@/components/SupportContactModal';
 import LinearThemeSettingsModal from '@/components/LinearThemeSettingsModal';
 import AnimasyonThemeSettingsModal from '@/components/AnimasyonThemeSettingsModal';
+import SadeThemeSettingsModal from '@/components/SadeThemeSettingsModal';
+import AliveThemeSettingsModal from '@/components/AliveThemeSettingsModal';
 import { useAddons } from '@/hooks/useAddons';
 import MenuAssistantStylePicker from '@/components/MenuAssistantStylePicker';
 import type { AddonCategory, AddonProduct } from '@/addons';
 import type { MenuAssistantStyle } from '@/lib/menuAssistantStyle';
 import type { LinearThemeConfig } from '@/lib/menuLinearConfig';
 import type { AnimasyonThemeConfig } from '@/lib/menuAnimasyonConfig';
+import type { SadeThemeConfig } from '@/lib/menuSadeConfig';
+import type { AliveThemeConfig } from '@/lib/menuAliveConfig';
 import { adminPath } from '@/lib/adminPath';
 
 type TabId = 'all' | 'welcome' | 'menu' | 'qr' | 'lang' | 'feature';
@@ -75,6 +79,10 @@ export default function ExtensionsHubPage() {
     setLinearThemeConfig,
     animasyonConfig,
     setAnimasyonThemeConfig,
+    sadeConfig,
+    setSadeThemeConfig,
+    aliveConfig,
+    setAliveThemeConfig,
   } = useAddons();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = parseTab(searchParams.get('tab'));
@@ -84,8 +92,12 @@ export default function ExtensionsHubPage() {
   const [savingStyle, setSavingStyle] = useState(false);
   const [linearOpen, setLinearOpen] = useState(false);
   const [animasyonOpen, setAnimasyonOpen] = useState(false);
+  const [sadeOpen, setSadeOpen] = useState(false);
+  const [aliveOpen, setAliveOpen] = useState(false);
   const [savingLinear, setSavingLinear] = useState(false);
   const [savingAnimasyon, setSavingAnimasyon] = useState(false);
+  const [savingSade, setSavingSade] = useState(false);
+  const [savingAlive, setSavingAlive] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
 
   const list = useMemo(
@@ -149,6 +161,26 @@ export default function ExtensionsHubPage() {
     }
   }
 
+  async function handleSadeSave(config: SadeThemeConfig) {
+    setSavingSade(true);
+    try {
+      await setSadeThemeConfig(config);
+      setSadeOpen(false);
+    } finally {
+      setSavingSade(false);
+    }
+  }
+
+  async function handleAliveSave(config: AliveThemeConfig) {
+    setSavingAlive(true);
+    try {
+      await setAliveThemeConfig(config);
+      setAliveOpen(false);
+    } finally {
+      setSavingAlive(false);
+    }
+  }
+
   function ownedAction(product: AddonProduct) {
     if (product.id === 'menu-assistant' && product.owned) {
       const on = Boolean(product.enabled);
@@ -198,6 +230,48 @@ export default function ExtensionsHubPage() {
             variant="secondary"
             className="w-full"
             onClick={() => setAnimasyonOpen(true)}
+          >
+            <Settings2 className="w-4 h-4" />
+            Tema ayarları
+          </Button>
+          <Link to={adminPath('startup', 'menu')} className="w-full">
+            <Button type="button" className="w-full">
+              <Sparkles className="w-4 h-4" />
+              Temalarda kullan
+            </Button>
+          </Link>
+        </div>
+      );
+    }
+    if (product.id === 'menu-sade' && product.owned) {
+      return (
+        <div className="flex flex-col gap-2 w-full">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={() => setSadeOpen(true)}
+          >
+            <Settings2 className="w-4 h-4" />
+            Tema ayarları
+          </Button>
+          <Link to={adminPath('startup', 'menu')} className="w-full">
+            <Button type="button" className="w-full">
+              <Sparkles className="w-4 h-4" />
+              Temalarda kullan
+            </Button>
+          </Link>
+        </div>
+      );
+    }
+    if (product.id === 'menu-alive' && product.owned) {
+      return (
+        <div className="flex flex-col gap-2 w-full">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={() => setAliveOpen(true)}
           >
             <Settings2 className="w-4 h-4" />
             Tema ayarları
@@ -397,6 +471,20 @@ export default function ExtensionsHubPage() {
         saving={savingAnimasyon}
         onClose={() => setAnimasyonOpen(false)}
         onSave={handleAnimasyonSave}
+      />
+      <SadeThemeSettingsModal
+        open={sadeOpen}
+        initial={sadeConfig}
+        saving={savingSade}
+        onClose={() => setSadeOpen(false)}
+        onSave={handleSadeSave}
+      />
+      <AliveThemeSettingsModal
+        open={aliveOpen}
+        initial={aliveConfig}
+        saving={savingAlive}
+        onClose={() => setAliveOpen(false)}
+        onSave={handleAliveSave}
       />
       <SupportContactModal open={supportOpen} onClose={() => setSupportOpen(false)} />
     </div>

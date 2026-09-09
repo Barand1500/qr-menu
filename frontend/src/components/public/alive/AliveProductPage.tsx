@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Flame, Star } from 'lucide-react';
+import { ArrowLeft, Flame, Plus, Star } from 'lucide-react';
 import { formatMoney, imageUrl } from '@/lib/api';
 import MenuColorModeToggle from '@/components/public/MenuColorModeToggle';
 import TableServiceButtons from '@/components/public/TableServiceButtons';
+import AliveProductOptions from '@/components/public/alive/AliveProductOptions';
 import { menuGroupPath, menuProductPath } from '@/lib/menuPaths';
 import type { MenuColorMode } from '@/lib/menuColorMode';
+import type { ProductOptionGroup, SelectionMap } from '@/lib/productOptions';
+import { useSiparisCart } from '@/hooks/useSiparisCart';
 import { gsap, prefersReducedMotion, useGSAP } from '@/lib/gsapSetup';
 
 type Product = {
@@ -22,7 +25,14 @@ type Product = {
   features: string[];
   group: { id: number; name: string };
   restaurant: { name: string };
-  menuFeatures?: { tableService?: boolean };
+  menuFeatures?: {
+    tableService?: boolean;
+    aliveCart?: boolean;
+    aliveVariants?: boolean;
+  };
+  optionGroups?: ProductOptionGroup[];
+  imageUrl?: string | null;
+  images?: string[];
 };
 
 type Related = {
@@ -53,13 +63,32 @@ export default function AliveProductPage({
   onBack: () => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const addBtnRef = useRef<HTMLButtonElement>(null);
   const [activeIdx, setActiveIdx] = useState(0);
   const multi = galleryImages.length > 1;
   const activeImg = galleryImages[activeIdx] || galleryImages[0];
+  const variantsOn = product.menuFeatures?.aliveVariants !== false;
+  const cartEnabled = product.menuFeatures?.aliveCart === true;
+  const optionGroups = variantsOn ? product.optionGroups || [] : [];
+  const { addItem, setSheetOpen, enabled: cartCtxOn } = useSiparisCart();
+  const showCart = cartEnabled && cartCtxOn;
+
+  const [unitPrice, setUnitPrice] = useState(product.price);
+  const [optionLabel, setOptionLabel] = useState('');
+
+  const onOptionsChange = useCallback(
+    (next: { unitPrice: number; selections: SelectionMap; label: string }) => {
+      setUnitPrice(next.unitPrice);
+      setOptionLabel(next.label);
+    },
+    []
+  );
 
   useEffect(() => {
     setActiveIdx(0);
-  }, [product.id]);
+    setUnitPrice(product.price);
+    setOptionLabel('');
+  }, [product.id, product.price]);
 
   useGSAP(
     () => {
@@ -76,8 +105,24 @@ export default function AliveProductPage({
     { scope: rootRef, dependencies: [product.id] }
   );
 
+  function onAdd() {
+    const name = optionLabel ? `${product.name} (${optionLabel})` : product.name;
+    addItem(
+      {
+        productId: product.id,
+        name,
+        price: optionGroups.length ? unitPrice : product.price,
+        currency: product.currency,
+        imageUrl: galleryImages[0] || product.imageUrl || null,
+        calories: product.calories ?? null,
+      },
+      { qty: 1, fromEl: addBtnRef.current }
+    );
+    setSheetOpen(true);
+  }
+
   return (
-    <div className="alive-detail" ref={rootRef}>
+    <div className={`alive-detail${showCart ? ' alive-detail--cart' : ''}`} ref={rootRef}>
       <div className="alive-detail__top">
         <button type="button" onClick={onBack} className="alive-detail__back" aria-label="Geri">
           <ArrowLeft className="w-5 h-5" />
@@ -96,7 +141,10 @@ export default function AliveProductPage({
         <p className="alive-detail__group alive-detail__reveal">{product.group.name}</p>
         <h1 className="alive-detail__title alive-detail__reveal">{product.name}</h1>
         <p className="alive-detail__price alive-detail__reveal">
-          {formatMoney(product.price, product.currency)}
+          {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
+          {optionGroups.length > 0 ? (
+            <span className="alive-detail__price-hint">seçime göre</span>
+          ) : null}
         </p>
 
         {(product.isRecommended ||
@@ -154,6 +202,29 @@ export default function AliveProductPage({
 
         {product.description ? (
           <p className="alive-detail__text alive-detail__reveal">{product.description}</p>
+        ) : null}
+
+        {optionGroups.length > 0 ? (
+          <AliveProductOptions
+            key={product.id}
+            groups={optionGroups}
+            basePrice={product.price}
+            currency={product.currency}
+            onChange={onOptionsChange}
+          />
+        ) : null}
+
+        {showCart ? (
+          <button
+            ref={addBtnRef}
+            type="button"
+            className="alive-detail__add alive-detail__reveal"
+            onClick={onAdd}
+          >
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
+            Sepete ekle ·{' '}
+            {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
+          </button>
         ) : null}
 
         {product.ingredients ? (

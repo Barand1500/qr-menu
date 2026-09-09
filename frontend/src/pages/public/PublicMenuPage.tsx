@@ -99,6 +99,8 @@ interface MenuData {
       features: { icon: string; text: string }[];
     };
     animasyon?: { cartEnabled?: boolean };
+    sade?: { cartEnabled?: boolean; variantsEnabled?: boolean };
+    alive?: { cartEnabled?: boolean; variantsEnabled?: boolean };
   };
 }
 
@@ -493,8 +495,15 @@ function PublicMenuPageInner({
   const isSiparis = menuTheme === 'siparis';
   const isAnimasyon = menuTheme === 'animasyon';
   const isLinear = menuTheme === 'linear';
+  const isSade = menuTheme === 'sade';
   const animasyonCartOn = menu.features?.animasyon?.cartEnabled !== false;
-  const cartTheme = isSiparis || (isAnimasyon && animasyonCartOn);
+  const sadeCartOn = menu.features?.sade?.cartEnabled === true;
+  const aliveCartOn = menu.features?.alive?.cartEnabled === true;
+  const cartTheme =
+    isSiparis ||
+    (isAnimasyon && animasyonCartOn) ||
+    (isSade && sadeCartOn) ||
+    (isAlive && aliveCartOn);
   const hideColorToggle = isAnimasyon || isLinear;
   const menuAssistantOn = Boolean(menu.features?.menuAssistant);
   const assistantStyle = parseMenuAssistantStyle(menu.features?.menuAssistantStyle);
@@ -569,7 +578,9 @@ function PublicMenuPageInner({
           searchOpen={searchOpen}
           onSearchToggle={toggleSearch}
           showMobileSearch={isSiparis || isAnimasyon}
-          extraIcons={cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon} /> : null}
+          extraIcons={
+          cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon || isSade || isAlive} /> : null
+        }
           colorMode={hideColorToggle ? undefined : colorMode}
           onColorModeToggle={hideColorToggle ? undefined : toggleColorMode}
           tableServiceSlot={tableServiceSlot}
@@ -696,7 +707,9 @@ function PublicMenuPageInner({
         searchOpen={searchOpen}
         onSearchToggle={toggleSearch}
         showMobileSearch={isSiparis || isAnimasyon}
-        extraIcons={cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon} /> : null}
+        extraIcons={
+          cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon || isSade || isAlive} /> : null
+        }
         colorMode={hideColorToggle ? undefined : colorMode}
         onColorModeToggle={hideColorToggle ? undefined : toggleColorMode}
         tableServiceSlot={tableServiceSlot}

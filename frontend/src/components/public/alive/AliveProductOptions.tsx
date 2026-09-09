@@ -33,7 +33,7 @@ function optionPriceLabel(
   return null;
 }
 
-export default function SadeProductOptions({
+export default function AliveProductOptions({
   groups,
   basePrice,
   currency,
@@ -90,13 +90,13 @@ export default function SadeProductOptions({
   }
 
   return (
-    <section className="sade-opts sade-detail__reveal" aria-label="Ürün seçenekleri">
-      <header className="sade-opts__head">
+    <section className="alive-opts alive-detail__reveal" aria-label="Ürün seçenekleri">
+      <header className="alive-opts__head">
         <h2>Seçenekler</h2>
         <p>Boy, ekstra ve isteklerini buradan seç.</p>
       </header>
 
-      <div className="sade-opts__groups">
+      <div className="alive-opts__groups">
         {activeGroups.map((g) => {
           const picks = selections[g.id] || [];
           const blocked = blockedOptionIds(activeGroups, selections);
@@ -106,20 +106,20 @@ export default function SadeProductOptions({
               (o) => !blocked.has(o.id) || picks[0]?.optionId === o.id
             );
             return (
-              <div key={g.id} className="sade-opts__group">
-                <div className="sade-opts__label">
+              <div key={g.id} className="alive-opts__group">
+                <div className="alive-opts__label">
                   <span>
                     {g.name}
                     {g.required ? <i aria-hidden>*</i> : null}
                   </span>
                 </div>
-                <div className="sade-opts__chips" role="radiogroup" aria-label={g.name}>
+                <div className="alive-opts__chips" role="radiogroup" aria-label={g.name}>
                   {!g.required ? (
                     <button
                       type="button"
                       role="radio"
                       aria-checked={!picks.length}
-                      className={`sade-opts__chip${!picks.length ? ' is-on' : ''}`}
+                      className={`alive-opts__chip${!picks.length ? ' is-on' : ''}`}
                       onClick={() => {
                         const next = { ...selections };
                         delete next[g.id];
@@ -138,7 +138,7 @@ export default function SadeProductOptions({
                         type="button"
                         role="radio"
                         aria-checked={on}
-                        className={`sade-opts__chip${on ? ' is-on' : ''}`}
+                        className={`alive-opts__chip${on ? ' is-on' : ''}`}
                         onClick={() => {
                           patch({
                             ...selections,
@@ -159,14 +159,14 @@ export default function SadeProductOptions({
           if (g.type === 'choice') {
             const visible = g.options.filter((o) => !blocked.has(o.id));
             return (
-              <div key={g.id} className="sade-opts__group">
-                <div className="sade-opts__label">
+              <div key={g.id} className="alive-opts__group">
+                <div className="alive-opts__label">
                   <span>
                     {g.name}
                     {g.required ? <i aria-hidden>*</i> : null}
                   </span>
                 </div>
-                <div className="sade-opts__chips">
+                <div className="alive-opts__chips">
                   {visible.map((o) => {
                     const on = picks.some((x) => x.optionId === o.id);
                     const priceText = optionPriceLabel(g, o.price, currency);
@@ -175,7 +175,7 @@ export default function SadeProductOptions({
                         key={o.id}
                         type="button"
                         aria-pressed={on}
-                        className={`sade-opts__chip${on ? ' is-on' : ''}`}
+                        className={`alive-opts__chip${on ? ' is-on' : ''}`}
                         onClick={() => {
                           const nextPicks = on
                             ? picks.filter((x) => x.optionId !== o.id)
@@ -201,8 +201,8 @@ export default function SadeProductOptions({
           const visible = g.options.filter((o) => !blocked.has(o.id));
 
           return (
-            <div key={g.id} className="sade-opts__group">
-              <div className="sade-opts__label">
+            <div key={g.id} className="alive-opts__group">
+              <div className="alive-opts__label">
                 <span>
                   {g.name}
                   {g.required ? <i aria-hidden>*</i> : null}
@@ -214,18 +214,18 @@ export default function SadeProductOptions({
                   </em>
                 ) : null}
               </div>
-              <ul className="sade-opts__multi">
+              <ul className="alive-opts__multi">
                 {visible.map((o) => {
                   const cur = picks.find((x) => x.optionId === o.id);
                   const q = cur?.qty || 0;
                   const priceText = optionPriceLabel(g, o.price, currency);
                   return (
-                    <li key={o.id} className="sade-opts__multi-row">
-                      <div className="sade-opts__multi-copy">
+                    <li key={o.id} className="alive-opts__multi-row">
+                      <div className="alive-opts__multi-copy">
                         <strong>{o.name}</strong>
                         {priceText ? <span>{priceText}</span> : null}
                       </div>
-                      <div className="sade-opts__stepper">
+                      <div className="alive-opts__stepper">
                         <button
                           type="button"
                           aria-label={`${o.name} azalt`}
@@ -275,7 +275,7 @@ export default function SadeProductOptions({
         })}
       </div>
 
-      <div className={`sade-opts__total${priceChanged ? ' is-live' : ''}`}>
+      <div className={`alive-opts__total${priceChanged ? ' is-live' : ''}`}>
         <span>Seçime göre</span>
         <strong>{formatMoney(unitPrice, currency)}</strong>
       </div>

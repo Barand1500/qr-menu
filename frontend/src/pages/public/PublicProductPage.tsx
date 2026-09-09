@@ -52,7 +52,14 @@ interface ProductDetail {
   isRecommended?: boolean;
   features: string[];
   theme?: string;
-  menuFeatures?: { tableService?: boolean; animasyonCart?: boolean };
+  menuFeatures?: {
+    tableService?: boolean;
+    animasyonCart?: boolean;
+    sadeCart?: boolean;
+    sadeVariants?: boolean;
+    aliveCart?: boolean;
+    aliveVariants?: boolean;
+  };
   optionGroups?: ProductOptionGroup[];
   group: { id: number; name: string };
   restaurant: { name: string; slug: string; logoUrl?: string | null };
@@ -177,44 +184,52 @@ function PublicProductPageInner() {
   }
 
   if (theme === 'sade') {
+    const sadeCartOn = product.menuFeatures?.sadeCart === true;
     return (
-      <div
-        className="public-menu-page public-product-page public-product-page--sade"
-        data-theme-menu="sade"
-        data-color-mode={colorMode}
-      >
-        <SadeProductPage
-          product={product}
-          related={related}
-          galleryImages={galleryImages}
-          colorMode={colorMode}
-          toggleColorMode={toggleColorMode}
-          lang={lang}
-          slug={slug}
-          onBack={onBack}
-        />
-      </div>
+      <SiparisCartProvider slug={slug} enabled={sadeCartOn}>
+        <div
+          className="public-menu-page public-product-page public-product-page--sade"
+          data-theme-menu="sade"
+          data-color-mode={colorMode}
+        >
+          <SadeProductPage
+            product={product}
+            related={related}
+            galleryImages={galleryImages}
+            colorMode={colorMode}
+            toggleColorMode={toggleColorMode}
+            lang={lang}
+            slug={slug}
+            onBack={onBack}
+          />
+          {sadeCartOn ? <SiparisCartSheet lang={lang} /> : null}
+        </div>
+      </SiparisCartProvider>
     );
   }
 
   if (theme === 'alive') {
+    const aliveCartOn = product.menuFeatures?.aliveCart === true;
     return (
-      <div
-        className="public-menu-page public-product-page public-product-page--alive"
-        data-theme-menu="alive"
-        data-color-mode={colorMode}
-      >
-        <AliveProductPage
-          product={product}
-          related={related}
-          galleryImages={galleryImages}
-          colorMode={colorMode}
-          toggleColorMode={toggleColorMode}
-          lang={lang}
-          slug={slug}
-          onBack={onBack}
-        />
-      </div>
+      <SiparisCartProvider slug={slug} enabled={aliveCartOn}>
+        <div
+          className="public-menu-page public-product-page public-product-page--alive"
+          data-theme-menu="alive"
+          data-color-mode={colorMode}
+        >
+          <AliveProductPage
+            product={product}
+            related={related}
+            galleryImages={galleryImages}
+            colorMode={colorMode}
+            toggleColorMode={toggleColorMode}
+            lang={lang}
+            slug={slug}
+            onBack={onBack}
+          />
+          {aliveCartOn ? <SiparisCartSheet lang={lang} /> : null}
+        </div>
+      </SiparisCartProvider>
     );
   }
 

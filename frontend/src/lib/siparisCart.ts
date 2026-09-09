@@ -82,12 +82,17 @@ export function addToSiparisCart(
   payload: SiparisAddPayload,
   qty = 1
 ): SiparisCartState {
-  const existing = state.items.find((i) => i.productId === payload.productId);
+  const existing = state.items.find(
+    (i) =>
+      i.productId === payload.productId &&
+      i.name === payload.name &&
+      Math.abs(i.price - payload.price) < 0.001
+  );
   if (existing) {
     return {
       ...state,
       items: state.items.map((i) =>
-        i.productId === payload.productId ? { ...i, qty: i.qty + qty } : i
+        i === existing ? { ...i, qty: i.qty + qty } : i
       ),
     };
   }
