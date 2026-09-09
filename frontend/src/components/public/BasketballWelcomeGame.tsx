@@ -379,21 +379,56 @@ export default function BasketballWelcomeGame({
       };
 
       const ballSize = ballSizeRef.current || getBallSize();
+      const ballR = ballSize / 2;
       const stageRect = stage.getBoundingClientRect();
       const hoopRect = hoop.getBoundingClientRect();
-      const rimY = hoopRect.top - stageRect.top + hoopRect.height * 0.5;
-      const rimLeft = hoopRect.left - stageRect.left + hoopRect.width * 0.22;
-      const rimRight = hoopRect.left - stageRect.left + hoopRect.width * 0.78;
-      const centerX = next.x + ballSize / 2;
-      const centerY = next.y + ballSize / 2;
+      const rimEl = hoop.querySelector('.basket-welcome__rim-wrap') as HTMLElement | null;
+      const rimRect = rimEl?.getBoundingClientRect() ?? hoopRect;
+      const rimCenterY = rimRect.top - stageRect.top + rimRect.height * 0.45;
+      const rimCenterX = rimRect.left - stageRect.left + rimRect.width / 2;
+      const rimInnerHalf = rimRect.width * 0.34;
+      const rimLeft = rimCenterX - rimInnerHalf;
+      const rimRight = rimCenterX + rimInnerHalf;
+      const padR = Math.max(10, rimRect.width * 0.09);
+      const leftPadX = rimLeft;
+      const rightPadX = rimRight;
+      const centerX = next.x + ballR;
+      const centerY = next.y + ballR;
 
+      // Pota kenarlıklarına çarpışma (sol/sağ rim)
+      const collidePad = (px: number, py: number) => {
+        const dx = centerX - px;
+        const dy = centerY - py;
+        const dist = Math.hypot(dx, dy) || 0.0001;
+        const minDist = ballR + padR;
+        if (dist >= minDist) return false;
+        const nx = dx / dist;
+        const ny = dy / dist;
+        const overlap = minDist - dist;
+        next.x += nx * overlap;
+        next.y += ny * overlap;
+        const vx = velocityRef.current.x;
+        const vy = velocityRef.current.y;
+        const impact = vx * nx + vy * ny;
+        if (impact < 0) {
+          velocityRef.current.x = (vx - 1.75 * impact * nx) * 0.72;
+          velocityRef.current.y = (vy - 1.75 * impact * ny) * 0.72;
+          playSound('rim');
+        }
+        return true;
+      };
+
+      collidePad(leftPadX, rimCenterY);
+      collidePad(rightPadX, rimCenterY);
+
+      // Fileye girince skor (kenarlıkların arası)
       if (
         !scoredShotRef.current &&
-        velocityRef.current.y > 0 &&
-        previousY + ballSize / 2 <= rimY &&
-        centerY >= rimY &&
-        centerX > rimLeft &&
-        centerX < rimRight
+        velocityRef.current.y > 80 &&
+        previousY + ballR <= rimCenterY &&
+        centerY >= rimCenterY &&
+        centerX > rimLeft + padR * 0.35 &&
+        centerX < rimRight - padR * 0.35
       ) {
         registerScore();
       }
@@ -568,6 +603,8 @@ export default function BasketballWelcomeGame({
                 <div className="basket-welcome__rim-wrap">
                   <div className="basket-welcome__rim-outer" />
                   <div className="basket-welcome__rim" />
+                  <span className="basket-welcome__rim-pad basket-welcome__rim-pad--left" />
+                  <span className="basket-welcome__rim-pad basket-welcome__rim-pad--right" />
                 </div>
                 <div className="basket-welcome__net">
                   {Array.from({ length: 9 }, (_, index) => (
