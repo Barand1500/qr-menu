@@ -104,6 +104,7 @@ interface MenuData {
     sade?: { cartEnabled?: boolean; variantsEnabled?: boolean };
     alive?: { cartEnabled?: boolean; variantsEnabled?: boolean };
     luxury?: { cartEnabled?: boolean; variantsEnabled?: boolean };
+    siparis?: { cartEnabled?: boolean; variantsEnabled?: boolean };
   };
 }
 
@@ -505,8 +506,9 @@ function PublicMenuPageInner({
   const aliveCartOn = menu.features?.alive?.cartEnabled === true;
   const luxuryCartOn = menu.features?.luxury?.cartEnabled === true;
   const linearCartOn = menu.features?.linear?.cartEnabled === true;
+  const siparisCartOn = menu.features?.siparis?.cartEnabled !== false;
   const cartTheme =
-    isSiparis ||
+    (isSiparis && siparisCartOn) ||
     (isAnimasyon && animasyonCartOn) ||
     (isSade && sadeCartOn) ||
     (isAlive && aliveCartOn) ||

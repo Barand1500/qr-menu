@@ -20,13 +20,14 @@ export default function SiparisProductCard({
   product: SiparisProductCardItem;
   compact?: boolean;
 }) {
-  const { addItem } = useSiparisCart();
+  const { addItem, enabled } = useSiparisCart();
   const mediaRef = useRef<HTMLAnchorElement>(null);
   const addBtnRef = useRef<HTMLButtonElement>(null);
 
   function onAdd(e: MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (!enabled) return;
     addItem(
       {
         productId: product.productId,
@@ -66,15 +67,17 @@ export default function SiparisProductCard({
           <span className="siparis-card__price">
             {formatMoney(product.price, product.currency)}
           </span>
-          <button
-            ref={addBtnRef}
-            type="button"
-            className="siparis-card__add"
-            onClick={onAdd}
-            aria-label={`${product.name} sepete ekle`}
-          >
-            <Plus className="w-4 h-4" strokeWidth={2.5} />
-          </button>
+          {enabled ? (
+            <button
+              ref={addBtnRef}
+              type="button"
+              className="siparis-card__add"
+              onClick={onAdd}
+              aria-label={`${product.name} sepete ekle`}
+            >
+              <Plus className="w-4 h-4" strokeWidth={2.5} />
+            </button>
+          ) : null}
         </div>
       </div>
     </article>

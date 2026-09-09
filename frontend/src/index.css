@@ -8847,10 +8847,19 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   color: #f3eee4;
 }
 
+.linear-settings__head--siparis {
+  background: linear-gradient(115deg, #fff5f5 0%, #fff5f5 48%, rgba(220, 38, 38, 0.16) 48%);
+}
+
+.linear-settings__head--siparis .linear-settings__eyebrow {
+  color: #dc2626;
+}
+
 .sade-settings__body,
 .alive-settings__body,
 .animasyon-settings__body,
-.luxury-settings__body {
+.luxury-settings__body,
+.siparis-settings__body {
   display: grid;
   gap: 0.65rem;
 }
@@ -8858,7 +8867,8 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 .sade-settings__hint,
 .alive-settings__hint,
 .animasyon-settings__hint,
-.luxury-settings__hint {
+.luxury-settings__hint,
+.siparis-settings__hint {
   margin: -0.2rem 0 0.55rem;
   font-size: 0.75rem;
   line-height: 1.45;

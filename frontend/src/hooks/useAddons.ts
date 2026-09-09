@@ -26,6 +26,10 @@ import {
   type LuxuryThemeConfig,
 } from '@/lib/menuLuxuryConfig';
 import {
+  DEFAULT_SIPARIS_CONFIG,
+  type SiparisThemeConfig,
+} from '@/lib/menuSiparisConfig';
+import {
   DEFAULT_WELCOME_BASKETBALL_CONFIG,
   parseWelcomeBasketballConfig,
   type WelcomeBasketballConfig,
@@ -45,6 +49,7 @@ interface AddonsResponse {
   sadeConfig?: SadeThemeConfig;
   aliveConfig?: AliveThemeConfig;
   luxuryConfig?: LuxuryThemeConfig;
+  siparisConfig?: SiparisThemeConfig;
   basketballConfig?: WelcomeBasketballConfig;
   cupsConfig?: WelcomeCupsConfig;
   products: AddonProduct[];
@@ -60,6 +65,7 @@ export function useAddons() {
   const [sadeConfig, setSadeConfig] = useState<SadeThemeConfig>(DEFAULT_SADE_CONFIG);
   const [aliveConfig, setAliveConfig] = useState<AliveThemeConfig>(DEFAULT_ALIVE_CONFIG);
   const [luxuryConfig, setLuxuryConfig] = useState<LuxuryThemeConfig>(DEFAULT_LUXURY_CONFIG);
+  const [siparisConfig, setSiparisConfig] = useState<SiparisThemeConfig>(DEFAULT_SIPARIS_CONFIG);
   const [basketballConfig, setBasketballConfig] = useState<WelcomeBasketballConfig>(
     DEFAULT_WELCOME_BASKETBALL_CONFIG
   );
@@ -78,6 +84,7 @@ export function useAddons() {
     if (res.sadeConfig) setSadeConfig(res.sadeConfig);
     if (res.aliveConfig) setAliveConfig(res.aliveConfig);
     if (res.luxuryConfig) setLuxuryConfig(res.luxuryConfig);
+    if (res.siparisConfig) setSiparisConfig(res.siparisConfig);
     if (res.basketballConfig) {
       setBasketballConfig(parseWelcomeBasketballConfig(res.basketballConfig));
     }
@@ -232,6 +239,15 @@ export function useAddons() {
     return res;
   }
 
+  async function setSiparisThemeConfig(config: SiparisThemeConfig) {
+    const res = await api<{ config: SiparisThemeConfig }>('/api/admin/addons/menu-siparis/config', {
+      method: 'PATCH',
+      body: JSON.stringify(config),
+    });
+    setSiparisConfig(res.config);
+    return res;
+  }
+
   async function setBasketballThemeConfig(config: WelcomeBasketballConfig) {
     const res = await api<{ config: WelcomeBasketballConfig }>(
       '/api/admin/addons/welcome-basketball/config',
@@ -263,6 +279,7 @@ export function useAddons() {
     sadeConfig,
     aliveConfig,
     luxuryConfig,
+    siparisConfig,
     basketballConfig,
     cupsConfig,
     loading,
@@ -277,6 +294,7 @@ export function useAddons() {
     setSadeThemeConfig,
     setAliveThemeConfig,
     setLuxuryThemeConfig,
+    setSiparisThemeConfig,
     setBasketballThemeConfig,
     setCupsThemeConfig,
   };

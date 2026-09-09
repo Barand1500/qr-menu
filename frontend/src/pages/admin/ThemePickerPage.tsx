@@ -9,6 +9,7 @@ import AnimasyonThemeSettingsModal from '@/components/AnimasyonThemeSettingsModa
 import SadeThemeSettingsModal from '@/components/SadeThemeSettingsModal';
 import AliveThemeSettingsModal from '@/components/AliveThemeSettingsModal';
 import LuxuryThemeSettingsModal from '@/components/LuxuryThemeSettingsModal';
+import SiparisThemeSettingsModal from '@/components/SiparisThemeSettingsModal';
 import BasketballThemeSettingsModal from '@/components/BasketballThemeSettingsModal';
 import CupsThemeSettingsModal from '@/components/CupsThemeSettingsModal';
 import {
@@ -25,6 +26,7 @@ import type { AnimasyonThemeConfig } from '@/lib/menuAnimasyonConfig';
 import type { SadeThemeConfig } from '@/lib/menuSadeConfig';
 import type { AliveThemeConfig } from '@/lib/menuAliveConfig';
 import type { LuxuryThemeConfig } from '@/lib/menuLuxuryConfig';
+import type { SiparisThemeConfig } from '@/lib/menuSiparisConfig';
 import { adminPath } from '@/lib/adminPath';
 
 interface ThemePickerPageProps {
@@ -49,6 +51,8 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
     setAliveThemeConfig,
     luxuryConfig,
     setLuxuryThemeConfig,
+    siparisConfig,
+    setSiparisThemeConfig,
     basketballConfig,
     setBasketballThemeConfig,
     cupsConfig,
@@ -63,11 +67,13 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
   const [sadeOpen, setSadeOpen] = useState(false);
   const [aliveOpen, setAliveOpen] = useState(false);
   const [luxuryOpen, setLuxuryOpen] = useState(false);
+  const [siparisOpen, setSiparisOpen] = useState(false);
   const [savingLinear, setSavingLinear] = useState(false);
   const [savingAnimasyon, setSavingAnimasyon] = useState(false);
   const [savingSade, setSavingSade] = useState(false);
   const [savingAlive, setSavingAlive] = useState(false);
   const [savingLuxury, setSavingLuxury] = useState(false);
+  const [savingSiparis, setSavingSiparis] = useState(false);
   const [basketballOpen, setBasketballOpen] = useState(false);
   const [savingBasketball, setSavingBasketball] = useState(false);
   const [cupsOpen, setCupsOpen] = useState(false);
@@ -176,6 +182,17 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
     }
   }
 
+  async function handleSiparisSave(config: SiparisThemeConfig) {
+    setSavingSiparis(true);
+    try {
+      await setSiparisThemeConfig(config);
+      setSiparisOpen(false);
+      setMessage('Sipariş Odaklı tema ayarları kaydedildi.');
+    } finally {
+      setSavingSiparis(false);
+    }
+  }
+
   async function handleBasketballSave(config: typeof basketballConfig) {
     setSavingBasketball(true);
     try {
@@ -204,6 +221,7 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
     else if (theme.id === 'sade') setSadeOpen(true);
     else if (theme.id === 'alive') setAliveOpen(true);
     else if (theme.id === 'luxury') setLuxuryOpen(true);
+    else if (theme.id === 'siparis') setSiparisOpen(true);
     else if (theme.id === 'basketball') setBasketballOpen(true);
     else if (theme.id === 'cups') setCupsOpen(true);
   }
@@ -216,7 +234,8 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
       theme.id === 'animasyon' ||
       theme.id === 'sade' ||
       theme.id === 'alive' ||
-      theme.id === 'luxury'
+      theme.id === 'luxury' ||
+      theme.id === 'siparis'
     );
   }
 
@@ -346,6 +365,13 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
             saving={savingLuxury}
             onClose={() => setLuxuryOpen(false)}
             onSave={handleLuxurySave}
+          />
+          <SiparisThemeSettingsModal
+            open={siparisOpen}
+            initial={siparisConfig}
+            saving={savingSiparis}
+            onClose={() => setSiparisOpen(false)}
+            onSave={handleSiparisSave}
           />
         </>
       ) : null}

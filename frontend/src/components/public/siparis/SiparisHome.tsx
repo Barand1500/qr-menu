@@ -57,7 +57,7 @@ export default function SiparisHome({
   campaignSlug?: string;
 }) {
   const { slug } = useMenuSlug();
-  const { items, totalPrice, count, setSheetOpen } = useSiparisCart();
+  const { items, totalPrice, count, setSheetOpen, enabled: cartOn } = useSiparisCart();
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
   const [activeSubId, setActiveSubId] = useState<number | null>(null);
   const [groupProducts, setGroupProducts] = useState<GroupProduct[] | null>(null);
@@ -227,7 +227,7 @@ export default function SiparisHome({
         <section className="siparis-section">
           <header className="siparis-section__head">
             <h3>{sectionTitle}</h3>
-            {activeGroupId == null && popularProducts.length > 0 ? (
+            {cartOn && activeGroupId == null && popularProducts.length > 0 ? (
               <span className="siparis-section__hint">
                 {en ? 'Tap + to add' : '+ ile sepete ekle'}
               </span>
@@ -256,40 +256,42 @@ export default function SiparisHome({
         </section>
       </div>
 
-      <aside className="siparis-rail" aria-label={en ? 'Order summary' : 'Sipariş özeti'}>
-        <div className="siparis-rail__card">
-          <h3>{en ? 'Your order' : 'Siparişin'}</h3>
-          {items.length === 0 ? (
-            <p className="siparis-rail__empty">
-              {en ? 'Add items with +' : '+ ile ürün ekle'}
-            </p>
-          ) : (
-            <ul className="siparis-rail__list">
-              {items.map((i) => (
-                <li key={i.productId}>
-                  <span>
-                    {i.qty}× {i.name}
-                  </span>
-                  <strong>{formatMoney(i.price * i.qty, i.currency)}</strong>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="siparis-rail__total">
-            <span>{en ? 'Total' : 'Toplam'}</span>
-            <strong>{formatMoney(totalPrice, items[0]?.currency)}</strong>
+      {cartOn ? (
+        <aside className="siparis-rail" aria-label={en ? 'Order summary' : 'Sipariş özeti'}>
+          <div className="siparis-rail__card">
+            <h3>{en ? 'Your order' : 'Siparişin'}</h3>
+            {items.length === 0 ? (
+              <p className="siparis-rail__empty">
+                {en ? 'Add items with +' : '+ ile ürün ekle'}
+              </p>
+            ) : (
+              <ul className="siparis-rail__list">
+                {items.map((i) => (
+                  <li key={i.productId}>
+                    <span>
+                      {i.qty}× {i.name}
+                    </span>
+                    <strong>{formatMoney(i.price * i.qty, i.currency)}</strong>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="siparis-rail__total">
+              <span>{en ? 'Total' : 'Toplam'}</span>
+              <strong>{formatMoney(totalPrice, items[0]?.currency)}</strong>
+            </div>
+            <button
+              type="button"
+              className="siparis-rail__open"
+              onClick={() => setSheetOpen(true)}
+            >
+              {en ? 'Open cart' : 'Sepeti aç'}
+              {count > 0 ? ` (${count})` : ''}
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            type="button"
-            className="siparis-rail__open"
-            onClick={() => setSheetOpen(true)}
-          >
-            {en ? 'Open cart' : 'Sepeti aç'}
-            {count > 0 ? ` (${count})` : ''}
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </aside>
+        </aside>
+      ) : null}
     </div>
   );
 }

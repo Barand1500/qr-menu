@@ -62,6 +62,8 @@ interface ProductDetail {
     aliveVariants?: boolean;
     luxuryCart?: boolean;
     luxuryVariants?: boolean;
+    siparisCart?: boolean;
+    siparisVariants?: boolean;
   };
   optionGroups?: ProductOptionGroup[];
   group: { id: number; name: string };
@@ -287,8 +289,9 @@ function PublicProductPageInner() {
   }
 
   if (theme === 'siparis') {
+    const siparisCartOn = product.menuFeatures?.siparisCart !== false;
     return (
-      <SiparisCartProvider slug={slug} enabled>
+      <SiparisCartProvider slug={slug} enabled={siparisCartOn}>
         <div
           className="public-menu-page public-product-page public-product-page--siparis"
           data-theme-menu="siparis"
@@ -304,7 +307,7 @@ function PublicProductPageInner() {
             slug={slug}
             onBack={onBack}
           />
-          <SiparisCartSheet lang={lang} />
+          {siparisCartOn ? <SiparisCartSheet lang={lang} /> : null}
         </div>
       </SiparisCartProvider>
     );

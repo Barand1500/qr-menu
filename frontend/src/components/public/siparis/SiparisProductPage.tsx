@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Clock, Plus } from 'lucide-react';
 import { formatMoney, imageUrl } from '@/lib/api';
 import { menuProductPath } from '@/lib/menuPaths';
@@ -12,8 +12,10 @@ import MenuColorModeToggle from '@/components/public/MenuColorModeToggle';
 import TableServiceButtons from '@/components/public/TableServiceButtons';
 import SiparisCartButton from '@/components/public/siparis/SiparisCartButton';
 import SiparisKcal from '@/components/public/siparis/SiparisKcal';
+import SiparisProductOptions from '@/components/public/siparis/SiparisProductOptions';
 import { useSiparisCart } from '@/hooks/useSiparisCart';
 import type { MenuColorMode } from '@/lib/menuColorMode';
+import type { ProductOptionGroup, SelectionMap } from '@/lib/productOptions';
 
 type ProductDetail = {
   id: number;
@@ -30,7 +32,12 @@ type ProductDetail = {
   features: string[];
   group: { id: number; name: string };
   restaurant: { name: string };
-  menuFeatures?: { tableService?: boolean };
+  menuFeatures?: {
+    tableService?: boolean;
+    siparisCart?: boolean;
+    siparisVariants?: boolean;
+  };
+  optionGroups?: ProductOptionGroup[];
 };
 
 type RelatedProduct = {
@@ -60,19 +67,40 @@ export default function SiparisProductPage({
   slug: string | null | undefined;
   onBack: () => void;
 }) {
-  const { addItem, setSheetOpen } = useSiparisCart();
+  const { addItem, setSheetOpen, enabled: cartCtxOn } = useSiparisCart();
   const { index, setIndex } = useProductGalleryIndex(galleryImages.length);
   const mediaRef = useRef<HTMLDivElement>(null);
   const addBtnRef = useRef<HTMLButtonElement>(null);
   const en = (lang || 'tr').split('-')[0] === 'en';
   const tableServiceOn = product.menuFeatures?.tableService !== false;
+  const variantsOn = product.menuFeatures?.siparisVariants !== false;
+  const cartEnabled = product.menuFeatures?.siparisCart !== false;
+  const showCart = cartEnabled && cartCtxOn;
+  const optionGroups = variantsOn ? product.optionGroups || [] : [];
+
+  const [unitPrice, setUnitPrice] = useState(product.price);
+  const [optionLabel, setOptionLabel] = useState('');
+
+  const onOptionsChange = useCallback(
+    (next: { unitPrice: number; selections: SelectionMap; label: string }) => {
+      setUnitPrice(next.unitPrice);
+      setOptionLabel(next.label);
+    },
+    []
+  );
+
+  useEffect(() => {
+    setUnitPrice(product.price);
+    setOptionLabel('');
+  }, [product.id, product.price]);
 
   function add() {
+    const name = optionLabel ? `${product.name} (${optionLabel})` : product.name;
     addItem(
       {
         productId: product.id,
-        name: product.name,
-        price: product.price,
+        name,
+        price: optionGroups.length ? unitPrice : product.price,
         currency: product.currency,
         imageUrl: product.imageUrl ?? galleryImages[0] ?? null,
         calories: product.calories ?? null,
@@ -87,14 +115,14 @@ export default function SiparisProductPage({
   }
 
   return (
-    <div className="siparis-detail">
+    <div className={`siparis-detail${showCart ? ' siparis-detail--cart' : ''}`}>
       <div className="siparis-detail__topbar">
         <button type="button" className="siparis-detail__back" onClick={onBack} aria-label="Geri">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <p className="siparis-detail__brand">{product.restaurant.name}</p>
         <div className="siparis-detail__top-actions">
-          <SiparisCartButton alwaysShow />
+          {showCart ? <SiparisCartButton alwaysShow /> : null}
           <MenuColorModeToggle colorMode={colorMode} onToggle={toggleColorMode} />
           <TableServiceButtons lang={lang} slug={slug} enabled={tableServiceOn} />
         </div>
@@ -131,7 +159,14 @@ export default function SiparisProductPage({
         <div className="siparis-detail__body">
           <p className="siparis-detail__group">{product.group.name}</p>
           <h1>{product.name}</h1>
-          <p className="siparis-detail__price">{formatMoney(product.price, product.currency)}</p>
+          <p className="siparis-detail__price">
+            {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
+            {optionGroups.length > 0 ? (
+              <span className="siparis-detail__price-hint">
+                {en ? 'by selection' : 'seçime göre'}
+              </span>
+            ) : null}
+          </p>
 
           <div className="siparis-detail__stats">
             {product.calories != null && product.calories > 0 ? (
@@ -151,6 +186,16 @@ export default function SiparisProductPage({
             <p className="siparis-detail__desc">{product.description}</p>
           ) : null}
 
+          {optionGroups.length > 0 ? (
+            <SiparisProductOptions
+              key={product.id}
+              groups={optionGroups}
+              basePrice={product.price}
+              currency={product.currency}
+              onChange={onOptionsChange}
+            />
+          ) : null}
+
           {product.ingredients ? (
             <div className="siparis-detail__block">
               <h2>{en ? 'Ingredients' : 'İçindekiler'}</h2>
@@ -165,15 +210,24 @@ export default function SiparisProductPage({
             </div>
           ) : null}
 
-          <div className="siparis-detail__actions">
-            <button ref={addBtnRef} type="button" className="siparis-detail__add" onClick={add}>
-              <Plus className="w-5 h-5" />
-              {en ? 'Add to cart' : 'Sepete ekle'}
-            </button>
-            <button type="button" className="siparis-detail__add siparis-detail__add--ghost" onClick={addAndOpen}>
-              {en ? 'Add & view cart' : 'Ekle ve sepete git'}
-            </button>
-          </div>
+          {showCart ? (
+            <div className="siparis-detail__actions">
+              <button ref={addBtnRef} type="button" className="siparis-detail__add" onClick={add}>
+                <Plus className="w-5 h-5" />
+                {en ? 'Add to cart' : 'Sepete ekle'}
+                {optionGroups.length > 0
+                  ? ` · ${formatMoney(unitPrice, product.currency)}`
+                  : ''}
+              </button>
+              <button
+                type="button"
+                className="siparis-detail__add siparis-detail__add--ghost"
+                onClick={addAndOpen}
+              >
+                {en ? 'Add & view cart' : 'Ekle ve sepete git'}
+              </button>
+            </div>
+          ) : null}
 
           {related.length > 0 ? (
             <section className="siparis-detail__related">

@@ -46,6 +46,12 @@ import {
   type LuxuryThemeConfig,
 } from '../lib/menu-luxury-config.js';
 import {
+  MENU_SIPARIS_CONFIG_KEY,
+  parseSiparisThemeConfig,
+  serializeSiparisThemeConfig,
+  type SiparisThemeConfig,
+} from '../lib/menu-siparis-config.js';
+import {
   WELCOME_BASKETBALL_CONFIG_KEY,
   parseWelcomeBasketballConfig,
   serializeWelcomeBasketballConfig,
@@ -81,6 +87,7 @@ router.get('/', async (req, res) => {
     sadeRow,
     aliveRow,
     luxuryRow,
+    siparisRow,
     basketballRow,
     cupsRow,
   ] = await Promise.all([
@@ -114,6 +121,11 @@ router.get('/', async (req, res) => {
     }),
     prisma.setting.findUnique({
       where: {
+        restaurantId_key: { restaurantId: restaurantId!, key: MENU_SIPARIS_CONFIG_KEY },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
         restaurantId_key: { restaurantId: restaurantId!, key: WELCOME_BASKETBALL_CONFIG_KEY },
       },
     }),
@@ -132,6 +144,7 @@ router.get('/', async (req, res) => {
     sadeConfig: parseSadeThemeConfig(sadeRow?.value),
     aliveConfig: parseAliveThemeConfig(aliveRow?.value),
     luxuryConfig: parseLuxuryThemeConfig(luxuryRow?.value),
+    siparisConfig: parseSiparisThemeConfig(siparisRow?.value),
     basketballConfig: parseWelcomeBasketballConfig(basketballRow?.value),
     cupsConfig: parseWelcomeCupsConfig(cupsRow?.value),
     products: ADDON_PRODUCTS.map((p) => {
@@ -335,6 +348,28 @@ router.patch('/menu-luxury/config', async (req, res) => {
     },
     update: { value },
     create: { restaurantId: restaurantId!, key: MENU_LUXURY_CONFIG_KEY, value },
+  });
+
+  res.json({ ok: true, config: parsed });
+});
+
+router.patch('/menu-siparis/config', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const owned = await ownsAddon(restaurantId!, 'menu-siparis');
+  if (!owned) {
+    return res.status(403).json({ message: 'Sipariş Odaklı tema kullanılamıyor' });
+  }
+
+  const body = (req.body || {}) as Partial<SiparisThemeConfig>;
+  const parsed = parseSiparisThemeConfig(JSON.stringify(body));
+  const value = serializeSiparisThemeConfig(parsed);
+
+  await prisma.setting.upsert({
+    where: {
+      restaurantId_key: { restaurantId: restaurantId!, key: MENU_SIPARIS_CONFIG_KEY },
+    },
+    update: { value },
+    create: { restaurantId: restaurantId!, key: MENU_SIPARIS_CONFIG_KEY, value },
   });
 
   res.json({ ok: true, config: parsed });

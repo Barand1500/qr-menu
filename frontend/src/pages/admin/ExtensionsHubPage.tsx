@@ -18,6 +18,7 @@ import AnimasyonThemeSettingsModal from '@/components/AnimasyonThemeSettingsModa
 import SadeThemeSettingsModal from '@/components/SadeThemeSettingsModal';
 import AliveThemeSettingsModal from '@/components/AliveThemeSettingsModal';
 import LuxuryThemeSettingsModal from '@/components/LuxuryThemeSettingsModal';
+import SiparisThemeSettingsModal from '@/components/SiparisThemeSettingsModal';
 import { useAddons } from '@/hooks/useAddons';
 import MenuAssistantStylePicker from '@/components/MenuAssistantStylePicker';
 import type { AddonCategory, AddonProduct } from '@/addons';
@@ -27,6 +28,7 @@ import type { AnimasyonThemeConfig } from '@/lib/menuAnimasyonConfig';
 import type { SadeThemeConfig } from '@/lib/menuSadeConfig';
 import type { AliveThemeConfig } from '@/lib/menuAliveConfig';
 import type { LuxuryThemeConfig } from '@/lib/menuLuxuryConfig';
+import type { SiparisThemeConfig } from '@/lib/menuSiparisConfig';
 import { adminPath } from '@/lib/adminPath';
 
 type TabId = 'all' | 'welcome' | 'menu' | 'qr' | 'lang' | 'feature';
@@ -87,6 +89,8 @@ export default function ExtensionsHubPage() {
     setAliveThemeConfig,
     luxuryConfig,
     setLuxuryThemeConfig,
+    siparisConfig,
+    setSiparisThemeConfig,
   } = useAddons();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = parseTab(searchParams.get('tab'));
@@ -99,11 +103,13 @@ export default function ExtensionsHubPage() {
   const [sadeOpen, setSadeOpen] = useState(false);
   const [aliveOpen, setAliveOpen] = useState(false);
   const [luxuryOpen, setLuxuryOpen] = useState(false);
+  const [siparisOpen, setSiparisOpen] = useState(false);
   const [savingLinear, setSavingLinear] = useState(false);
   const [savingAnimasyon, setSavingAnimasyon] = useState(false);
   const [savingSade, setSavingSade] = useState(false);
   const [savingAlive, setSavingAlive] = useState(false);
   const [savingLuxury, setSavingLuxury] = useState(false);
+  const [savingSiparis, setSavingSiparis] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
 
   const list = useMemo(
@@ -197,6 +203,16 @@ export default function ExtensionsHubPage() {
     }
   }
 
+  async function handleSiparisSave(config: SiparisThemeConfig) {
+    setSavingSiparis(true);
+    try {
+      await setSiparisThemeConfig(config);
+      setSiparisOpen(false);
+    } finally {
+      setSavingSiparis(false);
+    }
+  }
+
   function ownedAction(product: AddonProduct) {
     if (product.id === 'menu-assistant' && product.owned) {
       const on = Boolean(product.enabled);
@@ -267,6 +283,27 @@ export default function ExtensionsHubPage() {
             variant="secondary"
             className="w-full"
             onClick={() => setSadeOpen(true)}
+          >
+            <Settings2 className="w-4 h-4" />
+            Tema ayarları
+          </Button>
+          <Link to={adminPath('startup', 'menu')} className="w-full">
+            <Button type="button" className="w-full">
+              <Sparkles className="w-4 h-4" />
+              Temalarda kullan
+            </Button>
+          </Link>
+        </div>
+      );
+    }
+    if (product.id === 'menu-siparis' && product.owned) {
+      return (
+        <div className="flex flex-col gap-2 w-full">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={() => setSiparisOpen(true)}
           >
             <Settings2 className="w-4 h-4" />
             Tema ayarları
@@ -529,6 +566,13 @@ export default function ExtensionsHubPage() {
         saving={savingLuxury}
         onClose={() => setLuxuryOpen(false)}
         onSave={handleLuxurySave}
+      />
+      <SiparisThemeSettingsModal
+        open={siparisOpen}
+        initial={siparisConfig}
+        saving={savingSiparis}
+        onClose={() => setSiparisOpen(false)}
+        onSave={handleSiparisSave}
       />
       <SupportContactModal open={supportOpen} onClose={() => setSupportOpen(false)} />
     </div>

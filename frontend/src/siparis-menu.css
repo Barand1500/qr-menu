@@ -1382,6 +1382,15 @@
   color: var(--siparis-red);
 }
 
+.siparis-detail__price-hint {
+  margin-left: 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--menu-text-muted);
+}
+
 .siparis-detail__stats {
   display: flex;
   flex-wrap: wrap;
@@ -1407,6 +1416,219 @@
   font-size: 0.95rem;
   line-height: 1.55;
   color: var(--menu-text-muted);
+}
+
+/* Varyant / ekstra — Sipariş Odaklı dil */
+.siparis-opts {
+  margin: 0 0 1rem;
+  padding: 0.95rem 0 0.15rem;
+  border-top: 1px solid rgba(220, 38, 38, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.siparis-opts__head h2 {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--menu-text-muted);
+}
+
+.siparis-opts__head p {
+  margin: 0.3rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--menu-text);
+  font-weight: 550;
+}
+
+.siparis-opts__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.siparis-opts__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.siparis-opts__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.siparis-opts__label span {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--menu-text);
+}
+
+.siparis-opts__label i {
+  font-style: normal;
+  margin-left: 0.15rem;
+  color: var(--siparis-red);
+}
+
+.siparis-opts__label em {
+  font-style: normal;
+  font-size: 0.74rem;
+  font-weight: 650;
+  color: var(--menu-text-muted);
+  white-space: nowrap;
+}
+
+.siparis-opts__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.siparis-opts__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.45rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(220, 38, 38, 0.18);
+  background: #fff;
+  color: var(--menu-text);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--siparis-shadow);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.siparis-opts__chip small {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--siparis-red);
+}
+
+.siparis-opts__chip.is-on {
+  background: linear-gradient(135deg, #dc2626, #9f1239);
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.siparis-opts__chip.is-on small {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.siparis-opts__chip:hover:not(.is-on) {
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+.siparis-opts__multi {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.siparis-opts__multi-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.95rem;
+  background: #fff;
+  border: 1px solid rgba(220, 38, 38, 0.1);
+  box-shadow: var(--siparis-shadow);
+}
+
+.siparis-opts__multi-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.siparis-opts__multi-copy strong {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--menu-text);
+}
+
+.siparis-opts__multi-copy span {
+  font-size: 0.74rem;
+  font-weight: 750;
+  color: var(--siparis-red);
+}
+
+.siparis-opts__stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.siparis-opts__stepper button {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  border: 0;
+  background: linear-gradient(135deg, #dc2626, #9f1239);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.siparis-opts__stepper button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.siparis-opts__stepper em {
+  font-style: normal;
+  min-width: 1.1rem;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 850;
+  color: var(--menu-text);
+}
+
+.siparis-opts__total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.95rem;
+  background: #fff5f5;
+  border: 1px solid rgba(220, 38, 38, 0.14);
+}
+
+.siparis-opts__total span {
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--menu-text-muted);
+}
+
+.siparis-opts__total strong {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--siparis-red);
+}
+
+.siparis-opts__total.is-live {
+  background: #fee2e2;
+  border-color: rgba(220, 38, 38, 0.28);
 }
 
 .siparis-detail__block {
