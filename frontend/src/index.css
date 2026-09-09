@@ -8705,6 +8705,18 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   gap: 1rem;
 }
 
+.linear-settings__toggles {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.linear-settings__hint {
+  margin: -0.2rem 0 0.35rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--admin-text-muted, #64748b);
+}
+
 .linear-settings__field {
   display: grid;
   gap: 0.4rem;
@@ -8808,13 +8820,17 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 }
 
 .linear-settings__head--luxury {
-  background: linear-gradient(115deg, #161412 0%, #161412 48%, rgba(201, 169, 98, 0.28) 48%);
+  background: linear-gradient(145deg, #161412 0%, #1c1916 55%, #241f18 100%);
+  color: #f3eee4;
+  border-bottom-color: rgba(201, 169, 98, 0.22);
+}
+
+.linear-settings__head--luxury h2 {
   color: #f3eee4;
 }
 
-.linear-settings__head--luxury h2,
 .linear-settings__head--luxury p {
-  color: #f3eee4;
+  color: rgba(243, 238, 228, 0.78);
 }
 
 .linear-settings__head--luxury .linear-settings__eyebrow {
@@ -8822,7 +8838,13 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 }
 
 .linear-settings__head--luxury .linear-settings__close {
+  background: rgba(201, 169, 98, 0.2);
   color: #e8d5a3;
+}
+
+.linear-settings__head--luxury .linear-settings__close:hover {
+  background: rgba(201, 169, 98, 0.32);
+  color: #f3eee4;
 }
 
 .sade-settings__body,

@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Flame, Plus, Star, X } from 'lucide-react';
 import { formatMoney, imageUrl } from '@/lib/api';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
+import AnimasyonProductOptions from '@/components/public/animasyon/AnimasyonProductOptions';
 import { useSiparisCart } from '@/hooks/useSiparisCart';
+import type { ProductOptionGroup, SelectionMap } from '@/lib/productOptions';
 import { gsap, prefersReducedMotion, useGSAP } from '@/lib/gsapSetup';
 
 export type AnimasyonProduct = {
@@ -17,6 +19,7 @@ export type AnimasyonProduct = {
   images?: string[];
   calories?: number | null;
   isRecommended?: boolean;
+  optionGroups?: ProductOptionGroup[];
 };
 
 export default function AnimasyonDetailModal({
@@ -24,22 +27,39 @@ export default function AnimasyonDetailModal({
   open,
   onClose,
   cartEnabled = true,
+  variantsEnabled = true,
 }: {
   product: AnimasyonProduct | null;
   open: boolean;
   onClose: () => void;
   cartEnabled?: boolean;
+  variantsEnabled?: boolean;
 }) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
-  const { addItem } = useSiparisCart();
+  const addBtnRef = useRef<HTMLButtonElement>(null);
+  const { addItem, setSheetOpen } = useSiparisCart();
   const [imgIdx, setImgIdx] = useState(0);
   const touchX = useRef<number | null>(null);
+  const optionGroups =
+    variantsEnabled && product?.optionGroups?.length ? product.optionGroups : [];
+  const [unitPrice, setUnitPrice] = useState(product?.price ?? 0);
+  const [optionLabel, setOptionLabel] = useState('');
+
+  const onOptionsChange = useCallback(
+    (next: { unitPrice: number; selections: SelectionMap; label: string }) => {
+      setUnitPrice(next.unitPrice);
+      setOptionLabel(next.label);
+    },
+    []
+  );
 
   useEffect(() => {
     setImgIdx(0);
-  }, [product?.id, open]);
+    setUnitPrice(product?.price ?? 0);
+    setOptionLabel('');
+  }, [product?.id, product?.price, open]);
 
   useGSAP(
     () => {
@@ -110,6 +130,7 @@ export default function AnimasyonDetailModal({
         : [];
   const multi = gallery.length > 1;
   const activeSrc = gallery[imgIdx] || gallery[0];
+  const displayPrice = optionGroups.length ? unitPrice : current.price;
 
   function goImg(next: number) {
     if (!multi) return;
@@ -127,17 +148,19 @@ export default function AnimasyonDetailModal({
   }
 
   function onAdd() {
+    const name = optionLabel ? `${current.name} (${optionLabel})` : current.name;
     addItem(
       {
         productId: current.id,
-        name: current.name,
-        price: current.price,
+        name,
+        price: displayPrice,
         currency: current.currency,
         imageUrl: current.imageUrl,
         calories: current.calories,
       },
-      { fromEl: mediaRef.current }
+      { fromEl: addBtnRef.current || mediaRef.current }
     );
+    setSheetOpen(true);
   }
 
   return (
@@ -213,7 +236,12 @@ export default function AnimasyonDetailModal({
         <div className="anim-detail__body">
           <header className="anim-detail__head anim-detail__reveal">
             <h2>{current.name}</h2>
-            <p className="anim-detail__price">{formatMoney(current.price, current.currency)}</p>
+            <p className="anim-detail__price">
+              {formatMoney(displayPrice, current.currency)}
+              {optionGroups.length > 0 ? (
+                <span className="anim-detail__price-hint">seçime göre</span>
+              ) : null}
+            </p>
           </header>
 
           {(current.isRecommended || (current.calories != null && current.calories > 0)) && (
@@ -235,6 +263,16 @@ export default function AnimasyonDetailModal({
             <p className="anim-detail__text anim-detail__reveal">{current.description}</p>
           ) : null}
 
+          {optionGroups.length > 0 ? (
+            <AnimasyonProductOptions
+              key={current.id}
+              groups={optionGroups}
+              basePrice={current.price}
+              currency={current.currency}
+              onChange={onOptionsChange}
+            />
+          ) : null}
+
           {current.ingredients ? (
             <section className="anim-detail__block anim-detail__reveal">
               <h3>İçindekiler</h3>
@@ -250,9 +288,15 @@ export default function AnimasyonDetailModal({
           ) : null}
 
           {cartEnabled ? (
-            <button type="button" className="anim-detail__add anim-detail__reveal" onClick={onAdd}>
+            <button
+              ref={addBtnRef}
+              type="button"
+              className="anim-detail__add anim-detail__reveal"
+              onClick={onAdd}
+            >
               <Plus className="w-4 h-4" strokeWidth={2.5} />
               Sepete ekle
+              {optionGroups.length > 0 ? ` · ${formatMoney(displayPrice, current.currency)}` : ''}
             </button>
           ) : null}
         </div>

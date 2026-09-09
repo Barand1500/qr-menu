@@ -50,6 +50,7 @@ export default function AnimasyonHome({
   campaignSlug,
   initialGroupId,
   cartEnabled = true,
+  variantsEnabled = true,
 }: {
   menu: MenuData;
   popularProducts: PopularProduct[];
@@ -60,6 +61,7 @@ export default function AnimasyonHome({
   displayShowcase?: unknown;
   displayStories?: unknown;
   cartEnabled?: boolean;
+  variantsEnabled?: boolean;
 }) {
   const { slug } = useMenuSlug();
   const { addItem } = useSiparisCart();
@@ -286,6 +288,7 @@ export default function AnimasyonHome({
         images?: string[];
         calories?: number | null;
         isRecommended?: boolean;
+        optionGroups?: AnimasyonProduct['optionGroups'];
       }>(`/api/menu/${slug}/products/${p.id}?${params}`);
       setDetail({
         id: full.id,
@@ -299,6 +302,7 @@ export default function AnimasyonHome({
         images: full.images,
         calories: full.calories,
         isRecommended: full.isRecommended,
+        optionGroups: full.optionGroups,
       });
     } catch {
       /* keep list payload */
@@ -473,6 +477,7 @@ export default function AnimasyonHome({
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
         cartEnabled={cartEnabled}
+        variantsEnabled={variantsEnabled}
       />
     </div>
   );

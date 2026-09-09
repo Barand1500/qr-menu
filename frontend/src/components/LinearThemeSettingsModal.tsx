@@ -4,8 +4,10 @@ import {
   Cherry,
   Coffee,
   Heart,
+  Layers3,
   Leaf,
   Settings2,
+  ShoppingBag,
   Sparkles,
   Star,
   UtensilsCrossed,
@@ -80,7 +82,7 @@ export default function LinearThemeSettingsModal({
               <Settings2 className="w-3.5 h-3.5" /> Linear
             </p>
             <h2 id="linear-settings-title">Tema ayarları</h2>
-            <p>Sol panel başlığı ve 4 özellik satırını buradan düzenle.</p>
+            <p>Varyant, sepet, sol panel metni ve özellik satırlarını buradan düzenle.</p>
           </div>
           <button type="button" className="linear-settings__close" onClick={onClose} aria-label="Kapat">
             <X className="w-5 h-5" />
@@ -88,6 +90,46 @@ export default function LinearThemeSettingsModal({
         </header>
 
         <div className="linear-settings__body">
+          <div className="linear-settings__toggles">
+            <button
+              type="button"
+              className="addon-toggle"
+              onClick={() => setDraft((d) => ({ ...d, variantsEnabled: !d.variantsEnabled }))}
+              aria-pressed={draft.variantsEnabled}
+            >
+              <span className="inline-flex items-center gap-2">
+                <Layers3 className="w-4 h-4 opacity-70" />
+                {draft.variantsEnabled ? 'Varyantlar açık' : 'Varyantlar kapalı'}
+              </span>
+              <span className={`addon-toggle__switch${draft.variantsEnabled ? ' is-on' : ''}`} aria-hidden>
+                <span className="addon-toggle__knob" />
+              </span>
+            </button>
+            <p className="linear-settings__hint">
+              Kapalıysa ürün detayında boy / ekstra / istek seçenekleri gizlenir. Varsayılan:{' '}
+              {DEFAULT_LINEAR_CONFIG.variantsEnabled ? 'açık' : 'kapalı'}.
+            </p>
+
+            <button
+              type="button"
+              className="addon-toggle"
+              onClick={() => setDraft((d) => ({ ...d, cartEnabled: !d.cartEnabled }))}
+              aria-pressed={draft.cartEnabled}
+            >
+              <span className="inline-flex items-center gap-2">
+                <ShoppingBag className="w-4 h-4 opacity-70" />
+                {draft.cartEnabled ? 'Sepet açık' : 'Sepet kapalı'}
+              </span>
+              <span className={`addon-toggle__switch${draft.cartEnabled ? ' is-on' : ''}`} aria-hidden>
+                <span className="addon-toggle__knob" />
+              </span>
+            </button>
+            <p className="linear-settings__hint">
+              Açıkken ürün detayında “Sepete ekle” ve menüde sepet ikonu çıkar. Varsayılan:{' '}
+              {DEFAULT_LINEAR_CONFIG.cartEnabled ? 'açık' : 'kapalı'}.
+            </p>
+          </div>
+
           <label className="linear-settings__field">
             <span>Başlık altı metin</span>
             <input

@@ -344,7 +344,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
   );
   const themes = await getRestaurantThemes(restaurant.id);
   const prefCatalog = await loadPrefCatalog(restaurant.id);
-  const [tableServiceSetting, animasyonConfigSetting, sadeConfigSetting, aliveConfigSetting, luxuryConfigSetting] =
+  const [tableServiceSetting, animasyonConfigSetting, sadeConfigSetting, aliveConfigSetting, luxuryConfigSetting, linearConfigSetting] =
     await Promise.all([
     prisma.setting.findFirst({
       where: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
@@ -369,12 +369,18 @@ router.get('/:slug/products/:productId', async (req, res) => {
         restaurantId_key: { restaurantId: restaurant.id, key: MENU_LUXURY_CONFIG_KEY },
       },
     }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurant.id, key: MENU_LINEAR_CONFIG_KEY },
+      },
+    }),
   ]);
 
   const sadeCfg = parseSadeThemeConfig(sadeConfigSetting?.value);
   const aliveCfg = parseAliveThemeConfig(aliveConfigSetting?.value);
   const animasyonCfg = parseAnimasyonThemeConfig(animasyonConfigSetting?.value);
   const luxuryCfg = parseLuxuryThemeConfig(luxuryConfigSetting?.value);
+  const linearCfg = parseLinearThemeConfig(linearConfigSetting?.value);
 
   res.json({
     id: product.id,
@@ -417,6 +423,8 @@ router.get('/:slug/products/:productId', async (req, res) => {
       aliveVariants: aliveCfg.variantsEnabled,
       luxuryCart: luxuryCfg.cartEnabled,
       luxuryVariants: luxuryCfg.variantsEnabled,
+      linearCart: linearCfg.cartEnabled,
+      linearVariants: linearCfg.variantsEnabled,
     },
     optionGroups: activeOptionGroups(product.optionGroups),
   });

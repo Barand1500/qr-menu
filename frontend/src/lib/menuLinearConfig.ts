@@ -20,6 +20,8 @@ export type LinearThemeConfig = {
   headline: string;
   subhead: string;
   features: LinearFeatureLine[];
+  variantsEnabled: boolean;
+  cartEnabled: boolean;
 };
 
 export const DEFAULT_LINEAR_CONFIG: LinearThemeConfig = {
@@ -31,6 +33,8 @@ export const DEFAULT_LINEAR_CONFIG: LinearThemeConfig = {
     { icon: 'cake', text: 'İnce tat ve aroma' },
     { icon: 'strawberry', text: 'Her gün taze' },
   ],
+  variantsEnabled: true,
+  cartEnabled: false,
 };
 
 function isIcon(v: unknown): v is LinearFeatureIcon {
@@ -68,6 +72,8 @@ export function parseLinearThemeConfig(raw?: string | null): LinearThemeConfig {
           ? data.subhead.trim().slice(0, 64)
           : DEFAULT_LINEAR_CONFIG.subhead,
       features,
+      variantsEnabled: data.variantsEnabled !== false,
+      cartEnabled: data.cartEnabled === true,
     };
   } catch {
     return {

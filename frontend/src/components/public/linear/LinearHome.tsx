@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowLeft,
   Cake,
@@ -6,6 +6,7 @@ import {
   Coffee,
   Heart,
   Leaf,
+  Plus,
   Sparkles,
   Star,
   UtensilsCrossed,
@@ -14,10 +15,13 @@ import {
 import { api, formatMoney, imageUrl } from '@/lib/api';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
+import LinearProductOptions from '@/components/public/linear/LinearProductOptions';
 import {
   parseLinearThemeConfig,
   type LinearFeatureIcon,
 } from '@/lib/menuLinearConfig';
+import type { ProductOptionGroup, SelectionMap } from '@/lib/productOptions';
+import { useSiparisCart } from '@/hooks/useSiparisCart';
 import { gsap, prefersReducedMotion, useGSAP } from '@/lib/gsapSetup';
 
 type MenuGroup = {
@@ -49,6 +53,7 @@ type ListProduct = {
 type DetailProduct = ListProduct & {
   ingredients?: string;
   allergens?: string;
+  optionGroups?: ProductOptionGroup[];
 };
 
 const ICON_MAP: Record<LinearFeatureIcon, LucideIcon> = {
@@ -83,6 +88,7 @@ export default function LinearHome({
   const railRef = useRef<HTMLElement>(null);
   const listLayerRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
+  const addBtnRef = useRef<HTMLButtonElement>(null);
   const animBusy = useRef(false);
   const openIndexRef = useRef(0);
   const pendingAnim = useRef<'open' | null>(null);
@@ -92,6 +98,10 @@ export default function LinearHome({
   const config = parseLinearThemeConfig(
     menu.features?.linear ? JSON.stringify(menu.features.linear) : null
   );
+  const variantsOn = config.variantsEnabled !== false;
+  const cartEnabled = config.cartEnabled === true;
+  const { addItem, setSheetOpen, enabled: cartCtxOn } = useSiparisCart();
+  const showCart = cartEnabled && cartCtxOn;
 
   const [groupId, setGroupId] = useState<number | null>(
     initialGroupId ?? menu.groups[0]?.id ?? null
@@ -99,9 +109,21 @@ export default function LinearHome({
   const [products, setProducts] = useState<ListProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<DetailProduct | null>(null);
+  const [unitPrice, setUnitPrice] = useState(0);
+  const [optionLabel, setOptionLabel] = useState('');
 
   const activeGroup = menu.groups.find((g) => g.id === groupId) || null;
   const { contextSafe } = useGSAP({ scope: rootRef });
+  const optionGroups =
+    variantsOn && detail?.optionGroups?.length ? detail.optionGroups : [];
+
+  const onOptionsChange = useCallback(
+    (next: { unitPrice: number; selections: SelectionMap; label: string }) => {
+      setUnitPrice(next.unitPrice);
+      setOptionLabel(next.label);
+    },
+    []
+  );
 
   useEffect(() => {
     if (initialGroupId != null) setGroupId(initialGroupId);
@@ -166,8 +188,11 @@ export default function LinearHome({
     api<DetailProduct>(`/api/menu/${slug}/products/${product.id}?${params}`)
       .then((full) => {
         setDetail((prev) =>
-          prev && prev.id === product.id ? { ...prev, ...full } : prev
+          prev && prev.id === product.id
+            ? { ...prev, ...full, optionGroups: full.optionGroups }
+            : prev
         );
+        if (full.price != null) setUnitPrice(Number(full.price));
       })
       .catch(() => undefined);
   }
@@ -286,6 +311,8 @@ export default function LinearHome({
     animBusy.current = true;
     openIndexRef.current = index;
     tlRef.current?.kill();
+    setUnitPrice(product.price);
+    setOptionLabel('');
     enrichDetail(product);
     pendingAnim.current = 'open';
     setDetail(product);
@@ -535,8 +562,50 @@ export default function LinearHome({
           <div className="linear-detail__copy">
             <p className="linear-detail__group">{activeGroup?.name || 'Menü'}</p>
             <h1>{detail.name}</h1>
-            <strong>{formatMoney(detail.price, detail.currency)}</strong>
+            <strong>
+              {formatMoney(optionGroups.length ? unitPrice : detail.price, detail.currency)}
+              {optionGroups.length > 0 ? (
+                <span className="linear-detail__price-hint">seçime göre</span>
+              ) : null}
+            </strong>
             {detail.description ? <p className="linear-detail__text">{detail.description}</p> : null}
+
+            {optionGroups.length > 0 ? (
+              <LinearProductOptions
+                key={detail.id}
+                groups={optionGroups}
+                basePrice={detail.price}
+                currency={detail.currency}
+                onChange={onOptionsChange}
+              />
+            ) : null}
+
+            {showCart ? (
+              <button
+                ref={addBtnRef}
+                type="button"
+                className="linear-detail__add"
+                onClick={() => {
+                  const name = optionLabel ? `${detail.name} (${optionLabel})` : detail.name;
+                  addItem(
+                    {
+                      productId: detail.id,
+                      name,
+                      price: optionGroups.length ? unitPrice : detail.price,
+                      currency: detail.currency,
+                      imageUrl: detail.imageUrl || null,
+                    },
+                    { qty: 1, fromEl: addBtnRef.current }
+                  );
+                  setSheetOpen(true);
+                }}
+              >
+                <Plus className="w-4 h-4" strokeWidth={2.5} />
+                Sepete ekle ·{' '}
+                {formatMoney(optionGroups.length ? unitPrice : detail.price, detail.currency)}
+              </button>
+            ) : null}
+
             {detail.ingredients ? (
               <section className="linear-detail__block">
                 <h2>İçindekiler</h2>

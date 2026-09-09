@@ -97,6 +97,8 @@ interface MenuData {
       headline: string;
       subhead: string;
       features: { icon: string; text: string }[];
+      cartEnabled?: boolean;
+      variantsEnabled?: boolean;
     };
     animasyon?: { cartEnabled?: boolean; variantsEnabled?: boolean };
     sade?: { cartEnabled?: boolean; variantsEnabled?: boolean };
@@ -498,15 +500,18 @@ function PublicMenuPageInner({
   const isLinear = menuTheme === 'linear';
   const isSade = menuTheme === 'sade';
   const animasyonCartOn = menu.features?.animasyon?.cartEnabled !== false;
+  const animasyonVariantsOn = menu.features?.animasyon?.variantsEnabled !== false;
   const sadeCartOn = menu.features?.sade?.cartEnabled === true;
   const aliveCartOn = menu.features?.alive?.cartEnabled === true;
   const luxuryCartOn = menu.features?.luxury?.cartEnabled === true;
+  const linearCartOn = menu.features?.linear?.cartEnabled === true;
   const cartTheme =
     isSiparis ||
     (isAnimasyon && animasyonCartOn) ||
     (isSade && sadeCartOn) ||
     (isAlive && aliveCartOn) ||
-    (isLuxury && luxuryCartOn);
+    (isLuxury && luxuryCartOn) ||
+    (isLinear && linearCartOn);
   const hideColorToggle = isAnimasyon || isLinear;
   const menuAssistantOn = Boolean(menu.features?.menuAssistant);
   const assistantStyle = parseMenuAssistantStyle(menu.features?.menuAssistantStyle);
@@ -582,7 +587,7 @@ function PublicMenuPageInner({
           onSearchToggle={toggleSearch}
           showMobileSearch={isSiparis || isAnimasyon}
           extraIcons={
-          cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon || isSade || isAlive || isLuxury} /> : null
+          cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon || isSade || isAlive || isLuxury || isLinear} /> : null
         }
           colorMode={hideColorToggle ? undefined : colorMode}
           onColorModeToggle={hideColorToggle ? undefined : toggleColorMode}
@@ -637,6 +642,7 @@ function PublicMenuPageInner({
               campaignSlug={campaignSlug}
               initialGroupId={products.group.id}
               cartEnabled={animasyonCartOn}
+              variantsEnabled={animasyonVariantsOn}
             />
           ) : (
             <SadeProductList
@@ -711,7 +717,7 @@ function PublicMenuPageInner({
         onSearchToggle={toggleSearch}
         showMobileSearch={isSiparis || isAnimasyon}
         extraIcons={
-          cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon || isSade || isAlive || isLuxury} /> : null
+          cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon || isSade || isAlive || isLuxury || isLinear} /> : null
         }
         colorMode={hideColorToggle ? undefined : colorMode}
         onColorModeToggle={hideColorToggle ? undefined : toggleColorMode}
@@ -791,6 +797,7 @@ function PublicMenuPageInner({
               lang={lang}
               campaignSlug={campaignSlug}
               cartEnabled={animasyonCartOn}
+              variantsEnabled={animasyonVariantsOn}
             />
           ) : (
             <SadeHome

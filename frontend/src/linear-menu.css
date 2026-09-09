@@ -497,6 +497,9 @@
   max-width: 28rem;
   margin: 0 auto;
   visibility: hidden;
+  max-height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .linear-detail__back {
@@ -566,7 +569,10 @@
 }
 
 .linear-detail__copy > strong {
-  display: inline-block;
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.45rem;
   margin-top: 0.55rem;
   font-size: 1.15rem;
   color: #2f3624;
@@ -574,11 +580,258 @@
   paint-order: stroke fill;
 }
 
+.linear-detail__price-hint {
+  font-size: 0.65rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--linear-muted);
+}
+
 .linear-detail__text {
   margin: 0.85rem 0 0;
   font-size: 0.95rem;
   line-height: 1.55;
   color: rgba(28, 30, 22, 0.78);
+}
+
+/* Varyant / ekstra — Linear dil */
+.linear-opts {
+  margin-top: 0.85rem;
+  padding: 0.85rem 0 0.1rem;
+  border-top: 1px solid rgba(63, 71, 48, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.linear-opts__head h2 {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--linear-muted);
+}
+
+.linear-opts__head p {
+  margin: 0.3rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--linear-ink);
+  font-weight: 550;
+}
+
+.linear-opts__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.linear-opts__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.linear-opts__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.linear-opts__label span {
+  font-size: 0.95rem;
+  font-weight: 750;
+  color: var(--linear-olive);
+}
+
+.linear-opts__label i {
+  font-style: normal;
+  margin-left: 0.15rem;
+  color: #8a6a3a;
+}
+
+.linear-opts__label em {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--linear-muted);
+  white-space: nowrap;
+}
+
+.linear-opts__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.linear-opts__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(63, 71, 48, 0.18);
+  background: rgba(243, 240, 232, 0.9);
+  color: var(--linear-ink);
+  font-size: 0.86rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.linear-opts__chip small {
+  font-size: 0.72rem;
+  font-weight: 750;
+  color: var(--linear-olive);
+}
+
+.linear-opts__chip.is-on {
+  background: var(--linear-olive);
+  border-color: var(--linear-olive);
+  color: var(--linear-on-olive);
+}
+
+.linear-opts__chip.is-on small {
+  color: rgba(246, 243, 236, 0.85);
+}
+
+.linear-opts__chip:hover:not(.is-on) {
+  border-color: rgba(63, 71, 48, 0.35);
+  background: #ebe6d8;
+}
+
+.linear-opts__multi {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.linear-opts__multi-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.85rem;
+  background: rgba(232, 227, 214, 0.7);
+  border: 1px solid rgba(63, 71, 48, 0.1);
+}
+
+.linear-opts__multi-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.linear-opts__multi-copy strong {
+  font-size: 0.88rem;
+  font-weight: 750;
+  color: var(--linear-ink);
+}
+
+.linear-opts__multi-copy span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--linear-olive);
+}
+
+.linear-opts__stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.linear-opts__stepper button {
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 999px;
+  border: 0;
+  background: var(--linear-olive);
+  color: var(--linear-on-olive);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.linear-opts__stepper button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.linear-opts__stepper button:hover:not(:disabled) {
+  background: var(--linear-olive-mid);
+}
+
+.linear-opts__stepper em {
+  font-style: normal;
+  min-width: 1.1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--linear-ink);
+}
+
+.linear-opts__total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.85rem;
+  background: rgba(63, 71, 48, 0.08);
+  border: 1px solid rgba(63, 71, 48, 0.12);
+}
+
+.linear-opts__total span {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--linear-muted);
+}
+
+.linear-opts__total strong {
+  font-size: 1.05rem;
+  font-weight: 850;
+  color: var(--linear-olive);
+}
+
+.linear-opts__total.is-live {
+  background: rgba(63, 71, 48, 0.12);
+  border-color: rgba(63, 71, 48, 0.22);
+}
+
+.linear-detail__add {
+  margin-top: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.9rem 1.15rem;
+  background: linear-gradient(135deg, #4a5338, #3f4730);
+  color: #f6f3ec;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(63, 71, 48, 0.28);
+}
+
+.linear-detail__add:hover {
+  filter: brightness(1.06);
 }
 
 .linear-detail__block {
@@ -701,4 +954,19 @@
   .linear-item--shift {
     transform: none;
   }
+}
+
+/* Sepet — Garson çağır (zeytin) */
+.public-menu-page[data-theme-menu='linear'] .siparis-cart-sheet__waiter {
+  background: linear-gradient(135deg, #4a5338, #3f4730);
+  box-shadow: 0 10px 24px rgba(63, 71, 48, 0.32);
+}
+
+.public-menu-page[data-theme-menu='linear'] .siparis-cart-sheet__waiter.is-done {
+  background: #2c3220;
+  box-shadow: none;
+}
+
+.public-menu-page[data-theme-menu='linear'] .siparis-cart-sheet__waiter.is-error {
+  background: #7a3b32;
 }
