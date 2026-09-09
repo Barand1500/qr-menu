@@ -1,6 +1,7 @@
 export type BasketballWelcomeStrings = {
   chooseLanguage: string;
   languageHint: string;
+  continue: string;
   challengeEyebrow: string;
   challengeTitle: string;
   challengeText: string;
@@ -16,8 +17,9 @@ export type BasketballWelcomeStrings = {
 
 const STRINGS: Record<string, BasketballWelcomeStrings> = {
   tr: {
-    chooseLanguage: 'Oyuna hangi dilde başlayalım?',
+    chooseLanguage: 'Dil seçiniz',
     languageHint: 'Seçtiğin dil menüde de kullanılacak.',
+    continue: 'Devam et',
     challengeEyebrow: 'MENÜ MÜCADELESİ',
     challengeTitle: 'Menüyü görmek mi istiyorsun?',
     challengeText: 'O zaman yeteneğinle bunu hak et. Topu aşağı çek, potayı hedefle ve bırak!',
@@ -31,8 +33,9 @@ const STRINGS: Record<string, BasketballWelcomeStrings> = {
     retry: 'Bir daha dene!',
   },
   en: {
-    chooseLanguage: 'Which language should we play in?',
+    chooseLanguage: 'Choose language',
     languageHint: 'Your selection will also be used in the menu.',
+    continue: 'Continue',
     challengeEyebrow: 'MENU CHALLENGE',
     challengeTitle: 'Want to see the menu?',
     challengeText: 'Then earn it with your skill. Pull the ball down, aim for the hoop and release!',
@@ -46,8 +49,9 @@ const STRINGS: Record<string, BasketballWelcomeStrings> = {
     retry: 'Try again!',
   },
   ru: {
-    chooseLanguage: 'На каком языке будем играть?',
+    chooseLanguage: 'Выберите язык',
     languageHint: 'Выбранный язык будет использоваться и в меню.',
+    continue: 'Продолжить',
     challengeEyebrow: 'ИСПЫТАНИЕ МЕНЮ',
     challengeTitle: 'Хотите увидеть меню?',
     challengeText: 'Тогда заслужите это мастерством. Потяните мяч вниз, прицельтесь и отпустите!',
@@ -61,8 +65,9 @@ const STRINGS: Record<string, BasketballWelcomeStrings> = {
     retry: 'Ещё раз!',
   },
   ar: {
-    chooseLanguage: 'بأي لغة نبدأ اللعب؟',
+    chooseLanguage: 'اختر اللغة',
     languageHint: 'سيتم استخدام اللغة المختارة في القائمة أيضاً.',
+    continue: 'متابعة',
     challengeEyebrow: 'تحدي القائمة',
     challengeTitle: 'هل تريد رؤية القائمة؟',
     challengeText: 'إذن استحقها بمهارتك. اسحب الكرة إلى الأسفل، صوب نحو السلة ثم اتركها!',
@@ -76,8 +81,9 @@ const STRINGS: Record<string, BasketballWelcomeStrings> = {
     retry: 'حاول مرة أخرى!',
   },
   de: {
-    chooseLanguage: 'In welcher Sprache spielen wir?',
+    chooseLanguage: 'Sprache wählen',
     languageHint: 'Diese Sprache wird auch im Menü verwendet.',
+    continue: 'Weiter',
     challengeEyebrow: 'MENÜ-CHALLENGE',
     challengeTitle: 'Du möchtest das Menü sehen?',
     challengeText: 'Dann verdiene es mit Geschick. Zieh den Ball nach unten, ziele auf den Korb und lass los!',
@@ -91,8 +97,9 @@ const STRINGS: Record<string, BasketballWelcomeStrings> = {
     retry: 'Noch einmal!',
   },
   fr: {
-    chooseLanguage: 'Dans quelle langue jouons-nous ?',
+    chooseLanguage: 'Choisir la langue',
     languageHint: 'Cette langue sera aussi utilisée dans le menu.',
+    continue: 'Continuer',
     challengeEyebrow: 'DÉFI DU MENU',
     challengeTitle: 'Tu veux voir le menu ?',
     challengeText: 'Alors mérite-le avec ton talent. Tire le ballon vers le bas, vise le panier et relâche !',
@@ -106,8 +113,9 @@ const STRINGS: Record<string, BasketballWelcomeStrings> = {
     retry: 'Réessaie !',
   },
   es: {
-    chooseLanguage: '¿En qué idioma jugamos?',
+    chooseLanguage: 'Elige el idioma',
     languageHint: 'Ese idioma también se usará en el menú.',
+    continue: 'Continuar',
     challengeEyebrow: 'RETO DEL MENÚ',
     challengeTitle: '¿Quieres ver el menú?',
     challengeText: 'Entonces gánatelo con tu habilidad. Tira del balón hacia abajo, apunta y suelta.',

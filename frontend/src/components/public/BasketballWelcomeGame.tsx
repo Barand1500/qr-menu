@@ -23,7 +23,7 @@ type Props = {
 type Phase = 'language' | 'intro' | 'game' | 'success';
 type Point = { x: number; y: number };
 
-const BALL_SIZE = 74;
+const BALL_SIZE_FALLBACK = 74;
 const GRAVITY = 1250;
 
 function makeAudio() {
@@ -87,10 +87,11 @@ export default function BasketballWelcomeGame({
   const scoredShotRef = useRef(false);
 
   const activeLanguages = languages.length ? languages : [{ code: 'tr', name: 'Türkçe' }];
-  const validInitial = activeLanguages.some((lang) => lang.code === initialLang)
-    ? initialLang
-    : activeLanguages[0].code;
-  const [lang, setLang] = useState(validInitial);
+  const preferred =
+    activeLanguages.find((lang) => lang.code === 'tr')?.code ||
+    activeLanguages.find((lang) => lang.code === initialLang)?.code ||
+    activeLanguages[0].code;
+  const [lang, setLang] = useState(preferred);
   const [phase, setPhase] = useState<Phase>('language');
   const [scores, setScores] = useState(0);
   const [attempts, setAttempts] = useState(0);
@@ -103,6 +104,11 @@ export default function BasketballWelcomeGame({
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
+
+  useEffect(() => {
+    onLanguageChange(preferred);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const confetti = useMemo(
     () =>
@@ -124,6 +130,14 @@ export default function BasketballWelcomeGame({
     },
     [soundOn]
   );
+
+  const ballSizeRef = useRef(BALL_SIZE_FALLBACK);
+
+  const getBallSize = useCallback(() => {
+    const size = ballRef.current?.offsetWidth || BALL_SIZE_FALLBACK;
+    ballSizeRef.current = size;
+    return size;
+  }, []);
 
   const positionBall = useCallback((point: Point) => {
     ballPosRef.current = point;
@@ -167,10 +181,14 @@ export default function BasketballWelcomeGame({
     if (!stage || !hoop) return;
     const width = stage.clientWidth;
     const height = stage.clientHeight;
-    const start = { x: width / 2 - BALL_SIZE / 2, y: height - BALL_SIZE - Math.max(42, height * 0.07) };
+    const ballSize = getBallSize();
+    const start = {
+      x: width / 2 - ballSize / 2,
+      y: height - ballSize - Math.max(42, height * 0.07),
+    };
     ballStartRef.current = start;
     if (!shotActiveRef.current && !draggingRef.current) positionBall(start);
-  }, [positionBall]);
+  }, [getBallSize, positionBall]);
 
   useEffect(() => {
     if (phase !== 'game') return;
@@ -202,23 +220,32 @@ export default function BasketballWelcomeGame({
 
   useGSAP(
     () => {
-      if (phase === 'language') {
+      if (phase !== 'language') return;
+      const card = rootRef.current?.querySelector('.basket-welcome__language-card');
+      const langs = rootRef.current?.querySelectorAll('.basket-welcome__lang');
+      if (!card) return;
+      gsap.fromTo(
+        card,
+        { opacity: 0, y: 24, scale: 0.98 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: 'power3.out', clearProps: 'transform' }
+      );
+      if (langs?.length) {
         gsap.fromTo(
-          '.basket-welcome__language-card',
-          { opacity: 0, y: 28, scale: 0.96 },
-          { opacity: 1, y: 0, scale: 1, duration: 0.75, ease: 'power3.out' }
+          langs,
+          { opacity: 0, y: 12 },
+          {
+            opacity: 1,
+            y: 0,
+            stagger: 0.05,
+            duration: 0.35,
+            delay: 0.12,
+            ease: 'power2.out',
+            clearProps: 'all',
+          }
         );
-        gsap.from('.basket-welcome__lang', {
-          opacity: 0,
-          y: 14,
-          stagger: 0.07,
-          duration: 0.45,
-          delay: 0.18,
-          ease: 'power2.out',
-        });
       }
     },
-    { scope: rootRef, dependencies: [phase] }
+    { scope: rootRef, dependencies: [phase, activeLanguages.length] }
   );
 
   const chooseLanguage = (code: string) => {
@@ -246,19 +273,27 @@ export default function BasketballWelcomeGame({
   useEffect(() => {
     if (phase !== 'intro' || !introRef.current) return;
     const ctx = gsap.context(() => {
+      const nodes = introRef.current?.querySelectorAll('.basket-welcome__intro-anim') ?? [];
       gsap.fromTo(
         introRef.current,
-        { opacity: 0, scale: 0.9, y: 24 },
-        { opacity: 1, scale: 1, y: 0, duration: 0.7, ease: 'back.out(1.35)' }
+        { opacity: 0, scale: 0.94, y: 18 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.55, ease: 'power3.out', clearProps: 'transform' }
       );
-      gsap.from('.basket-welcome__intro > *', {
-        opacity: 0,
-        y: 15,
-        stagger: 0.09,
-        duration: 0.45,
-        delay: 0.12,
-        ease: 'power2.out',
-      });
+      if (nodes.length) {
+        gsap.fromTo(
+          nodes,
+          { opacity: 0, y: 12 },
+          {
+            opacity: 1,
+            y: 0,
+            stagger: 0.08,
+            duration: 0.4,
+            delay: 0.1,
+            ease: 'power2.out',
+            clearProps: 'all',
+          }
+        );
+      }
     }, introRef);
     return () => ctx.revert();
   }, [phase]);
@@ -341,18 +376,19 @@ export default function BasketballWelcomeGame({
         y: ballPosRef.current.y + velocityRef.current.y * dt,
       };
 
+      const ballSize = ballSizeRef.current || getBallSize();
       const stageRect = stage.getBoundingClientRect();
       const hoopRect = hoop.getBoundingClientRect();
-      const rimY = hoopRect.top - stageRect.top + 88;
-      const rimLeft = hoopRect.left - stageRect.left + hoopRect.width / 2 - 46;
-      const rimRight = hoopRect.left - stageRect.left + hoopRect.width / 2 + 46;
-      const centerX = next.x + BALL_SIZE / 2;
-      const centerY = next.y + BALL_SIZE / 2;
+      const rimY = hoopRect.top - stageRect.top + hoopRect.height * 0.5;
+      const rimLeft = hoopRect.left - stageRect.left + hoopRect.width * 0.22;
+      const rimRight = hoopRect.left - stageRect.left + hoopRect.width * 0.78;
+      const centerX = next.x + ballSize / 2;
+      const centerY = next.y + ballSize / 2;
 
       if (
         !scoredShotRef.current &&
         velocityRef.current.y > 0 &&
-        previousY + BALL_SIZE / 2 <= rimY &&
+        previousY + ballSize / 2 <= rimY &&
         centerY >= rimY &&
         centerX > rimLeft &&
         centerX < rimRight
@@ -360,7 +396,7 @@ export default function BasketballWelcomeGame({
         registerScore();
       }
 
-      const wall = stage.clientWidth - BALL_SIZE;
+      const wall = stage.clientWidth - ballSize;
       if (next.x < 0 || next.x > wall) {
         next.x = Math.max(0, Math.min(wall, next.x));
         velocityRef.current.x *= -0.66;
@@ -386,7 +422,7 @@ export default function BasketballWelcomeGame({
       animationRef.current = requestAnimationFrame(tick);
     };
     animationRef.current = requestAnimationFrame(tick);
-  }, [playSound, registerScore, resetBall]);
+  }, [getBallSize, playSound, registerScore, resetBall]);
 
   const onPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (shotActiveRef.current || phase !== 'game') return;
@@ -462,24 +498,26 @@ export default function BasketballWelcomeGame({
               >
                 <LanguageFlag code={language.code} size={25} />
                 <span>{language.name}</span>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4 opacity-40" />
               </button>
             ))}
           </div>
           <button type="button" className="basket-welcome__primary" onClick={startIntro}>
-            {ui.start}<ChevronRight className="w-5 h-5" />
+            {ui.continue}
+            <ChevronRight className="w-5 h-5" />
           </button>
         </section>
       )}
 
       {phase === 'intro' && (
         <section ref={introRef} className="basket-welcome__intro">
-          <span className="basket-welcome__intro-eyebrow">{ui.challengeEyebrow}</span>
-          <div className="basket-welcome__mini-hoop" aria-hidden><span /></div>
-          <h1>{ui.challengeTitle}</h1>
-          <p>{ui.challengeText}</p>
-          <button type="button" className="basket-welcome__primary" onClick={startGame}>
-            {ui.start}<ChevronRight className="w-5 h-5" />
+          <span className="basket-welcome__intro-eyebrow basket-welcome__intro-anim">{ui.challengeEyebrow}</span>
+          <div className="basket-welcome__mini-hoop basket-welcome__intro-anim" aria-hidden><span /></div>
+          <h1 className="basket-welcome__intro-anim">{ui.challengeTitle}</h1>
+          <p className="basket-welcome__intro-anim">{ui.challengeText}</p>
+          <button type="button" className="basket-welcome__primary basket-welcome__intro-anim" onClick={startGame}>
+            {ui.start}
+            <ChevronRight className="w-5 h-5" />
           </button>
         </section>
       )}

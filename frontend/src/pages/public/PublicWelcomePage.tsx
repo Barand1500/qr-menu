@@ -392,12 +392,12 @@ function PublicWelcomePageInner({
 
   if (data.theme === 'basketball') {
     return (
-      <div className={`welcome-scene ${entering ? 'welcome-scene--exit' : ''}`}>
+      <div className={`basket-welcome-host${entering ? ' basket-welcome-host--exit' : ''}`}>
         <GeoCheckInBridge slug={slug} masa={tableNo} grup={groupSlug} coords={coords} />
         <BasketballWelcomeGame
           restaurant={data.restaurant}
           languages={data.languages}
-          initialLang={selectedLang}
+          initialLang="tr"
           config={data.basketballConfig}
           onLanguageChange={(lang) => {
             setSelectedLang(lang);
