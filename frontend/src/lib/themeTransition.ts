@@ -41,11 +41,11 @@ export function playThemeFlip(opts: {
   const cx = window.innerWidth / 2;
   const cy = window.innerHeight / 2;
 
-  // Header’da light’ta Ay, dark’ta Güneş gösteriliyor
+  // Başta header’daki ikon (light→Ay, dark→Güneş); sonda gidilen tema (gece→Ay, gündüz→Güneş)
   const startSvg = from === 'light' ? MOON_SVG : SUN_SVG;
-  const endSvg = to === 'light' ? MOON_SVG : SUN_SVG;
+  const endSvg = to === 'dark' ? MOON_SVG : SUN_SVG;
   const startColor = from === 'light' ? 'var(--admin-accent, #64748b)' : '#fbbf24';
-  const endColor = to === 'light' ? '#94a3b8' : '#fbbf24';
+  const endColor = to === 'dark' ? '#94a3b8' : '#fbbf24';
 
   const root = document.createElement('div');
   root.className = 'theme-flip';
@@ -78,8 +78,8 @@ export function playThemeFlip(opts: {
     scale: 0.4,
     background:
       to === 'dark'
-        ? 'radial-gradient(circle, rgba(251,191,36,0.38) 0%, transparent 68%)'
-        : 'radial-gradient(circle, rgba(245,158,11,0.3) 0%, transparent 68%)',
+        ? 'radial-gradient(circle, rgba(148,163,184,0.35) 0%, transparent 68%)'
+        : 'radial-gradient(circle, rgba(251,191,36,0.38) 0%, transparent 68%)',
   });
   gsap.set(orb, {
     left: startX,
