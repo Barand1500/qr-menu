@@ -1,12 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ChevronLeft, ChevronRight, Flame, Star } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Flame, Plus, Star } from 'lucide-react';
 import { formatMoney, imageUrl } from '@/lib/api';
 import MenuColorModeToggle from '@/components/public/MenuColorModeToggle';
 import TableServiceButtons from '@/components/public/TableServiceButtons';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
+import LuxuryProductOptions from '@/components/public/luxury/LuxuryProductOptions';
 import { menuProductPath } from '@/lib/menuPaths';
 import type { MenuColorMode } from '@/lib/menuColorMode';
+import type { ProductOptionGroup, SelectionMap } from '@/lib/productOptions';
+import { useSiparisCart } from '@/hooks/useSiparisCart';
 import { gsap, prefersReducedMotion, useGSAP } from '@/lib/gsapSetup';
 
 type Product = {
@@ -23,7 +26,13 @@ type Product = {
   features: string[];
   group: { id: number; name: string };
   restaurant: { name: string };
-  menuFeatures?: { tableService?: boolean };
+  menuFeatures?: {
+    tableService?: boolean;
+    luxuryCart?: boolean;
+    luxuryVariants?: boolean;
+  };
+  optionGroups?: ProductOptionGroup[];
+  imageUrl?: string | null;
 };
 
 type Related = {
@@ -55,15 +64,34 @@ export default function LuxuryProductPage({
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
+  const addBtnRef = useRef<HTMLButtonElement>(null);
   const [imgIdx, setImgIdx] = useState(0);
   const touchX = useRef<number | null>(null);
   const gallery = galleryImages.length > 0 ? galleryImages : [];
   const multi = gallery.length > 1;
   const hero = gallery[imgIdx] || gallery[0];
+  const variantsOn = product.menuFeatures?.luxuryVariants !== false;
+  const cartEnabled = product.menuFeatures?.luxuryCart === true;
+  const optionGroups = variantsOn ? product.optionGroups || [] : [];
+  const { addItem, setSheetOpen, enabled: cartCtxOn } = useSiparisCart();
+  const showCart = cartEnabled && cartCtxOn;
+
+  const [unitPrice, setUnitPrice] = useState(product.price);
+  const [optionLabel, setOptionLabel] = useState('');
+
+  const onOptionsChange = useCallback(
+    (next: { unitPrice: number; selections: SelectionMap; label: string }) => {
+      setUnitPrice(next.unitPrice);
+      setOptionLabel(next.label);
+    },
+    []
+  );
 
   useEffect(() => {
     setImgIdx(0);
-  }, [product.id]);
+    setUnitPrice(product.price);
+    setOptionLabel('');
+  }, [product.id, product.price]);
 
   useGSAP(
     () => {
@@ -99,8 +127,24 @@ export default function LuxuryProductPage({
     setImgIdx(((next % gallery.length) + gallery.length) % gallery.length);
   }
 
+  function onAdd() {
+    const name = optionLabel ? `${product.name} (${optionLabel})` : product.name;
+    addItem(
+      {
+        productId: product.id,
+        name,
+        price: optionGroups.length ? unitPrice : product.price,
+        currency: product.currency,
+        imageUrl: gallery[0] || product.imageUrl || null,
+        calories: product.calories ?? null,
+      },
+      { qty: 1, fromEl: addBtnRef.current }
+    );
+    setSheetOpen(true);
+  }
+
   return (
-    <div className="lux-detail" ref={rootRef}>
+    <div className={`lux-detail${showCart ? ' lux-detail--cart' : ''}`} ref={rootRef}>
       <div className="lux-detail__bar lux-detail__reveal">
         <button type="button" className="lux-detail__back" onClick={onBack} aria-label="Geri">
           <ArrowLeft className="w-5 h-5" />
@@ -170,7 +214,10 @@ export default function LuxuryProductPage({
           <p className="luxury-eyebrow lux-detail__reveal">{product.group.name}</p>
           <h1 className="lux-detail__title lux-detail__reveal">{product.name}</h1>
           <p className="lux-detail__price lux-detail__reveal">
-            {formatMoney(product.price, product.currency)}
+            {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
+            {optionGroups.length > 0 ? (
+              <span className="lux-detail__price-hint">seçime göre</span>
+            ) : null}
           </p>
 
           {(product.isRecommended || (product.calories != null && product.calories > 0)) && (
@@ -190,6 +237,29 @@ export default function LuxuryProductPage({
 
           {product.description ? (
             <p className="lux-detail__desc lux-detail__reveal">{product.description}</p>
+          ) : null}
+
+          {optionGroups.length > 0 ? (
+            <LuxuryProductOptions
+              key={product.id}
+              groups={optionGroups}
+              basePrice={product.price}
+              currency={product.currency}
+              onChange={onOptionsChange}
+            />
+          ) : null}
+
+          {showCart ? (
+            <button
+              ref={addBtnRef}
+              type="button"
+              className="lux-detail__add lux-detail__reveal"
+              onClick={onAdd}
+            >
+              <Plus className="w-4 h-4" strokeWidth={2.5} />
+              Sepete ekle ·{' '}
+              {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
+            </button>
           ) : null}
 
           {product.ingredients ? (

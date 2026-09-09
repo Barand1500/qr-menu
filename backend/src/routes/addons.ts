@@ -40,6 +40,12 @@ import {
   type AliveThemeConfig,
 } from '../lib/menu-alive-config.js';
 import {
+  MENU_LUXURY_CONFIG_KEY,
+  parseLuxuryThemeConfig,
+  serializeLuxuryThemeConfig,
+  type LuxuryThemeConfig,
+} from '../lib/menu-luxury-config.js';
+import {
   WELCOME_BASKETBALL_CONFIG_KEY,
   parseWelcomeBasketballConfig,
   serializeWelcomeBasketballConfig,
@@ -74,6 +80,7 @@ router.get('/', async (req, res) => {
     animasyonRow,
     sadeRow,
     aliveRow,
+    luxuryRow,
     basketballRow,
     cupsRow,
   ] = await Promise.all([
@@ -102,6 +109,11 @@ router.get('/', async (req, res) => {
     }),
     prisma.setting.findUnique({
       where: {
+        restaurantId_key: { restaurantId: restaurantId!, key: MENU_LUXURY_CONFIG_KEY },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
         restaurantId_key: { restaurantId: restaurantId!, key: WELCOME_BASKETBALL_CONFIG_KEY },
       },
     }),
@@ -119,6 +131,7 @@ router.get('/', async (req, res) => {
     animasyonConfig: parseAnimasyonThemeConfig(animasyonRow?.value),
     sadeConfig: parseSadeThemeConfig(sadeRow?.value),
     aliveConfig: parseAliveThemeConfig(aliveRow?.value),
+    luxuryConfig: parseLuxuryThemeConfig(luxuryRow?.value),
     basketballConfig: parseWelcomeBasketballConfig(basketballRow?.value),
     cupsConfig: parseWelcomeCupsConfig(cupsRow?.value),
     products: ADDON_PRODUCTS.map((p) => {
@@ -300,6 +313,28 @@ router.patch('/menu-alive/config', async (req, res) => {
     },
     update: { value },
     create: { restaurantId: restaurantId!, key: MENU_ALIVE_CONFIG_KEY, value },
+  });
+
+  res.json({ ok: true, config: parsed });
+});
+
+router.patch('/menu-luxury/config', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const owned = await ownsAddon(restaurantId!, 'menu-luxury');
+  if (!owned) {
+    return res.status(403).json({ message: 'Önce Lüks tema eklentisini satın alın' });
+  }
+
+  const body = (req.body || {}) as Partial<LuxuryThemeConfig>;
+  const parsed = parseLuxuryThemeConfig(JSON.stringify(body));
+  const value = serializeLuxuryThemeConfig(parsed);
+
+  await prisma.setting.upsert({
+    where: {
+      restaurantId_key: { restaurantId: restaurantId!, key: MENU_LUXURY_CONFIG_KEY },
+    },
+    update: { value },
+    create: { restaurantId: restaurantId!, key: MENU_LUXURY_CONFIG_KEY, value },
   });
 
   res.json({ ok: true, config: parsed });

@@ -690,6 +690,50 @@
   color: #6b6560;
 }
 
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-opts {
+  border-top-color: rgba(168, 135, 63, 0.22);
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-opts__head h2 {
+  color: #a8873f;
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-opts__head p,
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-opts__label em,
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-opts__total span,
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-detail__price-hint {
+  color: #6b6560;
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-opts__label span,
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-opts__multi-copy strong,
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-opts__stepper em {
+  color: #2c2824;
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-opts__chip {
+  background: rgba(255, 252, 247, 0.9);
+  border-color: rgba(168, 135, 63, 0.28);
+  color: #2c2824;
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-opts__chip small,
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-opts__multi-copy span,
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-opts__total strong {
+  color: #a8873f;
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-opts__multi-row,
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-opts__total {
+  background: rgba(255, 252, 247, 0.85);
+  border-color: rgba(168, 135, 63, 0.2);
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-opts__stepper button {
+  color: #8b6f32;
+  border-color: rgba(168, 135, 63, 0.4);
+}
+
 .public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .lux-detail__related-media {
   background: #ebe6dc;
   border-color: rgba(168, 135, 63, 0.22);

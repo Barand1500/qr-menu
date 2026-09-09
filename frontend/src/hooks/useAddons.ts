@@ -22,6 +22,10 @@ import {
   type AliveThemeConfig,
 } from '@/lib/menuAliveConfig';
 import {
+  DEFAULT_LUXURY_CONFIG,
+  type LuxuryThemeConfig,
+} from '@/lib/menuLuxuryConfig';
+import {
   DEFAULT_WELCOME_BASKETBALL_CONFIG,
   parseWelcomeBasketballConfig,
   type WelcomeBasketballConfig,
@@ -40,6 +44,7 @@ interface AddonsResponse {
   animasyonConfig?: AnimasyonThemeConfig;
   sadeConfig?: SadeThemeConfig;
   aliveConfig?: AliveThemeConfig;
+  luxuryConfig?: LuxuryThemeConfig;
   basketballConfig?: WelcomeBasketballConfig;
   cupsConfig?: WelcomeCupsConfig;
   products: AddonProduct[];
@@ -54,6 +59,7 @@ export function useAddons() {
     useState<AnimasyonThemeConfig>(DEFAULT_ANIMASYON_CONFIG);
   const [sadeConfig, setSadeConfig] = useState<SadeThemeConfig>(DEFAULT_SADE_CONFIG);
   const [aliveConfig, setAliveConfig] = useState<AliveThemeConfig>(DEFAULT_ALIVE_CONFIG);
+  const [luxuryConfig, setLuxuryConfig] = useState<LuxuryThemeConfig>(DEFAULT_LUXURY_CONFIG);
   const [basketballConfig, setBasketballConfig] = useState<WelcomeBasketballConfig>(
     DEFAULT_WELCOME_BASKETBALL_CONFIG
   );
@@ -71,6 +77,7 @@ export function useAddons() {
     if (res.animasyonConfig) setAnimasyonConfig(res.animasyonConfig);
     if (res.sadeConfig) setSadeConfig(res.sadeConfig);
     if (res.aliveConfig) setAliveConfig(res.aliveConfig);
+    if (res.luxuryConfig) setLuxuryConfig(res.luxuryConfig);
     if (res.basketballConfig) {
       setBasketballConfig(parseWelcomeBasketballConfig(res.basketballConfig));
     }
@@ -216,6 +223,15 @@ export function useAddons() {
     return res;
   }
 
+  async function setLuxuryThemeConfig(config: LuxuryThemeConfig) {
+    const res = await api<{ config: LuxuryThemeConfig }>('/api/admin/addons/menu-luxury/config', {
+      method: 'PATCH',
+      body: JSON.stringify(config),
+    });
+    setLuxuryConfig(res.config);
+    return res;
+  }
+
   async function setBasketballThemeConfig(config: WelcomeBasketballConfig) {
     const res = await api<{ config: WelcomeBasketballConfig }>(
       '/api/admin/addons/welcome-basketball/config',
@@ -246,6 +262,7 @@ export function useAddons() {
     animasyonConfig,
     sadeConfig,
     aliveConfig,
+    luxuryConfig,
     basketballConfig,
     cupsConfig,
     loading,
@@ -259,6 +276,7 @@ export function useAddons() {
     setAnimasyonThemeConfig,
     setSadeThemeConfig,
     setAliveThemeConfig,
+    setLuxuryThemeConfig,
     setBasketballThemeConfig,
     setCupsThemeConfig,
   };

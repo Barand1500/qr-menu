@@ -8,6 +8,7 @@ import LinearThemeSettingsModal from '@/components/LinearThemeSettingsModal';
 import AnimasyonThemeSettingsModal from '@/components/AnimasyonThemeSettingsModal';
 import SadeThemeSettingsModal from '@/components/SadeThemeSettingsModal';
 import AliveThemeSettingsModal from '@/components/AliveThemeSettingsModal';
+import LuxuryThemeSettingsModal from '@/components/LuxuryThemeSettingsModal';
 import BasketballThemeSettingsModal from '@/components/BasketballThemeSettingsModal';
 import CupsThemeSettingsModal from '@/components/CupsThemeSettingsModal';
 import {
@@ -23,6 +24,7 @@ import type { LinearThemeConfig } from '@/lib/menuLinearConfig';
 import type { AnimasyonThemeConfig } from '@/lib/menuAnimasyonConfig';
 import type { SadeThemeConfig } from '@/lib/menuSadeConfig';
 import type { AliveThemeConfig } from '@/lib/menuAliveConfig';
+import type { LuxuryThemeConfig } from '@/lib/menuLuxuryConfig';
 import { adminPath } from '@/lib/adminPath';
 
 interface ThemePickerPageProps {
@@ -45,6 +47,8 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
     setSadeThemeConfig,
     aliveConfig,
     setAliveThemeConfig,
+    luxuryConfig,
+    setLuxuryThemeConfig,
     basketballConfig,
     setBasketballThemeConfig,
     cupsConfig,
@@ -58,10 +62,12 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
   const [animasyonOpen, setAnimasyonOpen] = useState(false);
   const [sadeOpen, setSadeOpen] = useState(false);
   const [aliveOpen, setAliveOpen] = useState(false);
+  const [luxuryOpen, setLuxuryOpen] = useState(false);
   const [savingLinear, setSavingLinear] = useState(false);
   const [savingAnimasyon, setSavingAnimasyon] = useState(false);
   const [savingSade, setSavingSade] = useState(false);
   const [savingAlive, setSavingAlive] = useState(false);
+  const [savingLuxury, setSavingLuxury] = useState(false);
   const [basketballOpen, setBasketballOpen] = useState(false);
   const [savingBasketball, setSavingBasketball] = useState(false);
   const [cupsOpen, setCupsOpen] = useState(false);
@@ -159,6 +165,17 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
     }
   }
 
+  async function handleLuxurySave(config: LuxuryThemeConfig) {
+    setSavingLuxury(true);
+    try {
+      await setLuxuryThemeConfig(config);
+      setLuxuryOpen(false);
+      setMessage('Lüks tema ayarları kaydedildi.');
+    } finally {
+      setSavingLuxury(false);
+    }
+  }
+
   async function handleBasketballSave(config: typeof basketballConfig) {
     setSavingBasketball(true);
     try {
@@ -186,6 +203,7 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
     else if (theme.id === 'animasyon') setAnimasyonOpen(true);
     else if (theme.id === 'sade') setSadeOpen(true);
     else if (theme.id === 'alive') setAliveOpen(true);
+    else if (theme.id === 'luxury') setLuxuryOpen(true);
     else if (theme.id === 'basketball') setBasketballOpen(true);
     else if (theme.id === 'cups') setCupsOpen(true);
   }
@@ -197,7 +215,8 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
       theme.id === 'linear' ||
       theme.id === 'animasyon' ||
       theme.id === 'sade' ||
-      theme.id === 'alive'
+      theme.id === 'alive' ||
+      theme.id === 'luxury'
     );
   }
 
@@ -320,6 +339,13 @@ export default function ThemePickerPage({ kind, title, subtitle }: ThemePickerPa
             saving={savingAlive}
             onClose={() => setAliveOpen(false)}
             onSave={handleAliveSave}
+          />
+          <LuxuryThemeSettingsModal
+            open={luxuryOpen}
+            initial={luxuryConfig}
+            saving={savingLuxury}
+            onClose={() => setLuxuryOpen(false)}
+            onSave={handleLuxurySave}
           />
         </>
       ) : null}

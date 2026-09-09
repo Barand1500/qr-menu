@@ -98,9 +98,10 @@ interface MenuData {
       subhead: string;
       features: { icon: string; text: string }[];
     };
-    animasyon?: { cartEnabled?: boolean };
+    animasyon?: { cartEnabled?: boolean; variantsEnabled?: boolean };
     sade?: { cartEnabled?: boolean; variantsEnabled?: boolean };
     alive?: { cartEnabled?: boolean; variantsEnabled?: boolean };
+    luxury?: { cartEnabled?: boolean; variantsEnabled?: boolean };
   };
 }
 
@@ -499,11 +500,13 @@ function PublicMenuPageInner({
   const animasyonCartOn = menu.features?.animasyon?.cartEnabled !== false;
   const sadeCartOn = menu.features?.sade?.cartEnabled === true;
   const aliveCartOn = menu.features?.alive?.cartEnabled === true;
+  const luxuryCartOn = menu.features?.luxury?.cartEnabled === true;
   const cartTheme =
     isSiparis ||
     (isAnimasyon && animasyonCartOn) ||
     (isSade && sadeCartOn) ||
-    (isAlive && aliveCartOn);
+    (isAlive && aliveCartOn) ||
+    (isLuxury && luxuryCartOn);
   const hideColorToggle = isAnimasyon || isLinear;
   const menuAssistantOn = Boolean(menu.features?.menuAssistant);
   const assistantStyle = parseMenuAssistantStyle(menu.features?.menuAssistantStyle);
@@ -579,7 +582,7 @@ function PublicMenuPageInner({
           onSearchToggle={toggleSearch}
           showMobileSearch={isSiparis || isAnimasyon}
           extraIcons={
-          cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon || isSade || isAlive} /> : null
+          cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon || isSade || isAlive || isLuxury} /> : null
         }
           colorMode={hideColorToggle ? undefined : colorMode}
           onColorModeToggle={hideColorToggle ? undefined : toggleColorMode}
@@ -708,7 +711,7 @@ function PublicMenuPageInner({
         onSearchToggle={toggleSearch}
         showMobileSearch={isSiparis || isAnimasyon}
         extraIcons={
-          cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon || isSade || isAlive} /> : null
+          cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon || isSade || isAlive || isLuxury} /> : null
         }
         colorMode={hideColorToggle ? undefined : colorMode}
         onColorModeToggle={hideColorToggle ? undefined : toggleColorMode}

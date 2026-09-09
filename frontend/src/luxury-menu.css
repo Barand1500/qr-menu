@@ -225,6 +225,15 @@
   color: #c9a962;
 }
 
+.lux-detail__price-hint {
+  margin-left: 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9a9286;
+}
+
 .lux-detail__meta {
   display: flex;
   flex-wrap: wrap;
@@ -248,6 +257,252 @@
   font-size: 0.95rem;
   line-height: 1.65;
   color: #9a9286;
+}
+
+/* Varyant / ekstra — Lüks dil */
+.lux-opts {
+  margin-top: 0.55rem;
+  padding: 0.95rem 0 0.15rem;
+  border-top: 1px solid rgba(201, 169, 98, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.lux-opts__head h2 {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #c9a962;
+}
+
+.lux-opts__head p {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #9a9286;
+  font-weight: 500;
+}
+
+.lux-opts__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.lux-opts__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lux-opts__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.lux-opts__label span {
+  font-family: var(--lux-serif, Georgia, serif);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #f3eee4;
+}
+
+.lux-opts__label i {
+  font-style: normal;
+  margin-left: 0.15rem;
+  color: #c9a962;
+}
+
+.lux-opts__label em {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9a9286;
+  white-space: nowrap;
+}
+
+.lux-opts__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.lux-opts__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 169, 98, 0.28);
+  background: rgba(22, 20, 18, 0.65);
+  color: #f3eee4;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.lux-opts__chip small {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #c9a962;
+}
+
+.lux-opts__chip.is-on {
+  background: linear-gradient(135deg, #e8d5a3, #c9a962);
+  border-color: #c9a962;
+  color: #0c0b0a;
+}
+
+.lux-opts__chip.is-on small {
+  color: #5a4a22;
+}
+
+.lux-opts__chip:hover:not(.is-on) {
+  border-color: rgba(201, 169, 98, 0.55);
+  background: rgba(201, 169, 98, 0.1);
+}
+
+.lux-opts__multi {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lux-opts__multi-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(22, 20, 18, 0.55);
+  border: 1px solid rgba(201, 169, 98, 0.16);
+}
+
+.lux-opts__multi-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.lux-opts__multi-copy strong {
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: #f3eee4;
+}
+
+.lux-opts__multi-copy span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #c9a962;
+}
+
+.lux-opts__stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.lux-opts__stepper button {
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 169, 98, 0.35);
+  background: transparent;
+  color: #e8d5a3;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lux-opts__stepper button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.lux-opts__stepper button:hover:not(:disabled) {
+  background: rgba(201, 169, 98, 0.16);
+}
+
+.lux-opts__stepper em {
+  font-style: normal;
+  min-width: 1.1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #f3eee4;
+}
+
+.lux-opts__total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.75rem;
+  background: rgba(201, 169, 98, 0.08);
+  border: 1px solid rgba(201, 169, 98, 0.2);
+}
+
+.lux-opts__total span {
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9a9286;
+}
+
+.lux-opts__total strong {
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: #c9a962;
+}
+
+.lux-opts__total.is-live {
+  background: rgba(201, 169, 98, 0.14);
+  border-color: rgba(201, 169, 98, 0.4);
+}
+
+.lux-detail__add {
+  margin-top: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.9rem 1.2rem;
+  background: linear-gradient(135deg, #e8d5a3, #c9a962 55%, #a8873f);
+  color: #0c0b0a;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(201, 169, 98, 0.28);
+}
+
+.lux-detail__add:hover {
+  filter: brightness(1.05);
+}
+
+.lux-detail--cart {
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .lux-detail__block {
@@ -380,4 +635,22 @@
     margin-left: auto;
     margin-right: auto;
   }
+}
+
+/* Sepet — Garson çağır (şampanya / gold) */
+.public-menu-page[data-theme-menu='luxury'] .siparis-cart-sheet__waiter {
+  background: linear-gradient(135deg, #e8d5a3, #c9a962 55%, #a8873f);
+  color: #0c0b0a;
+  box-shadow: 0 10px 24px rgba(201, 169, 98, 0.35);
+}
+
+.public-menu-page[data-theme-menu='luxury'] .siparis-cart-sheet__waiter.is-done {
+  background: #8b6f32;
+  color: #f3eee4;
+  box-shadow: none;
+}
+
+.public-menu-page[data-theme-menu='luxury'] .siparis-cart-sheet__waiter.is-error {
+  background: #7a3b32;
+  color: #fff;
 }

@@ -8807,16 +8807,36 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   color: #2d5037;
 }
 
+.linear-settings__head--luxury {
+  background: linear-gradient(115deg, #161412 0%, #161412 48%, rgba(201, 169, 98, 0.28) 48%);
+  color: #f3eee4;
+}
+
+.linear-settings__head--luxury h2,
+.linear-settings__head--luxury p {
+  color: #f3eee4;
+}
+
+.linear-settings__head--luxury .linear-settings__eyebrow {
+  color: #c9a962;
+}
+
+.linear-settings__head--luxury .linear-settings__close {
+  color: #e8d5a3;
+}
+
 .sade-settings__body,
 .alive-settings__body,
-.animasyon-settings__body {
+.animasyon-settings__body,
+.luxury-settings__body {
   display: grid;
   gap: 0.65rem;
 }
 
 .sade-settings__hint,
 .alive-settings__hint,
-.animasyon-settings__hint {
+.animasyon-settings__hint,
+.luxury-settings__hint {
   margin: -0.2rem 0 0.55rem;
   font-size: 0.75rem;
   line-height: 1.45;

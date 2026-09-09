@@ -17,6 +17,7 @@ import LinearThemeSettingsModal from '@/components/LinearThemeSettingsModal';
 import AnimasyonThemeSettingsModal from '@/components/AnimasyonThemeSettingsModal';
 import SadeThemeSettingsModal from '@/components/SadeThemeSettingsModal';
 import AliveThemeSettingsModal from '@/components/AliveThemeSettingsModal';
+import LuxuryThemeSettingsModal from '@/components/LuxuryThemeSettingsModal';
 import { useAddons } from '@/hooks/useAddons';
 import MenuAssistantStylePicker from '@/components/MenuAssistantStylePicker';
 import type { AddonCategory, AddonProduct } from '@/addons';
@@ -25,6 +26,7 @@ import type { LinearThemeConfig } from '@/lib/menuLinearConfig';
 import type { AnimasyonThemeConfig } from '@/lib/menuAnimasyonConfig';
 import type { SadeThemeConfig } from '@/lib/menuSadeConfig';
 import type { AliveThemeConfig } from '@/lib/menuAliveConfig';
+import type { LuxuryThemeConfig } from '@/lib/menuLuxuryConfig';
 import { adminPath } from '@/lib/adminPath';
 
 type TabId = 'all' | 'welcome' | 'menu' | 'qr' | 'lang' | 'feature';
@@ -83,6 +85,8 @@ export default function ExtensionsHubPage() {
     setSadeThemeConfig,
     aliveConfig,
     setAliveThemeConfig,
+    luxuryConfig,
+    setLuxuryThemeConfig,
   } = useAddons();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = parseTab(searchParams.get('tab'));
@@ -94,10 +98,12 @@ export default function ExtensionsHubPage() {
   const [animasyonOpen, setAnimasyonOpen] = useState(false);
   const [sadeOpen, setSadeOpen] = useState(false);
   const [aliveOpen, setAliveOpen] = useState(false);
+  const [luxuryOpen, setLuxuryOpen] = useState(false);
   const [savingLinear, setSavingLinear] = useState(false);
   const [savingAnimasyon, setSavingAnimasyon] = useState(false);
   const [savingSade, setSavingSade] = useState(false);
   const [savingAlive, setSavingAlive] = useState(false);
+  const [savingLuxury, setSavingLuxury] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
 
   const list = useMemo(
@@ -178,6 +184,16 @@ export default function ExtensionsHubPage() {
       setAliveOpen(false);
     } finally {
       setSavingAlive(false);
+    }
+  }
+
+  async function handleLuxurySave(config: LuxuryThemeConfig) {
+    setSavingLuxury(true);
+    try {
+      await setLuxuryThemeConfig(config);
+      setLuxuryOpen(false);
+    } finally {
+      setSavingLuxury(false);
     }
   }
 
@@ -272,6 +288,27 @@ export default function ExtensionsHubPage() {
             variant="secondary"
             className="w-full"
             onClick={() => setAliveOpen(true)}
+          >
+            <Settings2 className="w-4 h-4" />
+            Tema ayarları
+          </Button>
+          <Link to={adminPath('startup', 'menu')} className="w-full">
+            <Button type="button" className="w-full">
+              <Sparkles className="w-4 h-4" />
+              Temalarda kullan
+            </Button>
+          </Link>
+        </div>
+      );
+    }
+    if (product.id === 'menu-luxury' && product.owned) {
+      return (
+        <div className="flex flex-col gap-2 w-full">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={() => setLuxuryOpen(true)}
           >
             <Settings2 className="w-4 h-4" />
             Tema ayarları
@@ -485,6 +522,13 @@ export default function ExtensionsHubPage() {
         saving={savingAlive}
         onClose={() => setAliveOpen(false)}
         onSave={handleAliveSave}
+      />
+      <LuxuryThemeSettingsModal
+        open={luxuryOpen}
+        initial={luxuryConfig}
+        saving={savingLuxury}
+        onClose={() => setLuxuryOpen(false)}
+        onSave={handleLuxurySave}
       />
       <SupportContactModal open={supportOpen} onClose={() => setSupportOpen(false)} />
     </div>

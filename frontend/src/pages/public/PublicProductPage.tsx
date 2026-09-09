@@ -60,6 +60,8 @@ interface ProductDetail {
     sadeVariants?: boolean;
     aliveCart?: boolean;
     aliveVariants?: boolean;
+    luxuryCart?: boolean;
+    luxuryVariants?: boolean;
   };
   optionGroups?: ProductOptionGroup[];
   group: { id: number; name: string };
@@ -235,23 +237,27 @@ function PublicProductPageInner() {
   }
 
   if (theme === 'luxury') {
+    const luxuryCartOn = product.menuFeatures?.luxuryCart === true;
     return (
-      <div
-        className="public-menu-page public-product-page public-product-page--luxury"
-        data-theme-menu="luxury"
-        data-color-mode={colorMode}
-      >
-        <LuxuryProductPage
-          product={product}
-          related={related}
-          galleryImages={galleryImages}
-          colorMode={colorMode}
-          toggleColorMode={toggleColorMode}
-          lang={lang}
-          slug={slug}
-          onBack={onBack}
-        />
-      </div>
+      <SiparisCartProvider slug={slug} enabled={luxuryCartOn}>
+        <div
+          className="public-menu-page public-product-page public-product-page--luxury"
+          data-theme-menu="luxury"
+          data-color-mode={colorMode}
+        >
+          <LuxuryProductPage
+            product={product}
+            related={related}
+            galleryImages={galleryImages}
+            colorMode={colorMode}
+            toggleColorMode={toggleColorMode}
+            lang={lang}
+            slug={slug}
+            onBack={onBack}
+          />
+          {luxuryCartOn ? <SiparisCartSheet lang={lang} /> : null}
+        </div>
+      </SiparisCartProvider>
     );
   }
 
