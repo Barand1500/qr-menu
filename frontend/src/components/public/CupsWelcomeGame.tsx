@@ -86,6 +86,7 @@ export default function CupsWelcomeGame({
 }: Props) {
   const config = parseWelcomeCupsConfig(rawConfig || DEFAULT_WELCOME_CUPS_CONFIG);
   const rootRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLDivElement>(null);
   const lockRef = useRef<HTMLDivElement>(null);
   const keyRef = useRef<HTMLImageElement>(null);
@@ -95,8 +96,9 @@ export default function CupsWelcomeGame({
   const keyCupRef = useRef(1);
   const positionsRef = useRef<number[]>([0, 1, 2]);
   const busyRef = useRef(false);
-  const gapRef = useRef(118);
+  const gapRef = useRef(120);
   const roundKickRef = useRef(0);
+  const runShuffleRef = useRef<() => void>(() => undefined);
 
   const activeLanguages = languages.length ? languages : [{ code: 'tr', name: 'Türkçe' }];
   const preferred =
@@ -110,10 +112,11 @@ export default function CupsWelcomeGame({
   const [showSkip, setShowSkip] = useState(config.skipEnabled && config.skipDelaySeconds === 0);
   const [soundOn, setSoundOn] = useState(config.soundEnabled);
   const [statusText, setStatusText] = useState('');
-  const [lifted, setLifted] = useState<boolean[]>([false, false, false]);
+  const [subText, setSubText] = useState('');
 
   const ui = cupsWelcomeUi(lang);
   const reduced = prefersReducedMotion();
+  const inGame = phase !== 'language';
 
   const playSound = useCallback(
     (kind: keyof ReturnType<typeof makeAudio>) => {
@@ -126,16 +129,13 @@ export default function CupsWelcomeGame({
 
   useEffect(() => {
     audioRef.current = makeAudio();
-  }, []);
-
-  useEffect(() => {
     return () => {
       timelineRef.current?.kill();
     };
   }, []);
 
   useEffect(() => {
-    if (phase === 'language' || !config.skipEnabled) return;
+    if (!inGame || !config.skipEnabled) return;
     if (config.skipDelaySeconds === 0) {
       setShowSkip(true);
       return;
@@ -143,13 +143,13 @@ export default function CupsWelcomeGame({
     setShowSkip(false);
     const timer = window.setTimeout(() => setShowSkip(true), config.skipDelaySeconds * 1000);
     return () => window.clearTimeout(timer);
-  }, [phase, config.skipEnabled, config.skipDelaySeconds]);
+  }, [inGame, config.skipEnabled, config.skipDelaySeconds]);
 
   const measureGap = useCallback(() => {
     const table = tableRef.current;
-    if (!table) return 118;
+    if (!table) return gapRef.current;
     const w = table.clientWidth;
-    gapRef.current = Math.max(88, Math.min(150, w * 0.28));
+    gapRef.current = Math.max(96, Math.min(160, w * 0.3));
     return gapRef.current;
   }, []);
 
@@ -158,25 +158,16 @@ export default function CupsWelcomeGame({
     CUP_IDS.forEach((id) => {
       const el = cupRefs.current[id];
       if (!el) return;
-      gsap.set(el, { x: slotX(positionsRef.current[id], gap), y: 0, rotate: 0, scale: 1 });
+      gsap.set(el, {
+        x: slotX(positionsRef.current[id], gap),
+        y: 0,
+        rotate: 0,
+        scale: 1,
+        opacity: 1,
+        clearProps: '',
+      });
     });
   }, [measureGap]);
-
-  const resetRoundVisual = useCallback(() => {
-    setLifted([false, false, false]);
-    positionsRef.current = [0, 1, 2];
-    keyCupRef.current = Math.floor(Math.random() * 3);
-    placeCupsInstant();
-    if (keyRef.current) {
-      gsap.set(keyRef.current, {
-        opacity: 0,
-        y: -80,
-        x: 0,
-        scale: 0.85,
-        rotate: -18,
-      });
-    }
-  }, [placeCupsInstant]);
 
   const finishUnlock = useCallback(() => {
     window.setTimeout(() => onComplete(lang), reduced ? 400 : 2400);
@@ -186,12 +177,11 @@ export default function CupsWelcomeGame({
     busyRef.current = true;
     setPhase('success');
     setStatusText(ui.unlockTitle);
+    setSubText(ui.unlockText);
     playSound('correct');
     playSound('unlock');
 
-    const tl = gsap.timeline({
-      onComplete: finishUnlock,
-    });
+    const tl = gsap.timeline({ onComplete: finishUnlock });
     timelineRef.current?.kill();
     timelineRef.current = tl;
 
@@ -199,137 +189,158 @@ export default function CupsWelcomeGame({
     const gap = gapRef.current;
     const keyEl = keyRef.current;
     const lockEl = lockRef.current;
-    const cupEl = cupRefs.current[keyCup];
 
-    if (cupEl) {
-      tl.to(cupEl, { y: -72, duration: 0.45, ease: 'power2.out' }, 0);
-    }
-    setLifted((prev) => prev.map((_, i) => i === keyCup));
+    CUP_IDS.forEach((id) => {
+      const el = cupRefs.current[id];
+      if (!el) return;
+      if (id === keyCup) tl.to(el, { y: -78, duration: 0.45, ease: 'power2.out' }, 0);
+      else tl.to(el, { y: -28, opacity: 0.55, duration: 0.35, ease: 'power2.out' }, 0);
+    });
 
     if (keyEl) {
       gsap.set(keyEl, {
         opacity: 1,
         x: slotX(positionsRef.current[keyCup], gap),
-        y: 18,
-        scale: 0.92,
+        y: 10,
+        scale: 0.95,
         rotate: 0,
       });
-      tl.to(
-        keyEl,
-        { y: -40, scale: 1.15, rotate: 12, duration: 0.55, ease: 'back.out(1.6)' },
-        0.2
-      );
-      tl.to(keyEl, { x: 0, y: -120, scale: 0.7, duration: 0.7, ease: 'power2.inOut' }, 0.75);
+      tl.to(keyEl, { y: -48, scale: 1.12, rotate: 10, duration: 0.55, ease: 'back.out(1.6)' }, 0.15);
+      tl.to(keyEl, { x: 0, y: -130, scale: 0.72, duration: 0.65, ease: 'power2.inOut' }, 0.7);
     }
 
     if (lockEl) {
-      tl.fromTo(
-        lockEl,
-        { opacity: 0.35, scale: 0.9 },
-        { opacity: 1, scale: 1.08, duration: 0.45, ease: 'power2.out' },
-        1.1
-      );
-      tl.to(lockEl, { rotateY: 110, opacity: 0, duration: 0.75, ease: 'power3.in' }, 1.45);
+      gsap.set(lockEl, { opacity: 1, scale: 1, rotateY: 0 });
+      tl.to(lockEl, { scale: 1.1, duration: 0.35, ease: 'power2.out' }, 1.05);
+      tl.to(lockEl, { rotateY: 105, opacity: 0, duration: 0.7, ease: 'power3.in' }, 1.35);
     }
 
-    tl.to('.cups-welcome__success-card', { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: 'back.out(1.4)' }, 1.5);
-  }, [finishUnlock, playSound, ui.unlockTitle]);
+    const card = stageRef.current?.querySelector('.cups-welcome__success-card');
+    if (card) {
+      tl.fromTo(
+        card,
+        { opacity: 0, y: 18, scale: 0.94 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: 'back.out(1.4)' },
+        1.45
+      );
+    }
+  }, [finishUnlock, playSound, ui.unlockText, ui.unlockTitle]);
 
   const runShuffle = useCallback(() => {
     setPhase('shuffle');
     setStatusText(ui.watchKey);
-    const gap = gapRef.current;
-    const dur = reduced ? 0.08 : SHUFFLE_DUR[config.shuffleSpeed];
+    setSubText(ui.lockedText);
+    const gap = measureGap();
+    placeCupsInstant();
+    const dur = reduced ? 0.1 : SHUFFLE_DUR[config.shuffleSpeed];
     const swaps = config.shuffleCount;
     const tl = gsap.timeline({
       onComplete: () => {
         busyRef.current = false;
         setPhase('guess');
         setStatusText(ui.findHint);
+        setSubText('');
+        placeCupsInstant();
       },
     });
     timelineRef.current?.kill();
     timelineRef.current = tl;
 
-    // Cover sequence: lift key-cup, absorb key, settle
     const keyCup = keyCupRef.current;
     const keyEl = keyRef.current;
     const coverCup = cupRefs.current[keyCup];
     const coverX = slotX(positionsRef.current[keyCup], gap);
 
     if (keyEl) {
-      gsap.set(keyEl, { opacity: 1, x: 0, y: -90, scale: 0.9, rotate: -20 });
-      playSound('drop');
-      tl.to(keyEl, { y: 22, rotate: 8, scale: 1, duration: reduced ? 0.2 : 0.7, ease: 'bounce.out' }, 0);
+      gsap.set(keyEl, { opacity: 1, x: 0, y: -100, scale: 0.92, rotate: -16 });
+      tl.add(() => playSound('drop'), 0);
+      tl.to(keyEl, { y: 8, rotate: 6, scale: 1, duration: reduced ? 0.25 : 0.75, ease: 'bounce.out' }, 0);
     }
 
     if (coverCup) {
-      tl.to(coverCup, { y: -54, duration: 0.35, ease: 'power2.out' }, reduced ? 0.15 : 0.75);
-      tl.to(coverCup, { x: 0, duration: 0.4, ease: 'power2.inOut' }, '-=0.1');
-      if (keyEl) {
-        tl.to(keyEl, { opacity: 0, scale: 0.6, duration: 0.2 }, '-=0.05');
-      }
+      tl.to(coverCup, { y: -58, duration: 0.35, ease: 'power2.out' }, reduced ? 0.2 : 0.8);
+      tl.to(coverCup, { x: 0, duration: 0.4, ease: 'power2.inOut' }, '-=0.08');
+      if (keyEl) tl.to(keyEl, { opacity: 0, scale: 0.55, duration: 0.18 }, '-=0.02');
       tl.add(() => playSound('cover'));
       tl.to(coverCup, { x: coverX, y: 0, duration: 0.45, ease: 'power2.inOut' });
     }
 
-    // Shuffle swaps
     for (let s = 0; s < swaps; s += 1) {
       let a = Math.floor(Math.random() * 3);
       let b = Math.floor(Math.random() * 3);
       while (b === a) b = Math.floor(Math.random() * 3);
 
-      const cupA = CUP_IDS.find((id) => positionsRef.current[id] === a)!;
-      const cupB = CUP_IDS.find((id) => positionsRef.current[id] === b)!;
+      const cupA = CUP_IDS.find((id) => positionsRef.current[id] === a);
+      const cupB = CUP_IDS.find((id) => positionsRef.current[id] === b);
+      if (cupA === undefined || cupB === undefined) continue;
       const elA = cupRefs.current[cupA];
       const elB = cupRefs.current[cupB];
       if (!elA || !elB) continue;
 
       const xA = slotX(a, gap);
       const xB = slotX(b, gap);
-      const at = tl.duration() + (s === 0 ? 0.15 : 0.02);
+      const at = tl.duration() + (s === 0 ? 0.12 : 0.02);
 
       tl.add(() => playSound('shuffle'), at);
       tl.to(elA, { x: xB, duration: dur, ease: 'power1.inOut' }, at);
       tl.to(elB, { x: xA, duration: dur, ease: 'power1.inOut' }, at);
-      tl.to(elA, { y: -22, duration: dur * 0.5, ease: 'sine.out', yoyo: true, repeat: 1 }, at);
-      tl.to(elB, { y: -22, duration: dur * 0.5, ease: 'sine.out', yoyo: true, repeat: 1 }, at);
+      tl.to(elA, { y: -24, duration: dur * 0.5, ease: 'sine.out', yoyo: true, repeat: 1 }, at);
+      tl.to(elB, { y: -24, duration: dur * 0.5, ease: 'sine.out', yoyo: true, repeat: 1 }, at);
       tl.add(() => {
         positionsRef.current[cupA] = b;
         positionsRef.current[cupB] = a;
       }, at + dur);
     }
-  }, [config.shuffleCount, config.shuffleSpeed, playSound, reduced, ui.findHint, ui.watchKey]);
+  }, [
+    config.shuffleCount,
+    config.shuffleSpeed,
+    measureGap,
+    placeCupsInstant,
+    playSound,
+    reduced,
+    ui.findHint,
+    ui.lockedText,
+    ui.watchKey,
+  ]);
+
+  runShuffleRef.current = runShuffle;
 
   const startRound = useCallback(() => {
     busyRef.current = true;
     timelineRef.current?.kill();
-    setLifted([false, false, false]);
     positionsRef.current = [0, 1, 2];
     keyCupRef.current = Math.floor(Math.random() * 3);
     setStatusText(ui.lockedTitle);
+    setSubText(ui.lockedText);
     roundKickRef.current += 1;
     setPhase('locked');
-  }, [ui.lockedTitle]);
+  }, [ui.lockedText, ui.lockedTitle]);
 
   useLayoutEffect(() => {
     if (phase !== 'locked') return;
     const kick = roundKickRef.current;
+    let raf = 0;
+    let cancelled = false;
 
     const begin = () => {
-      if (kick !== roundKickRef.current) return;
-      if (!cupRefs.current[0] || !cupRefs.current[1] || !cupRefs.current[2]) {
-        requestAnimationFrame(begin);
+      if (cancelled || kick !== roundKickRef.current) return;
+      if (!cupRefs.current[0] || !cupRefs.current[1] || !cupRefs.current[2] || !tableRef.current) {
+        raf = requestAnimationFrame(begin);
         return;
       }
 
-      resetRoundVisual();
-      measureGap();
+      if (keyRef.current) {
+        gsap.set(keyRef.current, { opacity: 0, x: 0, y: -80, scale: 0.85, rotate: -18 });
+      }
+      placeCupsInstant();
 
       const lockEl = lockRef.current;
+      const stageEl = stageRef.current;
+      if (stageEl) gsap.set(stageEl, { opacity: 1, visibility: 'visible' });
+
       const tl = gsap.timeline({
         onComplete: () => {
-          if (kick === roundKickRef.current) runShuffle();
+          if (!cancelled && kick === roundKickRef.current) runShuffleRef.current();
         },
       });
       timelineRef.current?.kill();
@@ -339,30 +350,32 @@ export default function CupsWelcomeGame({
         gsap.set(lockEl, { opacity: 1, scale: 1, rotateY: 0, x: 0 });
         tl.fromTo(
           lockEl,
-          { scale: 0.86, opacity: 0 },
-          { scale: 1, opacity: 1, duration: reduced ? 0.2 : 0.45, ease: 'back.out(1.5)' }
+          { scale: 0.88 },
+          { scale: 1, duration: reduced ? 0.2 : 0.45, ease: 'back.out(1.5)' }
         );
         if (!reduced) {
-          tl.to(lockEl, { x: -6, duration: 0.06, yoyo: true, repeat: 5, ease: 'power1.inOut' });
+          tl.to(lockEl, { x: -5, duration: 0.05, yoyo: true, repeat: 5, ease: 'power1.inOut' });
         }
-        tl.to(lockEl, { opacity: 0.4, scale: 0.92, duration: reduced ? 0.15 : 0.35 }, '+=0.1');
+        tl.to(lockEl, { opacity: 0.55, scale: 0.94, duration: reduced ? 0.12 : 0.3 }, '+=0.08');
       } else {
-        tl.to({}, { duration: 0.25 });
+        tl.to({}, { duration: 0.2 });
       }
     };
 
     begin();
-    // Only re-boot when a new round is requested (phase/round), not when callbacks recreate.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, round]);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [phase, round, placeCupsInstant, reduced]);
 
   const onWrong = useCallback(
     (picked: number) => {
       busyRef.current = true;
       setPhase('reveal');
       setStatusText(ui.wrongTitle);
+      setSubText(ui.wrongText);
       playSound('wrong');
-      setLifted([true, true, true]);
 
       const gap = gapRef.current;
       const keyCup = keyCupRef.current;
@@ -371,40 +384,35 @@ export default function CupsWelcomeGame({
       CUP_IDS.forEach((id) => {
         const el = cupRefs.current[id];
         if (!el) return;
-        gsap.to(el, {
-          y: -70,
-          duration: 0.4,
-          ease: 'power2.out',
-          delay: id * 0.05,
-        });
+        gsap.to(el, { y: -74, opacity: 1, duration: 0.4, ease: 'power2.out', delay: id * 0.04 });
       });
 
       if (keyEl) {
         gsap.set(keyEl, {
           opacity: 1,
           x: slotX(positionsRef.current[keyCup], gap),
-          y: 16,
+          y: 8,
           scale: 1,
           rotate: 0,
         });
         gsap.fromTo(
           keyEl,
-          { scale: 0.7, opacity: 0.4 },
-          { scale: 1.05, opacity: 1, duration: 0.45, ease: 'back.out(1.8)' }
+          { scale: 0.75 },
+          { scale: 1.06, duration: 0.45, ease: 'back.out(1.8)' }
         );
       }
 
       const wrongCup = cupRefs.current[picked];
       if (wrongCup && picked !== keyCup) {
-        gsap.fromTo(wrongCup, { x: '-=8' }, { x: '+=8', duration: 0.08, yoyo: true, repeat: 5 });
+        gsap.fromTo(wrongCup, { x: '-=7' }, { x: '+=7', duration: 0.07, yoyo: true, repeat: 5 });
       }
 
       window.setTimeout(() => {
         setRound((r) => r + 1);
         startRound();
-      }, reduced ? 700 : 1800);
+      }, reduced ? 700 : 1700);
     },
-    [playSound, reduced, startRound, ui.wrongTitle]
+    [playSound, reduced, startRound, ui.wrongText, ui.wrongTitle]
   );
 
   const onPickCup = (cupId: number) => {
@@ -416,17 +424,18 @@ export default function CupsWelcomeGame({
   const enterFromLanguage = () => {
     onLanguageChange(lang);
     const card = rootRef.current?.querySelector('.cups-welcome__language-card');
+    const go = () => startRound();
     if (!card || reduced) {
-      startRound();
+      go();
       return;
     }
     gsap.to(card, {
       opacity: 0,
-      y: -28,
-      scale: 0.96,
-      duration: 0.4,
+      y: -24,
+      scale: 0.97,
+      duration: 0.35,
       ease: 'power2.in',
-      onComplete: () => startRound(),
+      onComplete: go,
     });
   };
 
@@ -451,7 +460,15 @@ export default function CupsWelcomeGame({
         gsap.fromTo(
           langs,
           { opacity: 0, y: 10 },
-          { opacity: 1, y: 0, stagger: 0.05, duration: 0.32, delay: 0.1, ease: 'power2.out', clearProps: 'all' }
+          {
+            opacity: 1,
+            y: 0,
+            stagger: 0.05,
+            duration: 0.32,
+            delay: 0.1,
+            ease: 'power2.out',
+            clearProps: 'transform',
+          }
         );
       }
     },
@@ -460,11 +477,16 @@ export default function CupsWelcomeGame({
 
   useEffect(() => {
     const onResize = () => {
-      if (phase === 'guess' || phase === 'shuffle' || phase === 'locked') placeCupsInstant();
+      if (inGame) placeCupsInstant();
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [phase, placeCupsInstant]);
+  }, [inGame, placeCupsInstant]);
+
+  useLayoutEffect(() => {
+    if (!inGame) return;
+    placeCupsInstant();
+  }, [inGame, placeCupsInstant]);
 
   const logo = useMemo(
     () => (restaurant.logoUrl ? imageUrl(restaurant.logoUrl) : null),
@@ -481,10 +503,16 @@ export default function CupsWelcomeGame({
 
       <header className="cups-welcome__top">
         <div className="cups-welcome__brand">
-          {logo ? <img src={logo} alt="" className="cups-welcome__logo" /> : <KeyRound className="cups-welcome__logo-fallback" />}
+          {logo ? (
+            <img src={logo} alt="" className="cups-welcome__logo" />
+          ) : (
+            <KeyRound className="cups-welcome__logo-fallback" />
+          )}
           <div>
             <p>{restaurant.name}</p>
-            <small>Lounge · {ui.round} {round}</small>
+            <small>
+              Lounge · {ui.round} {round}
+            </small>
           </div>
         </div>
         <button
@@ -522,70 +550,65 @@ export default function CupsWelcomeGame({
             {ui.enterMenu}
           </button>
         </div>
-      ) : (
-        <div className="cups-welcome__stage">
-          <div ref={lockRef} className="cups-welcome__lock" aria-hidden>
-            <span className="cups-welcome__lock-body" />
-            <span className="cups-welcome__lock-shackle" />
-            <span className="cups-welcome__lock-glow" />
-          </div>
+      ) : null}
 
-          <p className="cups-welcome__status" role="status">
-            {statusText || ui.lockedText}
-          </p>
-          {phase === 'locked' || phase === 'shuffle' ? (
-            <p className="cups-welcome__substatus">{ui.lockedText}</p>
-          ) : null}
-          {phase === 'reveal' ? <p className="cups-welcome__substatus">{ui.wrongText}</p> : null}
-
-          <div ref={tableRef} className="cups-welcome__table">
-            <div className="cups-welcome__table-top" />
-            <div className="cups-welcome__table-edge" />
-
-            <img
-              ref={keyRef}
-              className="cups-welcome__key"
-              src="/welcome/cups-golden-key.png"
-              alt=""
-              draggable={false}
-            />
-
-            <div className="cups-welcome__cups">
-              {CUP_IDS.map((id) => (
-                <button
-                  key={id}
-                  ref={(el) => {
-                    cupRefs.current[id] = el;
-                  }}
-                  type="button"
-                  className={`cups-welcome__cup${lifted[id] ? ' is-lifted' : ''}${
-                    phase === 'guess' ? ' is-playable' : ''
-                  }`}
-                  disabled={phase !== 'guess'}
-                  onClick={() => onPickCup(id)}
-                  aria-label={`Bardak ${id + 1}`}
-                >
-                  <span className="cups-welcome__cup-shine" />
-                  <span className="cups-welcome__cup-body" />
-                  <span className="cups-welcome__cup-rim" />
-                  <span className="cups-welcome__cup-stem" />
-                  <span className="cups-welcome__cup-base" />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {phase === 'success' ? (
-            <div className="cups-welcome__success-card" style={{ opacity: 0, transform: 'translateY(18px) scale(0.94)' }}>
-              <KeyRound className="w-7 h-7" />
-              <h2>{ui.unlockTitle}</h2>
-              <p>{ui.unlockText}</p>
-            </div>
-          ) : null}
+      <div
+        ref={stageRef}
+        className={`cups-welcome__stage${inGame ? ' is-visible' : ' is-hidden'}`}
+        aria-hidden={!inGame}
+      >
+        <div ref={lockRef} className="cups-welcome__lock" aria-hidden>
+          <span className="cups-welcome__lock-shackle" />
+          <span className="cups-welcome__lock-body" />
+          <span className="cups-welcome__lock-glow" />
         </div>
-      )}
 
-      {showSkip && phase !== 'language' && phase !== 'success' && config.skipEnabled ? (
+        <p className="cups-welcome__status" role="status">
+          {statusText || ui.lockedTitle}
+        </p>
+        {subText ? <p className="cups-welcome__substatus">{subText}</p> : null}
+
+        <div ref={tableRef} className="cups-welcome__table">
+          <div className="cups-welcome__table-top" />
+          <div className="cups-welcome__table-edge" />
+
+          <img
+            ref={keyRef}
+            className="cups-welcome__key"
+            src="/welcome/cups-golden-key.png"
+            alt=""
+            draggable={false}
+          />
+
+          <div className="cups-welcome__cups">
+            {CUP_IDS.map((id) => (
+              <button
+                key={id}
+                ref={(el) => {
+                  cupRefs.current[id] = el;
+                }}
+                type="button"
+                className={`cups-welcome__cup${phase === 'guess' ? ' is-playable' : ''}`}
+                aria-disabled={phase !== 'guess'}
+                onClick={() => onPickCup(id)}
+                aria-label={`Bardak ${id + 1}`}
+              >
+                <img src="/welcome/cups-lounge-cup.png" alt="" draggable={false} />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {phase === 'success' ? (
+          <div className="cups-welcome__success-card">
+            <KeyRound className="w-7 h-7" />
+            <h2>{ui.unlockTitle}</h2>
+            <p>{ui.unlockText}</p>
+          </div>
+        ) : null}
+      </div>
+
+      {showSkip && inGame && phase !== 'success' && config.skipEnabled ? (
         <button type="button" className="cups-welcome__skip" onClick={skipGame}>
           <SkipForward className="w-4 h-4" />
           {ui.skip}
