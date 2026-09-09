@@ -9810,6 +9810,22 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   font-size: 0.82rem;
   color: var(--admin-text-muted);
 }
+.admin-notify__goto {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--admin-border) 80%, transparent);
+  padding: 0.75rem 1rem;
+  background: color-mix(in srgb, var(--admin-accent-soft) 70%, transparent);
+  color: var(--admin-accent);
+  font-size: 0.8rem;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: center;
+}
+.admin-notify__goto:hover {
+  background: var(--admin-accent-soft);
+}
 .admin-notify__list {
   list-style: none;
   margin: 0;

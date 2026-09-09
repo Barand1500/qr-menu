@@ -178,12 +178,12 @@ export default function AdminNotificationBell() {
     if (item.tableNumber === 'admin') return;
 
     const params = new URLSearchParams();
-    params.set('view', 'tables');
+    params.set('panel', 'garson');
     params.set('masa', item.tableNumber);
     if (item.groupSlug) params.set('grup', item.groupSlug);
     params.set('cagri', String(item.id));
     params.set('tip', item.type);
-    navigate(`${adminPath('barcode')}?${params}`);
+    navigate(`${adminPath('masa-gorunumu')}?${params}`);
   }
 
   async function clearAll() {
@@ -326,6 +326,16 @@ export default function AdminNotificationBell() {
               })}
             </ul>
           )}
+          <button
+            type="button"
+            className="admin-notify__goto"
+            onClick={() => {
+              setOpen(false);
+              navigate(`${adminPath('masa-gorunumu')}?panel=garson`);
+            }}
+          >
+            Tam ekran Garson paneli için tıklayınız
+          </button>
         </div>
       )}
     </div>

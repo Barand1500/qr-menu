@@ -5,6 +5,49 @@ import { authRequired, getRestaurantId } from '../lib/auth.js';
 const router = Router();
 router.use(authRequired);
 
+router.get('/stats', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  if (restaurantId == null) return res.status(401).json({ message: 'Yetkisiz' });
+
+  const days = Math.min(30, Math.max(1, parseInt(String(req.query.days || '7'), 10) || 7));
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  const rows = await prisma.tableServiceRequest.findMany({
+    where: { restaurantId, createdAt: { gte: since } },
+    select: { tableNumber: true, groupSlug: true, type: true, createdAt: true },
+  });
+
+  const byTable = new Map<string, { tableNumber: string; groupSlug: string | null; count: number }>();
+  const byHour = Array.from({ length: 24 }, () => 0);
+  let waiter = 0;
+  let bill = 0;
+
+  for (const row of rows) {
+    const key = `${row.groupSlug || ''}::${row.tableNumber}`;
+    const cur = byTable.get(key) || {
+      tableNumber: row.tableNumber,
+      groupSlug: row.groupSlug,
+      count: 0,
+    };
+    cur.count += 1;
+    byTable.set(key, cur);
+    byHour[new Date(row.createdAt).getHours()] += 1;
+    if (row.type === 'bill') bill += 1;
+    else waiter += 1;
+  }
+
+  const topTables = [...byTable.values()].sort((a, b) => b.count - a.count).slice(0, 12);
+
+  res.json({
+    days,
+    total: rows.length,
+    waiter,
+    bill,
+    topTables,
+    byHour,
+  });
+});
+
 router.get('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   if (restaurantId == null) return res.status(401).json({ message: 'Yetkisiz' });

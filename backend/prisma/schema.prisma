@@ -304,6 +304,10 @@ model TableFloorSession {
   mergedJson   String?   @map("birlesen") @db.Text
   /// [{ id, productId?, name, qty, price, createdAt, source }]
   ordersJson   String?   @map("siparis_json") @db.Text
+  /// Müşteriye verilen benzersiz erişim kodu
+  accessCode     String?   @map("erisim_kodu") @db.VarChar(12)
+  codeExpiresAt  DateTime? @map("kod_bitis")
+  codeVerifiedAt DateTime? @map("kod_dogrulama")
   createdAt    DateTime  @default(now()) @map("olusturma")
   updatedAt    DateTime  @updatedAt @map("guncelleme")
 
@@ -311,6 +315,7 @@ model TableFloorSession {
 
   @@index([restaurantId, status])
   @@index([restaurantId, tableNumber, groupSlug])
+  @@index([restaurantId, accessCode])
   @@map("masa_oturumlari")
 }
 

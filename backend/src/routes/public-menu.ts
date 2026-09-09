@@ -21,7 +21,13 @@ import {
 } from '../lib/menu-animasyon-config.js';
 import { isTableServiceEnabled, MENU_TABLE_SERVICE_KEY } from '../lib/table-service.js';
 import {
+  isCodeVerified,
+  loadTableSessionCodeConfig,
+  resolveCodeGateStatus,
+} from '../lib/table-session-code.js';
+import {
   appendOrdersToSession,
+  findActiveSession,
   openOrGetSession,
   type FloorOrderItem,
 } from '../lib/table-floor.js';
@@ -1023,6 +1029,17 @@ router.post('/:slug/table-request', async (req, res) => {
 
   const grup = groupSlug ? String(groupSlug).trim().slice(0, 100) : null;
 
+  const codeCfg = await loadTableSessionCodeConfig(restaurant.id);
+  if (codeCfg.enabled && masa !== 'admin') {
+    const session = await findActiveSession(restaurant.id, masa, grup);
+    if (!session || !isCodeVerified(session)) {
+      return res.status(403).json({
+        message: 'Önce masa kodunu girin',
+        code: 'CODE_REQUIRED',
+      });
+    }
+  }
+
   const noteText = typeof note === 'string' ? note.trim().slice(0, 500) : '';
   let orderJson: string | null = null;
   if (order && Array.isArray(order.items) && order.items.length > 0) {
@@ -1156,6 +1173,94 @@ router.post('/:slug/table-checkin', async (req, res) => {
     sessionId: session.id,
     openedAt: session.openedAt.toISOString(),
     openedBy: session.openedBy,
+  });
+});
+
+/** Masa erişim kodu kapısı durumu */
+router.get('/:slug/table-session-gate', async (req, res) => {
+  const slug = req.params.slug;
+  const masa = String(req.query.masa || '').trim();
+  const grup = String(req.query.grup || '').trim().slice(0, 100) || null;
+
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
+  if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
+
+  const codeCfg = await loadTableSessionCodeConfig(restaurant.id);
+  if (!codeCfg.enabled || !masa || masa === 'admin') {
+    return res.json({
+      enabled: false,
+      needsCode: false,
+      tableNumber: masa || null,
+      groupSlug: grup,
+      status: 'empty',
+      ttlMinutes: codeCfg.ttlMinutes,
+    });
+  }
+
+  const session = await openOrGetSession(restaurant.id, masa, grup, 'qr');
+  const status = resolveCodeGateStatus(session);
+  res.json({
+    enabled: true,
+    needsCode: status !== 'verified',
+    tableNumber: masa,
+    groupSlug: grup,
+    status,
+    expiresAt: session.codeExpiresAt?.toISOString() || null,
+    ttlMinutes: codeCfg.ttlMinutes,
+  });
+});
+
+/** Masa erişim kodunu doğrula */
+router.post('/:slug/table-session-unlock', async (req, res) => {
+  const slug = req.params.slug;
+  const { tableNumber, groupSlug, code } = req.body as {
+    tableNumber?: string;
+    groupSlug?: string;
+    code?: string;
+  };
+
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
+  if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
+
+  const codeCfg = await loadTableSessionCodeConfig(restaurant.id);
+  if (!codeCfg.enabled) {
+    return res.json({ ok: true, verified: true, enabled: false });
+  }
+
+  const masa = String(tableNumber || '').trim();
+  const grup = groupSlug ? String(groupSlug).trim().slice(0, 100) : null;
+  const pin = String(code || '').replace(/\D/g, '').slice(0, 12);
+  if (!masa || masa === 'admin') {
+    return res.status(400).json({ message: 'Masa gerekli', code: 'TABLE_REQUIRED' });
+  }
+  if (pin.length < 4) {
+    return res.status(400).json({ message: 'Geçersiz kod', code: 'BAD_CODE' });
+  }
+
+  let session = await findActiveSession(restaurant.id, masa, grup);
+  if (!session) {
+    session = await openOrGetSession(restaurant.id, masa, grup, 'qr');
+  }
+
+  if (!session.accessCode || session.accessCode !== pin) {
+    return res.status(403).json({ message: 'Kod hatalı', code: 'CODE_MISMATCH' });
+  }
+  if (!session.codeExpiresAt || session.codeExpiresAt.getTime() <= Date.now()) {
+    return res.status(403).json({ message: 'Kodun süresi dolmuş', code: 'CODE_EXPIRED' });
+  }
+
+  const updated = await prisma.tableFloorSession.update({
+    where: { id: session.id },
+    data: { codeVerifiedAt: new Date() },
+  });
+
+  res.json({
+    ok: true,
+    verified: true,
+    enabled: true,
+    expiresAt: updated.codeExpiresAt?.toISOString() || null,
+    tableNumber: masa,
+    groupSlug: grup,
   });
 });
 

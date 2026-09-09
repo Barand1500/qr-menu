@@ -5,6 +5,7 @@ import { enteredKey, menuHomePath } from '@/lib/menuPaths';
 import GeoLockGate from '@/components/public/GeoLockGate';
 import GeoCheckInBridge from '@/components/public/GeoCheckInBridge';
 import MaintenanceGate from '@/components/public/MaintenanceGate';
+import TableSessionCodeGate from '@/components/public/TableSessionCodeGate';
 import type { GeoCoords } from '@/lib/geoLock';
 import { Volume2, VolumeX, Sparkles, MessageCircleHeart, Lightbulb } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
@@ -76,9 +77,28 @@ export default function PublicWelcomePage() {
   return (
     <MaintenanceGate slug={slug}>
       <GeoLockGate slug={slug}>
-        {({ coords }) => <PublicWelcomePageInner slug={slug} coords={coords} />}
+        {({ coords }) => <PublicWelcomeWithCodeGate slug={slug} coords={coords} />}
       </GeoLockGate>
     </MaintenanceGate>
+  );
+}
+
+function PublicWelcomeWithCodeGate({
+  slug,
+  coords,
+}: {
+  slug: string;
+  coords: GeoCoords | null;
+}) {
+  const [searchParams] = useSearchParams();
+  return (
+    <TableSessionCodeGate
+      slug={slug}
+      masa={searchParams.get('masa')}
+      grup={searchParams.get('grup')}
+    >
+      <PublicWelcomePageInner slug={slug} coords={coords} />
+    </TableSessionCodeGate>
   );
 }
 

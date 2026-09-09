@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
   Clock3,
   Copy,
+  KeyRound,
   NotebookPen,
   Plus,
   Receipt,
+  RefreshCw,
   Timer,
   UtensilsCrossed,
   X,
@@ -28,7 +30,9 @@ import {
   type ProductOptionGroup,
 } from '@/lib/productOptions';
 import BillReceiptModal from '@/components/BillReceiptModal';
+import GarsonCallsPanel from '@/components/admin/GarsonCallsPanel';
 import '@/table-floor.css';
+import '@/garson-panel.css';
 
 const FLOOR_SKIN_KEY = 'menu_qr_table_floor_skin';
 const FLOOR_SKIN_COUNT = 5;
@@ -152,6 +156,10 @@ type FloorTable = {
   mergedTables?: string[];
   mergePrimary?: string | null;
   waiterAlertMs: number;
+  accessCode?: string | null;
+  codeExpiresAt?: string | null;
+  codeVerifiedAt?: string | null;
+  codeStatus?: 'empty' | 'pending' | 'verified' | 'expired';
 };
 
 type FloorGroup = {
@@ -258,6 +266,9 @@ function toLocalInputValue(iso: string | null | undefined) {
 
 export default function TableFloorPage() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const panelMode = searchParams.get('panel') === 'garson' ? 'garson' : 'floor';
+  const focusCallId = Number(searchParams.get('cagri') || '') || null;
   const [data, setData] = useState<FloorPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -333,6 +344,15 @@ export default function TableFloorPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const masa = searchParams.get('masa');
+    const grup = searchParams.get('grup');
+    if (!masa || !data) return;
+    if (grup && data.groups.some((g) => g.id === grup)) setGroupId(grup);
+    setSelectedCode(masa);
+    setSelectedGroupSlug(grup || groupId || data.groups[0]?.id || '');
+  }, [data, searchParams, groupId]);
 
   useEffect(() => {
     const poll = window.setInterval(() => void load(true), 4000);
@@ -845,6 +865,38 @@ export default function TableFloorPage() {
     });
   };
 
+  function openGarsonPanel() {
+    const next = new URLSearchParams(searchParams);
+    next.set('panel', 'garson');
+    setSearchParams(next, { replace: true });
+  }
+
+  function openFloorPanel() {
+    const next = new URLSearchParams(searchParams);
+    next.delete('panel');
+    setSearchParams(next, { replace: true });
+  }
+
+  async function regenerateCode() {
+    if (!selected || busy) return;
+    setBusy(true);
+    try {
+      await api('/api/admin/table-floor/regenerate-code', {
+        method: 'POST',
+        body: JSON.stringify({
+          tableNumber: selected.code,
+          groupSlug: selectedGroupSlug || groupId,
+          sessionId: selected.sessionId,
+        }),
+      });
+      await load(true);
+    } catch {
+      /* ignore */
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className={`table-floor table-floor--skin-${floorSkin}`}>
       <header className="table-floor__top">
@@ -863,7 +915,7 @@ export default function TableFloorPage() {
             >
               <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
-            <p>Masa görünümü</p>
+            <p>{panelMode === 'garson' ? 'Garson' : 'Masa görünümü'}</p>
             <button
               type="button"
               className="table-floor__skin-btn"
@@ -879,6 +931,22 @@ export default function TableFloorPage() {
           </div>
           <strong>{data?.restaurant?.name || user?.restaurant?.name || 'Restoran'}</strong>
         </div>
+        <div className="table-floor__top-actions">
+          {panelMode === 'garson' ? (
+            <button type="button" className="table-floor__garson-btn is-active" onClick={openFloorPanel}>
+              <ArrowLeft className="w-4 h-4" />
+              Masalar
+            </button>
+          ) : (
+            <button type="button" className="table-floor__garson-btn" onClick={openGarsonPanel} title="Garson">
+              <span className="table-floor__garson-g" aria-hidden>
+                G
+              </span>
+              Garson
+            </button>
+          )}
+        </div>
+        {panelMode === 'floor' ? (
         <div className="table-floor__filters" role="tablist" aria-label="Masa grupları">
           {(data?.groups || []).map((g) => (
             <button
@@ -900,6 +968,7 @@ export default function TableFloorPage() {
             </button>
           ))}
         </div>
+        ) : null}
       </header>
 
       {pickMode ? (
@@ -930,6 +999,27 @@ export default function TableFloorPage() {
         </div>
       ) : null}
 
+      {panelMode === 'garson' ? (
+        <main className="table-floor__main table-floor__main--garson">
+          <GarsonCallsPanel
+            focusCallId={focusCallId}
+            onOpenTable={(masa, grup) => {
+              const next = new URLSearchParams(searchParams);
+              next.delete('panel');
+              next.set('masa', masa);
+              if (grup) next.set('grup', grup);
+              else next.delete('grup');
+              setSearchParams(next, { replace: true });
+              setSelectedCode(masa);
+              if (grup) {
+                setGroupId(grup);
+                setSelectedGroupSlug(grup);
+              }
+            }}
+          />
+        </main>
+      ) : (
+      <>
       <main className={`table-floor__main${pickMode ? ' is-picking' : ''}`}>
         {loading && !data ? (
           <div className="table-floor__empty">Masalar yükleniyor…</div>
@@ -1012,6 +1102,15 @@ export default function TableFloorPage() {
                   </span>
                   <span className="floor-table__caption">
                     <span className="floor-table__label">{table.name}</span>
+                    {table.codeStatus === 'pending' ? (
+                      <span className="floor-table__code-badge is-pending">Kod yok</span>
+                    ) : null}
+                    {table.codeStatus === 'verified' ? (
+                      <span className="floor-table__code-badge is-ok">Kod OK</span>
+                    ) : null}
+                    {table.codeStatus === 'expired' ? (
+                      <span className="floor-table__code-badge is-expired">Kod dolu</span>
+                    ) : null}
                     {table.status === 'merged' && primaryName ? (
                       <span className="floor-table__link">{primaryName} ile</span>
                     ) : null}
@@ -1079,6 +1178,15 @@ export default function TableFloorPage() {
                     Garson
                   </span>
                 ) : null}
+                {selected.codeStatus === 'pending' ? (
+                  <span className="table-floor__pill is-code-pending">Kod bekleniyor</span>
+                ) : null}
+                {selected.codeStatus === 'verified' ? (
+                  <span className="table-floor__pill is-code-ok">Kod girildi</span>
+                ) : null}
+                {selected.codeStatus === 'expired' ? (
+                  <span className="table-floor__pill is-code-expired">Kod süresi doldu</span>
+                ) : null}
                 {selected.openedBy ? (
                   <span className="table-floor__pill is-muted">
                     {selected.openedBy === 'admin' ? 'Admin açtı' : 'QR okutuldu'}
@@ -1088,6 +1196,53 @@ export default function TableFloorPage() {
                   <span className="table-floor__pill is-fee">Ücretli</span>
                 ) : null}
               </div>
+              {selected.accessCode ? (
+                <div className="table-floor__access-code">
+                  <div>
+                    <span>
+                      <KeyRound className="w-3.5 h-3.5" /> Erişim kodu
+                    </span>
+                    <strong>{selected.accessCode}</strong>
+                    {selected.codeExpiresAt ? (
+                      <small>
+                        Bitiş:{' '}
+                        {new Date(selected.codeExpiresAt).toLocaleTimeString('tr-TR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </small>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    className="table-floor__secondary"
+                    disabled={busy}
+                    onClick={() => void regenerateCode()}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Yenile
+                  </button>
+                </div>
+              ) : selected.occupied ? (
+                <div className="table-floor__access-code is-muted">
+                  <div>
+                    <span>
+                      <KeyRound className="w-3.5 h-3.5" /> Erişim kodu
+                    </span>
+                    <strong>—</strong>
+                    <small>Kod üretmek için tıklayın</small>
+                  </div>
+                  <button
+                    type="button"
+                    className="table-floor__secondary"
+                    disabled={busy}
+                    onClick={() => void regenerateCode()}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Üret
+                  </button>
+                </div>
+              ) : null}
               {selected.status !== 'merged' ? (
                 <div className="table-floor__status-actions">
                   {selected.reservationNote?.trim() && selected.status === 'open' ? (
@@ -1420,6 +1575,8 @@ export default function TableFloorPage() {
           </>
         ) : null}
       </aside>
+      </>
+      )}
 
       {selected && !pickMode ? (
         <button

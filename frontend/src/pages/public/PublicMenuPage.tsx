@@ -18,6 +18,7 @@ import {
 import { checkInTable } from '@/lib/tableCheckin';
 import GeoLockGate from '@/components/public/GeoLockGate';
 import MaintenanceGate from '@/components/public/MaintenanceGate';
+import TableSessionCodeGate from '@/components/public/TableSessionCodeGate';
 import type { GeoCoords } from '@/lib/geoLock';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { useMenuColorMode } from '@/hooks/useMenuColorMode';
@@ -149,9 +150,28 @@ export default function PublicMenuPage() {
   return (
     <MaintenanceGate slug={slug}>
       <GeoLockGate slug={slug}>
-        {({ coords }) => <PublicMenuPageInner slug={slug} coords={coords} />}
+        {({ coords }) => <PublicMenuWithCodeGate slug={slug} coords={coords} />}
       </GeoLockGate>
     </MaintenanceGate>
+  );
+}
+
+function PublicMenuWithCodeGate({
+  slug,
+  coords,
+}: {
+  slug: string;
+  coords: import('@/lib/geoLock').GeoCoords | null;
+}) {
+  const [searchParams] = useSearchParams();
+  return (
+    <TableSessionCodeGate
+      slug={slug}
+      masa={searchParams.get('masa')}
+      grup={searchParams.get('grup')}
+    >
+      <PublicMenuPageInner slug={slug} coords={coords} />
+    </TableSessionCodeGate>
   );
 }
 

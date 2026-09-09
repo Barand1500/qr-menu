@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check, MapPinned, Expand } from 'lucide-react';
+import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, KeyRound, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check, MapPinned, Expand } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
@@ -141,13 +141,17 @@ export default function SettingsPage() {
   const [socialLinks, setSocialLinks] = useState<SocialLinkConfig[]>(mergeSocialConfigs([]));
   const [welcomeMusicUrl, setWelcomeMusicUrl] = useState('');
   const [tableServiceEnabled, setTableServiceEnabled] = useState(true);
+  const [tableSessionCodeEnabled, setTableSessionCodeEnabled] = useState(false);
+  const [tableSessionCodeTtl, setTableSessionCodeTtl] = useState(120);
   const [geoLock, setGeoLock] = useState<GeoLockConfig>({
     enabled: false,
     lat: 36.8121,
     lng: 34.6415,
     radiusMeters: 120,
   });
-  const [togglingMenuFeature, setTogglingMenuFeature] = useState<'table' | 'assistant' | null>(null);
+  const [togglingMenuFeature, setTogglingMenuFeature] = useState<
+    'table' | 'table-code' | 'assistant' | null
+  >(null);
   const [renewContactOpen, setRenewContactOpen] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [iconPickerFor, setIconPickerFor] = useState<string | null>(null);
@@ -190,6 +194,16 @@ export default function SettingsPage() {
         }
         setWelcomeMusicUrl(d.settings.welcome_music_url || '');
         setTableServiceEnabled(isTableServiceEnabled(d.settings.menu_table_service_enabled));
+        setTableSessionCodeEnabled(
+          d.settings.table_session_code_enabled === 'true' ||
+            d.settings.table_session_code_enabled === '1'
+        );
+        {
+          const ttl = Math.round(Number(d.settings.table_session_code_ttl_minutes));
+          setTableSessionCodeTtl(
+            Number.isFinite(ttl) ? Math.min(24 * 60, Math.max(15, ttl)) : 120
+          );
+        }
         try {
           const raw = d.settings.geo_lock ? JSON.parse(d.settings.geo_lock) : null;
           if (raw && typeof raw === 'object') {
@@ -301,6 +315,41 @@ export default function SettingsPage() {
     }
   }
 
+  async function toggleTableSessionCode() {
+    const next = !tableSessionCodeEnabled;
+    setTogglingMenuFeature('table-code');
+    try {
+      await api('/api/admin/settings/menu-features', {
+        method: 'PUT',
+        body: JSON.stringify({
+          tableSessionCode: next,
+          tableSessionCodeTtlMinutes: tableSessionCodeTtl,
+        }),
+      });
+      setTableSessionCodeEnabled(next);
+    } catch {
+      /* leave previous state */
+    } finally {
+      setTogglingMenuFeature(null);
+    }
+  }
+
+  async function saveTableSessionCodeTtl(ttl: number) {
+    const next = Math.min(24 * 60, Math.max(15, ttl));
+    setTableSessionCodeTtl(next);
+    try {
+      await api('/api/admin/settings/menu-features', {
+        method: 'PUT',
+        body: JSON.stringify({
+          tableSessionCode: tableSessionCodeEnabled,
+          tableSessionCodeTtlMinutes: next,
+        }),
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
   async function toggleMenuAssistant() {
     if (!assistantOwned) return;
     setTogglingMenuFeature('assistant');
@@ -352,7 +401,11 @@ export default function SettingsPage() {
       });
       await api('/api/admin/settings/menu-features', {
         method: 'PUT',
-        body: JSON.stringify({ tableService: tableServiceEnabled }),
+        body: JSON.stringify({
+          tableService: tableServiceEnabled,
+          tableSessionCode: tableSessionCodeEnabled,
+          tableSessionCodeTtlMinutes: tableSessionCodeTtl,
+        }),
       });
       await api('/api/admin/settings/geo-lock', {
         method: 'PUT',
@@ -1213,6 +1266,40 @@ export default function SettingsPage() {
                   <span className="settings-switch__knob" />
                 </span>
               </button>
+
+              <button
+                type="button"
+                className="settings-feature-toggle"
+                role="switch"
+                aria-checked={tableSessionCodeEnabled}
+                disabled={togglingMenuFeature === 'table-code'}
+                onClick={() => void toggleTableSessionCode()}
+              >
+                <span className="settings-feature-toggle__label">
+                  <KeyRound className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
+                  Masa erişim kodu
+                </span>
+                <span
+                  className={`settings-switch${tableSessionCodeEnabled ? ' is-on' : ''}`}
+                  aria-hidden
+                >
+                  <span className="settings-switch__knob" />
+                </span>
+              </button>
+
+              {tableSessionCodeEnabled ? (
+                <label className="settings-feature-ttl">
+                  <span>Kod süresi: {tableSessionCodeTtl} dk</span>
+                  <input
+                    type="range"
+                    min={15}
+                    max={480}
+                    step={15}
+                    value={tableSessionCodeTtl}
+                    onChange={(e) => void saveTableSessionCodeTtl(Number(e.target.value))}
+                  />
+                </label>
+              ) : null}
 
               <button
                 type="button"

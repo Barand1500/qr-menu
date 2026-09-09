@@ -17,6 +17,11 @@ import {
 } from '../addons/index.js';
 import { parseSocialLinks, serializeSocialLinks, type SocialLinkConfig } from '../lib/social.js';
 import { MENU_TABLE_SERVICE_KEY } from '../lib/table-service.js';
+import {
+  TABLE_SESSION_CODE_ENABLED_KEY,
+  TABLE_SESSION_CODE_TTL_KEY,
+  parseTableSessionCodeTtl,
+} from '../lib/table-session-code.js';
 import { loadPrefCatalog,
   normalizePrefCatalogInput,
   PREF_CATALOG_KEY,
@@ -314,7 +319,11 @@ router.put('/welcome-music', async (req, res) => {
 
 router.put('/menu-features', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const { tableService } = req.body as { tableService?: boolean };
+  const { tableService, tableSessionCode, tableSessionCodeTtlMinutes } = req.body as {
+    tableService?: boolean;
+    tableSessionCode?: boolean;
+    tableSessionCodeTtlMinutes?: number;
+  };
 
   if (typeof tableService === 'boolean') {
     await prisma.setting.upsert({
@@ -330,7 +339,50 @@ router.put('/menu-features', async (req, res) => {
     });
   }
 
-  res.json({ ok: true, tableService: tableService ?? true });
+  if (typeof tableSessionCode === 'boolean') {
+    await prisma.setting.upsert({
+      where: {
+        restaurantId_key: {
+          restaurantId: restaurantId!,
+          key: TABLE_SESSION_CODE_ENABLED_KEY,
+        },
+      },
+      update: { value: tableSessionCode ? 'true' : 'false' },
+      create: {
+        restaurantId: restaurantId!,
+        key: TABLE_SESSION_CODE_ENABLED_KEY,
+        value: tableSessionCode ? 'true' : 'false',
+      },
+    });
+  }
+
+  if (tableSessionCodeTtlMinutes != null) {
+    const ttl = parseTableSessionCodeTtl(String(tableSessionCodeTtlMinutes));
+    await prisma.setting.upsert({
+      where: {
+        restaurantId_key: {
+          restaurantId: restaurantId!,
+          key: TABLE_SESSION_CODE_TTL_KEY,
+        },
+      },
+      update: { value: String(ttl) },
+      create: {
+        restaurantId: restaurantId!,
+        key: TABLE_SESSION_CODE_TTL_KEY,
+        value: String(ttl),
+      },
+    });
+  }
+
+  res.json({
+    ok: true,
+    tableService: tableService ?? true,
+    tableSessionCode: tableSessionCode ?? false,
+    tableSessionCodeTtlMinutes:
+      tableSessionCodeTtlMinutes != null
+        ? parseTableSessionCodeTtl(String(tableSessionCodeTtlMinutes))
+        : undefined,
+  });
 });
 
 router.post('/social-icon', upload.single('icon'), async (req, res) => {

@@ -1,4 +1,9 @@
 import { prisma } from './prisma.js';
+import {
+  codeExpiryDate,
+  generateUniqueAccessCode,
+  loadTableSessionCodeConfig,
+} from './table-session-code.js';
 
 export type FloorOrderSelection = {
   groupId: string;
@@ -170,16 +175,44 @@ export async function openOrGetSession(
   openedBy: 'qr' | 'admin'
 ) {
   const existing = await findActiveSession(restaurantId, tableNumber, groupSlug || null);
+  const codeCfg = await loadTableSessionCodeConfig(restaurantId);
+
+  const ensureCode = async (sessionId: number, current: {
+    accessCode: string | null;
+    codeExpiresAt: Date | null;
+    codeVerifiedAt: Date | null;
+  }) => {
+    if (!codeCfg.enabled) return null;
+    const needsNew =
+      !current.accessCode ||
+      !current.codeExpiresAt ||
+      current.codeExpiresAt.getTime() <= Date.now();
+    if (!needsNew) return null;
+    const accessCode = await generateUniqueAccessCode(restaurantId);
+    return prisma.tableFloorSession.update({
+      where: { id: sessionId },
+      data: {
+        accessCode,
+        codeExpiresAt: codeExpiryDate(codeCfg.ttlMinutes),
+        codeVerifiedAt: null,
+      },
+    });
+  };
+
   if (existing) {
     if (existing.status === 'reserved') {
-      return prisma.tableFloorSession.update({
+      const opened = await prisma.tableFloorSession.update({
         where: { id: existing.id },
         data: { status: 'open', openedBy, openedAt: new Date() },
       });
+      const withCode = await ensureCode(opened.id, opened);
+      return withCode || opened;
     }
-    return existing;
+    const withCode = await ensureCode(existing.id, existing);
+    return withCode || existing;
   }
 
+  const accessCode = codeCfg.enabled ? await generateUniqueAccessCode(restaurantId) : null;
   return prisma.tableFloorSession.create({
     data: {
       restaurantId,
@@ -190,6 +223,9 @@ export async function openOrGetSession(
       openedAt: new Date(),
       ordersJson: '[]',
       mergedJson: '[]',
+      accessCode,
+      codeExpiresAt: accessCode ? codeExpiryDate(codeCfg.ttlMinutes) : null,
+      codeVerifiedAt: null,
     },
   });
 }
@@ -215,6 +251,9 @@ export async function closeSession(sessionId: number, paid = false) {
     data: {
       status: 'closed',
       closedAt: new Date(),
+      accessCode: null,
+      codeExpiresAt: null,
+      codeVerifiedAt: null,
       ...(paid ? { paidAt: new Date() } : {}),
     },
   });

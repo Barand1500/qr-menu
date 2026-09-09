@@ -26,6 +26,11 @@ import {
   type OptionSelectionInput,
 } from '../lib/product-options.js';
 import type { Prisma } from '@prisma/client';
+import {
+  codeExpiryDate,
+  generateUniqueAccessCode,
+  loadTableSessionCodeConfig,
+} from '../lib/table-session-code.js';
 
 const router = Router();
 router.use(authRequired);
@@ -76,9 +81,22 @@ function serializeSession(session: {
   paidAt: Date | null;
   ordersJson: string | null;
   mergedJson: string | null;
+  accessCode?: string | null;
+  codeExpiresAt?: Date | null;
+  codeVerifiedAt?: Date | null;
 }) {
   const orders = parseOrdersJson(session.ordersJson);
   const merged = parseMergedJson(session.mergedJson);
+  const codeExpired = session.codeExpiresAt
+    ? session.codeExpiresAt.getTime() <= Date.now()
+    : true;
+  const codeStatus = !session.accessCode
+    ? 'empty'
+    : codeExpired
+      ? 'expired'
+      : session.codeVerifiedAt
+        ? 'verified'
+        : 'pending';
   return {
     sessionId: session.id,
     status: session.status,
@@ -92,6 +110,10 @@ function serializeSession(session: {
     orders,
     total: ordersTotal(orders),
     mergedTables: merged,
+    accessCode: session.accessCode || null,
+    codeExpiresAt: session.codeExpiresAt?.toISOString() || null,
+    codeVerifiedAt: session.codeVerifiedAt?.toISOString() || null,
+    codeStatus,
   };
 }
 
@@ -161,6 +183,16 @@ router.get('/', async (req, res) => {
         const alertMsLeft = waiterAt
           ? Math.max(0, WAITER_ALERT_MS - (Date.now() - waiterAt.getTime()))
           : 0;
+        const codeExpired = own?.codeExpiresAt
+          ? own.codeExpiresAt.getTime() <= Date.now()
+          : Boolean(own?.accessCode);
+        const codeStatus = !own?.accessCode
+          ? 'empty'
+          : codeExpired
+            ? 'expired'
+            : own.codeVerifiedAt
+              ? 'verified'
+              : 'pending';
 
         return {
           index: n,
@@ -183,6 +215,10 @@ router.get('/', async (req, res) => {
           mergedTables: own ? parseMergedJson(own.mergedJson) : [],
           mergePrimary: isSatellite && linked ? linked.tableNumber : null,
           waiterAlertMs: alertMsLeft,
+          accessCode: own?.accessCode || null,
+          codeExpiresAt: own?.codeExpiresAt?.toISOString() || null,
+          codeVerifiedAt: own?.codeVerifiedAt?.toISOString() || null,
+          codeStatus,
         };
       });
       return {
@@ -212,6 +248,62 @@ router.post('/open', async (req, res) => {
     'admin'
   );
   res.json({ ok: true, session: serializeSession(session) });
+});
+
+router.post('/regenerate-code', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const { tableNumber, groupSlug, sessionId } = req.body as {
+    tableNumber?: string;
+    groupSlug?: string;
+    sessionId?: number;
+  };
+
+  const codeCfg = await loadTableSessionCodeConfig(restaurantId!);
+  if (!codeCfg.enabled) {
+    return res.status(400).json({ message: 'Masa erişim kodu kapalı' });
+  }
+
+  let session =
+    sessionId != null
+      ? await prisma.tableFloorSession.findFirst({
+          where: {
+            id: Number(sessionId),
+            restaurantId: restaurantId!,
+            status: { in: [...ACTIVE_STATUSES] },
+          },
+        })
+      : null;
+
+  if (!session) {
+    const masa = String(tableNumber || '').trim();
+    if (!masa) return res.status(400).json({ message: 'Masa gerekli' });
+    session = await findActiveSession(
+      restaurantId!,
+      masa,
+      groupSlug ? String(groupSlug).trim() : null
+    );
+  }
+
+  if (!session) {
+    session = await openOrGetSession(
+      restaurantId!,
+      String(tableNumber || '').trim(),
+      groupSlug ? String(groupSlug).trim() : null,
+      'admin'
+    );
+  }
+
+  const accessCode = await generateUniqueAccessCode(restaurantId!);
+  const updated = await prisma.tableFloorSession.update({
+    where: { id: session.id },
+    data: {
+      accessCode,
+      codeExpiresAt: codeExpiryDate(codeCfg.ttlMinutes),
+      codeVerifiedAt: null,
+    },
+  });
+
+  res.json({ ok: true, session: serializeSession(updated) });
 });
 
 router.post('/close', async (req, res) => {

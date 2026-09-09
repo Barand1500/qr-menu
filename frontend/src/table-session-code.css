@@ -1,0 +1,117 @@
+.table-code-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background:
+    radial-gradient(90% 60% at 50% 0%, rgba(56, 189, 248, .18), transparent 55%),
+    linear-gradient(180deg, #0f172a, #020617);
+  color: #f8fafc;
+}
+
+.table-code-gate--loading {
+  gap: .75rem;
+  color: rgba(248, 250, 252, .8);
+}
+
+.table-code-gate__card {
+  width: min(420px, 100%);
+  padding: 1.6rem 1.4rem 1.45rem;
+  border-radius: 1.35rem;
+  background: rgba(15, 23, 42, .88);
+  border: 1px solid rgba(148, 163, 184, .28);
+  box-shadow: 0 28px 70px rgba(0,0,0,.45);
+  text-align: center;
+}
+
+.table-code-gate__icon {
+  width: 3.4rem;
+  height: 3.4rem;
+  margin: 0 auto .9rem;
+  border-radius: 1rem;
+  display: grid;
+  place-items: center;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, .12);
+  border: 1px solid rgba(56, 189, 248, .28);
+}
+
+.table-code-gate__eyebrow {
+  margin: 0;
+  font-size: .72rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: #7dd3fc;
+}
+
+.table-code-gate__card h1 {
+  margin: .35rem 0 .5rem;
+  font-size: 1.45rem;
+  font-weight: 750;
+}
+
+.table-code-gate__copy {
+  margin: 0 0 1rem;
+  color: rgba(226, 232, 240, .78);
+  font-size: .92rem;
+  line-height: 1.45;
+}
+
+.table-code-gate__table {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: 1.1rem;
+  padding: .45rem .75rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  color: #e2e8f0;
+  font-size: .85rem;
+}
+
+.table-code-gate__form {
+  display: grid;
+  gap: .55rem;
+  text-align: left;
+}
+
+.table-code-gate__form label {
+  font-size: .8rem;
+  color: rgba(226, 232, 240, .7);
+}
+
+.table-code-gate__form input {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, .35);
+  border-radius: .9rem;
+  padding: .95rem 1rem;
+  font-size: 1.45rem;
+  letter-spacing: .35em;
+  text-align: center;
+  background: rgba(2, 6, 23, .65);
+  color: #f8fafc;
+}
+
+.table-code-gate__form button {
+  margin-top: .35rem;
+  border: 0;
+  border-radius: .9rem;
+  padding: .95rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: #0f172a;
+  background: linear-gradient(135deg, #7dd3fc, #38bdf8 55%, #0ea5e9);
+}
+
+.table-code-gate__form button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.table-code-gate__error {
+  margin: 0;
+  color: #fda4af;
+  font-size: .85rem;
+}
