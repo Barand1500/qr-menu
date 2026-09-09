@@ -121,7 +121,14 @@
   color: rgba(230, 240, 236, 0.48);
 }
 
-.admin-ai-close {
+.admin-ai-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.admin-ai-icon-btn {
   width: 2.25rem;
   height: 2.25rem;
   border-radius: 0.75rem;
@@ -132,12 +139,98 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.admin-ai-close:hover {
+.admin-ai-icon-btn:hover {
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
+}
+
+.admin-ai-icon-btn--on {
+  color: #dff5ef;
+  background: rgba(70, 170, 150, 0.22);
+  border-color: rgba(120, 200, 180, 0.4);
+}
+
+.admin-ai-icon-btn--on:hover {
+  background: rgba(70, 170, 150, 0.32);
+  color: #fff;
+}
+
+/* Picture-in-picture / floating widget */
+.admin-ai-root--pip {
+  inset: auto;
+  right: max(0.75rem, env(safe-area-inset-right));
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  left: auto;
+  top: auto;
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+  pointer-events: none;
+  z-index: 85;
+}
+
+.admin-ai-panel--pip {
+  pointer-events: auto;
+  width: min(calc(100vw - 1.5rem), 360px);
+  height: min(68dvh, 520px);
+  border-radius: 1.15rem;
+  box-shadow:
+    0 20px 56px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  animation: admin-ai-pip-in 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.admin-ai-panel--pip .admin-ai-empty {
+  padding: 1rem 0.25rem 1.25rem;
+}
+
+.admin-ai-panel--pip .admin-ai-empty-orb {
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.75rem;
+}
+
+.admin-ai-panel--pip .admin-ai-empty-orb svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.admin-ai-panel--pip .admin-ai-empty-title {
+  font-size: 1.1rem;
+}
+
+.admin-ai-panel--pip .admin-ai-sub {
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes admin-ai-pip-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .admin-ai-root--pip {
+    right: 0.5rem;
+    left: 0.5rem;
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .admin-ai-panel--pip {
+    width: 100%;
+  }
 }
 
 .admin-ai-body {
@@ -550,6 +643,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .admin-ai-panel,
+  .admin-ai-panel--pip,
   .admin-ai-glow,
   .admin-ai-empty,
   .admin-ai-empty-orb,

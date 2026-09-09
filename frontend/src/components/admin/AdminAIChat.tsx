@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Send, X, ArrowUpRight, Loader2, CircleHelp } from 'lucide-react';
+import {
+  Sparkles,
+  Send,
+  X,
+  ArrowUpRight,
+  Loader2,
+  CircleHelp,
+  PictureInPicture2,
+  Maximize2,
+} from 'lucide-react';
 import { api } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
 import '@/admin-ai.css';
@@ -41,14 +50,21 @@ export default function AdminAIChat({
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pip, setPip] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const pipRef = useRef(false);
+
+  useEffect(() => {
+    pipRef.current = pip;
+  }, [pip]);
 
   useEffect(() => {
     if (!open) {
       setMessages([]);
       setInput('');
       setBusy(false);
+      setPip(false);
       return;
     }
     const t = window.setTimeout(() => inputRef.current?.focus(), 180);
@@ -73,7 +89,7 @@ export default function AdminAIChat({
 
   const runNavigate = (path: string) => {
     navigate(adminPath(...(path ? path.split('/') : [])));
-    onClose();
+    if (!pipRef.current) onClose();
   };
 
   const send = async (raw: string) => {
@@ -132,9 +148,14 @@ export default function AdminAIChat({
   if (!open) return null;
 
   return createPortal(
-    <div className="admin-ai-root" role="dialog" aria-modal="true" aria-label="Yapay zeka asistanı">
-      <div className="admin-ai-backdrop" aria-hidden />
-      <div className="admin-ai-panel">
+    <div
+      className={`admin-ai-root${pip ? ' admin-ai-root--pip' : ''}`}
+      role="dialog"
+      aria-modal={!pip}
+      aria-label="Yapay zeka asistanı"
+    >
+      {!pip && <div className="admin-ai-backdrop" aria-hidden />}
+      <div className={`admin-ai-panel${pip ? ' admin-ai-panel--pip' : ''}`}>
         <div className="admin-ai-glow" aria-hidden />
         <header className="admin-ai-header">
           <div className="admin-ai-brand">
@@ -143,12 +164,36 @@ export default function AdminAIChat({
             </span>
             <div>
               <p className="admin-ai-title">Asistan</p>
-              <p className="admin-ai-sub">Tek kullanımlık sohbet · geçmiş tutulmaz</p>
+              <p className="admin-ai-sub">
+                {pip ? 'Pencere modu · sayfada kalır' : 'Tek kullanımlık sohbet · geçmiş tutulmaz'}
+              </p>
             </div>
           </div>
-          <button type="button" className="admin-ai-close" onClick={onClose} aria-label="Kapat">
-            <X className="w-5 h-5" strokeWidth={1.75} />
-          </button>
+          <div className="admin-ai-header-actions">
+            <button
+              type="button"
+              className={`admin-ai-icon-btn${pip ? ' admin-ai-icon-btn--on' : ''}`}
+              onClick={() => setPip((v) => !v)}
+              title={pip ? 'Tam boyuta büyüt' : 'Pencere modu'}
+              aria-label={pip ? 'Tam boyuta büyüt' : 'Pencere moduna geç'}
+              aria-pressed={pip}
+            >
+              {pip ? (
+                <Maximize2 className="w-[18px] h-[18px]" strokeWidth={1.75} />
+              ) : (
+                <PictureInPicture2 className="w-[18px] h-[18px]" strokeWidth={1.75} />
+              )}
+            </button>
+            <button
+              type="button"
+              className="admin-ai-icon-btn"
+              onClick={onClose}
+              aria-label="Kapat"
+              title="Kapat"
+            >
+              <X className="w-5 h-5" strokeWidth={1.75} />
+            </button>
+          </div>
         </header>
 
         <div className="admin-ai-body" ref={listRef}>
@@ -265,7 +310,9 @@ export default function AdminAIChat({
               </div>
             </div>
           </form>
-          <p className="admin-ai-footer-hint">Enter ile gönder · Esc ile kapat</p>
+          <p className="admin-ai-footer-hint">
+            {pip ? 'Enter ile gönder · Esc ile kapat' : 'Enter ile gönder · Esc ile kapat · pencere ikonuyla küçült'}
+          </p>
         </div>
       </div>
     </div>,
