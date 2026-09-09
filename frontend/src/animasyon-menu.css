@@ -581,6 +581,231 @@
   line-height: 1.5;
 }
 
+.anim-detail__price-hint {
+  margin-left: 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a8e93;
+}
+
+/* Varyant / ekstra — Animasyonlu dil */
+.anim-opts {
+  margin-top: 0.15rem;
+  padding: 0.85rem 0 0.15rem;
+  border-top: 1px solid rgba(28, 30, 33, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.anim-opts__head h2 {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8a8e93;
+}
+
+.anim-opts__head p {
+  margin: 0.3rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: #1c1e21;
+  font-weight: 550;
+}
+
+.anim-opts__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.anim-opts__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.anim-opts__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.anim-opts__label span {
+  font-size: 0.92rem;
+  font-weight: 750;
+  color: #1c1e21;
+}
+
+.anim-opts__label i {
+  font-style: normal;
+  margin-left: 0.15rem;
+  color: #6f747a;
+}
+
+.anim-opts__label em {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: #8a8e93;
+  white-space: nowrap;
+}
+
+.anim-opts__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.anim-opts__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.4rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.85rem;
+  border: 1.5px solid rgba(28, 30, 33, 0.12);
+  background: rgba(236, 231, 223, 0.7);
+  color: #1c1e21;
+  font-size: 0.86rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.anim-opts__chip small {
+  font-size: 0.72rem;
+  font-weight: 750;
+  color: #6f747a;
+}
+
+.anim-opts__chip.is-on {
+  background: #1c1e21;
+  border-color: #1c1e21;
+  color: #ece7df;
+}
+
+.anim-opts__chip.is-on small {
+  color: #d9d2c6;
+}
+
+.anim-opts__chip:hover:not(.is-on) {
+  border-color: rgba(28, 30, 33, 0.28);
+  background: #ece7df;
+}
+
+.anim-opts__multi {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.anim-opts__multi-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.85rem;
+  background: rgba(236, 231, 223, 0.55);
+  border: 1px solid rgba(28, 30, 33, 0.08);
+}
+
+.anim-opts__multi-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.anim-opts__multi-copy strong {
+  font-size: 0.88rem;
+  font-weight: 750;
+  color: #1c1e21;
+}
+
+.anim-opts__multi-copy span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #6f747a;
+}
+
+.anim-opts__stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.anim-opts__stepper button {
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 0.55rem;
+  border: 0;
+  background: #1c1e21;
+  color: #ece7df;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.anim-opts__stepper button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.anim-opts__stepper button:hover:not(:disabled) {
+  background: #3d4248;
+}
+
+.anim-opts__stepper em {
+  font-style: normal;
+  min-width: 1.1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #1c1e21;
+}
+
+.anim-opts__total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.85rem;
+  background: rgba(138, 142, 147, 0.12);
+  border: 1px solid rgba(28, 30, 33, 0.08);
+}
+
+.anim-opts__total span {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8a8e93;
+}
+
+.anim-opts__total strong {
+  font-size: 1.05rem;
+  font-weight: 850;
+  color: #1c1e21;
+}
+
+.anim-opts__total.is-live {
+  background: rgba(28, 30, 33, 0.06);
+  border-color: rgba(28, 30, 33, 0.16);
+}
+
 .anim-detail__add {
   margin-top: 0.35rem;
   display: inline-flex;

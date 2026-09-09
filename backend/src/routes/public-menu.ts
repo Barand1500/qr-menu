@@ -364,6 +364,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
 
   const sadeCfg = parseSadeThemeConfig(sadeConfigSetting?.value);
   const aliveCfg = parseAliveThemeConfig(aliveConfigSetting?.value);
+  const animasyonCfg = parseAnimasyonThemeConfig(animasyonConfigSetting?.value);
 
   res.json({
     id: product.id,
@@ -398,7 +399,8 @@ router.get('/:slug/products/:productId', async (req, res) => {
     },
     menuFeatures: {
       tableService: isTableServiceEnabled(tableServiceSetting?.value),
-      animasyonCart: parseAnimasyonThemeConfig(animasyonConfigSetting?.value).cartEnabled,
+      animasyonCart: animasyonCfg.cartEnabled,
+      animasyonVariants: animasyonCfg.variantsEnabled,
       sadeCart: sadeCfg.cartEnabled,
       sadeVariants: sadeCfg.variantsEnabled,
       aliveCart: aliveCfg.cartEnabled,

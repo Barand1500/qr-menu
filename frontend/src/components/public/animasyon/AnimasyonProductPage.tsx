@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ChevronLeft, ChevronRight, Flame, Plus, Star } from 'lucide-react';
 import { formatMoney, imageUrl } from '@/lib/api';
 import TableServiceButtons from '@/components/public/TableServiceButtons';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
+import AnimasyonProductOptions from '@/components/public/animasyon/AnimasyonProductOptions';
 import type { MenuColorMode } from '@/lib/menuColorMode';
+import type { ProductOptionGroup, SelectionMap } from '@/lib/productOptions';
 import { useSiparisCart } from '@/hooks/useSiparisCart';
 import { gsap, prefersReducedMotion, useGSAP } from '@/lib/gsapSetup';
 
@@ -21,7 +23,12 @@ type Product = {
   features: string[];
   group: { id: number; name: string };
   restaurant: { name: string };
-  menuFeatures?: { tableService?: boolean; animasyonCart?: boolean };
+  menuFeatures?: {
+    tableService?: boolean;
+    animasyonCart?: boolean;
+    animasyonVariants?: boolean;
+  };
+  optionGroups?: ProductOptionGroup[];
 };
 
 export default function AnimasyonProductPage({
@@ -42,17 +49,32 @@ export default function AnimasyonProductPage({
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
+  const addBtnRef = useRef<HTMLButtonElement>(null);
   const { addItem, setSheetOpen } = useSiparisCart();
   const cartEnabled = product.menuFeatures?.animasyonCart !== false;
+  const variantsOn = product.menuFeatures?.animasyonVariants !== false;
+  const optionGroups = variantsOn ? product.optionGroups || [] : [];
   const [imgIdx, setImgIdx] = useState(0);
+  const [unitPrice, setUnitPrice] = useState(product.price);
+  const [optionLabel, setOptionLabel] = useState('');
   const touchX = useRef<number | null>(null);
   const gallery = galleryImages.length > 0 ? galleryImages : [];
   const multi = gallery.length > 1;
   const hero = gallery[imgIdx] || gallery[0];
 
+  const onOptionsChange = useCallback(
+    (next: { unitPrice: number; selections: SelectionMap; label: string }) => {
+      setUnitPrice(next.unitPrice);
+      setOptionLabel(next.label);
+    },
+    []
+  );
+
   useEffect(() => {
     setImgIdx(0);
-  }, [product.id]);
+    setUnitPrice(product.price);
+    setOptionLabel('');
+  }, [product.id, product.price]);
 
   useGSAP(
     () => {
@@ -97,16 +119,17 @@ export default function AnimasyonProductPage({
   }
 
   function onAdd() {
+    const name = optionLabel ? `${product.name} (${optionLabel})` : product.name;
     addItem(
       {
         productId: product.id,
-        name: product.name,
-        price: product.price,
+        name,
+        price: optionGroups.length ? unitPrice : product.price,
         currency: product.currency,
         imageUrl: gallery[0] || null,
         calories: product.calories,
       },
-      { fromEl: mediaRef.current }
+      { fromEl: addBtnRef.current || mediaRef.current }
     );
     setSheetOpen(true);
   }
@@ -184,7 +207,10 @@ export default function AnimasyonProductPage({
           <p className="anim-page__group anim-page__reveal">{product.group.name}</p>
           <h1 className="anim-page__title anim-page__reveal">{product.name}</h1>
           <p className="anim-detail__price anim-page__reveal">
-            {formatMoney(product.price, product.currency)}
+            {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
+            {optionGroups.length > 0 ? (
+              <span className="anim-detail__price-hint">seçime göre</span>
+            ) : null}
           </p>
 
           {(product.isRecommended || (product.calories != null && product.calories > 0)) && (
@@ -205,6 +231,17 @@ export default function AnimasyonProductPage({
           {product.description ? (
             <p className="anim-detail__text anim-page__reveal">{product.description}</p>
           ) : null}
+
+          {optionGroups.length > 0 ? (
+            <AnimasyonProductOptions
+              key={product.id}
+              groups={optionGroups}
+              basePrice={product.price}
+              currency={product.currency}
+              onChange={onOptionsChange}
+            />
+          ) : null}
+
           {product.ingredients ? (
             <section className="anim-detail__block anim-page__reveal">
               <h3>İçindekiler</h3>
@@ -219,9 +256,17 @@ export default function AnimasyonProductPage({
           ) : null}
 
           {cartEnabled ? (
-            <button type="button" className="anim-detail__add anim-page__reveal" onClick={onAdd}>
+            <button
+              ref={addBtnRef}
+              type="button"
+              className="anim-detail__add anim-page__reveal"
+              onClick={onAdd}
+            >
               <Plus className="w-4 h-4" strokeWidth={2.5} />
               Sepete ekle
+              {optionGroups.length > 0
+                ? ` · ${formatMoney(unitPrice, product.currency)}`
+                : ''}
             </button>
           ) : null}
         </div>

@@ -8808,13 +8808,15 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 }
 
 .sade-settings__body,
-.alive-settings__body {
+.alive-settings__body,
+.animasyon-settings__body {
   display: grid;
   gap: 0.65rem;
 }
 
 .sade-settings__hint,
-.alive-settings__hint {
+.alive-settings__hint,
+.animasyon-settings__hint {
   margin: -0.2rem 0 0.55rem;
   font-size: 0.75rem;
   line-height: 1.45;

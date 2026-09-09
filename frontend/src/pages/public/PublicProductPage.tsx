@@ -55,6 +55,7 @@ interface ProductDetail {
   menuFeatures?: {
     tableService?: boolean;
     animasyonCart?: boolean;
+    animasyonVariants?: boolean;
     sadeCart?: boolean;
     sadeVariants?: boolean;
     aliveCart?: boolean;

@@ -1349,3 +1349,18 @@
     transition: none;
   }
 }
+
+/* Sepet — Garson çağır (tema yeşili) */
+.public-menu-page[data-theme-menu='alive'] .siparis-cart-sheet__waiter {
+  background: linear-gradient(135deg, #3d6a4a, #2d5037);
+  box-shadow: 0 10px 24px rgba(45, 80, 55, 0.35);
+}
+
+.public-menu-page[data-theme-menu='alive'] .siparis-cart-sheet__waiter.is-done {
+  background: #1f3a28;
+  box-shadow: none;
+}
+
+.public-menu-page[data-theme-menu='alive'] .siparis-cart-sheet__waiter.is-error {
+  background: #7a3b32;
+}

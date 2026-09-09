@@ -1,9 +1,11 @@
 export type AnimasyonThemeConfig = {
   cartEnabled: boolean;
+  variantsEnabled: boolean;
 };
 
 export const DEFAULT_ANIMASYON_CONFIG: AnimasyonThemeConfig = {
   cartEnabled: true,
+  variantsEnabled: true,
 };
 
 export function parseAnimasyonThemeConfig(raw?: string | null): AnimasyonThemeConfig {
@@ -12,6 +14,7 @@ export function parseAnimasyonThemeConfig(raw?: string | null): AnimasyonThemeCo
     const data = JSON.parse(raw) as Partial<AnimasyonThemeConfig>;
     return {
       cartEnabled: data.cartEnabled !== false,
+      variantsEnabled: data.variantsEnabled !== false,
     };
   } catch {
     return { ...DEFAULT_ANIMASYON_CONFIG };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Settings2, ShoppingBag, X } from 'lucide-react';
+import { Layers3, Settings2, ShoppingBag, X } from 'lucide-react';
 import { Button } from '@/components/ui';
 import {
   DEFAULT_ANIMASYON_CONFIG,
@@ -42,14 +42,36 @@ export default function AnimasyonThemeSettingsModal({
               <Settings2 className="w-3.5 h-3.5" /> Animasyonlu
             </p>
             <h2 id="animasyon-settings-title">Tema ayarları</h2>
-            <p>Sepeti açıp kapatabilirsin. Kapalıyken menü sadece vitrin gibi çalışır.</p>
+            <p>Varyantları ve sepeti buradan açıp kapatabilirsin.</p>
           </div>
           <button type="button" className="linear-settings__close" onClick={onClose} aria-label="Kapat">
             <X className="w-5 h-5" />
           </button>
         </header>
 
-        <div className="linear-settings__body">
+        <div className="linear-settings__body animasyon-settings__body">
+          <button
+            type="button"
+            className="addon-toggle"
+            onClick={() => setDraft((d) => ({ ...d, variantsEnabled: !d.variantsEnabled }))}
+            aria-pressed={draft.variantsEnabled}
+          >
+            <span className="inline-flex items-center gap-2">
+              <Layers3 className="w-4 h-4 opacity-70" />
+              {draft.variantsEnabled ? 'Varyantlar açık' : 'Varyantlar kapalı'}
+            </span>
+            <span
+              className={`addon-toggle__switch${draft.variantsEnabled ? ' is-on' : ''}`}
+              aria-hidden
+            >
+              <span className="addon-toggle__knob" />
+            </span>
+          </button>
+          <p className="animasyon-settings__hint">
+            Kapalıysa ürün detayında boy / ekstra / istek seçenekleri gizlenir. Varsayılan:{' '}
+            {DEFAULT_ANIMASYON_CONFIG.variantsEnabled ? 'açık' : 'kapalı'}.
+          </p>
+
           <button
             type="button"
             className="addon-toggle"
@@ -64,7 +86,7 @@ export default function AnimasyonThemeSettingsModal({
               <span className="addon-toggle__knob" />
             </span>
           </button>
-          <p className="text-xs admin-text-muted leading-relaxed m-0">
+          <p className="animasyon-settings__hint">
             Varsayılan: {DEFAULT_ANIMASYON_CONFIG.cartEnabled ? 'açık' : 'kapalı'}. Sepet kapalıysa
             ürünler yine kaydırılır; sepete ekleme ve sepet ikonu gizlenir.
           </p>

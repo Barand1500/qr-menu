@@ -1146,3 +1146,18 @@
     transition: none;
   }
 }
+
+/* Sepet — Garson çağır (sade kahve tonu) */
+.public-menu-page[data-theme-menu='sade'] .siparis-cart-sheet__waiter {
+  background: linear-gradient(135deg, #5a433c, #3d2c29);
+  box-shadow: 0 10px 24px rgba(61, 44, 41, 0.32);
+}
+
+.public-menu-page[data-theme-menu='sade'] .siparis-cart-sheet__waiter.is-done {
+  background: #2a1e1b;
+  box-shadow: none;
+}
+
+.public-menu-page[data-theme-menu='sade'] .siparis-cart-sheet__waiter.is-error {
+  background: #7a3b32;
+}
