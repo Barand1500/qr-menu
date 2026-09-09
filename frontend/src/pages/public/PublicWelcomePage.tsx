@@ -29,6 +29,8 @@ import {
   type PrefCatalog,
 } from '@/lib/prefCatalog';
 import { resolveWelcomeMusic, youtubeEmbedSrc } from '@/lib/welcomeMusic';
+import BasketballWelcomeGame from '@/components/public/BasketballWelcomeGame';
+import type { WelcomeBasketballConfig } from '@/lib/welcomeBasketballConfig';
 
 interface WelcomeData {
   restaurant: { id: number; name: string; slug: string; logoUrl?: string | null };
@@ -39,6 +41,7 @@ interface WelcomeData {
   campaign?: { name: string; slug: string; itemCount: number } | null;
   socialLinks?: PublicSocialLink[];
   prefCatalog?: PrefCatalog;
+  basketballConfig?: WelcomeBasketballConfig;
 }
 
 export default function PublicWelcomePage() {
@@ -165,6 +168,13 @@ function PublicWelcomePageInner({
 
   useEffect(() => {
     if (!data) return;
+    if (data.theme === 'basketball') {
+      audioRef.current?.pause();
+      audioRef.current = null;
+      setYtEmbedSrc(null);
+      setMusicPlaying(false);
+      return;
+    }
     const resolved = resolveWelcomeMusic(data.welcomeMusicUrl);
 
     if (resolved.kind === 'youtube') {
@@ -240,7 +250,7 @@ function PublicWelcomePageInner({
   }, [musicOn, data]);
 
   useEffect(() => {
-    if (!data || !musicOn) {
+    if (!data || !musicOn || data.theme === 'basketball') {
       audioRef.current?.pause();
       setYtEmbedSrc(null);
       setMusicPlaying(false);
@@ -379,6 +389,25 @@ function PublicWelcomePageInner({
           ? t.musicOn
           : t.musicLoading
         : t.musicOff;
+
+  if (data.theme === 'basketball') {
+    return (
+      <div className={`welcome-scene ${entering ? 'welcome-scene--exit' : ''}`}>
+        <GeoCheckInBridge slug={slug} masa={tableNo} grup={groupSlug} coords={coords} />
+        <BasketballWelcomeGame
+          restaurant={data.restaurant}
+          languages={data.languages}
+          initialLang={selectedLang}
+          config={data.basketballConfig}
+          onLanguageChange={(lang) => {
+            setSelectedLang(lang);
+            localStorage.setItem('menu_lang', lang);
+          }}
+          onComplete={(lang) => enterMenu(lang, { allergens: [], diets: [] })}
+        />
+      </div>
+    );
+  }
 
   return (
     <div

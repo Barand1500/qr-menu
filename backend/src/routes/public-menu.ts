@@ -43,6 +43,10 @@ import { distanceMeters, isWithinGeoLock, loadGeoLock } from '../lib/geo-lock.js
 import { isMaintenanceEnabled } from '../lib/maintenance.js';
 import { addRunnerScore, getRunnerScores } from '../lib/maintenance-scores.js';
 import { ABOUT_PAGE_KEY, parseAboutPage } from '../lib/about-page.js';
+import {
+  WELCOME_BASKETBALL_CONFIG_KEY,
+  parseWelcomeBasketballConfig,
+} from '../lib/welcome-basketball-config.js';
 
 const router = Router();
 
@@ -201,7 +205,15 @@ router.get('/:slug/welcome', async (req, res) => {
   const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
   if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
 
-  const [languages, musicSetting, socialSetting, themes, campaign, prefCatalog] = await Promise.all([
+  const [
+    languages,
+    musicSetting,
+    socialSetting,
+    themes,
+    campaign,
+    prefCatalog,
+    basketballSetting,
+  ] = await Promise.all([
     prisma.language.findMany({ where: { isActive: true }, orderBy: { id: 'asc' } }),
     prisma.setting.findUnique({
       where: {
@@ -216,6 +228,14 @@ router.get('/:slug/welcome', async (req, res) => {
     getRestaurantThemes(restaurant.id),
     loadCampaignContext(restaurant.id, campaignSlug),
     loadPrefCatalog(restaurant.id),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: {
+          restaurantId: restaurant.id,
+          key: WELCOME_BASKETBALL_CONFIG_KEY,
+        },
+      },
+    }),
   ]);
 
   const welcomeI18n = (restaurant.welcomeI18n as Record<string, { message?: string }>) || {};
@@ -237,6 +257,7 @@ router.get('/:slug/welcome', async (req, res) => {
     campaign: campaignMeta(campaign),
     socialLinks: publicSocialLinks(parseSocialLinks(socialSetting?.value), 'welcome'),
     prefCatalog,
+    basketballConfig: parseWelcomeBasketballConfig(basketballSetting?.value),
   });
 });
 

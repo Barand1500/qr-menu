@@ -31,6 +31,13 @@ export const ADDON_PRODUCTS: AddonProductDef[] = [
     themeId: 'kitty',
   },
   {
+    id: 'welcome-basketball',
+    category: 'welcome',
+    name: 'Basketbol Menü',
+    description: 'Logonu potaya at; fizik, ses ve konfetiyle menünün kilidini aç.',
+    themeId: 'basketball',
+  },
+  {
     id: 'menu-sade',
     category: 'menu',
     name: 'Sade',

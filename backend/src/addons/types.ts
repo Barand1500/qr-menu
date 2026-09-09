@@ -3,6 +3,7 @@ export type AddonProductId =
   | 'welcome-cinema'
   | 'welcome-neon'
   | 'welcome-kitty'
+  | 'welcome-basketball'
   | 'menu-sade'
   | 'menu-siparis'
   | 'menu-alive'

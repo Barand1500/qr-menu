@@ -27,6 +27,12 @@ import {
   serializeAnimasyonThemeConfig,
   type AnimasyonThemeConfig,
 } from '../lib/menu-animasyon-config.js';
+import {
+  WELCOME_BASKETBALL_CONFIG_KEY,
+  parseWelcomeBasketballConfig,
+  serializeWelcomeBasketballConfig,
+  type WelcomeBasketballConfig,
+} from '../lib/welcome-basketball-config.js';
 
 const router = Router();
 router.use(authRequired);
@@ -42,7 +48,7 @@ async function getMenuAssistantStyle(restaurantId: number) {
 
 router.get('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const [owned, disabled, menuAssistantStyle, linearRow, animasyonRow] = await Promise.all([
+  const [owned, disabled, menuAssistantStyle, linearRow, animasyonRow, basketballRow] = await Promise.all([
     getOwnedAddons(restaurantId!),
     getDisabledAddons(restaurantId!),
     getMenuAssistantStyle(restaurantId!),
@@ -56,6 +62,11 @@ router.get('/', async (req, res) => {
         restaurantId_key: { restaurantId: restaurantId!, key: MENU_ANIMASYON_CONFIG_KEY },
       },
     }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurantId!, key: WELCOME_BASKETBALL_CONFIG_KEY },
+      },
+    }),
   ]);
   res.json({
     owned,
@@ -63,6 +74,7 @@ router.get('/', async (req, res) => {
     menuAssistantStyle,
     linearConfig: parseLinearThemeConfig(linearRow?.value),
     animasyonConfig: parseAnimasyonThemeConfig(animasyonRow?.value),
+    basketballConfig: parseWelcomeBasketballConfig(basketballRow?.value),
     products: ADDON_PRODUCTS.map((p) => {
       const isOwned = Boolean(p.free) || owned.includes(p.id);
       const enabled = isOwned && !disabled.includes(p.id);
@@ -198,6 +210,32 @@ router.patch('/menu-animasyon/config', async (req, res) => {
     },
     update: { value },
     create: { restaurantId: restaurantId!, key: MENU_ANIMASYON_CONFIG_KEY, value },
+  });
+
+  res.json({ ok: true, config: parsed });
+});
+
+router.patch('/welcome-basketball/config', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const owned = await ownsAddon(restaurantId!, 'welcome-basketball');
+  if (!owned) {
+    return res.status(403).json({ message: 'Önce Basketbol Menü temasını satın alın' });
+  }
+
+  const body = (req.body || {}) as Partial<WelcomeBasketballConfig>;
+  const parsed = parseWelcomeBasketballConfig(JSON.stringify(body));
+  const value = serializeWelcomeBasketballConfig(parsed);
+
+  await prisma.setting.upsert({
+    where: {
+      restaurantId_key: { restaurantId: restaurantId!, key: WELCOME_BASKETBALL_CONFIG_KEY },
+    },
+    update: { value },
+    create: {
+      restaurantId: restaurantId!,
+      key: WELCOME_BASKETBALL_CONFIG_KEY,
+      value,
+    },
   });
 
   res.json({ ok: true, config: parsed });

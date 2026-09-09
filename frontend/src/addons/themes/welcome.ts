@@ -31,4 +31,11 @@ export const WELCOME_THEMES: MenuThemeOption[] = [
     locked: true,
     previewClass: 'theme-preview--kitty',
   },
+  {
+    id: 'basketball',
+    name: 'Basketbol Menü',
+    description: 'Logonu potaya at; fizik, ses ve konfetiyle menünün kilidini aç.',
+    locked: true,
+    previewClass: 'theme-preview--basketball',
+  },
 ];

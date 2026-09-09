@@ -13,6 +13,11 @@ import {
   DEFAULT_ANIMASYON_CONFIG,
   type AnimasyonThemeConfig,
 } from '@/lib/menuAnimasyonConfig';
+import {
+  DEFAULT_WELCOME_BASKETBALL_CONFIG,
+  parseWelcomeBasketballConfig,
+  type WelcomeBasketballConfig,
+} from '@/lib/welcomeBasketballConfig';
 
 interface AddonsResponse {
   owned: string[];
@@ -20,6 +25,7 @@ interface AddonsResponse {
   menuAssistantStyle?: string;
   linearConfig?: LinearThemeConfig;
   animasyonConfig?: AnimasyonThemeConfig;
+  basketballConfig?: WelcomeBasketballConfig;
   products: AddonProduct[];
 }
 
@@ -30,6 +36,9 @@ export function useAddons() {
   const [linearConfig, setLinearConfig] = useState<LinearThemeConfig>(DEFAULT_LINEAR_CONFIG);
   const [animasyonConfig, setAnimasyonConfig] =
     useState<AnimasyonThemeConfig>(DEFAULT_ANIMASYON_CONFIG);
+  const [basketballConfig, setBasketballConfig] = useState<WelcomeBasketballConfig>(
+    DEFAULT_WELCOME_BASKETBALL_CONFIG
+  );
   const [products, setProducts] = useState<AddonProduct[]>(ADDON_CATALOG);
   const [loading, setLoading] = useState(true);
 
@@ -41,6 +50,9 @@ export function useAddons() {
     setMenuAssistantStyle(parseMenuAssistantStyle(res.menuAssistantStyle));
     if (res.linearConfig) setLinearConfig(res.linearConfig);
     if (res.animasyonConfig) setAnimasyonConfig(res.animasyonConfig);
+    if (res.basketballConfig) {
+      setBasketballConfig(parseWelcomeBasketballConfig(res.basketballConfig));
+    }
     setProducts(
       ADDON_CATALOG.map((p) => {
         const fromApi = res.products.find((x) => x.id === p.id);
@@ -162,6 +174,18 @@ export function useAddons() {
     return res;
   }
 
+  async function setBasketballThemeConfig(config: WelcomeBasketballConfig) {
+    const res = await api<{ config: WelcomeBasketballConfig }>(
+      '/api/admin/addons/welcome-basketball/config',
+      {
+        method: 'PATCH',
+        body: JSON.stringify(config),
+      }
+    );
+    setBasketballConfig(parseWelcomeBasketballConfig(res.config));
+    return res;
+  }
+
   return {
     owned,
     disabled,
@@ -169,6 +193,7 @@ export function useAddons() {
     menuAssistantStyle,
     linearConfig,
     animasyonConfig,
+    basketballConfig,
     loading,
     reload,
     isOwned,
@@ -178,5 +203,6 @@ export function useAddons() {
     setAssistantStyle,
     setLinearThemeConfig,
     setAnimasyonThemeConfig,
+    setBasketballThemeConfig,
   };
 }
