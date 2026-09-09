@@ -5,19 +5,17 @@ import {
   LogOut,
   ExternalLink,
   ChevronDown,
-  Sun,
-  Moon,
   RotateCcw,
   Puzzle,
   Armchair,
   Construction,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoData } from '@/contexts/DemoDataContext';
 import { api } from '@/lib/api';
 import { useAddons } from '@/hooks/useAddons';
 import AdminNotificationBell from '@/components/AdminNotificationBell';
+import ThemeToggleButton from '@/components/admin/ThemeToggleButton';
 import AdminTour, { AdminTourHelpButton } from '@/components/admin/AdminTour';
 import AdminAIChat, { AdminAIButton } from '@/components/admin/AdminAIChat';
 import type { TourOpenGroup } from '@/lib/adminTourSteps';
@@ -117,7 +115,6 @@ function NavItem({
 
 export default function AdminLayout() {
   const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const { demoEnabled, toggleDemo } = useDemoData();
   const { isOwned } = useAddons();
   const navigate = useNavigate();
@@ -359,18 +356,7 @@ export default function AdminLayout() {
           </button>
 
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
-            <button
-              onClick={toggleTheme}
-              data-tour="header-theme"
-              className="p-2 rounded-lg hover:bg-[var(--admin-accent-soft)] transition"
-              title={theme === 'light' ? 'Gece modu' : 'Gündüz modu'}
-            >
-              {theme === 'light' ? (
-                <Moon className="w-[18px] h-[18px]" style={{ color: 'var(--admin-accent)' }} />
-              ) : (
-                <Sun className="w-[18px] h-[18px]" style={{ color: 'var(--admin-accent)' }} />
-              )}
-            </button>
+            <ThemeToggleButton />
 
             <button
               type="button"
