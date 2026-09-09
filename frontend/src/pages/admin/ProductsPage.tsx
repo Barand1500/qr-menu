@@ -173,6 +173,9 @@ interface Language extends AdminLanguage {}
 
 type StatusFilter = 'all' | 'active' | 'passive';
 
+/** Yarın tekrar aç: true yap */
+const BULK_PRICE_UI_ENABLED = false;
+
 const emptyForm = (): ProductFormState => ({
   groupId: '',
   price: '',
@@ -633,28 +636,32 @@ export default function ProductsPage() {
                 Varyant / seçenek
               </Button>
             </Link>
-            <Button
-              variant="secondary"
-              onClick={() => setBulkOpen(true)}
-              disabled={bulkAnimating}
-            >
-              <Tags className="w-4 h-4" />
-              Toplu fiyat
-            </Button>
-            {bulkStatus.hasSnapshot && (
-              <Button
-                variant="ghost"
-                onClick={() => void handleBulkRestore()}
-                disabled={bulkAnimating}
-                title={
-                  bulkStatus.appliedAt
-                    ? `Son işlem: ${formatShortDate(bulkStatus.appliedAt)}`
-                    : 'Eski fiyata dön'
-                }
-              >
-                <RotateCcw className="w-4 h-4" />
-                Eski fiyata dön
-              </Button>
+            {BULK_PRICE_UI_ENABLED && (
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => setBulkOpen(true)}
+                  disabled={bulkAnimating}
+                >
+                  <Tags className="w-4 h-4" />
+                  Toplu fiyat
+                </Button>
+                {bulkStatus.hasSnapshot && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => void handleBulkRestore()}
+                    disabled={bulkAnimating}
+                    title={
+                      bulkStatus.appliedAt
+                        ? `Son işlem: ${formatShortDate(bulkStatus.appliedAt)}`
+                        : 'Eski fiyata dön'
+                    }
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Eski fiyata dön
+                  </Button>
+                )}
+              </>
             )}
             <Button onClick={openCreate}>
               <Plus className="w-4 h-4" />
