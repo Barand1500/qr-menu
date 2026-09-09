@@ -21,7 +21,7 @@ import AdminAIChat, { AdminAIButton } from '@/components/admin/AdminAIChat';
 import type { TourOpenGroup } from '@/lib/adminTourSteps';
 import { adminPreviewMenuUrl } from '@/lib/tableContext';
 import { adminPath } from '@/lib/adminPath';
-import { moveSidebarNavIndicator } from '@/lib/sidebarNavIndicator';
+import { moveSidebarNavIndicator, isSidebarNavIndicatorAnimating } from '@/lib/sidebarNavIndicator';
 import '@/admin-tour.css';
 import '@/admin-ai.css';
 
@@ -214,17 +214,27 @@ export default function AdminLayout() {
 
     run();
 
-    const onResize = () => run(true);
-    window.addEventListener('resize', onResize);
-    nav.addEventListener('scroll', onResize, { passive: true });
+    const onWinResize = () => run(true);
+    const onScroll = () => {
+      if (isSidebarNavIndicatorAnimating(indicator)) return;
+      run(true);
+    };
+    const onRo = () => {
+      // Aktif yazı / layout kayması animasyonu kesmesin
+      if (isSidebarNavIndicatorAnimating(indicator)) return;
+      run(true);
+    };
 
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => run(true)) : null;
+    window.addEventListener('resize', onWinResize);
+    nav.addEventListener('scroll', onScroll, { passive: true });
+
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onRo) : null;
     ro?.observe(nav);
 
     return () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener('resize', onResize);
-      nav.removeEventListener('scroll', onResize);
+      window.removeEventListener('resize', onWinResize);
+      nav.removeEventListener('scroll', onScroll);
       ro?.disconnect();
     };
   }, [
