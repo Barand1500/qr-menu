@@ -147,9 +147,15 @@ export default function CupsWelcomeGame({
 
   const measureGap = useCallback(() => {
     const table = tableRef.current;
-    if (!table) return gapRef.current;
-    const w = table.clientWidth;
-    gapRef.current = Math.max(96, Math.min(160, w * 0.3));
+    const cupW = cupRefs.current[0]?.offsetWidth || 110;
+    if (!table) {
+      gapRef.current = Math.max(cupW + 20, 120);
+      return gapRef.current;
+    }
+    // Bardaklar birbirine binmesin: en az bardak genişliği + boşluk
+    const minGap = cupW + 24;
+    const maxGap = Math.max(minGap, table.clientWidth * 0.34);
+    gapRef.current = Math.min(maxGap, Math.max(minGap, table.clientWidth * 0.31));
     return gapRef.current;
   }, []);
 
@@ -158,13 +164,15 @@ export default function CupsWelcomeGame({
     CUP_IDS.forEach((id) => {
       const el = cupRefs.current[id];
       if (!el) return;
+      const slot = positionsRef.current[id];
+      gsap.killTweensOf(el);
       gsap.set(el, {
-        x: slotX(positionsRef.current[id], gap),
+        x: slotX(slot, gap),
         y: 0,
         rotate: 0,
         scale: 1,
         opacity: 1,
-        clearProps: '',
+        zIndex: 10 + slot,
       });
     });
   }, [measureGap]);
@@ -265,13 +273,15 @@ export default function CupsWelcomeGame({
       tl.to(coverCup, { x: coverX, y: 0, duration: 0.45, ease: 'power2.inOut' });
     }
 
+    // Önemli: pozisyonları simüle ederek planla — aksi halde tüm swap'lar aynı bardaklara biner
+    const sim = [...positionsRef.current];
     for (let s = 0; s < swaps; s += 1) {
       let a = Math.floor(Math.random() * 3);
       let b = Math.floor(Math.random() * 3);
       while (b === a) b = Math.floor(Math.random() * 3);
 
-      const cupA = CUP_IDS.find((id) => positionsRef.current[id] === a);
-      const cupB = CUP_IDS.find((id) => positionsRef.current[id] === b);
+      const cupA = CUP_IDS.find((id) => sim[id] === a);
+      const cupB = CUP_IDS.find((id) => sim[id] === b);
       if (cupA === undefined || cupB === undefined) continue;
       const elA = cupRefs.current[cupA];
       const elB = cupRefs.current[cupB];
@@ -279,18 +289,31 @@ export default function CupsWelcomeGame({
 
       const xA = slotX(a, gap);
       const xB = slotX(b, gap);
-      const at = tl.duration() + (s === 0 ? 0.12 : 0.02);
+      const at = tl.duration() + (s === 0 ? 0.12 : 0.04);
+
+      // Simülasyonu hemen güncelle ki sonraki swap doğru bardakları bulsun
+      sim[cupA] = b;
+      sim[cupB] = a;
 
       tl.add(() => playSound('shuffle'), at);
+      tl.set(elA, { zIndex: 30 }, at);
+      tl.set(elB, { zIndex: 31 }, at);
       tl.to(elA, { x: xB, duration: dur, ease: 'power1.inOut' }, at);
       tl.to(elB, { x: xA, duration: dur, ease: 'power1.inOut' }, at);
-      tl.to(elA, { y: -24, duration: dur * 0.5, ease: 'sine.out', yoyo: true, repeat: 1 }, at);
-      tl.to(elB, { y: -24, duration: dur * 0.5, ease: 'sine.out', yoyo: true, repeat: 1 }, at);
+      tl.to(elA, { y: -28, duration: dur * 0.5, ease: 'sine.out', yoyo: true, repeat: 1 }, at);
+      tl.to(elB, { y: -28, duration: dur * 0.5, ease: 'sine.out', yoyo: true, repeat: 1 }, at);
       tl.add(() => {
         positionsRef.current[cupA] = b;
         positionsRef.current[cupB] = a;
+        gsap.set(elA, { zIndex: 10 + b });
+        gsap.set(elB, { zIndex: 10 + a });
       }, at + dur);
     }
+
+    tl.add(() => {
+      positionsRef.current = sim;
+      placeCupsInstant();
+    });
   }, [
     config.shuffleCount,
     config.shuffleSpeed,
