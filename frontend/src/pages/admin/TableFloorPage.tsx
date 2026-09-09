@@ -1145,7 +1145,7 @@ export default function TableFloorPage() {
                   setSelectedGroupSlug('');
                 }}
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -1192,53 +1192,6 @@ export default function TableFloorPage() {
                   <span className="table-floor__pill is-fee">Ücretli</span>
                 ) : null}
               </div>
-              {selected.accessCode ? (
-                <div className="table-floor__access-code">
-                  <div>
-                    <span>
-                      <KeyRound className="w-3.5 h-3.5" /> Erişim kodu
-                    </span>
-                    <strong>{selected.accessCode}</strong>
-                    {selected.codeExpiresAt ? (
-                      <small>
-                        Bitiş:{' '}
-                        {new Date(selected.codeExpiresAt).toLocaleTimeString('tr-TR', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </small>
-                    ) : null}
-                  </div>
-                  <button
-                    type="button"
-                    className="table-floor__secondary"
-                    disabled={busy}
-                    onClick={() => void regenerateCode()}
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Yenile
-                  </button>
-                </div>
-              ) : selected.occupied ? (
-                <div className="table-floor__access-code is-muted">
-                  <div>
-                    <span>
-                      <KeyRound className="w-3.5 h-3.5" /> Erişim kodu
-                    </span>
-                    <strong>—</strong>
-                    <small>Kod üretmek için tıklayın</small>
-                  </div>
-                  <button
-                    type="button"
-                    className="table-floor__secondary"
-                    disabled={busy}
-                    onClick={() => void regenerateCode()}
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Üret
-                  </button>
-                </div>
-              ) : null}
               {selected.status !== 'merged' ? (
                 <div className="table-floor__status-actions">
                   {selected.reservationNote?.trim() && selected.status === 'open' ? (
@@ -1274,6 +1227,56 @@ export default function TableFloorPage() {
                 </div>
               ) : null}
             </div>
+
+            {selected.accessCode ? (
+              <div className="table-floor__access-code">
+                <div className="table-floor__access-code-meta">
+                  <span>
+                    <KeyRound className="w-3.5 h-3.5" />
+                    Erişim kodu
+                  </span>
+                  <strong>{selected.accessCode}</strong>
+                  {selected.codeExpiresAt ? (
+                    <small>
+                      Bitiş:{' '}
+                      {new Date(selected.codeExpiresAt).toLocaleTimeString('tr-TR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </small>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className="table-floor__access-code-btn"
+                  disabled={busy}
+                  onClick={() => void regenerateCode()}
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Yenile
+                </button>
+              </div>
+            ) : selected.occupied ? (
+              <div className="table-floor__access-code is-muted">
+                <div className="table-floor__access-code-meta">
+                  <span>
+                    <KeyRound className="w-3.5 h-3.5" />
+                    Erişim kodu
+                  </span>
+                  <strong className="is-placeholder">Kod yok</strong>
+                  <small>Misafire vermek için kod üretin</small>
+                </div>
+                <button
+                  type="button"
+                  className="table-floor__access-code-btn"
+                  disabled={busy}
+                  onClick={() => void regenerateCode()}
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Üret
+                </button>
+              </div>
+            ) : null}
 
             {feePanelOpen && selected.status !== 'merged' ? (
               <div className="table-floor__pop">
