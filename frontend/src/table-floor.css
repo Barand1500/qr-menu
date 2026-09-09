@@ -244,11 +244,11 @@
 }
 
 .table-floor__top {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.75rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  padding: 0.85rem 1rem;
+  gap: 0.65rem 0.85rem;
+  padding: 0.75rem 1rem;
   background: var(--tf-header-bg);
   border-bottom: 1px solid var(--tf-header-border);
   backdrop-filter: blur(10px);
@@ -257,24 +257,35 @@
 
 @media (min-width: 900px) {
   .table-floor__top {
-    grid-template-columns: auto minmax(10rem, 16rem) 1fr;
-    padding: 0.95rem 1.35rem;
+    padding: 0.85rem 1.35rem;
   }
 }
 
 .table-floor__back {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.55rem 0.9rem;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
   border-radius: 999px;
   background: #fff;
   color: var(--tf-ink);
   border: 1px solid rgba(88, 60, 36, 0.14);
   font-weight: 700;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  line-height: 1.2;
   text-decoration: none;
-  box-shadow: 0 6px 18px rgba(88, 60, 36, 0.08);
+  box-shadow: 0 4px 12px rgba(88, 60, 36, 0.07);
+}
+
+.table-floor__back svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.table-floor__brand {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .table-floor__brand p {
@@ -329,18 +340,154 @@
   font-weight: 800;
 }
 
-.table-floor__filters {
-  grid-column: 1 / -1;
+.table-floor__brand-row {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
-  overflow-x: auto;
-  padding-bottom: 0.15rem;
+  min-width: 0;
 }
 
-@media (min-width: 900px) {
+.table-floor__brand-row strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-floor__garson-icon {
+  flex-shrink: 0;
+  width: 1.65rem;
+  height: 1.65rem;
+  border: none;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  cursor: pointer;
+  color: #fff;
+  background: #0f766e;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.35);
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.table-floor__garson-icon:hover {
+  background: #0d9488;
+  transform: translateY(-1px);
+}
+
+.table-floor__garson-icon.is-active {
+  background: #ea580c;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.4);
+}
+
+.table-floor__access-code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, #0ea5e9 12%, #fff);
+  border: 1px solid color-mix(in srgb, #0ea5e9 28%, transparent);
+}
+
+.table-floor__access-code.is-muted {
+  background: rgba(88, 60, 36, 0.04);
+  border-color: rgba(88, 60, 36, 0.12);
+}
+
+.table-floor__access-code > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.table-floor__access-code span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--tf-muted);
+}
+
+.table-floor__access-code strong {
+  font-size: 1.35rem;
+  letter-spacing: 0.16em;
+  color: var(--tf-ink);
+}
+
+.table-floor__access-code small {
+  color: var(--tf-muted);
+  font-size: 0.72rem;
+}
+
+.table-floor__access-code .table-floor__secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.table-floor__pill.is-code-pending {
+  background: rgba(245, 158, 11, 0.16);
+  color: #b45309;
+}
+
+.table-floor__pill.is-code-ok {
+  background: rgba(22, 163, 74, 0.14);
+  color: #15803d;
+}
+
+.table-floor__pill.is-code-expired {
+  background: rgba(239, 68, 68, 0.14);
+  color: #b91c1c;
+}
+
+.floor-table__code-badge {
+  display: inline-block;
+  margin-top: 0.2rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.12rem 0.35rem;
+  border-radius: 0.35rem;
+}
+
+.floor-table__code-badge.is-pending {
+  background: rgba(245, 158, 11, 0.2);
+  color: #b45309;
+}
+
+.floor-table__code-badge.is-ok {
+  background: rgba(22, 163, 74, 0.16);
+  color: #15803d;
+}
+
+.floor-table__code-badge.is-expired {
+  background: rgba(239, 68, 68, 0.16);
+  color: #b91c1c;
+}
+
+.table-floor__filters {
+  display: flex;
+  flex: 0 1 auto;
+  gap: 0.5rem;
+  margin-left: auto;
+  overflow-x: auto;
+  padding-bottom: 0.15rem;
+  max-width: 100%;
+}
+
+@media (max-width: 639px) {
   .table-floor__filters {
-    grid-column: auto;
-    justify-content: flex-end;
+    flex: 1 1 100%;
+    margin-left: 0;
+    order: 3;
   }
 }
 

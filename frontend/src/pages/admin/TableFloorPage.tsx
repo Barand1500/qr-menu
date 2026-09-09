@@ -901,7 +901,7 @@ export default function TableFloorPage() {
     <div className={`table-floor table-floor--skin-${floorSkin}`}>
       <header className="table-floor__top">
         <Link to={adminPath()} className="table-floor__back" aria-label="Admin panele dön">
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-4 h-4" />
           <span>Geri</span>
         </Link>
         <div className="table-floor__brand">
@@ -929,45 +929,41 @@ export default function TableFloorPage() {
               {floorSkin + 1}/{FLOOR_SKIN_COUNT}
             </span>
           </div>
-          <strong>{data?.restaurant?.name || user?.restaurant?.name || 'Restoran'}</strong>
-        </div>
-        <div className="table-floor__top-actions">
-          {panelMode === 'garson' ? (
-            <button type="button" className="table-floor__garson-btn is-active" onClick={openFloorPanel}>
-              <ArrowLeft className="w-4 h-4" />
-              Masalar
+          <div className="table-floor__brand-row">
+            <strong>{data?.restaurant?.name || user?.restaurant?.name || 'Restoran'}</strong>
+            <button
+              type="button"
+              className={`table-floor__garson-icon${panelMode === 'garson' ? ' is-active' : ''}`}
+              onClick={panelMode === 'garson' ? openFloorPanel : openGarsonPanel}
+              title={panelMode === 'garson' ? 'Masalara dön' : 'Garson'}
+              aria-label={panelMode === 'garson' ? 'Masalara dön' : 'Garson paneli'}
+            >
+              G
             </button>
-          ) : (
-            <button type="button" className="table-floor__garson-btn" onClick={openGarsonPanel} title="Garson">
-              <span className="table-floor__garson-g" aria-hidden>
-                G
-              </span>
-              Garson
-            </button>
-          )}
+          </div>
         </div>
         {panelMode === 'floor' ? (
-        <div className="table-floor__filters" role="tablist" aria-label="Masa grupları">
-          {(data?.groups || []).map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              role="tab"
-              aria-selected={g.id === activeGroup?.id}
-              className={`table-floor__chip${g.id === activeGroup?.id ? ' is-active' : ''}`}
-              onClick={() => {
-                setGroupId(g.id);
-                if (!pickMode) {
-                  setSelectedCode(null);
-                  setSelectedGroupSlug('');
-                }
-              }}
-            >
-              {g.name}
-              <em>{g.count}</em>
-            </button>
-          ))}
-        </div>
+          <div className="table-floor__filters" role="tablist" aria-label="Masa grupları">
+            {(data?.groups || []).map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                role="tab"
+                aria-selected={g.id === activeGroup?.id}
+                className={`table-floor__chip${g.id === activeGroup?.id ? ' is-active' : ''}`}
+                onClick={() => {
+                  setGroupId(g.id);
+                  if (!pickMode) {
+                    setSelectedCode(null);
+                    setSelectedGroupSlug('');
+                  }
+                }}
+              >
+                {g.name}
+                <em>{g.count}</em>
+              </button>
+            ))}
+          </div>
         ) : null}
       </header>
 
