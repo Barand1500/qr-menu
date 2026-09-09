@@ -57,6 +57,7 @@ import {
   WELCOME_CUPS_CONFIG_KEY,
   parseWelcomeCupsConfig,
 } from '../lib/welcome-cups-config.js';
+import { activeOptionGroups } from '../lib/product-options.js';
 
 const router = Router();
 
@@ -377,6 +378,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
       tableService: isTableServiceEnabled(tableServiceSetting?.value),
       animasyonCart: parseAnimasyonThemeConfig(animasyonConfigSetting?.value).cartEnabled,
     },
+    optionGroups: activeOptionGroups(product.optionGroups),
   });
 });
 

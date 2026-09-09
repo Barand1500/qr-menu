@@ -4,8 +4,10 @@ import { ArrowLeft } from 'lucide-react';
 import { formatMoney, imageUrl } from '@/lib/api';
 import MenuColorModeToggle from '@/components/public/MenuColorModeToggle';
 import TableServiceButtons from '@/components/public/TableServiceButtons';
+import SadeProductOptions from '@/components/public/sade/SadeProductOptions';
 import { menuGroupPath, menuProductPath } from '@/lib/menuPaths';
 import type { MenuColorMode } from '@/lib/menuColorMode';
+import type { ProductOptionGroup } from '@/lib/productOptions';
 import { gsap, prefersReducedMotion, useGSAP } from '@/lib/gsapSetup';
 
 type Product = {
@@ -23,6 +25,7 @@ type Product = {
   group: { id: number; name: string };
   restaurant: { name: string };
   menuFeatures?: { tableService?: boolean };
+  optionGroups?: ProductOptionGroup[];
 };
 
 type Related = {
@@ -56,6 +59,7 @@ export default function SadeProductPage({
   const [activeIdx, setActiveIdx] = useState(0);
   const multi = galleryImages.length > 1;
   const activeImg = galleryImages[activeIdx] || galleryImages[0];
+  const optionGroups = product.optionGroups || [];
 
   useEffect(() => {
     setActiveIdx(0);
@@ -97,11 +101,13 @@ export default function SadeProductPage({
         <h1 className="sade-detail__title sade-detail__reveal">{product.name}</h1>
         <p className="sade-detail__price sade-detail__reveal">
           {formatMoney(product.price, product.currency)}
+          {optionGroups.length > 0 ? (
+            <span className="sade-detail__price-hint">başlangıç</span>
+          ) : null}
         </p>
 
         {galleryImages.length > 0 ? (
           <div className="sade-detail__gallery sade-detail__reveal">
-            {/* Mobil: ana görsel + alt thumbnails */}
             <div className="sade-detail__gallery-mobile">
               <div className="sade-detail__photo">
                 <img src={imageUrl(activeImg)} alt="" key={activeImg} />
@@ -124,7 +130,6 @@ export default function SadeProductPage({
               ) : null}
             </div>
 
-            {/* Web: yan yana */}
             {multi ? (
               <div className="sade-detail__gallery-desktop" aria-label="Görseller">
                 {galleryImages.map((src, i) => (
@@ -145,6 +150,15 @@ export default function SadeProductPage({
 
         {product.description ? (
           <p className="sade-detail__text sade-detail__reveal">{product.description}</p>
+        ) : null}
+
+        {optionGroups.length > 0 ? (
+          <SadeProductOptions
+            key={product.id}
+            groups={optionGroups}
+            basePrice={product.price}
+            currency={product.currency}
+          />
         ) : null}
 
         {product.ingredients ? (

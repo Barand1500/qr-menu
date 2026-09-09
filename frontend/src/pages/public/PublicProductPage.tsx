@@ -35,6 +35,7 @@ import AnimasyonCartSheet from '@/components/public/animasyon/AnimasyonCartSheet
 import { SiparisCartProvider } from '@/hooks/useSiparisCart';
 import MaintenanceGate from '@/components/public/MaintenanceGate';
 import { useEffect, useState } from 'react';
+import type { ProductOptionGroup } from '@/lib/productOptions';
 
 interface ProductDetail {
   id: number;
@@ -52,6 +53,7 @@ interface ProductDetail {
   features: string[];
   theme?: string;
   menuFeatures?: { tableService?: boolean; animasyonCart?: boolean };
+  optionGroups?: ProductOptionGroup[];
   group: { id: number; name: string };
   restaurant: { name: string; slug: string; logoUrl?: string | null };
 }
