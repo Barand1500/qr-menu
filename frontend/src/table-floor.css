@@ -391,21 +391,25 @@
 
 .table-floor__access-code-row {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: 0.4rem;
 }
 
 .table-floor__access-code-field {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  height: 2.35rem;
   min-height: 2.35rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  box-sizing: border-box;
   color: var(--tf-muted);
+  font-size: 0.85rem;
   font-weight: 650;
   cursor: default;
+  overflow: hidden;
 }
 
 .table-floor__access-code-field.has-code {
@@ -422,19 +426,23 @@
   font-weight: 650;
   color: var(--tf-muted);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.table-floor__access-code-generate {
-  width: auto;
-  flex-shrink: 0;
+.table-floor__access-code-row .table-floor__access-code-generate,
+.table-floor__access-code-row .table-floor__secondary.table-floor__access-code-generate {
+  width: auto !important;
+  flex: 0 0 auto;
+  height: 2.35rem;
   min-height: 2.35rem;
-  padding: 0.45rem 0.9rem;
+  padding: 0 0.9rem;
+  white-space: nowrap;
 }
 
 .table-floor__access-code-row .table-floor__icon-btn {
-  flex-shrink: 0;
-  align-self: stretch;
-  height: auto;
+  flex: 0 0 2.35rem;
+  width: 2.35rem;
+  height: 2.35rem;
   min-height: 2.35rem;
 }
 
@@ -462,6 +470,11 @@
   text-transform: uppercase;
   padding: 0.12rem 0.35rem;
   border-radius: 0.35rem;
+}
+
+.floor-table__code-badge.is-empty {
+  background: rgba(120, 113, 108, 0.16);
+  color: #57534e;
 }
 
 .floor-table__code-badge.is-pending {

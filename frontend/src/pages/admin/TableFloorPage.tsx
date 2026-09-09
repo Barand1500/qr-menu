@@ -1097,14 +1097,17 @@ export default function TableFloorPage() {
                   </span>
                   <span className="floor-table__caption">
                     <span className="floor-table__label">{table.name}</span>
+                    {table.occupied && table.codeStatus === 'empty' ? (
+                      <span className="floor-table__code-badge is-empty">Kod yok</span>
+                    ) : null}
                     {table.codeStatus === 'pending' ? (
-                      <span className="floor-table__code-badge is-pending">Kod yok</span>
+                      <span className="floor-table__code-badge is-pending">Kod bekliyor</span>
                     ) : null}
                     {table.codeStatus === 'verified' ? (
                       <span className="floor-table__code-badge is-ok">Kod OK</span>
                     ) : null}
                     {table.codeStatus === 'expired' ? (
-                      <span className="floor-table__code-badge is-expired">Kod dolu</span>
+                      <span className="floor-table__code-badge is-expired">Süre doldu</span>
                     ) : null}
                     {table.status === 'merged' && primaryName ? (
                       <span className="floor-table__link">{primaryName} ile</span>
