@@ -28,6 +28,17 @@ import {
   normalizeOptionGroups,
   optionGroupsSummary,
 } from '../lib/product-options.js';
+import {
+  BULK_PRICE_SNAPSHOT_KEY,
+  parseBulkSnapshot,
+  transformOptionGroups,
+  transformUnitPrice,
+  type BulkOptionsAction,
+  type BulkPriceParams,
+  type BulkPriceRounding,
+  type BulkPriceSnapshot,
+  type BulkSnapshotItem,
+} from '../lib/bulk-price.js';
 
 const router = Router();
 router.use(authRequired);
@@ -97,6 +108,222 @@ router.get('/stats/validation', async (req, res) => {
   }
 
   res.json({ valid, invalid, total: products.length });
+});
+
+router.get('/bulk-price/status', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const row = await prisma.setting.findUnique({
+    where: {
+      restaurantId_key: { restaurantId: restaurantId!, key: BULK_PRICE_SNAPSHOT_KEY },
+    },
+  });
+  const snapshot = parseBulkSnapshot(row?.value);
+  res.json({
+    hasSnapshot: Boolean(snapshot),
+    appliedAt: snapshot?.appliedAt ?? null,
+    count: snapshot?.items.length ?? 0,
+  });
+});
+
+router.post('/bulk-price/preview', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const body = req.body || {};
+  const params = parseBulkParams(body);
+  if (!params) {
+    return res.status(400).json({ message: 'Geçersiz fiyat parametreleri' });
+  }
+
+  const products = await loadBulkTargetProducts(restaurantId!, body);
+  if (!products.length) {
+    return res.status(400).json({ message: 'Güncellenecek ürün bulunamadı' });
+  }
+
+  const languages = await getLanguages();
+  const withOptions = products.filter((p) => normalizeOptionGroups(p.optionGroups).some((g) => g.options.length > 0));
+  const lines = products.map((p) => {
+    const base = transformUnitPrice(Number(p.price), params);
+    const opt =
+      params.optionsAction === 'base_and_options'
+        ? transformOptionGroups(p.optionGroups, params)
+        : { groups: normalizeOptionGroups(p.optionGroups), skippedOptions: 0, changed: false };
+    return {
+      id: p.id,
+      name: getProductField(p.i18n, 'tr', 'name'),
+      groupName: getGroupName(p.group.i18n),
+      currency: p.currency
+        ? { code: p.currency.code, symbol: p.currency.symbol }
+        : { code: 'TRY', symbol: '₺' },
+      oldPrice: Number(p.price),
+      newPrice: base.skipped ? Number(p.price) : base.next,
+      skipped: base.skipped,
+      skipReason: base.reason || null,
+      hasOptions: normalizeOptionGroups(p.optionGroups).some((g) => g.options.length > 0),
+      optionsChanged: opt.changed,
+      optionsSkipped: opt.skippedOptions,
+    };
+  });
+
+  const applyCount = lines.filter((l) => !l.skipped && Math.abs(l.newPrice - l.oldPrice) > 0.001).length;
+  const warnCount = lines.filter((l) => l.skipped).length;
+
+  res.json({
+    params,
+    withOptionsCount: withOptions.length,
+    applyCount,
+    warnCount,
+    lines,
+    sampleNames: lines.slice(0, 3).map((l) => l.name),
+    languagesCount: languages.length,
+  });
+});
+
+router.post('/bulk-price/apply', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const body = req.body || {};
+  const params = parseBulkParams(body);
+  if (!params) {
+    return res.status(400).json({ message: 'Geçersiz fiyat parametreleri' });
+  }
+
+  const products = await loadBulkTargetProducts(restaurantId!, body);
+  if (!products.length) {
+    return res.status(400).json({ message: 'Güncellenecek ürün bulunamadı' });
+  }
+
+  const snapshotItems: BulkSnapshotItem[] = [];
+  const updates: { id: number; price: number; previousPrice: number; optionGroups?: unknown }[] = [];
+  const skipped: { id: number; name: string; reason: string }[] = [];
+
+  for (const p of products) {
+    const oldPrice = Number(p.price);
+    const base = transformUnitPrice(oldPrice, params);
+    if (base.skipped) {
+      skipped.push({
+        id: p.id,
+        name: getProductField(p.i18n, 'tr', 'name'),
+        reason: 'İndirim sonrası fiyat 0’ın altına düşer — atlandı',
+      });
+      continue;
+    }
+
+    snapshotItems.push({
+      productId: p.id,
+      price: oldPrice,
+      optionGroups: normalizeOptionGroups(p.optionGroups),
+    });
+
+    const next: { id: number; price: number; previousPrice: number; optionGroups?: unknown } = {
+      id: p.id,
+      price: base.next,
+      previousPrice: oldPrice,
+    };
+
+    if (params.optionsAction === 'base_and_options') {
+      const opt = transformOptionGroups(p.optionGroups, params);
+      next.optionGroups = opt.groups;
+    }
+
+    if (Math.abs(base.next - oldPrice) > 0.001 || next.optionGroups) {
+      updates.push(next);
+    }
+  }
+
+  if (!updates.length) {
+    return res.status(400).json({
+      message: 'Uygulanacak fiyat değişikliği yok',
+      skipped,
+    });
+  }
+
+  const appliedAt = new Date().toISOString();
+  const snapshot: BulkPriceSnapshot = { appliedAt, params, items: snapshotItems };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.setting.upsert({
+      where: {
+        restaurantId_key: { restaurantId: restaurantId!, key: BULK_PRICE_SNAPSHOT_KEY },
+      },
+      update: { value: JSON.stringify(snapshot) },
+      create: {
+        restaurantId: restaurantId!,
+        key: BULK_PRICE_SNAPSHOT_KEY,
+        value: JSON.stringify(snapshot),
+      },
+    });
+
+    for (const u of updates) {
+      await tx.product.update({
+        where: { id: u.id },
+        data: {
+          price: u.price,
+          previousPrice: u.previousPrice,
+          previousPriceAt: new Date(appliedAt),
+          ...(u.optionGroups ? { optionGroups: u.optionGroups } : {}),
+        },
+      });
+    }
+  });
+
+  res.json({
+    ok: true,
+    appliedAt,
+    orderIds: updates.map((u) => u.id),
+    updates: updates.map((u) => ({
+      id: u.id,
+      price: u.price,
+      previousPrice: u.previousPrice,
+      previousPriceAt: appliedAt,
+    })),
+    skipped,
+  });
+});
+
+router.post('/bulk-price/restore', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const row = await prisma.setting.findUnique({
+    where: {
+      restaurantId_key: { restaurantId: restaurantId!, key: BULK_PRICE_SNAPSHOT_KEY },
+    },
+  });
+  const snapshot = parseBulkSnapshot(row?.value);
+  if (!snapshot) {
+    return res.status(400).json({ message: 'Geri alınacak toplu fiyat kaydı yok' });
+  }
+
+  const orderIds: number[] = [];
+  const updates: { id: number; price: number }[] = [];
+
+  await prisma.$transaction(async (tx) => {
+    for (const item of snapshot.items) {
+      const product = await tx.product.findFirst({
+        where: { id: item.productId, restaurantId: restaurantId! },
+        select: { id: true },
+      });
+      if (!product) continue;
+      await tx.product.update({
+        where: { id: product.id },
+        data: {
+          price: item.price,
+          optionGroups: item.optionGroups,
+          previousPrice: null,
+          previousPriceAt: null,
+        },
+      });
+      orderIds.push(product.id);
+      updates.push({ id: product.id, price: item.price });
+    }
+
+    await tx.setting.deleteMany({
+      where: { restaurantId: restaurantId!, key: BULK_PRICE_SNAPSHOT_KEY },
+    });
+  });
+
+  res.json({
+    ok: true,
+    restoredAt: snapshot.appliedAt,
+    orderIds,
+    updates,
+  });
 });
 
 router.get('/:id', async (req, res) => {
@@ -434,6 +661,8 @@ async function mapProduct(
     groupId: number;
     currencyId?: number | null;
     price: unknown;
+    previousPrice?: unknown;
+    previousPriceAt?: Date | null;
     prepTimeMinutes: number | null;
     calories: number | null;
     features: unknown;
@@ -479,6 +708,13 @@ async function mapProduct(
     groupId: product.groupId,
     groupName: getGroupName(product.group.i18n),
     price: Number(product.price),
+    previousPrice:
+      product.previousPrice != null && product.previousPrice !== undefined
+        ? Number(product.previousPrice)
+        : null,
+    previousPriceAt: product.previousPriceAt
+      ? new Date(product.previousPriceAt).toISOString()
+      : null,
     currencyId: product.currencyId ?? currency.id,
     currency,
     prepTimeMinutes: product.prepTimeMinutes,
@@ -501,6 +737,49 @@ async function mapProduct(
     optionGroups: normalizeOptionGroups(product.optionGroups),
     optionSummary: optionGroupsSummary(product.optionGroups),
   };
+}
+
+function parseBulkParams(body: Record<string, unknown>): BulkPriceParams | null {
+  const direction = body.direction === 'down' ? 'down' : body.direction === 'up' ? 'up' : null;
+  const mode = body.mode === 'fixed' ? 'fixed' : body.mode === 'percent' ? 'percent' : null;
+  const value = Number(body.value);
+  const roundingRaw = String(body.rounding || 'off');
+  const rounding: BulkPriceRounding =
+    roundingRaw === '0.1' ||
+    roundingRaw === '0.5' ||
+    roundingRaw === '1' ||
+    roundingRaw === '5'
+      ? roundingRaw
+      : 'off';
+  const optionsAction: BulkOptionsAction =
+    body.optionsAction === 'base_and_options' ? 'base_and_options' : 'base_only';
+
+  if (!direction || !mode || !Number.isFinite(value) || value < 0) return null;
+  if (mode === 'percent' && value > 500) return null;
+  return { direction, mode, value, rounding, optionsAction };
+}
+
+async function loadBulkTargetProducts(
+  restaurantId: number,
+  body: Record<string, unknown>
+) {
+  const scope = String(body.scope || 'all');
+  const where: Record<string, unknown> = { restaurantId };
+  if (scope === 'category' && body.groupId) {
+    where.groupId = Number(body.groupId);
+  } else if (scope === 'selected') {
+    const ids = Array.isArray(body.productIds)
+      ? body.productIds.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0)
+      : [];
+    if (!ids.length) return [];
+    where.id = { in: ids };
+  }
+
+  return prisma.product.findMany({
+    where,
+    include: { group: true, currency: true },
+    orderBy: { sortOrder: 'asc' },
+  });
 }
 
 function resolveFeatures(product: {

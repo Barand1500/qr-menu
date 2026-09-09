@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Plus,
@@ -6,8 +6,10 @@ import {
   EyeOff,
   Eye,
   Layers3,
+  Tags,
+  RotateCcw,
 } from 'lucide-react';
-import { api, formatMoney, imageUrl } from '@/lib/api';
+import { api, formatMoney, formatPrice, imageUrl } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
 import { getActiveLanguages, type AdminLanguage } from '@/lib/languages';
 import {
@@ -25,6 +27,9 @@ import ProductModal, {
   type ProductFormState,
   type ProductTranslationFields,
 } from '@/components/ProductModal';
+import BulkPriceModal, {
+  type BulkPriceApplyResult,
+} from '@/components/BulkPriceModal';
 import {
   defaultPrefCatalog,
   fetchPrefCatalog,
@@ -52,6 +57,8 @@ interface Product {
   groupId: number;
   groupName: string;
   price: number;
+  previousPrice?: number | null;
+  previousPriceAt?: string | null;
   currencyId?: number | null;
   currency?: { id: number | null; code: string; name: string; symbol: string };
   prepTimeMinutes?: number | null;
@@ -77,6 +84,81 @@ interface Product {
     ingredients?: string | null;
     allergens?: string | null;
   }[];
+}
+
+type BulkStatus = {
+  hasSnapshot: boolean;
+  appliedAt: string | null;
+  count: number;
+};
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function formatShortDate(iso?: string | null) {
+  if (!iso) return '';
+  try {
+    return new Intl.DateTimeFormat('tr-TR', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(iso));
+  } catch {
+    return '';
+  }
+}
+
+function ProductPriceCell({
+  price,
+  currency,
+  previousPrice,
+  previousPriceAt,
+  rolling,
+  rollFrom,
+}: {
+  price: number;
+  currency?: { symbol?: string | null; code?: string | null } | null;
+  previousPrice?: number | null;
+  previousPriceAt?: string | null;
+  rolling: boolean;
+  rollFrom: number | null;
+}) {
+  const [shown, setShown] = useState(price);
+  const symbol = currency?.symbol?.trim() || currency?.code?.trim() || '₺';
+
+  useEffect(() => {
+    if (!rolling || rollFrom == null) {
+      setShown(price);
+      return;
+    }
+    const start = performance.now();
+    const duration = 650;
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - (1 - t) ** 3;
+      setShown(rollFrom + (price - rollFrom) * eased);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [rolling, rollFrom, price]);
+
+  return (
+    <div className={rolling ? 'bulk-price-rolling' : undefined}>
+      <p className="font-medium text-[var(--admin-text)] tabular-nums">
+        {formatPrice(shown)} {symbol}
+      </p>
+      {previousPrice != null && (
+        <p className="text-[11px] admin-text-muted mt-0.5 leading-snug">
+          Önceki: {formatMoney(previousPrice, currency)}
+          {previousPriceAt ? ` · ${formatShortDate(previousPriceAt)}` : ''}
+        </p>
+      )}
+    </div>
+  );
 }
 
 interface Group {
@@ -160,6 +242,27 @@ export default function ProductsPage() {
   const [pendingFiles, setPendingFiles] = useState<{ id: string; file: File; url: string }[]>([]);
   const [prefCatalog, setPrefCatalog] = useState<PrefCatalog>(() => defaultPrefCatalog());
 
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState<BulkStatus>({
+    hasSnapshot: false,
+    appliedAt: null,
+    count: 0,
+  });
+  const [bulkAnimating, setBulkAnimating] = useState(false);
+  const [rollingId, setRollingId] = useState<number | null>(null);
+  const [rollFrom, setRollFrom] = useState<number | null>(null);
+  const productsRef = useRef(products);
+  productsRef.current = products;
+
+  const refreshBulkStatus = useCallback(async () => {
+    try {
+      const status = await api<BulkStatus>('/api/admin/products/bulk-price/status');
+      setBulkStatus(status);
+    } catch {
+      setBulkStatus({ hasSnapshot: false, appliedAt: null, count: 0 });
+    }
+  }, []);
+
   const load = useCallback(async () => {
     const params = new URLSearchParams({ limit: '100' });
     if (search) params.set('search', search);
@@ -184,8 +287,85 @@ export default function ProductsPage() {
   }, [load]);
 
   useEffect(() => {
+    void refreshBulkStatus();
+  }, [refreshBulkStatus]);
+
+  useEffect(() => {
     fetchPrefCatalog().then(setPrefCatalog).catch(() => undefined);
   }, []);
+
+  async function runPriceSequence(
+    updates: {
+      id: number;
+      price: number;
+      previousPrice?: number | null;
+      previousPriceAt?: string | null;
+    }[],
+    kind: 'apply' | 'restore'
+  ) {
+    setBulkAnimating(true);
+    for (const u of updates) {
+      const row = document.querySelector(`[data-product-row="${u.id}"]`);
+      if (row) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await sleep(420);
+      }
+
+      const current = productsRef.current.find((p) => p.id === u.id);
+      const from = current?.price ?? u.previousPrice ?? u.price;
+      setRollFrom(from);
+      setRollingId(u.id);
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === u.id
+            ? {
+                ...p,
+                price: u.price,
+                previousPrice: kind === 'apply' ? (u.previousPrice ?? null) : null,
+                previousPriceAt: kind === 'apply' ? (u.previousPriceAt ?? null) : null,
+              }
+            : p
+        )
+      );
+      await sleep(720);
+    }
+    setRollingId(null);
+    setRollFrom(null);
+    setBulkAnimating(false);
+    await refreshBulkStatus();
+  }
+
+  async function handleBulkApplied(result: BulkPriceApplyResult) {
+    await runPriceSequence(result.updates, 'apply');
+    if (result.skipped.length > 0) {
+      window.alert(
+        `${result.skipped.length} ürün atlandı (fiyat 0 altına düşerdi):\n` +
+          result.skipped
+            .slice(0, 8)
+            .map((s) => `• ${s.name}`)
+            .join('\n') +
+          (result.skipped.length > 8 ? `\n… +${result.skipped.length - 8}` : '')
+      );
+    }
+  }
+
+  async function handleBulkRestore() {
+    if (bulkAnimating || !bulkStatus.hasSnapshot) return;
+    const ok = window.confirm(
+      `Son toplu işlemdeki ${bulkStatus.count} ürünün fiyatı eski haline dönecek. Devam edilsin mi?`
+    );
+    if (!ok) return;
+    try {
+      const res = await api<{
+        ok: true;
+        orderIds: number[];
+        updates: { id: number; price: number }[];
+      }>('/api/admin/products/bulk-price/restore', { method: 'POST' });
+      await runPriceSequence(res.updates, 'restore');
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Geri alınamadı');
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -453,6 +633,29 @@ export default function ProductsPage() {
                 Varyant / seçenek
               </Button>
             </Link>
+            <Button
+              variant="secondary"
+              onClick={() => setBulkOpen(true)}
+              disabled={bulkAnimating}
+            >
+              <Tags className="w-4 h-4" />
+              Toplu fiyat
+            </Button>
+            {bulkStatus.hasSnapshot && (
+              <Button
+                variant="ghost"
+                onClick={() => void handleBulkRestore()}
+                disabled={bulkAnimating}
+                title={
+                  bulkStatus.appliedAt
+                    ? `Son işlem: ${formatShortDate(bulkStatus.appliedAt)}`
+                    : 'Eski fiyata dön'
+                }
+              >
+                <RotateCcw className="w-4 h-4" />
+                Eski fiyata dön
+              </Button>
+            )}
             <Button onClick={openCreate}>
               <Plus className="w-4 h-4" />
               Yeni Ürün Ekle
@@ -526,8 +729,11 @@ export default function ProductsPage() {
                 products.map((product) => (
                   <tr
                     key={product.id}
+                    data-product-row={product.id}
                     onDoubleClick={() => openEdit(product)}
-                    className="border-b transition-all duration-300 hover:bg-[var(--admin-accent-soft)]/30 admin-table-row--editable cursor-pointer"
+                    className={`border-b transition-all duration-300 hover:bg-[var(--admin-accent-soft)]/30 admin-table-row--editable cursor-pointer${
+                      rollingId === product.id ? ' bulk-price-row--flash' : ''
+                    }`}
                     style={{
                       borderColor: 'var(--admin-card-border)',
                       opacity: product.isActive ? 1 : 0.38,
@@ -556,8 +762,15 @@ export default function ProductsPage() {
                     <td className="py-3.5 px-4 admin-text-muted hidden md:table-cell">
                       {product.groupName}
                     </td>
-                    <td className="py-3.5 px-4 font-medium text-[var(--admin-text)]">
-                      {formatMoney(product.price, product.currency)}
+                    <td className="py-3.5 px-4">
+                      <ProductPriceCell
+                        price={product.price}
+                        currency={product.currency}
+                        previousPrice={product.previousPrice}
+                        previousPriceAt={product.previousPriceAt}
+                        rolling={rollingId === product.id}
+                        rollFrom={rollingId === product.id ? rollFrom : null}
+                      />
                     </td>
                     <td className="py-3.5 px-4 admin-text-muted hidden sm:table-cell">
                       {product.sortOrder}
@@ -619,6 +832,13 @@ export default function ProductsPage() {
         onRemoveImage={handleRemoveImage}
         onRemovePending={handleRemovePending}
         onMoveImage={handleMoveImage}
+      />
+
+      <BulkPriceModal
+        open={bulkOpen}
+        groups={groupOptions}
+        onClose={() => setBulkOpen(false)}
+        onApplied={handleBulkApplied}
       />
     </div>
   );

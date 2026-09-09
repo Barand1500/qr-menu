@@ -246,6 +246,22 @@ body {
   }
 }
 
+@keyframes bulk-price-flash {
+  0% {
+    background-color: transparent;
+  }
+  35% {
+    background-color: color-mix(in srgb, var(--admin-accent) 16%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.bulk-price-row--flash > td {
+  animation: bulk-price-flash 0.7s ease;
+}
+
 .animate-slide-up {
   animation: slide-up 0.35s cubic-bezier(0.32, 0.72, 0, 1);
 }
