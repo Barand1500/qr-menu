@@ -182,9 +182,11 @@ export default function BasketballWelcomeGame({
     const width = stage.clientWidth;
     const height = stage.clientHeight;
     const ballSize = getBallSize();
+    // Yukarıda tut: aşağı çekmek için altta boşluk kalsın
+    const bottomGap = Math.max(150, Math.min(220, height * 0.24));
     const start = {
       x: width / 2 - ballSize / 2,
-      y: height - ballSize - Math.max(42, height * 0.07),
+      y: Math.max(height * 0.42, height - ballSize - bottomGap),
     };
     ballStartRef.current = start;
     if (!shotActiveRef.current && !draggingRef.current) positionBall(start);
@@ -426,46 +428,59 @@ export default function BasketballWelcomeGame({
 
   const onPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (shotActiveRef.current || phase !== 'game') return;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
     draggingRef.current = true;
     dragStartRef.current = { x: event.clientX, y: event.clientY };
-    gsap.to(event.currentTarget, { scale: 1.06, duration: 0.15 });
-  };
+    gsap.to(event.currentTarget, { scale: 1.05, duration: 0.12 });
 
-  const onPointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (!draggingRef.current || !dragStartRef.current) return;
-    const dx = Math.max(-125, Math.min(125, event.clientX - dragStartRef.current.x));
-    const dy = Math.max(0, Math.min(165, event.clientY - dragStartRef.current.y));
-    const next = {
-      x: ballStartRef.current.x + dx * 0.58,
-      y: ballStartRef.current.y + dy * 0.7,
+    const move = (e: PointerEvent) => {
+      if (!draggingRef.current || !dragStartRef.current || !stageRef.current) return;
+      const stage = stageRef.current;
+      const ballSize = ballSizeRef.current || getBallSize();
+      const maxPull = Math.min(120, Math.max(72, stage.clientHeight - ballStartRef.current.y - ballSize - 12));
+      const dx = Math.max(-110, Math.min(110, e.clientX - dragStartRef.current.x));
+      const dy = Math.max(0, Math.min(maxPull, e.clientY - dragStartRef.current.y));
+      const next = {
+        x: ballStartRef.current.x + dx * 0.45,
+        y: ballStartRef.current.y + dy * 0.85,
+      };
+      // Sahne dışına taşma
+      next.x = Math.max(4, Math.min(stage.clientWidth - ballSize - 4, next.x));
+      next.y = Math.max(8, Math.min(stage.clientHeight - ballSize - 8, next.y));
+      positionBall(next);
+      const power = dy / Math.max(maxPull, 1);
+      velocityRef.current = {
+        x: -dx * 3.4,
+        y: -(720 + power * 980),
+      };
     };
-    positionBall(next);
-    velocityRef.current = {
-      x: -dx * 3.8,
-      y: -Math.max(820, dy * 4.4 + 820),
-    };
-  };
 
-  const onPointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
-    event.currentTarget.releasePointerCapture(event.pointerId);
-    const pull = dragStartRef.current ? event.clientY - dragStartRef.current.y : 0;
-    dragStartRef.current = null;
-    gsap.to(event.currentTarget, { scale: 1, duration: 0.15 });
-    if (pull < 18) {
-      resetBall(true);
-      return;
-    }
-    if (Math.abs(velocityRef.current.x) < 1 && Math.abs(velocityRef.current.y) < 1) {
-      velocityRef.current = { x: 0, y: -880 };
-    }
-    shotActiveRef.current = true;
-    scoredShotRef.current = false;
-    setAttempts((value) => value + 1);
-    playSound('launch');
-    simulate();
+    const up = (e: PointerEvent) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      const pull = dragStartRef.current ? e.clientY - dragStartRef.current.y : 0;
+      dragStartRef.current = null;
+      gsap.to(ballRef.current, { scale: 1, duration: 0.12 });
+      if (pull < 22) {
+        resetBall(true);
+        return;
+      }
+      if (Math.abs(velocityRef.current.x) < 1 && Math.abs(velocityRef.current.y) < 1) {
+        velocityRef.current = { x: 0, y: -900 };
+      }
+      shotActiveRef.current = true;
+      scoredShotRef.current = false;
+      setAttempts((value) => value + 1);
+      playSound('launch');
+      simulate();
+    };
+
+    window.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
   };
 
   return (
@@ -495,10 +510,10 @@ export default function BasketballWelcomeGame({
                 type="button"
                 className={`basket-welcome__lang${lang === language.code ? ' is-active' : ''}`}
                 onClick={() => chooseLanguage(language.code)}
+                aria-label={language.name}
+                title={language.name}
               >
-                <LanguageFlag code={language.code} size={25} />
-                <span>{language.name}</span>
-                <ChevronRight className="w-4 h-4 opacity-40" />
+                <LanguageFlag code={language.code} size={40} />
               </button>
             ))}
           </div>
@@ -546,30 +561,38 @@ export default function BasketballWelcomeGame({
               <span>{ui.attempts}<b>{attempts}</b></span>
             </div>
             <div className={`basket-welcome__hoop-track${config.movingHoop ? ' is-moving' : ''}`}>
-              <div ref={hoopRef} className="basket-welcome__hoop">
-                <div className="basket-welcome__backboard"><span /></div>
-                <div className="basket-welcome__rim" />
+              <div ref={hoopRef} className="basket-welcome__hoop" aria-hidden>
+                <div className="basket-welcome__backboard">
+                  <span className="basket-welcome__target" />
+                </div>
+                <div className="basket-welcome__rim-wrap">
+                  <div className="basket-welcome__rim-outer" />
+                  <div className="basket-welcome__rim" />
+                </div>
                 <div className="basket-welcome__net">
-                  {Array.from({ length: 7 }, (_, index) => <i key={index} />)}
+                  {Array.from({ length: 9 }, (_, index) => (
+                    <i key={index} style={{ ['--i' as string]: index }} />
+                  ))}
                 </div>
               </div>
             </div>
 
-            <div className="basket-welcome__aim-line" aria-hidden />
             <button
               ref={ballRef}
               type="button"
               className={`basket-welcome__ball${useLogo ? ' has-logo' : ''}`}
               onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointerCancel={onPointerUp}
               aria-label={ui.dragHint}
             >
               {useLogo ? (
                 <img src={imageUrl(restaurant.logoUrl!)} alt={restaurant.name} draggable={false} />
               ) : (
-                <span className="basket-welcome__basketball-lines" aria-hidden />
+                <img
+                  src="/welcome/basketball-ball.png"
+                  alt=""
+                  className="basket-welcome__ball-img"
+                  draggable={false}
+                />
               )}
             </button>
 
