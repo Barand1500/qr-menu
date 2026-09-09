@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Menu,
@@ -21,6 +21,7 @@ import AdminAIChat, { AdminAIButton } from '@/components/admin/AdminAIChat';
 import type { TourOpenGroup } from '@/lib/adminTourSteps';
 import { adminPreviewMenuUrl } from '@/lib/tableContext';
 import { adminPath } from '@/lib/adminPath';
+import { moveSidebarNavIndicator } from '@/lib/sidebarNavIndicator';
 import '@/admin-tour.css';
 import '@/admin-ai.css';
 
@@ -128,6 +129,8 @@ export default function AdminLayout() {
   const [aiOpen, setAiOpen] = useState(false);
   const [maintenanceOn, setMaintenanceOn] = useState(false);
   const [maintenanceBusy, setMaintenanceBusy] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const navIndicatorRef = useRef<HTMLDivElement>(null);
 
   const { mainNavBase, startupNav, reportNav, managementNav } = buildNav();
   const mainNav = [
@@ -184,17 +187,54 @@ export default function AdminLayout() {
   const startupActive = location.pathname.startsWith(adminPath('startup'));
   const extensionsActive = location.pathname.startsWith(adminPath('extensions'));
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (reportsActive) setReportsOpen(true);
   }, [reportsActive]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (managementActive) setManagementOpen(true);
   }, [managementActive]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (startupActive) setStartupOpen(true);
   }, [startupActive]);
+
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const indicator = navIndicatorRef.current;
+    if (!nav || !indicator) return;
+
+    let frame = 0;
+    const run = (instant?: boolean) => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        moveSidebarNavIndicator(nav, indicator, { instant });
+      });
+    };
+
+    run();
+
+    const onResize = () => run(true);
+    window.addEventListener('resize', onResize);
+    nav.addEventListener('scroll', onResize, { passive: true });
+
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => run(true)) : null;
+    ro?.observe(nav);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', onResize);
+      nav.removeEventListener('scroll', onResize);
+      ro?.disconnect();
+    };
+  }, [
+    location.pathname,
+    startupOpen,
+    reportsOpen,
+    managementOpen,
+    mainNav.length,
+    mobileOpen,
+  ]);
 
   useEffect(() => {
     api<{ enabled: boolean }>('/api/admin/settings/maintenance')
@@ -246,7 +286,8 @@ export default function AdminLayout() {
 
       <div className="mx-5 h-px bg-white/10 mb-2" />
 
-      <nav className="sidebar-nav flex-1 overflow-y-auto admin-scroll pb-8">
+      <nav ref={navRef} className="sidebar-nav flex-1 overflow-y-auto admin-scroll pb-8">
+        <div ref={navIndicatorRef} className="sidebar-nav-indicator" aria-hidden />
         {mainNav.map(({ to, label, end, tourId }) => (
           <NavItem
             key={to}
