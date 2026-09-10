@@ -546,21 +546,50 @@
   color: #b91c1c;
 }
 
+.table-floor__nav-filters {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: flex-end;
+  gap: 0.65rem;
+  margin-left: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.table-floor__status-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
 .table-floor__filters {
   display: flex;
   flex: 0 1 auto;
   gap: 0.5rem;
-  margin-left: auto;
   overflow-x: auto;
   padding-bottom: 0.15rem;
   max-width: 100%;
+  min-width: 0;
 }
 
 @media (max-width: 639px) {
-  .table-floor__filters {
+  .table-floor__nav-filters {
     flex: 1 1 100%;
     margin-left: 0;
     order: 3;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  .table-floor__status-filters {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .table-floor__filters {
+    flex: 1 1 100%;
   }
 }
 
@@ -579,6 +608,13 @@
   cursor: pointer;
 }
 
+.table-floor__status-filters .table-floor__chip {
+  justify-content: space-between;
+  min-width: 9.5rem;
+  padding: 0.42rem 0.75rem;
+  font-size: 0.78rem;
+}
+
 .table-floor__chip em {
   font-style: normal;
   font-size: 0.7rem;
@@ -595,6 +631,16 @@
 
 .table-floor__chip.is-active em {
   background: rgba(255, 255, 255, 0.18);
+}
+
+.table-floor__chip--pending.is-active {
+  background: #0369a1;
+  color: #f0f9ff;
+}
+
+.table-floor__chip--occupied.is-active {
+  background: #c2410c;
+  color: #fff7ed;
 }
 
 .table-floor__main {

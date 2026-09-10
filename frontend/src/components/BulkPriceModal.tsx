@@ -235,11 +235,10 @@ export default function BulkPriceModal({
         method: 'POST',
         body: JSON.stringify(buildBody(optionsAction || 'base_only')),
       });
-      await onApplied(res);
       onClose();
+      void onApplied(res);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Uygulanamadı');
-    } finally {
       setApplying(false);
     }
   }

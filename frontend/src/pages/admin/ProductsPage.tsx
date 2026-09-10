@@ -248,6 +248,7 @@ export default function ProductsPage() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkRestoreOpen, setBulkRestoreOpen] = useState(false);
   const [bulkRestoring, setBulkRestoring] = useState(false);
+  const [bulkToast, setBulkToast] = useState<string | null>(null);
   const [bulkStatus, setBulkStatus] = useState<BulkStatus>({
     hasSnapshot: false,
     appliedAt: null,
@@ -341,6 +342,9 @@ export default function ProductsPage() {
   }
 
   async function handleBulkApplied(result: BulkPriceApplyResult) {
+    setBulkOpen(false);
+    setBulkToast('İşlem başarıyla başlatıldı');
+    window.setTimeout(() => setBulkToast(null), 3200);
     await runPriceSequence(result.updates, 'apply');
     if (result.skipped.length > 0) {
       window.alert(
@@ -628,6 +632,20 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-5">
+      {bulkToast ? (
+        <div
+          className="fixed top-4 left-1/2 z-[60] -translate-x-1/2 px-4 py-2.5 rounded-2xl text-sm font-semibold shadow-lg animate-slide-up"
+          style={{
+            background: 'var(--admin-card)',
+            border: '1px solid var(--admin-card-border)',
+            color: 'var(--admin-text)',
+            boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+          }}
+          role="status"
+        >
+          {bulkToast}
+        </div>
+      ) : null}
       <PageHeader
         title="Ürünler"
         actions={
