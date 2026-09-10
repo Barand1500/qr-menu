@@ -174,7 +174,7 @@ interface Language extends AdminLanguage {}
 type StatusFilter = 'all' | 'active' | 'passive';
 
 /** Yarın tekrar aç: true yap */
-const BULK_PRICE_UI_ENABLED = false;
+const BULK_PRICE_UI_ENABLED = true;
 
 const emptyForm = (): ProductFormState => ({
   groupId: '',
