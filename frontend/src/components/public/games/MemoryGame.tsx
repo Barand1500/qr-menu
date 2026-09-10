@@ -1,8 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
+import { imageUrl } from '@/lib/api';
+import type { MemoryPair, MemoryPairCount } from '@/lib/menuGamesConfig';
 
 const EMOJIS = ['🍕', '🍔', '🍣', '🍩', '🌮', '🥗', '🍜', '🍰'];
 
-type Card = { id: number; emoji: string; flipped: boolean; matched: boolean };
+type Face = { key: string; kind: 'emoji' | 'image'; emoji?: string; src?: string };
+
+type Card = {
+  id: number;
+  face: Face;
+  flipped: boolean;
+  matched: boolean;
+};
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -13,18 +22,61 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function buildDeck(): Card[] {
-  const pairs = shuffle([...EMOJIS, ...EMOJIS]);
-  return pairs.map((emoji, id) => ({ id, emoji, flipped: false, matched: false }));
+function buildFaces(pairCount: MemoryPairCount, pairs: MemoryPair[]): Face[] {
+  const custom = pairs.slice(0, pairCount).flatMap((p, i) => {
+    const key = `pair-${p.id || i}`;
+    return [
+      { key, kind: 'image' as const, src: p.imageA },
+      { key, kind: 'image' as const, src: p.imageB },
+    ];
+  });
+  if (custom.length >= pairCount * 2) return custom.slice(0, pairCount * 2);
+
+  const need = pairCount - Math.floor(custom.length / 2);
+  const emojiFaces = EMOJIS.slice(0, need).flatMap((emoji) => {
+    const key = `emoji-${emoji}`;
+    return [
+      { key, kind: 'emoji' as const, emoji },
+      { key, kind: 'emoji' as const, emoji },
+    ];
+  });
+  return [...custom, ...emojiFaces].slice(0, pairCount * 2);
 }
 
-export default function MemoryGame({ lang = 'tr' }: { lang?: string }) {
+function buildDeck(pairCount: MemoryPairCount, pairs: MemoryPair[]): Card[] {
+  return shuffle(buildFaces(pairCount, pairs)).map((face, id) => ({
+    id,
+    face,
+    flipped: false,
+    matched: false,
+  }));
+}
+
+type Props = {
+  lang?: string;
+  pairCount?: MemoryPairCount;
+  pairs?: MemoryPair[];
+};
+
+export default function MemoryGame({
+  lang = 'tr',
+  pairCount = 6,
+  pairs = [],
+}: Props) {
   const en = (lang || 'tr').split('-')[0] === 'en';
-  const [cards, setCards] = useState<Card[]>(() => buildDeck());
+  const [cards, setCards] = useState<Card[]>(() => buildDeck(pairCount, pairs));
   const [lock, setLock] = useState(false);
   const [moves, setMoves] = useState(0);
-  const [startedAt] = useState(() => Date.now());
+  const [startedAt, setStartedAt] = useState(() => Date.now());
   const [wonAt, setWonAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    setCards(buildDeck(pairCount, pairs));
+    setMoves(0);
+    setWonAt(null);
+    setLock(false);
+    setStartedAt(Date.now());
+  }, [pairCount, pairs]);
 
   const openIds = useMemo(
     () => cards.filter((c) => c.flipped && !c.matched).map((c) => c.id),
@@ -38,7 +90,7 @@ export default function MemoryGame({ lang = 'tr' }: { lang?: string }) {
     const [a, b] = openIds;
     const ca = cards.find((c) => c.id === a)!;
     const cb = cards.find((c) => c.id === b)!;
-    const match = ca.emoji === cb.emoji;
+    const match = ca.face.key === cb.face.key;
     const t = window.setTimeout(() => {
       setCards((prev) =>
         prev.map((c) => {
@@ -50,6 +102,7 @@ export default function MemoryGame({ lang = 'tr' }: { lang?: string }) {
       setLock(false);
     }, match ? 280 : 650);
     return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openIds.join(',')]);
 
   useEffect(() => {
@@ -70,10 +123,11 @@ export default function MemoryGame({ lang = 'tr' }: { lang?: string }) {
   }
 
   function reset() {
-    setCards(buildDeck());
+    setCards(buildDeck(pairCount, pairs));
     setMoves(0);
     setWonAt(null);
     setLock(false);
+    setStartedAt(Date.now());
   }
 
   const secs = wonAt ? Math.max(1, Math.round((wonAt - startedAt) / 1000)) : null;
@@ -95,7 +149,9 @@ export default function MemoryGame({ lang = 'tr' }: { lang?: string }) {
           {en ? 'Restart' : 'Yeniden'}
         </button>
       </div>
-      <div className="menu-game-memory__board">
+      <div
+        className={`menu-game-memory__board menu-game-memory__board--${pairCount}`}
+      >
         {cards.map((c) => (
           <button
             key={c.id}
@@ -108,7 +164,13 @@ export default function MemoryGame({ lang = 'tr' }: { lang?: string }) {
             aria-label={en ? 'Card' : 'Kart'}
           >
             <span className="menu-game-memory__face menu-game-memory__face--back">?</span>
-            <span className="menu-game-memory__face menu-game-memory__face--front">{c.emoji}</span>
+            <span className="menu-game-memory__face menu-game-memory__face--front">
+              {c.face.kind === 'image' && c.face.src ? (
+                <img src={imageUrl(c.face.src)} alt="" />
+              ) : (
+                c.face.emoji
+              )}
+            </span>
           </button>
         ))}
       </div>

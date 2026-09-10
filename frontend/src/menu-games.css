@@ -138,7 +138,21 @@
   flex-direction: column;
   gap: 0.35rem;
   min-height: 7.5rem;
+  position: relative;
   transition: transform 0.15s ease, border-color 0.15s;
+}
+
+.menu-games__tile-ok {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #10b981;
+  color: #fff;
 }
 
 .menu-games__tile:active {
@@ -216,6 +230,77 @@
   background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(249, 115, 22, 0.16));
   border: 1px solid rgba(125, 211, 252, 0.35);
   animation: menu-games-promo-pulse 1.1s ease-in-out infinite;
+}
+
+.public-side-menu__games-promo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.public-side-menu__games-promo-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-align: left;
+  border: none;
+  border-radius: 0.85rem;
+  padding: 0.65rem 0.7rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  animation: menu-games-cta-blink 1.15s ease-in-out infinite;
+}
+
+.public-side-menu__games-promo-item strong {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.public-side-menu__games-promo-item small {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.3;
+}
+
+.public-side-menu__games-ok {
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: #10b981;
+  color: #fff;
+}
+
+.public-side-menu__games-ok.is-quiet {
+  width: 1.15rem;
+  height: 1.15rem;
+  background: rgba(16, 185, 129, 0.9);
+}
+
+.public-side-menu__game-card {
+  text-align: left;
+  padding: 0.75rem 0.7rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-height: 4.6rem;
+  position: relative;
+}
+
+.public-side-menu__game-card .public-side-menu__games-ok {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
 }
 
 @keyframes menu-games-promo-pulse {
@@ -304,6 +389,10 @@
   color: #2c2824;
 }
 
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__games-promo-item {
+  background: #fff;
+}
+
 .public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__game-card {
   color: #2c2824;
   background: #fff;
@@ -384,6 +473,25 @@
   background: #f8fafc;
   border: 1px solid rgba(15, 23, 42, 0.08);
   transform: rotateY(180deg);
+  overflow: hidden;
+}
+
+.menu-game-memory__face--front img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.menu-game-memory__board--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.menu-game-memory__board--6 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.menu-game-memory__board--8 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .menu-game-memory__card.is-open .menu-game-memory__face--back {

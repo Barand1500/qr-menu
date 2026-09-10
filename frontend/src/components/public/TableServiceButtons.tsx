@@ -53,6 +53,7 @@ export default function TableServiceButtons({
     try {
       const res = await api<{
         ok: boolean;
+        duplicate?: boolean;
         id: number;
         type: string;
         tableNumber: string;
@@ -66,16 +67,19 @@ export default function TableServiceButtons({
           groupSlug: grup || undefined,
         }),
       });
-      notifyTableRequestCreated({
-        id: res.id,
-        type: res.type,
-        tableNumber: res.tableNumber,
-        groupSlug: res.groupSlug,
-        createdAt: res.createdAt,
-      });
+      if (!res.duplicate) {
+        notifyTableRequestCreated({
+          id: res.id,
+          type: res.type,
+          tableNumber: res.tableNumber,
+          groupSlug: res.groupSlug,
+          createdAt: res.createdAt,
+        });
+      }
       notifyWaiterCalled();
       setDone(true);
-      window.setTimeout(() => setDone(false), 3500);
+      // Sunucu 45 sn debounce ile uyumlu — tekrar tıklamada XHR hatası olmaz
+      window.setTimeout(() => setDone(false), 45_000);
     } catch {
       setError(true);
       window.setTimeout(() => setError(false), 2800);

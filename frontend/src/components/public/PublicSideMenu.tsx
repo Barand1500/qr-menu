@@ -10,7 +10,8 @@ import {
 } from '@/lib/dietAllergens';
 import { catalogLabel, loadPrefCatalogSession, resolvePrefCatalog } from '@/lib/prefCatalog';
 import { sideMenuUi } from '@/lib/menuChromeUi';
-import { MENU_GAMES_CATALOG, type MenuGameId } from '@/lib/menuGames';
+import { MENU_GAMES_CATALOG, enabledMenuGames, type MenuGameId } from '@/lib/menuGames';
+import type { PublicMenuGames } from '@/lib/menuGamesConfig';
 
 export type PublicTab = 'home' | 'about' | 'settings';
 
@@ -32,6 +33,7 @@ interface PublicSideMenuProps {
   onLangChange: (code: string) => void;
   onDietaryPrefsChange?: (prefs: DietaryPrefs) => void;
   gamesEnabled?: boolean;
+  gamesConfig?: PublicMenuGames | boolean | null;
   gamesPromo?: boolean;
   onGamesPromoDismiss?: () => void;
   onOpenGames?: (game?: MenuGameId) => void;
@@ -50,6 +52,7 @@ export default function PublicSideMenu({
   onLangChange,
   onDietaryPrefsChange,
   gamesEnabled = false,
+  gamesConfig,
   gamesPromo = false,
   onGamesPromoDismiss,
   onOpenGames,
@@ -61,6 +64,8 @@ export default function PublicSideMenu({
   const [allergyOpen, setAllergyOpen] = useState(() => prefsActive(dietaryPrefs));
   const langRef = useRef<HTMLDivElement>(null);
   const en = (activeLang || 'tr').split('-')[0] === 'en';
+  const gameIds = enabledMenuGames(gamesConfig ?? (gamesEnabled ? true : false));
+  const gameCards = MENU_GAMES_CATALOG.filter((g) => gameIds.includes(g.id));
 
   const activeLanguage = languages.find((l) => l.code === activeLang) || languages[0];
   const prefCount = dietaryPrefs.allergens.length + dietaryPrefs.diets.length;
@@ -162,7 +167,7 @@ export default function PublicSideMenu({
         </nav>
 
         <div className="public-side-menu__scroll">
-          {gamesEnabled ? (
+          {gamesEnabled && gameCards.length > 0 ? (
             <div className="public-side-menu__section public-side-menu__games">
               <p className="public-side-menu__section-title">
                 <Gamepad2 className="w-4 h-4" />
@@ -172,30 +177,44 @@ export default function PublicSideMenu({
               {gamesPromo ? (
                 <div className="public-side-menu__games-promo">
                   <p>{chrome.gamesPromo}</p>
-                  <button
-                    type="button"
-                    className="public-side-menu__games-cta"
-                    onClick={() => openGame()}
-                  >
-                    {chrome.gamesCta}
-                  </button>
+                  <div className="public-side-menu__games-promo-list">
+                    {gameCards.map((g) => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        className="public-side-menu__games-promo-item"
+                        onClick={() => openGame(g.id)}
+                      >
+                        <span className="public-side-menu__games-ok" aria-hidden>
+                          <Check className="w-3.5 h-3.5" strokeWidth={2.75} />
+                        </span>
+                        <span className="min-w-0">
+                          <strong>{en ? g.titleEn : g.titleTr}</strong>
+                          <small>{en ? g.blurbEn : g.blurbTr}</small>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              ) : null}
-
-              <div className="public-side-menu__games-grid">
-                {MENU_GAMES_CATALOG.map((g) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    className="public-side-menu__game-card"
-                    onClick={() => openGame(g.id)}
-                  >
-                    <em>{en ? g.badgeEn : g.badgeTr}</em>
-                    <strong>{en ? g.titleEn : g.titleTr}</strong>
-                    <span>{en ? g.blurbEn : g.blurbTr}</span>
-                  </button>
-                ))}
-              </div>
+              ) : (
+                <div className="public-side-menu__games-grid">
+                  {gameCards.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      className="public-side-menu__game-card"
+                      onClick={() => openGame(g.id)}
+                    >
+                      <span className="public-side-menu__games-ok is-quiet" aria-hidden>
+                        <Check className="w-3 h-3" strokeWidth={2.75} />
+                      </span>
+                      <em>{en ? g.badgeEn : g.badgeTr}</em>
+                      <strong>{en ? g.titleEn : g.titleTr}</strong>
+                      <span>{en ? g.blurbEn : g.blurbTr}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ) : null}
 

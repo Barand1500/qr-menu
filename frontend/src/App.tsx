@@ -17,6 +17,7 @@ import SuggestionsPage from '@/pages/admin/SuggestionsPage';
 import SettingsPage from '@/pages/admin/SettingsPage';
 import WelcomeThemePage from '@/pages/admin/WelcomeThemePage';
 import MenuThemePage from '@/pages/admin/MenuThemePage';
+import GamesScreenPage from '@/pages/admin/GamesScreenPage';
 import ExtensionsHubPage from '@/pages/admin/ExtensionsHubPage';
 import BulkTranslatePage from '@/pages/admin/BulkTranslatePage';
 import TableFloorPage from '@/pages/admin/TableFloorPage';
@@ -59,6 +60,7 @@ function AdminRoutes({ slug }: { slug: string }) {
         <Route path="bulk-translate" element={<BulkTranslatePage />} />
         <Route path="startup/welcome" element={<WelcomeThemePage />} />
         <Route path="startup/menu" element={<MenuThemePage />} />
+        <Route path="startup/games" element={<GamesScreenPage />} />
         <Route path="stats" element={<StatsPage />} />
         <Route path="complaints" element={<ComplaintsPage />} />
         <Route path="suggestions" element={<SuggestionsPage />} />

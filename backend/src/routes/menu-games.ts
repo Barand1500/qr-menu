@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { isMenuGamesEnabled, MENU_GAMES_KEY } from '../lib/menu-games.js';
+import {
+  isMenuGamesEnabled,
+  MENU_GAMES_CONFIG_KEY,
+  MENU_GAMES_KEY,
+  parseMenuGamesConfig,
+} from '../lib/menu-games.js';
 import {
   getXoxRoom,
   joinXoxRoom,
@@ -15,11 +20,12 @@ async function loadRestaurant(slug: string) {
   return prisma.restaurant.findUnique({ where: { slug } });
 }
 
-async function assertGamesOn(restaurantId: number) {
-  const setting = await prisma.setting.findFirst({
-    where: { restaurantId, key: MENU_GAMES_KEY },
-  });
-  return isMenuGamesEnabled(setting?.value);
+async function loadGamesConfig(restaurantId: number) {
+  const [cfg, legacy] = await Promise.all([
+    prisma.setting.findFirst({ where: { restaurantId, key: MENU_GAMES_CONFIG_KEY } }),
+    prisma.setting.findFirst({ where: { restaurantId, key: MENU_GAMES_KEY } }),
+  ]);
+  return parseMenuGamesConfig(cfg?.value, legacy?.value);
 }
 
 function guestIdFrom(req: { body?: { guestId?: unknown }; query?: { guestId?: unknown } }) {
@@ -32,7 +38,8 @@ function guestIdFrom(req: { body?: { guestId?: unknown }; query?: { guestId?: un
 router.post('/:slug/games/xox/join', async (req, res) => {
   const restaurant = await loadRestaurant(req.params.slug);
   if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
-  if (!(await assertGamesOn(restaurant.id))) {
+  const games = await loadGamesConfig(restaurant.id);
+  if (!isMenuGamesEnabled(games) || !games.xox.enabled) {
     return res.status(403).json({ message: 'Oyunlar kapalı', code: 'GAMES_OFF' });
   }
 
@@ -74,7 +81,8 @@ router.post('/:slug/games/xox/join', async (req, res) => {
 router.get('/:slug/games/xox/:roomId', async (req, res) => {
   const restaurant = await loadRestaurant(req.params.slug);
   if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
-  if (!(await assertGamesOn(restaurant.id))) {
+  const games = await loadGamesConfig(restaurant.id);
+  if (!isMenuGamesEnabled(games) || !games.xox.enabled) {
     return res.status(403).json({ message: 'Oyunlar kapalı', code: 'GAMES_OFF' });
   }
   const guestId = guestIdFrom(req);
@@ -92,7 +100,8 @@ router.get('/:slug/games/xox/:roomId', async (req, res) => {
 router.post('/:slug/games/xox/:roomId/move', async (req, res) => {
   const restaurant = await loadRestaurant(req.params.slug);
   if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
-  if (!(await assertGamesOn(restaurant.id))) {
+  const games = await loadGamesConfig(restaurant.id);
+  if (!isMenuGamesEnabled(games) || !games.xox.enabled) {
     return res.status(403).json({ message: 'Oyunlar kapalı', code: 'GAMES_OFF' });
   }
   const guestId = guestIdFrom(req);
@@ -124,7 +133,8 @@ router.post('/:slug/games/xox/:roomId/move', async (req, res) => {
 router.post('/:slug/games/xox/:roomId/rematch', async (req, res) => {
   const restaurant = await loadRestaurant(req.params.slug);
   if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
-  if (!(await assertGamesOn(restaurant.id))) {
+  const games = await loadGamesConfig(restaurant.id);
+  if (!isMenuGamesEnabled(games) || !games.xox.enabled) {
     return res.status(403).json({ message: 'Oyunlar kapalı', code: 'GAMES_OFF' });
   }
   const guestId = guestIdFrom(req);

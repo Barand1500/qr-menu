@@ -14,6 +14,7 @@ import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import MenuCustomerAuthModal from '@/components/public/MenuCustomerAuthModal';
 import MenuGamesOverlay from '@/components/public/games/MenuGamesOverlay';
 import { MENU_WAITER_CALLED_EVENT, type MenuGameId } from '@/lib/menuGames';
+import { isPublicGamesOn, type PublicMenuGames } from '@/lib/menuGamesConfig';
 import '@/menu-customer.css';
 import '@/menu-games.css';
 import {
@@ -100,7 +101,7 @@ interface MenuData {
     menuAssistant?: boolean;
     menuAssistantStyle?: 'sunset' | 'berry' | 'dark';
     tableService?: boolean;
-    menuGames?: boolean;
+    menuGames?: PublicMenuGames | boolean;
     animasyon?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
     sade?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
     alive?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
@@ -249,7 +250,7 @@ function PublicMenuPageInner({
 
   useEffect(() => {
     function onWaiter() {
-      if (menu?.features?.menuGames === false) return;
+      if (!isPublicGamesOn(menu?.features?.menuGames)) return;
       setGamesPromo(true);
       setSideMenuOpen(true);
     }
@@ -626,7 +627,8 @@ function PublicMenuPageInner({
   const menuAssistantOn = Boolean(menu.features?.menuAssistant);
   const assistantStyle = parseMenuAssistantStyle(menu.features?.menuAssistantStyle);
   const tableServiceOn = menu.features?.tableService !== false;
-  const gamesEnabled = menu.features?.menuGames !== false;
+  const gamesEnabled = isPublicGamesOn(menu.features?.menuGames);
+  const gamesConfig = menu.features?.menuGames;
   const assistantLabel =
     (lang || 'tr').split('-')[0] === 'en'
       ? { title: 'What to eat?', sub: 'Ask me' }
@@ -678,6 +680,7 @@ function PublicMenuPageInner({
       onLangChange={changeLang}
       onDietaryPrefsChange={changeDietaryPrefs}
       gamesEnabled={gamesEnabled}
+      gamesConfig={gamesConfig}
       gamesPromo={gamesPromo}
       onGamesPromoDismiss={() => setGamesPromo(false)}
       onOpenGames={(game) => {
@@ -698,6 +701,7 @@ function PublicMenuPageInner({
         slug={slug}
         lang={lang}
         initialGame={gamesInitial}
+        gamesConfig={gamesConfig}
       />
     ) : null;
 

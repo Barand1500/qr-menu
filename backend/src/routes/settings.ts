@@ -17,7 +17,12 @@ import {
 } from '../addons/index.js';
 import { parseSocialLinks, serializeSocialLinks, type SocialLinkConfig } from '../lib/social.js';
 import { MENU_TABLE_SERVICE_KEY } from '../lib/table-service.js';
-import { MENU_GAMES_KEY } from '../lib/menu-games.js';
+import {
+  MENU_GAMES_CONFIG_KEY,
+  MENU_GAMES_KEY,
+  parseMenuGamesConfig,
+  type MenuGamesConfig,
+} from '../lib/menu-games.js';
 import {
   TABLE_SESSION_CODE_ENABLED_KEY,
   TABLE_SESSION_CODE_TTL_KEY,
@@ -342,15 +347,23 @@ router.put('/menu-features', async (req, res) => {
   }
 
   if (typeof menuGames === 'boolean') {
+    const legacy = await prisma.setting.findFirst({
+      where: { restaurantId: restaurantId!, key: MENU_GAMES_KEY },
+    });
+    const existing = await prisma.setting.findFirst({
+      where: { restaurantId: restaurantId!, key: MENU_GAMES_CONFIG_KEY },
+    });
+    const cfg = parseMenuGamesConfig(existing?.value, legacy?.value);
+    cfg.enabled = menuGames;
     await prisma.setting.upsert({
       where: {
-        restaurantId_key: { restaurantId: restaurantId!, key: MENU_GAMES_KEY },
+        restaurantId_key: { restaurantId: restaurantId!, key: MENU_GAMES_CONFIG_KEY },
       },
-      update: { value: menuGames ? 'true' : 'false' },
+      update: { value: JSON.stringify(cfg) },
       create: {
         restaurantId: restaurantId!,
-        key: MENU_GAMES_KEY,
-        value: menuGames ? 'true' : 'false',
+        key: MENU_GAMES_CONFIG_KEY,
+        value: JSON.stringify(cfg),
       },
     });
   }
@@ -400,6 +413,72 @@ router.put('/menu-features', async (req, res) => {
         ? parseTableSessionCodeTtl(String(tableSessionCodeTtlMinutes))
         : undefined,
   });
+});
+
+router.get('/menu-games', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const [cfgRow, legacy] = await Promise.all([
+    prisma.setting.findFirst({
+      where: { restaurantId: restaurantId!, key: MENU_GAMES_CONFIG_KEY },
+    }),
+    prisma.setting.findFirst({
+      where: { restaurantId: restaurantId!, key: MENU_GAMES_KEY },
+    }),
+  ]);
+  res.json({
+    ok: true,
+    config: parseMenuGamesConfig(cfgRow?.value, legacy?.value),
+  });
+});
+
+router.put('/menu-games', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const body = req.body as Partial<MenuGamesConfig>;
+  const [cfgRow, legacy] = await Promise.all([
+    prisma.setting.findFirst({
+      where: { restaurantId: restaurantId!, key: MENU_GAMES_CONFIG_KEY },
+    }),
+    prisma.setting.findFirst({
+      where: { restaurantId: restaurantId!, key: MENU_GAMES_KEY },
+    }),
+  ]);
+  const current = parseMenuGamesConfig(cfgRow?.value, legacy?.value);
+  const next: MenuGamesConfig = {
+    enabled: typeof body.enabled === 'boolean' ? body.enabled : current.enabled,
+    memory: {
+      enabled:
+        typeof body.memory?.enabled === 'boolean' ? body.memory.enabled : current.memory.enabled,
+      pairCount:
+        body.memory?.pairCount === 4 || body.memory?.pairCount === 6 || body.memory?.pairCount === 8
+          ? body.memory.pairCount
+          : current.memory.pairCount,
+      pairs: Array.isArray(body.memory?.pairs) ? body.memory!.pairs : current.memory.pairs,
+      pool: Array.isArray(body.memory?.pool) ? body.memory!.pool : current.memory.pool,
+    },
+    xox: {
+      enabled: typeof body.xox?.enabled === 'boolean' ? body.xox.enabled : current.xox.enabled,
+    },
+  };
+  const normalized = parseMenuGamesConfig(JSON.stringify(next));
+  await prisma.setting.upsert({
+    where: {
+      restaurantId_key: { restaurantId: restaurantId!, key: MENU_GAMES_CONFIG_KEY },
+    },
+    update: { value: JSON.stringify(normalized) },
+    create: {
+      restaurantId: restaurantId!,
+      key: MENU_GAMES_CONFIG_KEY,
+      value: JSON.stringify(normalized),
+    },
+  });
+  res.json({ ok: true, config: normalized });
+});
+
+router.post('/menu-games/images', upload.array('images', 24), async (req, res) => {
+  const files = (req.files as Express.Multer.File[] | undefined) || [];
+  if (!files.length) return res.status(400).json({ message: 'Görsel gerekli' });
+  const urls = files.map((f) => `/uploads/${f.filename}`);
+  res.json({ ok: true, urls });
 });
 
 router.post('/social-icon', upload.single('icon'), async (req, res) => {

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Gamepad2, X } from 'lucide-react';
+import { Check, Gamepad2, X } from 'lucide-react';
 import MemoryGame from '@/components/public/games/MemoryGame';
 import XoxGame from '@/components/public/games/XoxGame';
 import {
+  enabledMenuGames,
   MENU_GAMES_CATALOG,
   type MenuGameId,
 } from '@/lib/menuGames';
+import type { PublicMenuGames } from '@/lib/menuGamesConfig';
 
 type Props = {
   open: boolean;
@@ -13,6 +15,7 @@ type Props = {
   slug: string;
   lang?: string;
   initialGame?: MenuGameId | null;
+  gamesConfig?: PublicMenuGames | boolean | null;
 };
 
 export default function MenuGamesOverlay({
@@ -21,13 +24,17 @@ export default function MenuGamesOverlay({
   slug,
   lang = 'tr',
   initialGame = null,
+  gamesConfig,
 }: Props) {
   const en = (lang || 'tr').split('-')[0] === 'en';
+  const enabled = useMemo(() => enabledMenuGames(gamesConfig), [gamesConfig]);
   const [active, setActive] = useState<MenuGameId | null>(initialGame);
 
   useEffect(() => {
-    if (open) setActive(initialGame);
-  }, [open, initialGame]);
+    if (!open) return;
+    if (initialGame && enabled.includes(initialGame)) setActive(initialGame);
+    else setActive(null);
+  }, [open, initialGame, enabled]);
 
   useEffect(() => {
     if (!open) return;
@@ -41,11 +48,18 @@ export default function MenuGamesOverlay({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, active, onClose]);
 
+  const catalog = MENU_GAMES_CATALOG.filter((g) => enabled.includes(g.id));
+
   const title = useMemo(() => {
     if (!active) return en ? 'Games' : 'Oyunlar';
     const g = MENU_GAMES_CATALOG.find((x) => x.id === active);
     return g ? (en ? g.titleEn : g.titleTr) : en ? 'Games' : 'Oyunlar';
   }, [active, en]);
+
+  const memoryPairs =
+    typeof gamesConfig === 'object' && gamesConfig ? gamesConfig.memory?.pairs || [] : [];
+  const pairCount =
+    typeof gamesConfig === 'object' && gamesConfig ? gamesConfig.memory?.pairCount || 6 : 6;
 
   if (!open) return null;
 
@@ -77,25 +91,24 @@ export default function MenuGamesOverlay({
         <div className="menu-games__body">
           {!active ? (
             <div className="menu-games__grid">
-              {MENU_GAMES_CATALOG.map((g) => (
+              {catalog.map((g) => (
                 <button
                   key={g.id}
                   type="button"
                   className="menu-games__tile"
                   onClick={() => setActive(g.id)}
                 >
+                  <span className="menu-games__tile-ok" aria-hidden>
+                    <Check className="w-3.5 h-3.5" strokeWidth={2.75} />
+                  </span>
                   <span className="menu-games__tile-badge">{en ? g.badgeEn : g.badgeTr}</span>
                   <strong>{en ? g.titleEn : g.titleTr}</strong>
                   <span>{en ? g.blurbEn : g.blurbTr}</span>
                 </button>
               ))}
-              <div className="menu-games__soon" aria-hidden>
-                <strong>{en ? 'More soon' : 'Yakında'}</strong>
-                <span>{en ? '4 more games coming' : '4 oyun daha eklenecek'}</span>
-              </div>
             </div>
           ) : active === 'memory' ? (
-            <MemoryGame lang={lang} />
+            <MemoryGame lang={lang} pairCount={pairCount} pairs={memoryPairs} />
           ) : (
             <XoxGame slug={slug} lang={lang} />
           )}

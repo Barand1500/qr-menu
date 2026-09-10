@@ -36,7 +36,7 @@ import {
   parseSiparisThemeConfig,
 } from '../lib/menu-siparis-config.js';
 import { isTableServiceEnabled, MENU_TABLE_SERVICE_KEY } from '../lib/table-service.js';
-import { isMenuGamesEnabled, MENU_GAMES_KEY } from '../lib/menu-games.js';
+import { isMenuGamesEnabled, MENU_GAMES_CONFIG_KEY, MENU_GAMES_KEY, parseMenuGamesConfig, publicMenuGamesPayload } from '../lib/menu-games.js';
 import {
   isCodeVerified,
   loadTableSessionCodeConfig,
@@ -349,10 +349,13 @@ router.get('/:slug/products/:productId', async (req, res) => {
   );
   const themes = await getRestaurantThemes(restaurant.id);
   const prefCatalog = await loadPrefCatalog(restaurant.id);
-  const [tableServiceSetting, gamesSetting, animasyonConfigSetting, sadeConfigSetting, aliveConfigSetting, luxuryConfigSetting, linearConfigSetting, siparisConfigSetting] =
+  const [tableServiceSetting, gamesConfigSetting, gamesLegacySetting, animasyonConfigSetting, sadeConfigSetting, aliveConfigSetting, luxuryConfigSetting, linearConfigSetting, siparisConfigSetting] =
     await Promise.all([
     prisma.setting.findFirst({
       where: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
+    }),
+    prisma.setting.findFirst({
+      where: { restaurantId: restaurant.id, key: MENU_GAMES_CONFIG_KEY },
     }),
     prisma.setting.findFirst({
       where: { restaurantId: restaurant.id, key: MENU_GAMES_KEY },
@@ -395,6 +398,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
   const luxuryCfg = parseLuxuryThemeConfig(luxuryConfigSetting?.value);
   const linearCfg = parseLinearThemeConfig(linearConfigSetting?.value);
   const siparisCfg = parseSiparisThemeConfig(siparisConfigSetting?.value);
+  const gamesCfg = parseMenuGamesConfig(gamesConfigSetting?.value, gamesLegacySetting?.value);
 
   res.json({
     id: product.id,
@@ -429,7 +433,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
     },
     menuFeatures: {
       tableService: isTableServiceEnabled(tableServiceSetting?.value),
-      menuGames: isMenuGamesEnabled(gamesSetting?.value),
+      menuGames: publicMenuGamesPayload(gamesCfg),
       animasyonCart: animasyonCfg.cartEnabled,
       animasyonVariants: animasyonCfg.variantsEnabled,
       sadeCart: sadeCfg.cartEnabled,
@@ -476,7 +480,8 @@ router.get('/:slug', async (req, res) => {
     menuAssistant,
     assistantStyleSetting,
     tableServiceSetting,
-    gamesSetting,
+    gamesConfigSetting,
+    gamesLegacySetting,
     linearConfigSetting,
     animasyonConfigSetting,
     sadeConfigSetting,
@@ -534,6 +539,11 @@ router.get('/:slug', async (req, res) => {
     prisma.setting.findUnique({
       where: {
         restaurantId_key: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurant.id, key: MENU_GAMES_CONFIG_KEY },
       },
     }),
     prisma.setting.findUnique({
@@ -645,7 +655,9 @@ router.get('/:slug', async (req, res) => {
         ? parseMenuAssistantStyle(assistantStyleSetting?.value)
         : undefined,
       tableService: isTableServiceEnabled(tableServiceSetting?.value),
-      menuGames: isMenuGamesEnabled(gamesSetting?.value),
+      menuGames: publicMenuGamesPayload(
+        parseMenuGamesConfig(gamesConfigSetting?.value, gamesLegacySetting?.value)
+      ),
       linear: parseLinearThemeConfig(linearConfigSetting?.value),
       animasyon: parseAnimasyonThemeConfig(animasyonConfigSetting?.value),
       sade: parseSadeThemeConfig(sadeConfigSetting?.value),
@@ -1179,7 +1191,18 @@ router.post('/:slug/table-request', async (req, res) => {
     orderBy: { createdAt: 'desc' },
   });
   if (recent) {
-    return res.status(429).json({ message: 'Kısa süre önce iletildi, lütfen bekleyin' });
+    // Aynı masa 45 sn içinde tekrar çağırırsa hata yerine idempotent başarı
+    return res.json({
+      ok: true,
+      duplicate: true,
+      id: recent.id,
+      type: recent.type,
+      tableNumber: recent.tableNumber,
+      groupSlug: recent.groupSlug,
+      note: recent.note,
+      orderJson: recent.orderJson,
+      createdAt: recent.createdAt,
+    });
   }
 
   const row = await prisma.tableServiceRequest.create({

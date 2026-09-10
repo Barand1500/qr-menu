@@ -1,3 +1,6 @@
+import type { PublicMenuGames } from '@/lib/menuGamesConfig';
+import { isPublicGamesOn } from '@/lib/menuGamesConfig';
+
 const GUEST_KEY = 'menu_game_guest_id';
 
 export function getMenuGameGuestId(): string {
@@ -55,3 +58,12 @@ export const MENU_GAMES_CATALOG: {
     badgeEn: 'Table',
   },
 ];
+
+export function enabledMenuGames(g?: PublicMenuGames | boolean | null): MenuGameId[] {
+  if (!isPublicGamesOn(g)) return [];
+  if (typeof g === 'boolean' || g == null) return ['memory', 'xox'];
+  const ids: MenuGameId[] = [];
+  if (g.memory?.enabled !== false) ids.push('memory');
+  if (g.xox?.enabled !== false) ids.push('xox');
+  return ids;
+}
