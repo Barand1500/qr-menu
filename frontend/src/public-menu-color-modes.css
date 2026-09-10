@@ -505,10 +505,88 @@
   border-color: rgba(168, 135, 63, 0.15);
 }
 
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__eyebrow {
+  color: rgba(44, 40, 36, 0.55);
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__brand {
+  color: #2c2824;
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__close {
+  color: #2c2824;
+  background: rgba(168, 135, 63, 0.12);
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__link {
+  color: rgba(44, 40, 36, 0.88);
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__link:hover {
+  background: rgba(168, 135, 63, 0.1);
+}
+
 .public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__link.is-active {
   background: rgba(168, 135, 63, 0.1);
   color: #8b6f32;
   box-shadow: inset 2px 0 0 #a8873f;
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__section {
+  border-top-color: rgba(44, 40, 36, 0.1);
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__section-title {
+  color: rgba(44, 40, 36, 0.55);
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__lang-trigger,
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__lang-option {
+  color: #2c2824;
+  background: #fff;
+  border-color: rgba(168, 135, 63, 0.28);
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__lang-list {
+  background: #fff;
+  border-color: rgba(168, 135, 63, 0.22);
+  box-shadow: 0 10px 28px rgba(44, 40, 36, 0.12);
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__lang-option.is-active {
+  background: rgba(168, 135, 63, 0.12);
+  color: #8b6f32;
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__accordion {
+  color: #2c2824;
+  background: #fff;
+  border-color: rgba(168, 135, 63, 0.22);
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__accordion-text strong {
+  color: #2c2824;
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__accordion-text span,
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__allergy-sub {
+  color: rgba(44, 40, 36, 0.62);
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__allergy-chip {
+  color: #2c2824;
+  background: #fff;
+  border-color: rgba(168, 135, 63, 0.28);
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__allergy-chip.is-active {
+  background: rgba(168, 135, 63, 0.14);
+  border-color: rgba(168, 135, 63, 0.45);
+  color: #8b6f32;
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-side-menu__allergy-clear {
+  color: #8b6f32;
 }
 
 .public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .public-content-card {

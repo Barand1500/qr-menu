@@ -638,3 +638,24 @@
   background: #0369a1;
   color: #fff;
 }
+
+/* Gece modu — okunabilir kontrast */
+.public-menu-page[data-color-mode='night'] .public-profile-banner {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(249, 115, 22, 0.1));
+  border-color: rgba(125, 211, 252, 0.28);
+}
+
+.public-menu-page[data-color-mode='night'] .public-profile-banner__text {
+  color: #e0f2fe;
+}
+
+.public-menu-page[data-color-mode='night'] .public-profile-banner__actions .is-off {
+  background: rgba(15, 23, 42, 0.55);
+  color: #e0f2fe;
+  border: 1px solid rgba(125, 211, 252, 0.35);
+}
+
+.public-menu-page[data-color-mode='night'] .public-profile-banner__actions .is-edit {
+  background: #38bdf8;
+  color: #0c4a6e;
+}

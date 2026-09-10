@@ -707,7 +707,7 @@ function PublicMenuPageInner({
           onMenuOpen={() => setSideMenuOpen(true)}
           searchOpen={searchOpen}
           onSearchToggle={toggleSearch}
-          showMobileSearch={isSiparis || isAnimasyon}
+          showMobileSearch={isSiparis}
           extraIcons={headerExtraIcons}
           colorMode={hideColorToggle ? undefined : colorMode}
           onColorModeToggle={hideColorToggle ? undefined : toggleColorMode}
@@ -847,7 +847,7 @@ function PublicMenuPageInner({
         onMenuOpen={() => setSideMenuOpen(true)}
         searchOpen={searchOpen}
         onSearchToggle={toggleSearch}
-        showMobileSearch={isSiparis || isAnimasyon}
+        showMobileSearch={isSiparis}
         extraIcons={headerExtraIcons}
         colorMode={hideColorToggle ? undefined : colorMode}
         onColorModeToggle={hideColorToggle ? undefined : toggleColorMode}

@@ -3056,6 +3056,22 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   margin-bottom: 1.5rem;
 }
 
+.public-side-menu__eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.public-side-menu__brand {
+  margin: 0.15rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: #fff;
+}
+
 .public-side-menu__close {
   width: 2.25rem;
   height: 2.25rem;

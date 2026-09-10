@@ -107,8 +107,8 @@ export default function PublicSideMenu({
       >
         <div className="public-side-menu__header">
           <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wider text-white/60">{chrome.menu}</p>
-            <p className="font-semibold text-white truncate">{restaurantName}</p>
+            <p className="public-side-menu__eyebrow">{chrome.menu}</p>
+            <p className="public-side-menu__brand truncate">{restaurantName}</p>
           </div>
           <button type="button" onClick={onClose} className="public-side-menu__close" aria-label={chrome.close}>
             <X className="w-5 h-5" />

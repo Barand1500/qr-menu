@@ -108,6 +108,12 @@
   padding: 0.35rem 0 1.5rem;
 }
 
+/* Banner yanlışlıkla grid çocuğu olursa tam genişlik (main+rail) */
+.siparis-home > .public-profile-banner,
+.siparis-home > .public-allergy-banner {
+  grid-column: 1 / -1;
+}
+
 @media (min-width: 1024px) {
   .siparis-home {
     grid-template-columns: minmax(0, 1fr) 17.5rem;

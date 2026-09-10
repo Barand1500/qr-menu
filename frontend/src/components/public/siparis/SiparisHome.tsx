@@ -140,9 +140,9 @@ export default function SiparisHome({
 
   return (
     <div className="siparis-home">
-      {allergyBanner}
-
       <div className="siparis-home__main">
+        {allergyBanner}
+
         {banners.length > 0 ? (
           <SiparisBannerCarousel
             banners={banners}
