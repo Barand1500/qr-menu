@@ -36,6 +36,7 @@ import {
   parseSiparisThemeConfig,
 } from '../lib/menu-siparis-config.js';
 import { isTableServiceEnabled, MENU_TABLE_SERVICE_KEY } from '../lib/table-service.js';
+import { isMenuGamesEnabled, MENU_GAMES_KEY } from '../lib/menu-games.js';
 import {
   isCodeVerified,
   loadTableSessionCodeConfig,
@@ -348,10 +349,13 @@ router.get('/:slug/products/:productId', async (req, res) => {
   );
   const themes = await getRestaurantThemes(restaurant.id);
   const prefCatalog = await loadPrefCatalog(restaurant.id);
-  const [tableServiceSetting, animasyonConfigSetting, sadeConfigSetting, aliveConfigSetting, luxuryConfigSetting, linearConfigSetting, siparisConfigSetting] =
+  const [tableServiceSetting, gamesSetting, animasyonConfigSetting, sadeConfigSetting, aliveConfigSetting, luxuryConfigSetting, linearConfigSetting, siparisConfigSetting] =
     await Promise.all([
     prisma.setting.findFirst({
       where: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
+    }),
+    prisma.setting.findFirst({
+      where: { restaurantId: restaurant.id, key: MENU_GAMES_KEY },
     }),
     prisma.setting.findUnique({
       where: {
@@ -425,6 +429,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
     },
     menuFeatures: {
       tableService: isTableServiceEnabled(tableServiceSetting?.value),
+      menuGames: isMenuGamesEnabled(gamesSetting?.value),
       animasyonCart: animasyonCfg.cartEnabled,
       animasyonVariants: animasyonCfg.variantsEnabled,
       sadeCart: sadeCfg.cartEnabled,
@@ -471,6 +476,7 @@ router.get('/:slug', async (req, res) => {
     menuAssistant,
     assistantStyleSetting,
     tableServiceSetting,
+    gamesSetting,
     linearConfigSetting,
     animasyonConfigSetting,
     sadeConfigSetting,
@@ -528,6 +534,11 @@ router.get('/:slug', async (req, res) => {
     prisma.setting.findUnique({
       where: {
         restaurantId_key: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurant.id, key: MENU_GAMES_KEY },
       },
     }),
     prisma.setting.findUnique({
@@ -634,6 +645,7 @@ router.get('/:slug', async (req, res) => {
         ? parseMenuAssistantStyle(assistantStyleSetting?.value)
         : undefined,
       tableService: isTableServiceEnabled(tableServiceSetting?.value),
+      menuGames: isMenuGamesEnabled(gamesSetting?.value),
       linear: parseLinearThemeConfig(linearConfigSetting?.value),
       animasyon: parseAnimasyonThemeConfig(animasyonConfigSetting?.value),
       sade: parseSadeThemeConfig(sadeConfigSetting?.value),

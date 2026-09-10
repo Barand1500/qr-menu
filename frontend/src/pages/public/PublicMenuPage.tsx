@@ -12,7 +12,10 @@ import PopularSearchProducts, {
 import { useDemoData } from '@/contexts/DemoDataContext';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import MenuCustomerAuthModal from '@/components/public/MenuCustomerAuthModal';
+import MenuGamesOverlay from '@/components/public/games/MenuGamesOverlay';
+import { MENU_WAITER_CALLED_EVENT, type MenuGameId } from '@/lib/menuGames';
 import '@/menu-customer.css';
+import '@/menu-games.css';
 import {
   DEMO_MENU_BANNERS,
   DEMO_POPULAR_PRODUCTS,
@@ -97,6 +100,7 @@ interface MenuData {
     menuAssistant?: boolean;
     menuAssistantStyle?: 'sunset' | 'berry' | 'dark';
     tableService?: boolean;
+    menuGames?: boolean;
     animasyon?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
     sade?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
     alive?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
@@ -226,6 +230,9 @@ function PublicMenuPageInner({
   const [dietaryPrefs, setDietaryPrefs] = useState<DietaryPrefs>(() => loadDietaryPrefs());
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [customerAuthOpen, setCustomerAuthOpen] = useState(false);
+  const [gamesOpen, setGamesOpen] = useState(false);
+  const [gamesInitial, setGamesInitial] = useState<MenuGameId | null>(null);
+  const [gamesPromo, setGamesPromo] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
   const [menuLoading, setMenuLoading] = useState(true);
   const {
@@ -239,6 +246,16 @@ function PublicMenuPageInner({
   const { colorMode, toggleColorMode } = useMenuColorMode(menuThemeForMode);
 
   usePublicRtl(lang);
+
+  useEffect(() => {
+    function onWaiter() {
+      if (menu?.features?.menuGames === false) return;
+      setGamesPromo(true);
+      setSideMenuOpen(true);
+    }
+    window.addEventListener(MENU_WAITER_CALLED_EVENT, onWaiter);
+    return () => window.removeEventListener(MENU_WAITER_CALLED_EVENT, onWaiter);
+  }, [menu?.features?.menuGames]);
 
   useEffect(() => {
     const masa = searchParams.get('masa');
@@ -609,6 +626,7 @@ function PublicMenuPageInner({
   const menuAssistantOn = Boolean(menu.features?.menuAssistant);
   const assistantStyle = parseMenuAssistantStyle(menu.features?.menuAssistantStyle);
   const tableServiceOn = menu.features?.tableService !== false;
+  const gamesEnabled = menu.features?.menuGames !== false;
   const assistantLabel =
     (lang || 'tr').split('-')[0] === 'en'
       ? { title: 'What to eat?', sub: 'Ask me' }
@@ -659,8 +677,29 @@ function PublicMenuPageInner({
       }}
       onLangChange={changeLang}
       onDietaryPrefsChange={changeDietaryPrefs}
+      gamesEnabled={gamesEnabled}
+      gamesPromo={gamesPromo}
+      onGamesPromoDismiss={() => setGamesPromo(false)}
+      onOpenGames={(game) => {
+        setGamesInitial(game ?? null);
+        setGamesOpen(true);
+      }}
     />
   );
+
+  const gamesOverlay =
+    gamesEnabled && slug ? (
+      <MenuGamesOverlay
+        open={gamesOpen}
+        onClose={() => {
+          setGamesOpen(false);
+          setGamesInitial(null);
+        }}
+        slug={slug}
+        lang={lang}
+        initialGame={gamesInitial}
+      />
+    ) : null;
 
   const assistantUi = menuAssistantOn && slug && lang === 'tr' ? (
     <>
@@ -809,6 +848,7 @@ function PublicMenuPageInner({
         )}
 
         {sideMenu}
+        {gamesOverlay}
         {assistantUi}
         {isAnimasyon ? (
           <AnimasyonCartSheet lang={lang} />
@@ -1002,6 +1042,7 @@ function PublicMenuPageInner({
         )}
 
       {sideMenu}
+      {gamesOverlay}
       {assistantUi}
       {isAnimasyon ? (
         <AnimasyonCartSheet lang={lang} />

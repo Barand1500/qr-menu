@@ -7,6 +7,7 @@ import { useSiparisCart } from '@/hooks/useSiparisCart';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { resolveTableContext, formatTableServiceLabel } from '@/lib/tableContext';
 import { notifyTableRequestCreated } from '@/lib/tableRequestNotify';
+import { notifyWaiterCalled } from '@/lib/menuGames';
 import { allergenLabel, loadDietaryPrefs } from '@/lib/dietAllergens';
 import { gsap, prefersReducedMotion, useGSAP } from '@/lib/gsapSetup';
 
@@ -133,6 +134,7 @@ export default function AnimasyonCartSheet({ lang }: { lang: string }) {
         orderJson: res.orderJson,
         createdAt: res.createdAt,
       });
+      notifyWaiterCalled();
       setDone(true);
       window.setTimeout(() => setDone(false), 3500);
     } catch {

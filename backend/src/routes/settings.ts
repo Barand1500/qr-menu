@@ -17,6 +17,7 @@ import {
 } from '../addons/index.js';
 import { parseSocialLinks, serializeSocialLinks, type SocialLinkConfig } from '../lib/social.js';
 import { MENU_TABLE_SERVICE_KEY } from '../lib/table-service.js';
+import { MENU_GAMES_KEY } from '../lib/menu-games.js';
 import {
   TABLE_SESSION_CODE_ENABLED_KEY,
   TABLE_SESSION_CODE_TTL_KEY,
@@ -319,10 +320,11 @@ router.put('/welcome-music', async (req, res) => {
 
 router.put('/menu-features', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const { tableService, tableSessionCode, tableSessionCodeTtlMinutes } = req.body as {
+  const { tableService, tableSessionCode, tableSessionCodeTtlMinutes, menuGames } = req.body as {
     tableService?: boolean;
     tableSessionCode?: boolean;
     tableSessionCodeTtlMinutes?: number;
+    menuGames?: boolean;
   };
 
   if (typeof tableService === 'boolean') {
@@ -335,6 +337,20 @@ router.put('/menu-features', async (req, res) => {
         restaurantId: restaurantId!,
         key: MENU_TABLE_SERVICE_KEY,
         value: tableService ? 'true' : 'false',
+      },
+    });
+  }
+
+  if (typeof menuGames === 'boolean') {
+    await prisma.setting.upsert({
+      where: {
+        restaurantId_key: { restaurantId: restaurantId!, key: MENU_GAMES_KEY },
+      },
+      update: { value: menuGames ? 'true' : 'false' },
+      create: {
+        restaurantId: restaurantId!,
+        key: MENU_GAMES_KEY,
+        value: menuGames ? 'true' : 'false',
       },
     });
   }
@@ -377,6 +393,7 @@ router.put('/menu-features', async (req, res) => {
   res.json({
     ok: true,
     tableService: tableService ?? true,
+    menuGames: menuGames ?? true,
     tableSessionCode: tableSessionCode ?? false,
     tableSessionCodeTtlMinutes:
       tableSessionCodeTtlMinutes != null

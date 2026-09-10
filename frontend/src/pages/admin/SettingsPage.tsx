@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, KeyRound, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check, MapPinned, Expand } from 'lucide-react';
+import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, KeyRound, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check, MapPinned, Expand, Gamepad2 } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
@@ -28,6 +28,7 @@ import {
 } from '@/lib/socialCatalog';
 import { useAddons } from '@/hooks/useAddons';
 import { isTableServiceEnabled } from '@/lib/tableService';
+import { isMenuGamesEnabled } from '@/lib/menuGamesEnabled';
 import { daysUntilLicenseEnd, formatLicenseDate } from '@/lib/license';
 import {
   SUPPORT_PHONE_DISPLAY,
@@ -141,6 +142,7 @@ export default function SettingsPage() {
   const [socialLinks, setSocialLinks] = useState<SocialLinkConfig[]>(mergeSocialConfigs([]));
   const [welcomeMusicUrl, setWelcomeMusicUrl] = useState('');
   const [tableServiceEnabled, setTableServiceEnabled] = useState(true);
+  const [menuGamesEnabled, setMenuGamesEnabled] = useState(true);
   const [tableSessionCodeEnabled, setTableSessionCodeEnabled] = useState(false);
   const [tableSessionCodeTtl, setTableSessionCodeTtl] = useState(120);
   const [geoLock, setGeoLock] = useState<GeoLockConfig>({
@@ -150,7 +152,7 @@ export default function SettingsPage() {
     radiusMeters: 120,
   });
   const [togglingMenuFeature, setTogglingMenuFeature] = useState<
-    'table' | 'table-code' | 'assistant' | null
+    'table' | 'table-code' | 'assistant' | 'games' | null
   >(null);
   const [renewContactOpen, setRenewContactOpen] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
@@ -194,6 +196,7 @@ export default function SettingsPage() {
         }
         setWelcomeMusicUrl(d.settings.welcome_music_url || '');
         setTableServiceEnabled(isTableServiceEnabled(d.settings.menu_table_service_enabled));
+        setMenuGamesEnabled(isMenuGamesEnabled(d.settings.menu_games_enabled));
         setTableSessionCodeEnabled(
           d.settings.table_session_code_enabled === 'true' ||
             d.settings.table_session_code_enabled === '1'
@@ -308,6 +311,22 @@ export default function SettingsPage() {
         body: JSON.stringify({ tableService: next }),
       });
       setTableServiceEnabled(next);
+    } catch {
+      /* leave previous state */
+    } finally {
+      setTogglingMenuFeature(null);
+    }
+  }
+
+  async function toggleMenuGames() {
+    const next = !menuGamesEnabled;
+    setTogglingMenuFeature('games');
+    try {
+      await api('/api/admin/settings/menu-features', {
+        method: 'PUT',
+        body: JSON.stringify({ menuGames: next }),
+      });
+      setMenuGamesEnabled(next);
     } catch {
       /* leave previous state */
     } finally {
@@ -1261,6 +1280,26 @@ export default function SettingsPage() {
                 </span>
                 <span
                   className={`settings-switch${tableServiceEnabled ? ' is-on' : ''}`}
+                  aria-hidden
+                >
+                  <span className="settings-switch__knob" />
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className="settings-feature-toggle"
+                role="switch"
+                aria-checked={menuGamesEnabled}
+                disabled={togglingMenuFeature === 'games'}
+                onClick={() => void toggleMenuGames()}
+              >
+                <span className="settings-feature-toggle__label">
+                  <Gamepad2 className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
+                  Menü oyunları
+                </span>
+                <span
+                  className={`settings-switch${menuGamesEnabled ? ' is-on' : ''}`}
                   aria-hidden
                 >
                   <span className="settings-switch__knob" />

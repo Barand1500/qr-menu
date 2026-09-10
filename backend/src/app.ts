@@ -27,6 +27,7 @@ import mapTilesRouter from './routes/map-tiles.js';
 import publicConfigRouter from './routes/public-config.js';
 import aiAssistantRouter from './routes/ai-assistant.js';
 import customerAuthRouter from './routes/customer-auth.js';
+import menuGamesRouter from './routes/menu-games.js';
 
 export function createApp() {
   const app = express();
@@ -74,6 +75,7 @@ export function createApp() {
   app.use('/api/admin/table-floor', tableFloorRouter);
   app.use('/api/admin/ai', aiAssistantRouter);
   app.use('/api/menu', publicMenuRouter);
+  app.use('/api/menu', menuGamesRouter);
   app.use('/api/map-tiles', mapTilesRouter);
   app.use('/api/public', publicConfigRouter);
 

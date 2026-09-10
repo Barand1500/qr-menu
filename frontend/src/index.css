@@ -5,6 +5,8 @@
 @import "./luxury-menu.css";
 @import "./linear-menu.css";
 @import "./animasyon-menu.css";
+@import "./menu-customer.css";
+@import "./menu-games.css";
 
 @theme {
   --font-sans: "Inter", system-ui, sans-serif;

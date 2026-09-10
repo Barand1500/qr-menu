@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Home, Info, Globe, Leaf, ChevronDown, Check } from 'lucide-react';
+import { X, Home, Info, Globe, Leaf, ChevronDown, Check, Gamepad2 } from 'lucide-react';
 import PublicSocialLinks from '@/components/public/PublicSocialLinks';
 import type { PublicSocialLink } from '@/lib/socialCatalog';
 import LanguageFlag from '@/components/LanguageFlag';
@@ -10,6 +10,7 @@ import {
 } from '@/lib/dietAllergens';
 import { catalogLabel, loadPrefCatalogSession, resolvePrefCatalog } from '@/lib/prefCatalog';
 import { sideMenuUi } from '@/lib/menuChromeUi';
+import { MENU_GAMES_CATALOG, type MenuGameId } from '@/lib/menuGames';
 
 export type PublicTab = 'home' | 'about' | 'settings';
 
@@ -30,6 +31,10 @@ interface PublicSideMenuProps {
   onTab: (tab: PublicTab) => void;
   onLangChange: (code: string) => void;
   onDietaryPrefsChange?: (prefs: DietaryPrefs) => void;
+  gamesEnabled?: boolean;
+  gamesPromo?: boolean;
+  onGamesPromoDismiss?: () => void;
+  onOpenGames?: (game?: MenuGameId) => void;
 }
 
 export default function PublicSideMenu({
@@ -44,6 +49,10 @@ export default function PublicSideMenu({
   onTab,
   onLangChange,
   onDietaryPrefsChange,
+  gamesEnabled = false,
+  gamesPromo = false,
+  onGamesPromoDismiss,
+  onOpenGames,
 }: PublicSideMenuProps) {
   const ui = preferenceUi(activeLang);
   const chrome = sideMenuUi(activeLang);
@@ -51,6 +60,7 @@ export default function PublicSideMenu({
   const [langOpen, setLangOpen] = useState(false);
   const [allergyOpen, setAllergyOpen] = useState(() => prefsActive(dietaryPrefs));
   const langRef = useRef<HTMLDivElement>(null);
+  const en = (activeLang || 'tr').split('-')[0] === 'en';
 
   const activeLanguage = languages.find((l) => l.code === activeLang) || languages[0];
   const prefCount = dietaryPrefs.allergens.length + dietaryPrefs.diets.length;
@@ -92,11 +102,20 @@ export default function PublicSideMenu({
     onDietaryPrefsChange({ ...dietaryPrefs, diets });
   }
 
+  function openGame(id?: MenuGameId) {
+    onGamesPromoDismiss?.();
+    onClose();
+    onOpenGames?.(id);
+  }
+
   return (
     <>
       <div
         className={`public-side-menu__backdrop ${open ? 'is-open' : ''}`}
-        onClick={onClose}
+        onClick={() => {
+          onGamesPromoDismiss?.();
+          onClose();
+        }}
         aria-hidden={!open}
       />
 
@@ -110,7 +129,15 @@ export default function PublicSideMenu({
             <p className="public-side-menu__eyebrow">{chrome.menu}</p>
             <p className="public-side-menu__brand truncate">{restaurantName}</p>
           </div>
-          <button type="button" onClick={onClose} className="public-side-menu__close" aria-label={chrome.close}>
+          <button
+            type="button"
+            onClick={() => {
+              onGamesPromoDismiss?.();
+              onClose();
+            }}
+            className="public-side-menu__close"
+            aria-label={chrome.close}
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -135,6 +162,43 @@ export default function PublicSideMenu({
         </nav>
 
         <div className="public-side-menu__scroll">
+          {gamesEnabled ? (
+            <div className="public-side-menu__section public-side-menu__games">
+              <p className="public-side-menu__section-title">
+                <Gamepad2 className="w-4 h-4" />
+                {chrome.games}
+              </p>
+
+              {gamesPromo ? (
+                <div className="public-side-menu__games-promo">
+                  <p>{chrome.gamesPromo}</p>
+                  <button
+                    type="button"
+                    className="public-side-menu__games-cta"
+                    onClick={() => openGame()}
+                  >
+                    {chrome.gamesCta}
+                  </button>
+                </div>
+              ) : null}
+
+              <div className="public-side-menu__games-grid">
+                {MENU_GAMES_CATALOG.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    className="public-side-menu__game-card"
+                    onClick={() => openGame(g.id)}
+                  >
+                    <em>{en ? g.badgeEn : g.badgeTr}</em>
+                    <strong>{en ? g.titleEn : g.titleTr}</strong>
+                    <span>{en ? g.blurbEn : g.blurbTr}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="public-side-menu__section">
             <p className="public-side-menu__section-title">
               <Globe className="w-4 h-4" />
@@ -265,7 +329,7 @@ export default function PublicSideMenu({
 
         {socialLinks.length > 0 && (
           <div className="public-side-menu__social mt-auto px-0 pb-1 pt-3">
-            <PublicSocialLinks links={socialLinks} size="sm" />
+            <PublicSocialLinks links={socialLinks} />
           </div>
         )}
       </aside>

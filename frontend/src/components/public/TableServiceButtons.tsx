@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { resolveTableContext } from '@/lib/tableContext';
 import { notifyTableRequestCreated } from '@/lib/tableRequestNotify';
+import { notifyWaiterCalled } from '@/lib/menuGames';
 
 const COPY = {
   tr: {
@@ -72,6 +73,7 @@ export default function TableServiceButtons({
         groupSlug: res.groupSlug,
         createdAt: res.createdAt,
       });
+      notifyWaiterCalled();
       setDone(true);
       window.setTimeout(() => setDone(false), 3500);
     } catch {
