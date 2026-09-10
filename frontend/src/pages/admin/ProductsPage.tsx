@@ -246,6 +246,8 @@ export default function ProductsPage() {
   const [prefCatalog, setPrefCatalog] = useState<PrefCatalog>(() => defaultPrefCatalog());
 
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkRestoreOpen, setBulkRestoreOpen] = useState(false);
+  const [bulkRestoring, setBulkRestoring] = useState(false);
   const [bulkStatus, setBulkStatus] = useState<BulkStatus>({
     hasSnapshot: false,
     appliedAt: null,
@@ -353,20 +355,20 @@ export default function ProductsPage() {
   }
 
   async function handleBulkRestore() {
-    if (bulkAnimating || !bulkStatus.hasSnapshot) return;
-    const ok = window.confirm(
-      `Son toplu işlemdeki ${bulkStatus.count} ürünün fiyatı eski haline dönecek. Devam edilsin mi?`
-    );
-    if (!ok) return;
+    if (bulkAnimating || bulkRestoring || !bulkStatus.hasSnapshot) return;
+    setBulkRestoring(true);
     try {
       const res = await api<{
         ok: true;
         orderIds: number[];
         updates: { id: number; price: number }[];
       }>('/api/admin/products/bulk-price/restore', { method: 'POST' });
+      setBulkRestoreOpen(false);
       await runPriceSequence(res.updates, 'restore');
     } catch (e) {
       window.alert(e instanceof Error ? e.message : 'Geri alınamadı');
+    } finally {
+      setBulkRestoring(false);
     }
   }
 
@@ -637,31 +639,32 @@ export default function ProductsPage() {
               </Button>
             </Link>
             {BULK_PRICE_UI_ENABLED && (
-              <>
+              <div className="flex flex-col items-stretch self-center min-w-0">
                 <Button
                   variant="secondary"
                   onClick={() => setBulkOpen(true)}
-                  disabled={bulkAnimating}
+                  disabled={bulkAnimating || bulkRestoring}
+                  className="w-full"
                 >
                   <Tags className="w-4 h-4" />
                   Toplu fiyat
                 </Button>
                 {bulkStatus.hasSnapshot && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => void handleBulkRestore()}
-                    disabled={bulkAnimating}
+                  <button
+                    type="button"
+                    onClick={() => setBulkRestoreOpen(true)}
+                    disabled={bulkAnimating || bulkRestoring}
                     title={
                       bulkStatus.appliedAt
                         ? `Son işlem: ${formatShortDate(bulkStatus.appliedAt)}`
                         : 'Eski fiyata dön'
                     }
+                    className="mt-0.5 w-full text-center text-[11px] leading-tight admin-text-muted hover:text-[var(--admin-accent)] transition disabled:opacity-40 truncate px-0.5"
                   >
-                    <RotateCcw className="w-4 h-4" />
                     Eski fiyata dön
-                  </Button>
+                  </button>
                 )}
-              </>
+              </div>
             )}
             <Button onClick={openCreate}>
               <Plus className="w-4 h-4" />
@@ -847,6 +850,93 @@ export default function ProductsPage() {
         onClose={() => setBulkOpen(false)}
         onApplied={handleBulkApplied}
       />
+
+      {bulkRestoreOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-[6px]"
+            onClick={() => !bulkRestoring && setBulkRestoreOpen(false)}
+          />
+          <div
+            className="relative w-full sm:max-w-md flex flex-col rounded-t-[28px] sm:rounded-[28px] shadow-2xl animate-slide-up overflow-hidden"
+            style={{
+              background: 'var(--admin-card)',
+              border: '1px solid var(--admin-card-border)',
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulk-restore-title"
+          >
+            <div
+              className="px-5 pt-5 pb-4"
+              style={{ borderBottom: '1px solid var(--admin-card-border)' }}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(245, 158, 11, 0.14)', color: '#d97706' }}
+                >
+                  <RotateCcw className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2
+                    id="bulk-restore-title"
+                    className="text-base font-bold text-[var(--admin-text)]"
+                  >
+                    Eski fiyata dön
+                  </h2>
+                  <p className="text-xs admin-text-muted mt-0.5 leading-relaxed">
+                    Bu işlem son toplu fiyat güncellemesini geri alır.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-5 py-4 space-y-3">
+              <p className="text-sm text-[var(--admin-text)] leading-relaxed">
+                Son toplu işlemdeki{' '}
+                <strong>{bulkStatus.count} ürün</strong>ün fiyatı eski haline
+                dönecek.
+              </p>
+              {bulkStatus.appliedAt && (
+                <p
+                  className="text-xs rounded-xl px-3 py-2 admin-text-muted"
+                  style={{ background: 'var(--admin-input-bg)' }}
+                >
+                  Son işlem: {formatShortDate(bulkStatus.appliedAt)}
+                </p>
+              )}
+              <p className="text-xs text-amber-700 leading-relaxed">
+                Onayladıktan sonra fiyatlar sayfada tek tek geri döner. Bu geri alma
+                kaydı silinir.
+              </p>
+            </div>
+
+            <div
+              className="px-5 py-4 flex gap-2"
+              style={{ borderTop: '1px solid var(--admin-card-border)' }}
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                className="flex-1"
+                disabled={bulkRestoring}
+                onClick={() => setBulkRestoreOpen(false)}
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="button"
+                className="flex-1"
+                disabled={bulkRestoring || bulkAnimating}
+                onClick={() => void handleBulkRestore()}
+              >
+                {bulkRestoring ? 'Geri alınıyor…' : 'Evet, geri al'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

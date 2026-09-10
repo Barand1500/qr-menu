@@ -1,14 +1,22 @@
 .garson-panel {
-  width: min(720px, 100%);
+  width: min(1180px, 100%);
   margin: 0 auto;
-  padding: 1rem 1rem 2rem;
+  padding: 0.65rem 0.85rem 1.25rem;
   color: var(--tf-ink, #1c1917);
+  box-sizing: border-box;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .garson-panel__shell {
-  padding: 1.1rem 1.15rem 1.25rem;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 5.25rem);
+  padding: 1.25rem 1.35rem 1.4rem;
   border-radius: 1.15rem;
-  background: color-mix(in srgb, var(--tf-panel, #fff) 88%, transparent);
+  background: color-mix(in srgb, var(--tf-panel, #fff) 92%, transparent);
   border: 1px solid var(--tf-header-border, rgba(88, 60, 36, 0.12));
   box-shadow: 0 10px 28px rgba(88, 60, 36, 0.06);
   backdrop-filter: blur(8px);
@@ -175,11 +183,14 @@
 }
 
 .garson-panel__list {
+  flex: 1 1 auto;
+  min-height: 14rem;
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
   gap: 0.5rem;
+  align-content: start;
 }
 
 .garson-panel__item {

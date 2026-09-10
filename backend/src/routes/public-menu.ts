@@ -1333,6 +1333,29 @@ router.post('/:slug/table-session-unlock', async (req, res) => {
   }
 
   if (!session.accessCode || session.accessCode !== pin) {
+    const owner = await prisma.tableFloorSession.findFirst({
+      where: {
+        restaurantId: restaurant.id,
+        accessCode: pin,
+        status: { in: ['open', 'reserved'] },
+      },
+      select: { tableNumber: true, groupSlug: true },
+    });
+    if (owner) {
+      const group = owner.groupSlug
+        ? await prisma.qrTableGroup.findFirst({
+            where: { restaurantId: restaurant.id, slug: owner.groupSlug },
+            select: { name: true },
+          })
+        : null;
+      const label = group?.name
+        ? `${group.name} · Masa ${owner.tableNumber}`
+        : `Masa ${owner.tableNumber}`;
+      return res.status(403).json({
+        message: `Bu kod ${label} için kullanılıyor`,
+        code: 'CODE_OTHER_TABLE',
+      });
+    }
     return res.status(403).json({ message: 'Kod hatalı', code: 'CODE_MISMATCH' });
   }
   if (!session.codeExpiresAt || session.codeExpiresAt.getTime() <= Date.now()) {

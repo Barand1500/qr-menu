@@ -183,6 +183,8 @@ export async function openOrGetSession(
     codeVerifiedAt: Date | null;
   }) => {
     if (!codeCfg.enabled) return null;
+    // Kod doğrulanmışsa süresiz menü erişimi — yenileme/doğrulama sıfırlama yok
+    if (current.codeVerifiedAt) return null;
     const needsNew =
       !current.accessCode ||
       !current.codeExpiresAt ||

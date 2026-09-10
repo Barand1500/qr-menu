@@ -70,8 +70,8 @@ export function isCodeVerified(session: {
   codeExpiresAt?: Date | null;
   accessCode?: string | null;
 }) {
+  // Süre dolsa bile oturum kapanana kadar menü erişimi sürer
   if (!session.accessCode || !session.codeVerifiedAt) return false;
-  if (isCodeExpired(session.codeExpiresAt)) return false;
   return true;
 }
 
@@ -87,7 +87,7 @@ export function resolveCodeGateStatus(session: {
   codeExpiresAt?: Date | null;
 } | null): CodeGateStatus {
   if (!session?.accessCode) return 'empty';
-  if (isCodeExpired(session.codeExpiresAt)) return 'expired';
   if (session.codeVerifiedAt) return 'verified';
+  if (isCodeExpired(session.codeExpiresAt)) return 'expired';
   return 'pending';
 }

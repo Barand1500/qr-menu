@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -9,17 +9,19 @@ import {
   NotebookPen,
   Plus,
   Receipt,
-  RefreshCw,
   Timer,
   UtensilsCrossed,
   X,
   Trash2,
   HandHelping,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
+import { playAdminNotificationSound } from '@/lib/notificationSound';
 import {
   blockedOptionIds,
   computePreviewUnitPrice,
@@ -34,6 +36,7 @@ import '@/table-floor.css';
 import '@/garson-panel.css';
 
 const FLOOR_SKIN_KEY = 'menu_qr_table_floor_skin';
+const FLOOR_SOUND_KEY = 'menu_qr_floor_notify_sound';
 const FLOOR_SKIN_COUNT = 5;
 
 function readFloorSkin(): number {
@@ -44,6 +47,28 @@ function readFloorSkin(): number {
     /* ignore */
   }
   return 0;
+}
+
+function readFloorSoundOn() {
+  try {
+    return localStorage.getItem(FLOOR_SOUND_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+function formatCodeCountdown(expiresAt: string | null | undefined, nowMs: number) {
+  if (!expiresAt) return { label: '—', urgent: false, expired: true };
+  const left = Math.max(0, new Date(expiresAt).getTime() - nowMs);
+  const expired = left <= 0;
+  const totalSec = Math.floor(left / 1000);
+  const mm = Math.floor(totalSec / 60);
+  const ss = totalSec % 60;
+  return {
+    label: `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`,
+    urgent: !expired && left <= 5 * 60_000,
+    expired,
+  };
 }
 type FloorOrder = {
   id: string;
@@ -273,9 +298,14 @@ export default function TableFloorPage() {
   const [error, setError] = useState<string | null>(null);
   const [groupId, setGroupId] = useState<string>('');
   const [floorSkin, setFloorSkin] = useState(readFloorSkin);
+  const [soundOn, setSoundOn] = useState(readFloorSoundOn);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [selectedGroupSlug, setSelectedGroupSlug] = useState<string>('');
   const [now, setNow] = useState(() => Date.now());
+  const pendingKeysRef = useRef<Set<string>>(new Set());
+  const pendingSoundReadyRef = useRef(false);
+  const soundOnRef = useRef(soundOn);
+  soundOnRef.current = soundOn;
   const [busy, setBusy] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
   const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
@@ -361,6 +391,38 @@ export default function TableFloorPage() {
       window.clearInterval(tick);
     };
   }, [load]);
+
+  useEffect(() => {
+    if (!data) return;
+    const next = new Set<string>();
+    for (const g of data.groups) {
+      for (const t of g.tables) {
+        if (t.codeStatus === 'pending') next.add(`${g.id}::${t.code}`);
+      }
+    }
+    if (pendingSoundReadyRef.current && soundOnRef.current) {
+      for (const key of next) {
+        if (!pendingKeysRef.current.has(key)) {
+          playAdminNotificationSound();
+          break;
+        }
+      }
+    }
+    pendingKeysRef.current = next;
+    pendingSoundReadyRef.current = true;
+  }, [data]);
+
+  function toggleFloorSound() {
+    setSoundOn((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem(FLOOR_SOUND_KEY, next ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
 
   const activeGroup = useMemo(
     () => data?.groups.find((g) => g.id === groupId) || data?.groups[0] || null,
@@ -876,26 +938,6 @@ export default function TableFloorPage() {
     setSearchParams(next, { replace: true });
   }
 
-  async function regenerateCode() {
-    if (!selected || busy) return;
-    setBusy(true);
-    try {
-      await api('/api/admin/table-floor/regenerate-code', {
-        method: 'POST',
-        body: JSON.stringify({
-          tableNumber: selected.code,
-          groupSlug: selectedGroupSlug || activeGroup?.id || groupId || undefined,
-          sessionId: selected.sessionId || undefined,
-        }),
-      });
-      await load(true);
-    } catch (e) {
-      window.alert(e instanceof Error ? e.message : 'Kod üretilemedi');
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className={`table-floor table-floor--skin-${floorSkin}`}>
       <header className="table-floor__top">
@@ -930,6 +972,15 @@ export default function TableFloorPage() {
           </div>
           <div className="table-floor__brand-row">
             <strong>{data?.restaurant?.name || user?.restaurant?.name || 'Restoran'}</strong>
+            <button
+              type="button"
+              className={`table-floor__sound-btn${soundOn ? '' : ' is-muted'}`}
+              onClick={toggleFloorSound}
+              title={soundOn ? 'Bildirim sesi açık' : 'Bildirim sesi kapalı'}
+              aria-label={soundOn ? 'Bildirim sesini kapat' : 'Bildirim sesini aç'}
+            >
+              {soundOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+            </button>
             <button
               type="button"
               className={`table-floor__garson-icon${panelMode === 'garson' ? ' is-active' : ''}`}
@@ -1043,12 +1094,23 @@ export default function TableFloorPage() {
               const primaryName =
                 table.mergePrimary &&
                 activeGroup.tables.find((t) => t.code === table.mergePrimary)?.name;
+              const codeWaiting = table.occupied && table.codeStatus === 'pending';
+              const codeExpiredTable = table.occupied && table.codeStatus === 'expired';
+              const codeOccupied =
+                table.occupied &&
+                !codeWaiting &&
+                !codeExpiredTable &&
+                (table.codeStatus === 'verified' ||
+                  table.codeStatus === 'empty' ||
+                  !table.codeStatus);
 
               return (
                 <button
                   key={table.code}
                   type="button"
-                  className={`floor-table${table.occupied ? ' is-occupied' : ''}${
+                  className={`floor-table${codeOccupied ? ' is-occupied' : ''}${
+                    codeWaiting ? ' is-code-waiting' : ''
+                  }${codeExpiredTable ? ' is-code-expired-table' : ''}${
                     table.status === 'reserved' ? ' is-reserved' : ''
                   }${table.status === 'merged' ? ' is-merged' : ''}${
                     alerting ? ' is-alerting' : ''
@@ -1490,37 +1552,28 @@ export default function TableFloorPage() {
                           }`}
                           aria-live="polite"
                         >
-                          {selected.accessCode || 'Erişim kodu'}
-                          {selected.accessCode && selected.codeExpiresAt ? (
-                            <small>
-                              {new Date(selected.codeExpiresAt).toLocaleTimeString('tr-TR', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </small>
-                          ) : null}
+                          {selected.accessCode || 'Erişim kodu yok'}
                         </div>
-                        {selected.accessCode ? (
-                          <button
-                            type="button"
-                            className="table-floor__icon-btn is-compact"
-                            disabled={busy}
-                            title="Kodu yenile"
-                            aria-label="Kodu yenile"
-                            onClick={() => void regenerateCode()}
-                          >
-                            <RefreshCw className="w-4 h-4" />
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className="table-floor__secondary table-floor__access-code-generate"
-                            disabled={busy}
-                            onClick={() => void regenerateCode()}
-                          >
-                            Üret
-                          </button>
-                        )}
+                        {selected.accessCode && selected.codeExpiresAt ? (
+                          (() => {
+                            const cd = formatCodeCountdown(selected.codeExpiresAt, now);
+                            return (
+                              <div
+                                className={`table-floor__access-code-countdown${
+                                  cd.expired ? ' is-expired' : cd.urgent ? ' is-urgent' : ''
+                                }`}
+                                title={
+                                  cd.expired
+                                    ? 'Kod süresi doldu (menüdeki misafir atılmaz)'
+                                    : 'Koda kalan süre'
+                                }
+                              >
+                                <Timer className="w-3.5 h-3.5" />
+                                {cd.expired ? '00:00' : cd.label}
+                              </div>
+                            );
+                          })()
+                        ) : null}
                       </div>
                     </div>
                   ) : null}

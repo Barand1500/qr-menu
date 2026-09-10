@@ -22,13 +22,11 @@ export function readTableCodeCache(slug: string, masa: string, grup: string | nu
   try {
     const raw = sessionStorage.getItem(cacheKey(slug, masa, grup));
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { expiresAt?: string };
-    if (!parsed.expiresAt) return null;
-    if (new Date(parsed.expiresAt).getTime() <= Date.now()) {
-      sessionStorage.removeItem(cacheKey(slug, masa, grup));
-      return null;
-    }
-    return parsed;
+    const parsed = JSON.parse(raw) as { verified?: boolean; expiresAt?: string };
+    // Eski format: expiresAt vardı — doğrulandıysa oturum boyunca tut
+    if (parsed.verified === true) return parsed;
+    if (parsed.expiresAt) return { verified: true, expiresAt: parsed.expiresAt };
+    return null;
   } catch {
     return null;
   }
@@ -38,10 +36,13 @@ export function writeTableCodeCache(
   slug: string,
   masa: string,
   grup: string | null,
-  expiresAt: string
+  expiresAt?: string | null
 ) {
   try {
-    sessionStorage.setItem(cacheKey(slug, masa, grup), JSON.stringify({ expiresAt }));
+    sessionStorage.setItem(
+      cacheKey(slug, masa, grup),
+      JSON.stringify({ verified: true, expiresAt: expiresAt || null })
+    );
   } catch {
     /* ignore */
   }

@@ -30,6 +30,7 @@ import {
   codeExpiryDate,
   generateUniqueAccessCode,
   loadTableSessionCodeConfig,
+  resolveCodeGateStatus,
 } from '../lib/table-session-code.js';
 
 const router = Router();
@@ -87,16 +88,7 @@ function serializeSession(session: {
 }) {
   const orders = parseOrdersJson(session.ordersJson);
   const merged = parseMergedJson(session.mergedJson);
-  const codeExpired = session.codeExpiresAt
-    ? session.codeExpiresAt.getTime() <= Date.now()
-    : true;
-  const codeStatus = !session.accessCode
-    ? 'empty'
-    : codeExpired
-      ? 'expired'
-      : session.codeVerifiedAt
-        ? 'verified'
-        : 'pending';
+  const codeStatus = resolveCodeGateStatus(session);
   return {
     sessionId: session.id,
     status: session.status,
@@ -183,16 +175,7 @@ router.get('/', async (req, res) => {
         const alertMsLeft = waiterAt
           ? Math.max(0, WAITER_ALERT_MS - (Date.now() - waiterAt.getTime()))
           : 0;
-        const codeExpired = own?.codeExpiresAt
-          ? own.codeExpiresAt.getTime() <= Date.now()
-          : Boolean(own?.accessCode);
-        const codeStatus = !own?.accessCode
-          ? 'empty'
-          : codeExpired
-            ? 'expired'
-            : own.codeVerifiedAt
-              ? 'verified'
-              : 'pending';
+        const codeStatus = resolveCodeGateStatus(own || null);
 
         return {
           index: n,
