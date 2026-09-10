@@ -16,10 +16,10 @@
   min-height: calc(100vh - 5.25rem);
   padding: 1.25rem 1.35rem 1.4rem;
   border-radius: 1.15rem;
-  background: color-mix(in srgb, var(--tf-panel, #fff) 92%, transparent);
+  /* Opak panel — backdrop-filter ilk açılışta gri/soluk boyama yapıyordu */
+  background: #fff;
   border: 1px solid var(--tf-header-border, rgba(88, 60, 36, 0.12));
   box-shadow: 0 10px 28px rgba(88, 60, 36, 0.06);
-  backdrop-filter: blur(8px);
 }
 
 .garson-panel__head {
@@ -508,6 +508,23 @@
 
 .table-floor__main--garson {
   overflow: auto;
+  /* Garson modunda katman/blur boyama hatasını önle */
+  isolation: isolate;
+  transform: translateZ(0);
+  background: var(--tf-cream, #f3ebe0);
+}
+
+.table-floor__main--garson .garson-panel__shell {
+  background: #fff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Garson açıkken üst bar da yarı saydam + blur ile griye kaçmasın */
+.table-floor:has(.table-floor__main--garson) .table-floor__top {
+  background: var(--tf-panel, #fffaf4);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .settings-feature-ttl {
