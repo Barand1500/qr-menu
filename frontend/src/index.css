@@ -2824,6 +2824,13 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 .public-menu-header__action--extra {
   order: 3;
   display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-inline: 0.2rem 0.35rem;
+}
+
+.public-menu-header__profile-btn {
+  margin-inline-end: 0.15rem;
 }
 
 .public-menu-header__action--color {

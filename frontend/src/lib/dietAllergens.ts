@@ -100,6 +100,8 @@ export function prefsActive(prefs: DietaryPrefs): boolean {
 
 export interface FilterableProduct {
   name?: string | null;
+  groupName?: string | null;
+  features?: string[] | null;
   allergenTags?: string[] | null;
   dietTags?: string[] | null;
   allergens?: string | null;
@@ -110,6 +112,62 @@ export interface FilterableProduct {
 }
 
 const BUILTIN_DIETS = new Set(['vegan', 'vegetarian', 'gluten-free', 'diabetic']);
+
+const ALCOHOL_HINTS = [
+  'alkol',
+  'alkoll',
+  'bira',
+  'şarap',
+  'sarap',
+  'wine',
+  'beer',
+  'rakı',
+  'raki',
+  'viski',
+  'whisky',
+  'whiskey',
+  'votka',
+  'vodka',
+  'cin ',
+  'gin',
+  'kokteyl',
+  'cocktail',
+  'likör',
+  'likor',
+  'şampanya',
+  'sampanya',
+  'prosecco',
+  'aperol',
+  'mojito',
+  'margarita',
+];
+
+function foldTr(s: string) {
+  return s
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function haystackOf(product: FilterableProduct) {
+  const parts = [
+    product.name || '',
+    product.groupName || '',
+    ...(Array.isArray(product.features) ? product.features : []),
+  ];
+  return foldTr(parts.join(' · '));
+}
+
+export function textMatchesFoodPref(haystackFolded: string, pref: string) {
+  const q = foldTr(String(pref || '').trim());
+  if (q.length < 2) return false;
+  return haystackFolded.includes(q);
+}
+
+export function productLooksAlcoholic(product: FilterableProduct) {
+  const hay = haystackOf(product);
+  return ALCOHOL_HINTS.some((h) => hay.includes(foldTr(h)));
+}
 
 export function productMatchesPrefs(product: FilterableProduct, prefs: DietaryPrefs): boolean {
   if (!prefsActive(prefs)) return true;
@@ -132,19 +190,18 @@ export function productMatchesPrefs(product: FilterableProduct, prefs: DietaryPr
   return true;
 }
 
-/** Girişli müşteri: alerji/diyet + sevmediğim (ürün adında geçiyorsa hariç) */
+/** Girişli müşteri: alerji/diyet + sevmediğim + alkol tercihi */
 export function productMatchesCustomerProfile(
   product: FilterableProduct,
   prefs: DietaryPrefs,
-  dislikedFoods: string[]
+  dislikedFoods: string[],
+  drinksAlcohol?: boolean | null
 ): boolean {
   if (!productMatchesPrefs(product, prefs)) return false;
-  const name = String(product.name || '').toLowerCase();
-  if (!name) return true;
-  return !dislikedFoods.some((d) => {
-    const q = String(d || '').trim().toLowerCase();
-    return q.length > 0 && name.includes(q);
-  });
+  if (drinksAlcohol === false && productLooksAlcoholic(product)) return false;
+  const hay = haystackOf(product);
+  if (!hay) return true;
+  return !dislikedFoods.some((d) => textMatchesFoodPref(hay, d));
 }
 
 export function dietIdsFromFlags(flags: {

@@ -105,6 +105,7 @@ export function customerPublic(row: {
   dietTags: unknown;
   likedFoods: unknown;
   dislikedFoods: unknown;
+  drinksAlcohol?: boolean | null;
   pointsJson: unknown;
   kvkkAcceptedAt: Date;
 }) {
@@ -117,6 +118,8 @@ export function customerPublic(row: {
     dietTags: asStringArray(row.dietTags),
     likedFoods: asStringArray(row.likedFoods),
     dislikedFoods: asStringArray(row.dislikedFoods),
+    drinksAlcohol:
+      row.drinksAlcohol === true ? true : row.drinksAlcohol === false ? false : null,
     pointsByRestaurant: parsePointsJson(row.pointsJson),
     kvkkAcceptedAt: row.kvkkAcceptedAt.toISOString(),
   };

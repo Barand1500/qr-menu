@@ -23,6 +23,7 @@ export type MenuCustomer = {
   dietTags: string[];
   likedFoods: string[];
   dislikedFoods: string[];
+  drinksAlcohol?: boolean | null;
   pointsByRestaurant: Record<string, number>;
   kvkkAcceptedAt: string;
 };

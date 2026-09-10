@@ -426,21 +426,27 @@ function PublicMenuPageInner({
     (isAnimasyon && menu.features?.animasyon?.userProfileEnabled === true) ||
     (isSiparis && menu.features?.siparis?.userProfileEnabled === true);
 
-  const matchProduct = (p: {
-    name?: string | null;
-    allergenTags?: string[];
-    dietTags?: string[];
-    isVegan?: boolean;
-    isVegetarian?: boolean;
-    isGlutenFree?: boolean;
-    isDiabetic?: boolean;
-  }) => {
+  const matchProduct = (
+    p: {
+      name?: string | null;
+      groupName?: string | null;
+      features?: string[] | null;
+      allergenTags?: string[];
+      dietTags?: string[];
+      isVegan?: boolean;
+      isVegetarian?: boolean;
+      isGlutenFree?: boolean;
+      isDiabetic?: boolean;
+    },
+    groupName?: string | null
+  ) => {
     if (customer && profileEnabled) {
       if (!filterEnabled) return true;
       return productMatchesCustomerProfile(
-        p,
+        { ...p, groupName: p.groupName || groupName || null },
         { allergens: customer.allergenTags || [], diets: customer.dietTags || [] },
-        customer.dislikedFoods || []
+        customer.dislikedFoods || [],
+        customer.drinksAlcohol
       );
     }
     return productMatchesPrefs(p, dietaryPrefs);
@@ -448,12 +454,13 @@ function PublicMenuPageInner({
 
   const filteredPopular = popularProducts.filter((p) => matchProduct(p));
   const filteredSearchResults = searchResults.filter((r) => matchProduct(r));
-  const filteredGroupProducts = products?.products.filter((p) => matchProduct(p)) ?? [];
+  const filteredGroupProducts =
+    products?.products.filter((p) => matchProduct(p, products.group.name)) ?? [];
   const filteredGroupChildren =
     products?.children
       ?.map((c) => ({
         ...c,
-        products: c.products.filter((p) => matchProduct(p)),
+        products: c.products.filter((p) => matchProduct(p, c.name)),
       }))
       .filter((c) => c.products.length > 0) ?? [];
   const allergyActive =
@@ -610,7 +617,7 @@ function PublicMenuPageInner({
   const profileIcon = profileEnabled ? (
     <button
       type="button"
-      className={`public-menu-header__icon-btn${customer ? ' is-active' : ''}`}
+      className={`public-menu-header__icon-btn public-menu-header__profile-btn${customer ? ' is-active' : ''}`}
       aria-label={customer ? 'Profil' : 'Giriş / Kayıt'}
       title={customer ? 'Profil' : 'Giriş / Kayıt'}
       onClick={() => setCustomerAuthOpen(true)}

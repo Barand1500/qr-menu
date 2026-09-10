@@ -169,6 +169,7 @@ router.put('/profile', customerAuthRequired, async (req, res) => {
     dietTags?: string[];
     likedFoods?: string[];
     dislikedFoods?: string[];
+    drinksAlcohol?: boolean | null;
   } = {};
 
   if (fullName !== undefined) data.fullName = fullName;
@@ -176,6 +177,11 @@ router.put('/profile', customerAuthRequired, async (req, res) => {
   if (body.dietTags !== undefined) data.dietTags = asStringArray(body.dietTags);
   if (body.likedFoods !== undefined) data.likedFoods = asStringArray(body.likedFoods);
   if (body.dislikedFoods !== undefined) data.dislikedFoods = asStringArray(body.dislikedFoods);
+  if (body.drinksAlcohol !== undefined) {
+    if (body.drinksAlcohol === true) data.drinksAlcohol = true;
+    else if (body.drinksAlcohol === false) data.drinksAlcohol = false;
+    else data.drinksAlcohol = null;
+  }
 
   const row = await prisma.menuCustomer.update({
     where: { id: req.customer!.customerId },
