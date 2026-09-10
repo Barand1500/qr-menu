@@ -80,30 +80,39 @@ export default function PublicMenuHeader({
           {tableServiceSlot ? (
             <span className="public-menu-header__action--waiter">{tableServiceSlot}</span>
           ) : null}
-          {onSearchToggle && (
+
+          <div className="public-menu-header__cluster">
+            {onSearchToggle && (
+              <button
+                type="button"
+                onClick={onSearchToggle}
+                className={`${searchBtnClass} public-menu-header__action--search`}
+                aria-label={searchOpen ? 'Aramayı kapat' : 'Ara'}
+              >
+                <Search className="w-5 h-5" />
+              </button>
+            )}
+            {extraIcons ? (
+              <span className="public-menu-header__action--extra">{extraIcons}</span>
+            ) : null}
+            {colorMode && onColorModeToggle ? (
+              <span className="public-menu-header__action--color">
+                <MenuColorModeToggle
+                  colorMode={colorMode}
+                  onToggle={onColorModeToggle}
+                  className="public-menu-header__icon-btn--md-only"
+                />
+              </span>
+            ) : null}
             <button
               type="button"
-              onClick={onSearchToggle}
-              className={`${searchBtnClass} public-menu-header__action--search`}
-              aria-label={searchOpen ? 'Aramayı kapat' : 'Ara'}
+              onClick={onMenuOpen}
+              className="public-menu-header__icon-btn public-menu-header__icon-btn--md-only public-menu-header__action--menu"
+              aria-label="Menüyü aç"
             >
-              <Search className="w-5 h-5" />
+              <Menu className="w-5 h-5" />
             </button>
-          )}
-          {extraIcons ? <span className="public-menu-header__action--extra">{extraIcons}</span> : null}
-          {colorMode && onColorModeToggle ? (
-            <span className="public-menu-header__action--color">
-              <MenuColorModeToggle colorMode={colorMode} onToggle={onColorModeToggle} />
-            </span>
-          ) : null}
-          <button
-            type="button"
-            onClick={onMenuOpen}
-            className="public-menu-header__icon-btn public-menu-header__icon-btn--md-only public-menu-header__action--menu"
-            aria-label="Menüyü aç"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+          </div>
         </div>
       </div>
 

@@ -617,7 +617,7 @@ function PublicMenuPageInner({
   const profileIcon = profileEnabled ? (
     <button
       type="button"
-      className={`public-menu-header__icon-btn public-menu-header__profile-btn${customer ? ' is-active' : ''}`}
+      className={`public-menu-header__icon-btn public-menu-header__icon-btn--md-only public-menu-header__profile-btn${customer ? ' is-active' : ''}`}
       aria-label={customer ? 'Profil' : 'Giriş / Kayıt'}
       title={customer ? 'Profil' : 'Giriş / Kayıt'}
       onClick={() => setCustomerAuthOpen(true)}
@@ -634,6 +634,14 @@ function PublicMenuPageInner({
       ) : null}
     </>
   );
+
+  const mobileNavChrome = {
+    colorMode: hideColorToggle ? undefined : colorMode,
+    onColorModeToggle: hideColorToggle ? undefined : toggleColorMode,
+    showProfile: profileEnabled,
+    profileActive: Boolean(customer),
+    onProfileOpen: profileEnabled ? () => setCustomerAuthOpen(true) : undefined,
+  };
 
   const sideMenu = (
     <PublicSideMenu
@@ -774,6 +782,7 @@ function PublicMenuPageInner({
             }}
             onSearchOpen={toggleSearch}
             onMenuOpen={() => setSideMenuOpen(true)}
+            {...mobileNavChrome}
           />
         ) : isSiparis ? (
           <SiparisMobileNav
@@ -784,6 +793,7 @@ function PublicMenuPageInner({
             }}
             onSearchOpen={toggleSearch}
             onMenuOpen={() => setSideMenuOpen(true)}
+            {...mobileNavChrome}
           />
         ) : (
           <PublicMobileNav
@@ -794,6 +804,7 @@ function PublicMenuPageInner({
             }}
             onSearchOpen={toggleSearch}
             onMenuOpen={() => setSideMenuOpen(true)}
+            {...mobileNavChrome}
           />
         )}
 
@@ -970,6 +981,7 @@ function PublicMenuPageInner({
             onTab={setTab}
             onSearchOpen={toggleSearch}
             onMenuOpen={() => setSideMenuOpen(true)}
+            {...mobileNavChrome}
           />
         ) : isSiparis ? (
           <SiparisMobileNav
@@ -977,6 +989,7 @@ function PublicMenuPageInner({
             onTab={setTab}
             onSearchOpen={toggleSearch}
             onMenuOpen={() => setSideMenuOpen(true)}
+            {...mobileNavChrome}
           />
         ) : (
           <PublicMobileNav
@@ -984,6 +997,7 @@ function PublicMenuPageInner({
             onTab={setTab}
             onSearchOpen={toggleSearch}
             onMenuOpen={() => setSideMenuOpen(true)}
+            {...mobileNavChrome}
           />
         )}
 
