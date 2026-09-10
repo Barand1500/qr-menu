@@ -5,6 +5,7 @@ const STORAGE_KEY = 'menu_qr_admin_path';
 
 const BLOCKED = new Set([
   'login',
+  'garson',
   'menu',
   'm',
   'api',

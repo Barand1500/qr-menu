@@ -384,6 +384,25 @@
   box-shadow: 0 2px 8px rgba(234, 88, 12, 0.4);
 }
 
+.table-floor__garson-app {
+  flex-shrink: 0;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  color: #0f766e;
+  background: rgba(15, 118, 110, 0.12);
+  border: 1px solid rgba(15, 118, 110, 0.28);
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.table-floor__garson-app:hover {
+  background: rgba(15, 118, 110, 0.2);
+  transform: translateY(-1px);
+}
+
 .table-floor__access-code {
   width: 100%;
   margin: 0 0 0.55rem;

@@ -1,0 +1,269 @@
+/* Garson mobil uygulaması (/garson) */
+
+.garson-app {
+  min-height: 100dvh;
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(15, 118, 110, 0.16), transparent 50%),
+    radial-gradient(90% 60% at 100% 0%, rgba(217, 119, 6, 0.1), transparent 45%),
+    #f5f5f4;
+  color: #1c1917;
+}
+
+.garson-app--boot,
+.garson-app--login {
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+
+.garson-app__boot-card {
+  padding: 1rem 1.25rem;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.08);
+  font-weight: 650;
+  color: #57534e;
+}
+
+.garson-app__login-card {
+  width: min(420px, 100%);
+  padding: 1.35rem 1.25rem 1.2rem;
+  border-radius: 1.35rem;
+  background: #fff;
+  border: 1px solid rgba(28, 25, 23, 0.08);
+  box-shadow: 0 16px 40px rgba(28, 25, 23, 0.1);
+}
+
+.garson-app__brand {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+  margin-bottom: 1.15rem;
+}
+
+.garson-app__logo {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  display: grid;
+  place-items: center;
+  background: #0f766e;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 8px 18px rgba(15, 118, 110, 0.35);
+}
+
+.garson-app__logo.is-sm {
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 0.7rem;
+  box-shadow: none;
+}
+
+.garson-app__eyebrow {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+.garson-app__brand h1 {
+  margin: 0.15rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 850;
+}
+
+.garson-app__brand p {
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: #78716c;
+}
+
+.garson-app__form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.garson-app__error {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 0.84rem;
+}
+
+.garson-app__remember {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+  color: #57534e;
+  cursor: pointer;
+}
+
+.garson-app__primary {
+  border: 0;
+  border-radius: 0.95rem;
+  padding: 0.85rem 1rem;
+  background: #0f766e;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(15, 118, 110, 0.28);
+}
+
+.garson-app__primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.garson-app__install {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed rgba(28, 25, 23, 0.12);
+}
+
+.garson-app__install-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(15, 118, 110, 0.3);
+  border-radius: 0.9rem;
+  padding: 0.7rem 0.9rem;
+  background: rgba(15, 118, 110, 0.08);
+  color: #0f766e;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.garson-app__ios-hint {
+  margin: 0.55rem 0 0;
+  font-size: 0.78rem;
+  color: #78716c;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.garson-app__topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+  background: color-mix(in srgb, #fff 88%, transparent);
+  border-bottom: 1px solid rgba(28, 25, 23, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.garson-app__topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.garson-app__topbar-brand strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.garson-app__topbar-brand small {
+  display: block;
+  font-size: 0.72rem;
+  color: #78716c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 12rem;
+}
+
+.garson-app__topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.garson-app__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid rgba(15, 118, 110, 0.25);
+  border-radius: 999px;
+  padding: 0.4rem 0.65rem;
+  background: rgba(15, 118, 110, 0.1);
+  color: #0f766e;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.garson-app__chip.is-ghost {
+  background: #fff;
+  border-color: rgba(28, 25, 23, 0.12);
+  color: #57534e;
+  padding: 0.4rem;
+}
+
+.garson-app__banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.65rem 0.85rem 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.85rem;
+  background: #ecfdf5;
+  border: 1px solid rgba(15, 118, 110, 0.2);
+  color: #115e59;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.garson-app__banner button {
+  border: 0;
+  background: #0f766e;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.garson-app__body {
+  padding: 0.35rem 0 1rem;
+}
+
+.garson-app__body .garson-panel {
+  width: 100%;
+  padding: 0.35rem 0.65rem 1rem;
+}
+
+.garson-app__body .garson-panel__shell {
+  min-height: calc(100dvh - 5.5rem);
+  padding: 1rem 0.95rem 1.15rem;
+  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.06);
+}
+
+.garson-app__body .garson-panel__eyebrow {
+  display: none;
+}
+
+@media (display-mode: standalone) {
+  .garson-app__topbar {
+    padding-top: max(0.85rem, env(safe-area-inset-top));
+  }
+}

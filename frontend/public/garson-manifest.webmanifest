@@ -1,0 +1,26 @@
+{
+  "name": "Garson Merkezi",
+  "short_name": "Garson",
+  "description": "Masa çağrılarını takip et — bildirim ve titreşim ile.",
+  "start_url": "/garson",
+  "scope": "/garson",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f766e",
+  "theme_color": "#0f766e",
+  "lang": "tr",
+  "icons": [
+    {
+      "src": "/garson-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/garson-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

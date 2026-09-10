@@ -9,6 +9,7 @@ import {
   Puzzle,
   Armchair,
   Construction,
+  Smartphone,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemoData } from '@/contexts/DemoDataContext';
@@ -419,6 +420,17 @@ export default function AdminLayout() {
             >
               <Armchair className="w-[18px] h-[18px]" style={{ color: 'var(--admin-accent)' }} />
             </button>
+
+            <a
+              href="/garson"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-lg hover:bg-[var(--admin-accent-soft)] transition"
+              title="Garson uygulaması (ana ekrana ekle)"
+              aria-label="Garson uygulaması"
+            >
+              <Smartphone className="w-[18px] h-[18px]" style={{ color: 'var(--admin-accent)' }} />
+            </a>
 
             {!import.meta.env.PROD && (
               <button

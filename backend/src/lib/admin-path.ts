@@ -5,6 +5,7 @@ export const DEFAULT_ADMIN_PATH = 'admin';
 export const RESERVED_ADMIN_PATHS = new Set([
   'admin', // not reserved for validation when default — handled separately
   'login',
+  'garson',
   'menu',
   'm',
   'api',
@@ -23,6 +24,7 @@ export const RESERVED_ADMIN_PATHS = new Set([
 /** Kullanıcının seçemeyeceği (çakışan) path'ler — "admin" serbest (varsayılan) */
 const BLOCKED = new Set([
   'login',
+  'garson',
   'menu',
   'm',
   'api',

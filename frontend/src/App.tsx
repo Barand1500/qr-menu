@@ -22,6 +22,7 @@ import ExtensionsHubPage from '@/pages/admin/ExtensionsHubPage';
 import BulkTranslatePage from '@/pages/admin/BulkTranslatePage';
 import TableFloorPage from '@/pages/admin/TableFloorPage';
 import ProductVariantsPage from '@/pages/admin/ProductVariantsPage';
+import GarsonAppPage from '@/pages/GarsonAppPage';
 import PublicWelcomePage from '@/pages/public/PublicWelcomePage';
 import PublicMenuPage from '@/pages/public/PublicMenuPage';
 import PublicProductPage from '@/pages/public/PublicProductPage';
@@ -110,6 +111,7 @@ function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/garson" element={<GarsonAppPage />} />
       <Route path="/menu" element={<PublicWelcomePage />} />
       <Route path="/menu/home" element={<PublicMenuPage />} />
       <Route path="/menu/group/:groupId" element={<PublicMenuPage />} />

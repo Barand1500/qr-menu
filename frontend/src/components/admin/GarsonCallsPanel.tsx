@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -85,9 +85,12 @@ function typeLabel(type: string, hasOrder: boolean) {
 export default function GarsonCallsPanel({
   focusCallId,
   onOpenTable,
+  onCallsSnapshot,
 }: {
   focusCallId?: number | null;
   onOpenTable?: (masa: string, grup: string | null) => void;
+  /** Yeni veri yüklendiğinde (bildirim / titreşim için) */
+  onCallsSnapshot?: (rows: GarsonCallRow[], unreadCount: number) => void;
 }) {
   const [items, setItems] = useState<GarsonCallRow[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -95,6 +98,8 @@ export default function GarsonCallsPanel({
   const [stats, setStats] = useState<Stats | null>(null);
   const [tab, setTab] = useState<'live' | 'history' | 'report'>('live');
   const [historyPage, setHistoryPage] = useState(1);
+  const snapshotRef = useRef(onCallsSnapshot);
+  snapshotRef.current = onCallsSnapshot;
 
   const load = useCallback(async () => {
     try {
@@ -104,9 +109,12 @@ export default function GarsonCallsPanel({
         ),
         api<Stats>('/api/admin/table-requests/stats?days=7'),
       ]);
-      setItems(list.data || []);
-      setUnreadCount(list.unreadCount || 0);
+      const rows = list.data || [];
+      const unread = list.unreadCount || 0;
+      setItems(rows);
+      setUnreadCount(unread);
       setStats(report);
+      snapshotRef.current?.(rows, unread);
     } catch {
       /* ignore */
     } finally {

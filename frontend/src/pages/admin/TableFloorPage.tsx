@@ -17,6 +17,7 @@ import {
   HandHelping,
   Volume2,
   VolumeX,
+  Smartphone,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -1138,6 +1139,16 @@ export default function TableFloorPage() {
             >
               G
             </button>
+            <a
+              href="/garson"
+              className="table-floor__garson-app"
+              title="Garson uygulaması — ana ekrana ekle"
+              aria-label="Garson uygulamasını aç"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+            </a>
           </div>
         </div>
         {panelMode === 'floor' ? (
