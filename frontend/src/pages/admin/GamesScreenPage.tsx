@@ -1,43 +1,50 @@
 import { useEffect, useState } from 'react';
-import { Check, Gamepad2, Lock, Settings2 } from 'lucide-react';
+import { Check, Gamepad2, Settings2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button, PageHeader } from '@/components/ui';
+import DetectiveGameSettingsModal from '@/components/admin/DetectiveGameSettingsModal';
 import MemoryGameSettingsModal from '@/components/admin/MemoryGameSettingsModal';
 import {
   DEFAULT_MENU_GAMES_CONFIG,
   type MenuGamesConfig,
 } from '@/lib/menuGamesConfig';
 
-const GAME_CARDS = [
+type GameCardId = 'memory' | 'xox' | 'detective' | 'blitz';
+
+const GAME_CARDS: {
+  id: GameCardId;
+  name: string;
+  blurb: string;
+  free: boolean;
+  hasSettings: boolean;
+}[] = [
   {
-    id: 'memory' as const,
+    id: 'memory',
     name: 'Hafıza',
     blurb: 'Kart eşleştirme — solo hızlı oyun. İsterseniz kendi görsellerinizle.',
     free: true,
     hasSettings: true,
   },
   {
-    id: 'xox' as const,
+    id: 'xox',
     name: 'XOX',
     blurb: 'Aynı masadaki misafirle oyna. Ek ayar gerekmez.',
     free: true,
     hasSettings: false,
   },
   {
-    id: 'soon-a' as const,
-    name: 'Yakında',
-    blurb: 'Yeni oyunlar eklenti olarak gelecek.',
-    free: false,
-    hasSettings: false,
-    locked: true,
+    id: 'detective',
+    name: 'Menü Dedektifi',
+    blurb: 'Kim milyoner olmak ister tarzı bilgi yarışması. Kendi sorularınızı ekleyebilirsiniz.',
+    free: true,
+    hasSettings: true,
   },
   {
-    id: 'soon-b' as const,
-    name: 'Yakında',
-    blurb: 'Ücretli paket oyunları burada listelenecek.',
-    free: false,
+    id: 'blitz',
+    name: 'Sipariş Blitz',
+    blurb: 'Siparişi ezberle, süre dolmadan doğru ürünleri bul.',
+    free: true,
     hasSettings: false,
-    locked: true,
   },
 ];
 
@@ -47,6 +54,7 @@ export default function GamesScreenPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [memoryOpen, setMemoryOpen] = useState(false);
+  const [detectiveOpen, setDetectiveOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,25 +94,41 @@ export default function GamesScreenPage() {
     void save({ ...config, enabled: !config.enabled }, config.enabled ? 'Oyunlar kapatıldı.' : 'Oyunlar aktif.');
   }
 
-  function toggleGame(id: 'memory' | 'xox') {
+  function toggleGame(id: GameCardId) {
     if (id === 'memory') {
       void save(
         { ...config, memory: { ...config.memory, enabled: !config.memory.enabled } },
         config.memory.enabled ? 'Hafıza kapatıldı.' : 'Hafıza aktif.'
       );
-    } else {
+    } else if (id === 'xox') {
       void save(
         { ...config, xox: { ...config.xox, enabled: !config.xox.enabled } },
         config.xox.enabled ? 'XOX kapatıldı.' : 'XOX aktif.'
       );
+    } else if (id === 'detective') {
+      void save(
+        { ...config, detective: { ...config.detective, enabled: !config.detective.enabled } },
+        config.detective.enabled ? 'Menü Dedektifi kapatıldı.' : 'Menü Dedektifi aktif.'
+      );
+    } else {
+      void save(
+        { ...config, blitz: { ...config.blitz, enabled: !config.blitz.enabled } },
+        config.blitz.enabled ? 'Sipariş Blitz kapatıldı.' : 'Sipariş Blitz aktif.'
+      );
     }
   }
 
-  function isActive(id: string) {
+  function isActive(id: GameCardId) {
     if (!config.enabled) return false;
     if (id === 'memory') return config.memory.enabled;
     if (id === 'xox') return config.xox.enabled;
-    return false;
+    if (id === 'detective') return config.detective.enabled;
+    return config.blitz.enabled;
+  }
+
+  function openSettings(id: GameCardId) {
+    if (id === 'memory') setMemoryOpen(true);
+    if (id === 'detective') setDetectiveOpen(true);
   }
 
   return (
@@ -143,22 +167,17 @@ export default function GamesScreenPage() {
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {GAME_CARDS.map((game) => {
-              const locked = Boolean(game.locked);
-              const active = !locked && isActive(game.id);
+              const active = isActive(game.id);
               return (
                 <div
                   key={game.id}
                   className={`relative rounded-2xl border bg-white p-4 shadow-sm transition ${
                     active ? 'border-sky-400 ring-2 ring-sky-100' : 'border-slate-200'
-                  } ${locked ? 'opacity-75' : ''}`}
+                  }`}
                 >
                   {active ? (
                     <span className="absolute top-3 right-3 grid h-7 w-7 place-items-center rounded-full bg-sky-500 text-white">
                       <Check className="w-4 h-4" strokeWidth={2.5} />
-                    </span>
-                  ) : locked ? (
-                    <span className="absolute top-3 right-3 grid h-7 w-7 place-items-center rounded-full bg-slate-200 text-slate-500">
-                      <Lock className="w-3.5 h-3.5" />
                     </span>
                   ) : null}
 
@@ -169,27 +188,21 @@ export default function GamesScreenPage() {
                   <p className="mt-1.5 text-sm text-slate-500 leading-snug min-h-[2.6rem]">{game.blurb}</p>
 
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {!locked ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={saving || !config.enabled}
-                        onClick={() => toggleGame(game.id as 'memory' | 'xox')}
-                      >
-                        {active ? 'Kapat' : 'Aktif et'}
-                      </Button>
-                    ) : (
-                      <Button type="button" size="sm" disabled>
-                        Yakında
-                      </Button>
-                    )}
-                    {game.hasSettings && !locked ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={saving || !config.enabled}
+                      onClick={() => toggleGame(game.id)}
+                    >
+                      {active ? 'Kapat' : 'Aktif et'}
+                    </Button>
+                    {game.hasSettings ? (
                       <Button
                         type="button"
                         size="sm"
                         variant="secondary"
                         disabled={!config.enabled}
-                        onClick={() => setMemoryOpen(true)}
+                        onClick={() => openSettings(game.id)}
                       >
                         <Settings2 className="w-3.5 h-3.5" />
                         Ayarlar
@@ -211,6 +224,16 @@ export default function GamesScreenPage() {
         onSave={async (next) => {
           await save(next, 'Hafıza ayarları kaydedildi.');
           setMemoryOpen(false);
+        }}
+      />
+      <DetectiveGameSettingsModal
+        open={detectiveOpen}
+        config={config}
+        saving={saving}
+        onClose={() => setDetectiveOpen(false)}
+        onSave={async (next) => {
+          await save(next, 'Menü Dedektifi ayarları kaydedildi.');
+          setDetectiveOpen(false);
         }}
       />
     </div>

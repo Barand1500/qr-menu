@@ -28,7 +28,7 @@ export function notifyWaiterCalled() {
   }
 }
 
-export type MenuGameId = 'memory' | 'xox';
+export type MenuGameId = 'memory' | 'xox' | 'detective' | 'blitz';
 
 export const MENU_GAMES_CATALOG: {
   id: MenuGameId;
@@ -57,13 +57,33 @@ export const MENU_GAMES_CATALOG: {
     badgeTr: 'Masa',
     badgeEn: 'Table',
   },
+  {
+    id: 'detective',
+    titleTr: 'Menü Dedektifi',
+    titleEn: 'Menu Detective',
+    blurbTr: 'Kim milyoner olmak ister tarzı bilgi yarışması',
+    blurbEn: 'Who Wants to Be a Millionaire–style quiz',
+    badgeTr: 'Solo',
+    badgeEn: 'Solo',
+  },
+  {
+    id: 'blitz',
+    titleTr: 'Sipariş Blitz',
+    titleEn: 'Order Blitz',
+    blurbTr: 'Siparişi ezberle — süre dolmadan bul',
+    blurbEn: 'Memorize the order — find it before time runs out',
+    badgeTr: 'Solo',
+    badgeEn: 'Solo',
+  },
 ];
 
 export function enabledMenuGames(g?: PublicMenuGames | boolean | null): MenuGameId[] {
   if (!isPublicGamesOn(g)) return [];
-  if (typeof g === 'boolean' || g == null) return ['memory', 'xox'];
+  if (typeof g === 'boolean' || g == null) return ['memory', 'xox', 'detective', 'blitz'];
   const ids: MenuGameId[] = [];
   if (g.memory?.enabled !== false) ids.push('memory');
   if (g.xox?.enabled !== false) ids.push('xox');
+  if (g.detective?.enabled !== false) ids.push('detective');
+  if (g.blitz?.enabled !== false) ids.push('blitz');
   return ids;
 }

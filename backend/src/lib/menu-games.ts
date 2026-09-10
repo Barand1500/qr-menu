@@ -10,6 +10,13 @@ export type MemoryPair = {
   imageB: string;
 };
 
+export type DetectiveAdminQuestion = {
+  id: string;
+  prompt: string;
+  choices: string[];
+  correctIndex: number;
+};
+
 export type MenuGamesConfig = {
   enabled: boolean;
   memory: {
@@ -21,6 +28,14 @@ export type MenuGamesConfig = {
     pool: string[];
   };
   xox: {
+    enabled: boolean;
+  };
+  detective: {
+    enabled: boolean;
+    /** Admin soruları — doluysa oyunda öncelikli */
+    questions: DetectiveAdminQuestion[];
+  };
+  blitz: {
     enabled: boolean;
   };
 };
@@ -36,12 +51,41 @@ export const DEFAULT_MENU_GAMES_CONFIG: MenuGamesConfig = {
   xox: {
     enabled: true,
   },
+  detective: {
+    enabled: true,
+    questions: [],
+  },
+  blitz: {
+    enabled: true,
+  },
 };
 
 function asPairCount(n: unknown): MemoryPairCount {
   const v = Number(n);
   if (v === 4 || v === 6 || v === 8) return v;
   return 6;
+}
+
+function parseDetectiveQuestions(raw: unknown): DetectiveAdminQuestion[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((q) => q && typeof q === 'object')
+    .map((q) => {
+      const o = q as Record<string, unknown>;
+      const choices = Array.isArray(o.choices)
+        ? o.choices.map((c) => String(c ?? '').trim()).filter(Boolean).slice(0, 4)
+        : [];
+      while (choices.length < 4) choices.push(`Seçenek ${choices.length + 1}`);
+      const correctIndex = Math.min(3, Math.max(0, Number(o.correctIndex) || 0));
+      return {
+        id: String(o.id || `dq-${Math.random().toString(36).slice(2, 9)}`),
+        prompt: String(o.prompt || '').trim() || 'Soru',
+        choices,
+        correctIndex,
+      };
+    })
+    .filter((q) => q.prompt.length > 0)
+    .slice(0, 100);
 }
 
 export function parseMenuGamesConfig(
@@ -88,6 +132,15 @@ export function parseMenuGamesConfig(
     if (j.xox && typeof j.xox === 'object' && typeof j.xox.enabled === 'boolean') {
       base.xox.enabled = j.xox.enabled;
     }
+    if (j.detective && typeof j.detective === 'object') {
+      if (typeof j.detective.enabled === 'boolean') base.detective.enabled = j.detective.enabled;
+      if (Array.isArray(j.detective.questions)) {
+        base.detective.questions = parseDetectiveQuestions(j.detective.questions);
+      }
+    }
+    if (j.blitz && typeof j.blitz === 'object' && typeof j.blitz.enabled === 'boolean') {
+      base.blitz.enabled = j.blitz.enabled;
+    }
   } catch {
     /* keep defaults */
   }
@@ -111,6 +164,13 @@ export function publicMenuGamesPayload(config: MenuGamesConfig) {
     },
     xox: {
       enabled: on && config.xox.enabled,
+    },
+    detective: {
+      enabled: on && config.detective.enabled,
+      questions: on && config.detective.enabled ? config.detective.questions : [],
+    },
+    blitz: {
+      enabled: on && config.blitz.enabled,
     },
   };
 }

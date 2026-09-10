@@ -47,6 +47,7 @@ import MenuMascot from '@/components/public/MenuMascot';
 import TableServiceButtons from '@/components/public/TableServiceButtons';
 import { parseMenuAssistantStyle } from '@/lib/menuAssistantStyle';
 import { sideMenuUi } from '@/lib/menuChromeUi';
+import { customerProfileUi } from '@/lib/customerProfileUi';
 import type { PublicSocialLink } from '@/lib/socialCatalog';
 import SadeHome from '@/components/public/sade/SadeHome';
 import SadeProductList from '@/components/public/sade/SadeProductList';
@@ -493,30 +494,33 @@ function PublicMenuPageInner({
   const hasGroupContent =
     filteredGroupProducts.length > 0 || filteredGroupChildren.length > 0;
 
+  const profileCopy = customerProfileUi(lang);
+  const profileFirstName = customer
+    ? customer.fullName.split(' ')[0] || customer.fullName
+    : '';
   const profileBanner =
     profileEnabled && customer && filterEnabled ? (
       <div className="public-profile-banner" role="status">
         <p className="public-profile-banner__text">
-          Merhaba {customer.fullName.split(' ')[0] || customer.fullName}, sizin için menüyü
-          filtreledik.
+          {profileCopy.helloFiltered(profileFirstName)}
         </p>
         <div className="public-profile-banner__actions">
           <button type="button" className="is-off" onClick={() => setFilterEnabled(false)}>
-            Filtreyi kapat
+            {profileCopy.closeFilter}
           </button>
           <button type="button" className="is-edit" onClick={() => setCustomerAuthOpen(true)}>
-            Profil
+            {profileCopy.profile}
           </button>
         </div>
       </div>
     ) : profileEnabled && customer && !filterEnabled ? (
       <div className="public-profile-banner" role="status">
         <p className="public-profile-banner__text">
-          Merhaba {customer.fullName.split(' ')[0] || customer.fullName} — kişisel filtre kapalı.
+          {profileCopy.helloFilterOff(profileFirstName)}
         </p>
         <div className="public-profile-banner__actions">
           <button type="button" className="is-edit" onClick={() => setFilterEnabled(true)}>
-            Filtreyi aç
+            {profileCopy.openFilter}
           </button>
         </div>
       </div>
@@ -638,8 +642,8 @@ function PublicMenuPageInner({
     <button
       type="button"
       className={`public-menu-header__icon-btn public-menu-header__icon-btn--md-only public-menu-header__profile-btn${customer ? ' is-active' : ''}`}
-      aria-label={customer ? 'Profil' : 'Giriş / Kayıt'}
-      title={customer ? 'Profil' : 'Giriş / Kayıt'}
+      aria-label={customer ? profileCopy.profile : profileCopy.loginRegister}
+      title={customer ? profileCopy.profile : profileCopy.loginRegister}
       onClick={() => setCustomerAuthOpen(true)}
     >
       <UserRound className="w-5 h-5" />
@@ -702,6 +706,11 @@ function PublicMenuPageInner({
         lang={lang}
         initialGame={gamesInitial}
         gamesConfig={gamesConfig}
+        products={popularProducts.map((p) => ({
+          id: String(p.id),
+          name: p.name,
+          imageUrl: p.imageUrl,
+        }))}
       />
     ) : null;
 

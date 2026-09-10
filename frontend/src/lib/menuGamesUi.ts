@@ -1,6 +1,10 @@
 /** Menü oyunları — dil koduna göre UI metinleri */
 
-export type MenuGameId = 'memory' | 'xox';
+import type { MenuGameId } from '@/lib/menuGames';
+
+export type { MenuGameId };
+
+type GameEntry = { title: string; blurb: string; badge: string };
 
 export type GamesUiCopy = {
   eyebrow: string;
@@ -9,8 +13,10 @@ export type GamesUiCopy = {
   games: string;
   gamesPromo: string;
   gamesCta: string;
-  memory: { title: string; blurb: string; badge: string };
-  xox: { title: string; blurb: string; badge: string };
+  memory: GameEntry;
+  xox: GameEntry;
+  detective: GameEntry;
+  blitz: GameEntry;
   moves: string;
   matchPairs: string;
   doneIn: (s: number) => string;
@@ -31,6 +37,24 @@ export type GamesUiCopy = {
   joinFail: string;
   moveFail: string;
   rematchFail: string;
+  detStart: string;
+  detNext: string;
+  detFifty: string;
+  detCorrect: string;
+  detWrong: string;
+  detWin: string;
+  detScore: (n: number) => string;
+  detLadder: string;
+  detQuestion: (n: number, total: number) => string;
+  blitzMemorize: string;
+  blitzRecall: string;
+  blitzPick: string;
+  blitzTime: (s: number) => string;
+  blitzScore: (ok: number, total: number) => string;
+  blitzPerfect: string;
+  blitzAgain: string;
+  blitzStart: string;
+  blitzConfirm: string;
 };
 
 const EN: GamesUiCopy = {
@@ -49,6 +73,16 @@ const EN: GamesUiCopy = {
     title: 'Tic-Tac-Toe',
     blurb: 'Play with someone at your table',
     badge: 'Table',
+  },
+  detective: {
+    title: 'Menu Detective',
+    blurb: 'Who Wants to Be a Millionaire–style quiz',
+    badge: 'Solo',
+  },
+  blitz: {
+    title: 'Order Blitz',
+    blurb: 'Memorize the order — find it before time runs out',
+    badge: 'Solo',
   },
   moves: 'Moves',
   matchPairs: 'Match the pairs',
@@ -70,6 +104,24 @@ const EN: GamesUiCopy = {
   joinFail: 'Could not join',
   moveFail: 'Move failed',
   rematchFail: 'Rematch failed',
+  detStart: 'Start',
+  detNext: 'Next question',
+  detFifty: '50:50',
+  detCorrect: 'Correct!',
+  detWrong: 'Wrong answer',
+  detWin: 'You reached the top!',
+  detScore: (n) => `${n.toLocaleString('en-US')} pts`,
+  detLadder: 'Prize ladder',
+  detQuestion: (n, total) => `Question ${n} / ${total}`,
+  blitzMemorize: 'Memorize this order!',
+  blitzRecall: 'Which items were in the order?',
+  blitzPick: 'Tap the correct dishes',
+  blitzTime: (s) => `${s}s`,
+  blitzScore: (ok, total) => `${ok} / ${total} correct`,
+  blitzPerfect: 'Perfect memory!',
+  blitzAgain: 'Play again',
+  blitzStart: 'Start',
+  blitzConfirm: 'Check',
 };
 
 const TR: GamesUiCopy = {
@@ -88,6 +140,16 @@ const TR: GamesUiCopy = {
     title: 'XOX',
     blurb: 'Aynı masadaki arkadaşınla oyna',
     badge: 'Masa',
+  },
+  detective: {
+    title: 'Menü Dedektifi',
+    blurb: 'Kim milyoner olmak ister tarzı bilgi yarışması',
+    badge: 'Solo',
+  },
+  blitz: {
+    title: 'Sipariş Blitz',
+    blurb: 'Siparişi ezberle — süre dolmadan bul',
+    badge: 'Solo',
   },
   moves: 'Hamle',
   matchPairs: 'Eşleri bul',
@@ -109,6 +171,24 @@ const TR: GamesUiCopy = {
   joinFail: 'Katılınamadı',
   moveFail: 'Hamle olmadı',
   rematchFail: 'Tekrar başlamadı',
+  detStart: 'Başla',
+  detNext: 'Sonraki soru',
+  detFifty: '50:50',
+  detCorrect: 'Doğru!',
+  detWrong: 'Yanlış cevap',
+  detWin: 'Zirveye ulaştın!',
+  detScore: (n) => `${n.toLocaleString('tr-TR')} puan`,
+  detLadder: 'Ödül basamakları',
+  detQuestion: (n, total) => `Soru ${n} / ${total}`,
+  blitzMemorize: 'Bu siparişi ezberle!',
+  blitzRecall: 'Siparişte hangileri vardı?',
+  blitzPick: 'Doğru yemeklere dokun',
+  blitzTime: (s) => `${s} sn`,
+  blitzScore: (ok, total) => `${ok} / ${total} doğru`,
+  blitzPerfect: 'Mükemmel hafıza!',
+  blitzAgain: 'Tekrar oyna',
+  blitzStart: 'Başla',
+  blitzConfirm: 'Kontrol et',
 };
 
 const RU: GamesUiCopy = {
@@ -338,10 +418,21 @@ const MAP: Record<string, GamesUiCopy> = {
 
 export function gamesUi(lang: string): GamesUiCopy {
   const code = (lang || 'tr').split('-')[0].toLowerCase();
-  return MAP[code] || EN;
+  const raw = (MAP[code] || EN) as GamesUiCopy;
+  return {
+    ...EN,
+    ...raw,
+    memory: raw.memory || EN.memory,
+    xox: raw.xox || EN.xox,
+    detective: raw.detective || EN.detective,
+    blitz: raw.blitz || EN.blitz,
+  };
 }
 
 export function gameCatalogEntry(id: MenuGameId, lang: string) {
   const ui = gamesUi(lang);
-  return id === 'memory' ? ui.memory : ui.xox;
+  if (id === 'memory') return ui.memory;
+  if (id === 'xox') return ui.xox;
+  if (id === 'detective') return ui.detective;
+  return ui.blitz;
 }

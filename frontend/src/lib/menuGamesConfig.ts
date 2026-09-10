@@ -6,6 +6,13 @@ export type MemoryPair = {
   imageB: string;
 };
 
+export type DetectiveAdminQuestion = {
+  id: string;
+  prompt: string;
+  choices: string[];
+  correctIndex: number;
+};
+
 export type MenuGamesConfig = {
   enabled: boolean;
   memory: {
@@ -15,6 +22,13 @@ export type MenuGamesConfig = {
     pool: string[];
   };
   xox: {
+    enabled: boolean;
+  };
+  detective: {
+    enabled: boolean;
+    questions: DetectiveAdminQuestion[];
+  };
+  blitz: {
     enabled: boolean;
   };
 };
@@ -29,12 +43,21 @@ export type PublicMenuGames = {
   xox: {
     enabled: boolean;
   };
+  detective: {
+    enabled: boolean;
+    questions: DetectiveAdminQuestion[];
+  };
+  blitz: {
+    enabled: boolean;
+  };
 };
 
 export const DEFAULT_MENU_GAMES_CONFIG: MenuGamesConfig = {
   enabled: true,
   memory: { enabled: true, pairCount: 6, pairs: [], pool: [] },
   xox: { enabled: true },
+  detective: { enabled: true, questions: [] },
+  blitz: { enabled: true },
 };
 
 export function isPublicGamesOn(g?: PublicMenuGames | boolean | null): boolean {

@@ -17,6 +17,7 @@ import {
   allergenLabel,
   dietLabel,
 } from '@/lib/dietAllergens';
+import { customerProfileUi } from '@/lib/customerProfileUi';
 
 type Mode = 'login' | 'register' | 'profile';
 type LoginType = 'email' | 'phone';
@@ -190,11 +191,13 @@ export default function MenuCustomerAuthModal({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  const ui = customerProfileUi(lang || 'tr');
+
   const title = useMemo(() => {
-    if (mode === 'profile') return 'Profilim';
-    if (mode === 'register') return 'Kayıt ol';
-    return 'Giriş yap';
-  }, [mode]);
+    if (mode === 'profile') return ui.myProfile;
+    if (mode === 'register') return ui.register;
+    return ui.login;
+  }, [mode, ui.login, ui.myProfile, ui.register]);
 
   if (!open) return null;
 
@@ -254,7 +257,7 @@ export default function MenuCustomerAuthModal({
       aria-modal="true"
       aria-labelledby="mc-auth-title"
     >
-      <button type="button" className="mc-auth__scrim" aria-label="Kapat" onClick={onClose} />
+      <button type="button" className="mc-auth__scrim" aria-label={ui.close} onClick={onClose} />
       <div className="mc-auth__panel">
         <header className="mc-auth__head">
           <div className="mc-auth__head-icon">
@@ -273,7 +276,7 @@ export default function MenuCustomerAuthModal({
                 : 'Bir kez kayıt ol, tüm menülerimizde kullan.'}
             </p>
           </div>
-          <button type="button" className="mc-auth__close" onClick={onClose} aria-label="Kapat">
+          <button type="button" className="mc-auth__close" onClick={onClose} aria-label={ui.close}>
             <X className="w-5 h-5" />
           </button>
         </header>
@@ -416,19 +419,19 @@ export default function MenuCustomerAuthModal({
                   <span>
                     {customer?.phone
                       ? formatPhoneInput(customer.phone)
-                      : customer?.email || 'Hesap'}
+                      : customer?.email || ui.account}
                   </span>
                 </div>
                 <div className="mc-auth__points">
-                  <em>Puan</em>
+                  <em>{ui.points}</em>
                   <b>{points}</b>
                 </div>
               </div>
 
               <label className="mc-auth__switch">
                 <span>
-                  <strong>Kişisel menü filtresi</strong>
-                  <small>Açıkken alerji, alkol ve sevmediklerin uygulanır</small>
+                  <strong>{ui.personalFilter}</strong>
+                  <small>{ui.personalFilterHint}</small>
                 </span>
                 <button
                   type="button"
@@ -442,7 +445,7 @@ export default function MenuCustomerAuthModal({
               </label>
 
               <div className="mc-auth__field">
-                <label htmlFor="mc-pname">Ad soyad</label>
+                <label htmlFor="mc-pname">{ui.fullName}</label>
                 <input
                   id="mc-pname"
                   value={profileName}
@@ -455,8 +458,8 @@ export default function MenuCustomerAuthModal({
                 <div className="mc-auth__block-head">
                   <Wine className="w-4 h-4" />
                   <div>
-                    <h3>Alkol</h3>
-                    <p>Restoranlarda alkol içeren ürünler için tercih</p>
+                    <h3>{ui.alcohol}</h3>
+                    <p>{ui.alcoholHint}</p>
                   </div>
                 </div>
                 <div className="mc-auth__alcohol">
@@ -465,14 +468,14 @@ export default function MenuCustomerAuthModal({
                     className={alcohol === 'yes' ? 'is-active' : ''}
                     onClick={() => setAlcohol('yes')}
                   >
-                    Alkol tüketiyorum
+                    {ui.alcoholYes}
                   </button>
                   <button
                     type="button"
                     className={alcohol === 'no' ? 'is-active is-no' : ''}
                     onClick={() => setAlcohol('no')}
                   >
-                    Alkol tüketmiyorum
+                    {ui.alcoholNo}
                   </button>
                 </div>
               </section>
@@ -481,8 +484,8 @@ export default function MenuCustomerAuthModal({
                 <div className="mc-auth__block-head">
                   <Sparkles className="w-4 h-4" />
                   <div>
-                    <h3>Alerjiler</h3>
-                    <p>Seçtiklerin menüden gizlenir</p>
+                    <h3>{ui.allergies}</h3>
+                    <p>{ui.allergiesHint}</p>
                   </div>
                 </div>
                 <div className="mc-auth__chips">
@@ -510,8 +513,8 @@ export default function MenuCustomerAuthModal({
                 <div className="mc-auth__block-head">
                   <Sparkles className="w-4 h-4" />
                   <div>
-                    <h3>Diyet / tercih</h3>
-                    <p>Uygun ürünler öne çıkar</p>
+                    <h3>{ui.diet}</h3>
+                    <p>{ui.dietHint}</p>
                   </div>
                 </div>
                 <div className="mc-auth__chips">
@@ -536,25 +539,25 @@ export default function MenuCustomerAuthModal({
               </section>
 
               <ChipEditor
-                label="Sevdiğim yemekler"
-                hint="İsim veya kategori yaz (ör. pizza, tatlı)"
+                label={ui.likedFoods}
+                hint={ui.likedHint}
                 values={liked}
                 onChange={setLiked}
-                placeholder="Örn. pizza"
+                placeholder={ui.likedPlaceholder}
                 tone="like"
               />
               <ChipEditor
-                label="Sevmediğim yemekler"
-                hint="Büyük/küçük harf fark etmez; ürün adında geçerse gizlenir"
+                label={ui.dislikedFoods}
+                hint={ui.dislikedHint}
                 values={disliked}
                 onChange={setDisliked}
-                placeholder="Örn. soğan"
+                placeholder={ui.dislikedPlaceholder}
                 tone="dislike"
               />
 
               <div className="mc-auth__footer">
                 <button type="submit" className="mc-auth__primary" disabled={busy}>
-                  {busy ? 'Kaydediliyor…' : 'Kaydet'}
+                  {busy ? ui.saving : ui.save}
                 </button>
                 <button
                   type="button"
@@ -565,7 +568,7 @@ export default function MenuCustomerAuthModal({
                   }}
                 >
                   <LogOut className="w-4 h-4" />
-                  Çıkış yap
+                  {ui.logout}
                 </button>
               </div>
             </form>

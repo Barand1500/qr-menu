@@ -458,6 +458,19 @@ router.put('/menu-games', async (req, res) => {
     xox: {
       enabled: typeof body.xox?.enabled === 'boolean' ? body.xox.enabled : current.xox.enabled,
     },
+    detective: {
+      enabled:
+        typeof body.detective?.enabled === 'boolean'
+          ? body.detective.enabled
+          : current.detective.enabled,
+      questions: Array.isArray(body.detective?.questions)
+        ? body.detective!.questions
+        : current.detective.questions,
+    },
+    blitz: {
+      enabled:
+        typeof body.blitz?.enabled === 'boolean' ? body.blitz.enabled : current.blitz.enabled,
+    },
   };
   const normalized = parseMenuGamesConfig(JSON.stringify(next));
   await prisma.setting.upsert({

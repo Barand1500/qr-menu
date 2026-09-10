@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, Gamepad2, X } from 'lucide-react';
+import BlitzGame, { type BlitzProduct } from '@/components/public/games/BlitzGame';
+import DetectiveGame from '@/components/public/games/DetectiveGame';
 import MemoryGame from '@/components/public/games/MemoryGame';
 import XoxGame from '@/components/public/games/XoxGame';
 import {
@@ -17,6 +19,7 @@ type Props = {
   lang?: string;
   initialGame?: MenuGameId | null;
   gamesConfig?: PublicMenuGames | boolean | null;
+  products?: BlitzProduct[];
 };
 
 export default function MenuGamesOverlay({
@@ -26,6 +29,7 @@ export default function MenuGamesOverlay({
   lang = 'tr',
   initialGame = null,
   gamesConfig,
+  products = [],
 }: Props) {
   const ui = gamesUi(lang);
   const enabled = useMemo(() => enabledMenuGames(gamesConfig), [gamesConfig]);
@@ -56,10 +60,10 @@ export default function MenuGamesOverlay({
     return gameCatalogEntry(active, lang).title;
   }, [active, lang, ui.title]);
 
-  const memoryPairs =
-    typeof gamesConfig === 'object' && gamesConfig ? gamesConfig.memory?.pairs || [] : [];
-  const pairCount =
-    typeof gamesConfig === 'object' && gamesConfig ? gamesConfig.memory?.pairCount || 6 : 6;
+  const cfg = typeof gamesConfig === 'object' && gamesConfig ? gamesConfig : null;
+  const memoryPairs = cfg?.memory?.pairs || [];
+  const pairCount = cfg?.memory?.pairCount || 6;
+  const detectiveQuestions = cfg?.detective?.questions || [];
 
   if (!open) return null;
 
@@ -112,8 +116,12 @@ export default function MenuGamesOverlay({
             </div>
           ) : active === 'memory' ? (
             <MemoryGame lang={lang} pairCount={pairCount} pairs={memoryPairs} />
-          ) : (
+          ) : active === 'xox' ? (
             <XoxGame slug={slug} lang={lang} />
+          ) : active === 'detective' ? (
+            <DetectiveGame lang={lang} adminQuestions={detectiveQuestions} />
+          ) : (
+            <BlitzGame lang={lang} products={products} />
           )}
         </div>
       </div>
