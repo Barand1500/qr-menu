@@ -549,18 +549,12 @@
 .table-floor__nav-filters {
   display: flex;
   flex: 0 1 auto;
-  align-items: flex-end;
-  gap: 0.65rem;
+  align-items: center;
+  gap: 0.5rem;
   margin-left: auto;
   max-width: 100%;
   min-width: 0;
-}
-
-.table-floor__status-filters {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .table-floor__filters {
@@ -578,14 +572,6 @@
     flex: 1 1 100%;
     margin-left: 0;
     order: 3;
-    flex-wrap: wrap;
-    align-items: stretch;
-  }
-
-  .table-floor__status-filters {
-    flex-direction: row;
-    flex-wrap: wrap;
-    width: 100%;
   }
 
   .table-floor__filters {
@@ -608,13 +594,6 @@
   cursor: pointer;
 }
 
-.table-floor__status-filters .table-floor__chip {
-  justify-content: space-between;
-  min-width: 9.5rem;
-  padding: 0.42rem 0.75rem;
-  font-size: 0.78rem;
-}
-
 .table-floor__chip em {
   font-style: normal;
   font-size: 0.7rem;
@@ -633,14 +612,64 @@
   background: rgba(255, 255, 255, 0.18);
 }
 
-.table-floor__chip--pending.is-active {
-  background: #0369a1;
-  color: #f0f9ff;
-}
-
 .table-floor__chip--occupied.is-active {
   background: #c2410c;
   color: #fff7ed;
+}
+
+.table-floor__occupied-view {
+  display: grid;
+  gap: 1.35rem;
+}
+
+.table-floor__section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0 0 0.85rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--tf-ink, #1c1917) 14%, transparent);
+}
+
+.table-floor__section-head h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--tf-ink, #1c1917);
+}
+
+.table-floor__section-head em {
+  font-style: normal;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: rgba(88, 60, 36, 0.1);
+  color: var(--tf-ink, #1c1917);
+}
+
+.table-floor__section--pending .table-floor__section-head {
+  border-bottom-color: color-mix(in srgb, #0284c7 35%, transparent);
+}
+
+.table-floor__section--pending .table-floor__section-head h3 {
+  color: #0369a1;
+}
+
+.table-floor__section--pending .table-floor__section-head em {
+  background: rgba(14, 165, 233, 0.16);
+  color: #0369a1;
+}
+
+.table-floor__section-empty {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--tf-muted, #78716c);
 }
 
 .table-floor__main {

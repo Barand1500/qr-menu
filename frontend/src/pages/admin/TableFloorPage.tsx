@@ -299,7 +299,7 @@ export default function TableFloorPage() {
   const [groupId, setGroupId] = useState<string>('');
   const [floorSkin, setFloorSkin] = useState(readFloorSkin);
   const [soundOn, setSoundOn] = useState(readFloorSoundOn);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'occupied'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'occupied'>('all');
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [selectedGroupSlug, setSelectedGroupSlug] = useState<string>('');
   const [now, setNow] = useState(() => Date.now());
@@ -430,39 +430,41 @@ export default function TableFloorPage() {
     [data, groupId]
   );
 
-  const statusCounts = useMemo(() => {
-    let pending = 0;
+  const occupiedCount = useMemo(() => {
     let occupied = 0;
     for (const g of data?.groups || []) {
       for (const t of g.tables) {
         if (t.occupied) occupied += 1;
-        if (t.codeStatus === 'pending') pending += 1;
       }
     }
-    return { pending, occupied };
+    return occupied;
   }, [data]);
 
-  const displayTables = useMemo(() => {
-    if (statusFilter === 'all') {
-      if (!activeGroup) return [];
-      return activeGroup.tables.map((table) => ({
-        table,
-        groupId: activeGroup.id,
-        groupName: activeGroup.name,
-      }));
-    }
-    const rows: { table: FloorTable; groupId: string; groupName: string }[] = [];
+  type FloorDisplayRow = { table: FloorTable; groupId: string; groupName: string };
+
+  const displayTables = useMemo((): FloorDisplayRow[] => {
+    if (statusFilter !== 'all' || !activeGroup) return [];
+    return activeGroup.tables.map((table) => ({
+      table,
+      groupId: activeGroup.id,
+      groupName: activeGroup.name,
+    }));
+  }, [activeGroup, statusFilter]);
+
+  const occupiedSections = useMemo(() => {
+    const pending: FloorDisplayRow[] = [];
+    const filled: FloorDisplayRow[] = [];
+    if (statusFilter !== 'occupied') return { pending, filled };
     for (const g of data?.groups || []) {
       for (const table of g.tables) {
-        if (statusFilter === 'pending' && table.codeStatus === 'pending') {
-          rows.push({ table, groupId: g.id, groupName: g.name });
-        } else if (statusFilter === 'occupied' && table.occupied) {
-          rows.push({ table, groupId: g.id, groupName: g.name });
-        }
+        if (!table.occupied) continue;
+        const row = { table, groupId: g.id, groupName: g.name };
+        if (table.codeStatus === 'pending') pending.push(row);
+        else filled.push(row);
       }
     }
-    return rows;
-  }, [activeGroup, data, statusFilter]);
+    return { pending, filled };
+  }, [data, statusFilter]);
 
   const selectedGroup = useMemo(
     () => data?.groups.find((g) => g.id === (selectedGroupSlug || groupId)) || null,
@@ -975,6 +977,113 @@ export default function TableFloorPage() {
     setSearchParams(next, { replace: true });
   }
 
+  function renderFloorTableRow({ table, groupId: tableGroupId, groupName }: FloorDisplayRow) {
+    const menuUrl = `${origin}/menu?masa=${encodeURIComponent(table.code)}&grup=${tableGroupId}`;
+    const alerting = table.waiterAlertMs > 0;
+    const qrColor = resolveQrColor(table.colorId);
+    const isSource = selectedCode === table.code && selectedGroupSlug === tableGroupId;
+    const isMergePick = pickMode === 'merge' && mergePick.includes(table.code);
+    const moveSelectable =
+      pickMode === 'move' && !table.occupied && table.status !== 'merged';
+    const mergeSelectable =
+      pickMode === 'merge' &&
+      selectedGroupSlug === tableGroupId &&
+      table.code !== selectedCode &&
+      table.status !== 'merged';
+    const groupTables = data?.groups.find((g) => g.id === tableGroupId)?.tables || [];
+    const primaryName =
+      table.mergePrimary && groupTables.find((t) => t.code === table.mergePrimary)?.name;
+    const codeWaiting = table.occupied && table.codeStatus === 'pending';
+    const codeExpiredTable = table.occupied && table.codeStatus === 'expired';
+    const codeOccupied =
+      table.occupied &&
+      !codeWaiting &&
+      !codeExpiredTable &&
+      (table.codeStatus === 'verified' || table.codeStatus === 'empty' || !table.codeStatus);
+
+    return (
+      <button
+        key={`${tableGroupId}-${table.code}`}
+        type="button"
+        className={`floor-table${codeOccupied ? ' is-occupied' : ''}${
+          codeWaiting ? ' is-code-waiting' : ''
+        }${codeExpiredTable ? ' is-code-expired-table' : ''}${
+          table.status === 'reserved' ? ' is-reserved' : ''
+        }${table.status === 'merged' ? ' is-merged' : ''}${alerting ? ' is-alerting' : ''}${
+          isSource ? ' is-selected' : ''
+        }${isMergePick ? ' is-merge-pick' : ''}${moveSelectable ? ' is-pickable' : ''}${
+          pickMode && !moveSelectable && !mergeSelectable && !isSource ? ' is-dimmed' : ''
+        }`}
+        onClick={() => handleTableClick(table, tableGroupId)}
+      >
+        <span className="floor-table__chair floor-table__chair--n" aria-hidden />
+        <span className="floor-table__chair floor-table__chair--e" aria-hidden />
+        <span className="floor-table__chair floor-table__chair--s" aria-hidden />
+        <span className="floor-table__chair floor-table__chair--w" aria-hidden />
+        <span className="floor-table__top">
+          <span className="floor-table__qr" style={{ background: qrColor.bg }}>
+            <QRCodeSVG
+              value={menuUrl}
+              size={44}
+              level="M"
+              includeMargin={false}
+              fgColor={qrColor.fg}
+              bgColor={qrColor.bg}
+            />
+          </span>
+          {table.status === 'reserved' ? (
+            <span className="floor-table__meta">
+              {table.expectedAt
+                ? new Date(table.expectedAt).toLocaleTimeString('tr-TR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+                : 'Rezerve'}
+            </span>
+          ) : table.status === 'merged' ? (
+            <span className="floor-table__meta">Birleşik</span>
+          ) : table.occupied ? (
+            <span className="floor-table__meta">
+              <Clock3 className="w-3 h-3" />
+              {formatDurationMinutes(table.openedAt, now)}
+            </span>
+          ) : (
+            <span className="floor-table__meta floor-table__meta--free">
+              Boş
+              {table.seatingFee?.enabled ? ' · Ücretli' : ''}
+            </span>
+          )}
+        </span>
+        <span className="floor-table__caption">
+          <span className="floor-table__label">{table.name}</span>
+          {statusFilter !== 'all' ? (
+            <span className="floor-table__link">{groupName}</span>
+          ) : null}
+          {table.occupied && table.codeStatus === 'empty' ? (
+            <span className="floor-table__code-badge is-empty">Kod yok</span>
+          ) : null}
+          {table.codeStatus === 'pending' ? (
+            <span className="floor-table__code-badge is-pending">Kod bekliyor</span>
+          ) : null}
+          {table.codeStatus === 'verified' ? (
+            <span className="floor-table__code-badge is-ok">Kod OK</span>
+          ) : null}
+          {table.codeStatus === 'expired' ? (
+            <span className="floor-table__code-badge is-expired">Süre doldu</span>
+          ) : null}
+          {table.status === 'merged' && primaryName ? (
+            <span className="floor-table__link">{primaryName} ile</span>
+          ) : null}
+          {(table.mergedTables || []).length > 0 ? (
+            <span className="floor-table__link">
+              +{(table.mergedTables || []).length} birleşik
+            </span>
+          ) : null}
+        </span>
+      </button>
+    );
+  }
+
   return (
     <div className={`table-floor table-floor--skin-${floorSkin}`}>
       <header className="table-floor__top">
@@ -1031,40 +1140,22 @@ export default function TableFloorPage() {
         </div>
         {panelMode === 'floor' ? (
           <div className="table-floor__nav-filters">
-            <div className="table-floor__status-filters" aria-label="Durum filtreleri">
-              <button
-                type="button"
-                className={`table-floor__chip table-floor__chip--pending${
-                  statusFilter === 'pending' ? ' is-active' : ''
-                }`}
-                onClick={() => {
-                  setStatusFilter((prev) => (prev === 'pending' ? 'all' : 'pending'));
-                  if (!pickMode) {
-                    setSelectedCode(null);
-                    setSelectedGroupSlug('');
-                  }
-                }}
-              >
-                Kod beklenen
-                <em>{statusCounts.pending}</em>
-              </button>
-              <button
-                type="button"
-                className={`table-floor__chip table-floor__chip--occupied${
-                  statusFilter === 'occupied' ? ' is-active' : ''
-                }`}
-                onClick={() => {
-                  setStatusFilter((prev) => (prev === 'occupied' ? 'all' : 'occupied'));
-                  if (!pickMode) {
-                    setSelectedCode(null);
-                    setSelectedGroupSlug('');
-                  }
-                }}
-              >
-                Dolu masalar
-                <em>{statusCounts.occupied}</em>
-              </button>
-            </div>
+            <button
+              type="button"
+              className={`table-floor__chip table-floor__chip--occupied${
+                statusFilter === 'occupied' ? ' is-active' : ''
+              }`}
+              onClick={() => {
+                setStatusFilter((prev) => (prev === 'occupied' ? 'all' : 'occupied'));
+                if (!pickMode) {
+                  setSelectedCode(null);
+                  setSelectedGroupSlug('');
+                }
+              }}
+            >
+              Dolu masalar
+              <em>{occupiedCount}</em>
+            </button>
             <div className="table-floor__filters" role="tablist" aria-label="Masa grupları">
               {(data?.groups || []).map((g) => (
                 <button
@@ -1147,128 +1238,43 @@ export default function TableFloorPage() {
           <div className="table-floor__empty">Masalar yükleniyor…</div>
         ) : error ? (
           <div className="table-floor__empty">{error}</div>
+        ) : statusFilter === 'occupied' ? (
+          occupiedCount === 0 ? (
+            <div className="table-floor__empty">Dolu masa yok.</div>
+          ) : (
+            <div className="table-floor__occupied-view">
+              {occupiedSections.pending.length > 0 ? (
+                <section className="table-floor__section table-floor__section--pending">
+                  <div className="table-floor__section-head">
+                    <h3>Kod beklenen masalar</h3>
+                    <em>{occupiedSections.pending.length}</em>
+                  </div>
+                  <div className="table-floor__grid">
+                    {occupiedSections.pending.map(renderFloorTableRow)}
+                  </div>
+                </section>
+              ) : null}
+              <section className="table-floor__section table-floor__section--filled">
+                <div className="table-floor__section-head">
+                  <h3>Dolu masalar</h3>
+                  <em>{occupiedSections.filled.length}</em>
+                </div>
+                {occupiedSections.filled.length ? (
+                  <div className="table-floor__grid">
+                    {occupiedSections.filled.map(renderFloorTableRow)}
+                  </div>
+                ) : (
+                  <p className="table-floor__section-empty">Kod OK dolu masa yok.</p>
+                )}
+              </section>
+            </div>
+          )
         ) : !displayTables.length ? (
           <div className="table-floor__empty">
-            {statusFilter === 'pending'
-              ? 'Kod bekleyen masa yok.'
-              : statusFilter === 'occupied'
-                ? 'Dolu masa yok.'
-                : 'Bu grupta masa yok. Barkod Yazdır sayfasından ekleyin.'}
+            Bu grupta masa yok. Barkod Yazdır sayfasından ekleyin.
           </div>
         ) : (
-          <div className="table-floor__grid">
-            {displayTables.map(({ table, groupId: tableGroupId, groupName }) => {
-              const menuUrl = `${origin}/menu?masa=${encodeURIComponent(table.code)}&grup=${tableGroupId}`;
-              const alerting = table.waiterAlertMs > 0;
-              const qrColor = resolveQrColor(table.colorId);
-              const isSource =
-                selectedCode === table.code && selectedGroupSlug === tableGroupId;
-              const isMergePick = pickMode === 'merge' && mergePick.includes(table.code);
-              const moveSelectable =
-                pickMode === 'move' && !table.occupied && table.status !== 'merged';
-              const mergeSelectable =
-                pickMode === 'merge' &&
-                selectedGroupSlug === tableGroupId &&
-                table.code !== selectedCode &&
-                table.status !== 'merged';
-              const groupTables =
-                data?.groups.find((g) => g.id === tableGroupId)?.tables || [];
-              const primaryName =
-                table.mergePrimary &&
-                groupTables.find((t) => t.code === table.mergePrimary)?.name;
-              const codeWaiting = table.occupied && table.codeStatus === 'pending';
-              const codeExpiredTable = table.occupied && table.codeStatus === 'expired';
-              const codeOccupied =
-                table.occupied &&
-                !codeWaiting &&
-                !codeExpiredTable &&
-                (table.codeStatus === 'verified' ||
-                  table.codeStatus === 'empty' ||
-                  !table.codeStatus);
-
-              return (
-                <button
-                  key={`${tableGroupId}-${table.code}`}
-                  type="button"
-                  className={`floor-table${codeOccupied ? ' is-occupied' : ''}${
-                    codeWaiting ? ' is-code-waiting' : ''
-                  }${codeExpiredTable ? ' is-code-expired-table' : ''}${
-                    table.status === 'reserved' ? ' is-reserved' : ''
-                  }${table.status === 'merged' ? ' is-merged' : ''}${
-                    alerting ? ' is-alerting' : ''
-                  }${isSource ? ' is-selected' : ''}${isMergePick ? ' is-merge-pick' : ''}${
-                    moveSelectable ? ' is-pickable' : ''
-                  }${pickMode && !moveSelectable && !mergeSelectable && !isSource ? ' is-dimmed' : ''}`}
-                  onClick={() => handleTableClick(table, tableGroupId)}
-                >
-                  <span className="floor-table__chair floor-table__chair--n" aria-hidden />
-                  <span className="floor-table__chair floor-table__chair--e" aria-hidden />
-                  <span className="floor-table__chair floor-table__chair--s" aria-hidden />
-                  <span className="floor-table__chair floor-table__chair--w" aria-hidden />
-                  <span className="floor-table__top">
-                    <span className="floor-table__qr" style={{ background: qrColor.bg }}>
-                      <QRCodeSVG
-                        value={menuUrl}
-                        size={44}
-                        level="M"
-                        includeMargin={false}
-                        fgColor={qrColor.fg}
-                        bgColor={qrColor.bg}
-                      />
-                    </span>
-                    {table.status === 'reserved' ? (
-                      <span className="floor-table__meta">
-                        {table.expectedAt
-                          ? new Date(table.expectedAt).toLocaleTimeString('tr-TR', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
-                          : 'Rezerve'}
-                      </span>
-                    ) : table.status === 'merged' ? (
-                      <span className="floor-table__meta">Birleşik</span>
-                    ) : table.occupied ? (
-                      <span className="floor-table__meta">
-                        <Clock3 className="w-3 h-3" />
-                        {formatDurationMinutes(table.openedAt, now)}
-                      </span>
-                    ) : (
-                      <span className="floor-table__meta floor-table__meta--free">
-                        Boş
-                        {table.seatingFee?.enabled ? ' · Ücretli' : ''}
-                      </span>
-                    )}
-                  </span>
-                  <span className="floor-table__caption">
-                    <span className="floor-table__label">{table.name}</span>
-                    {statusFilter !== 'all' ? (
-                      <span className="floor-table__link">{groupName}</span>
-                    ) : null}
-                    {table.occupied && table.codeStatus === 'empty' ? (
-                      <span className="floor-table__code-badge is-empty">Kod yok</span>
-                    ) : null}
-                    {table.codeStatus === 'pending' ? (
-                      <span className="floor-table__code-badge is-pending">Kod bekliyor</span>
-                    ) : null}
-                    {table.codeStatus === 'verified' ? (
-                      <span className="floor-table__code-badge is-ok">Kod OK</span>
-                    ) : null}
-                    {table.codeStatus === 'expired' ? (
-                      <span className="floor-table__code-badge is-expired">Süre doldu</span>
-                    ) : null}
-                    {table.status === 'merged' && primaryName ? (
-                      <span className="floor-table__link">{primaryName} ile</span>
-                    ) : null}
-                    {(table.mergedTables || []).length > 0 ? (
-                      <span className="floor-table__link">
-                        +{(table.mergedTables || []).length} birleşik
-                      </span>
-                    ) : null}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          <div className="table-floor__grid">{displayTables.map(renderFloorTableRow)}</div>
         )}
       </main>
 
