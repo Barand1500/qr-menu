@@ -11,6 +11,7 @@ import {
 import { catalogLabel, loadPrefCatalogSession, resolvePrefCatalog } from '@/lib/prefCatalog';
 import { sideMenuUi } from '@/lib/menuChromeUi';
 import { MENU_GAMES_CATALOG, enabledMenuGames, type MenuGameId } from '@/lib/menuGames';
+import { gameCatalogEntry, gamesUi } from '@/lib/menuGamesUi';
 import type { PublicMenuGames } from '@/lib/menuGamesConfig';
 
 export type PublicTab = 'home' | 'about' | 'settings';
@@ -59,11 +60,11 @@ export default function PublicSideMenu({
 }: PublicSideMenuProps) {
   const ui = preferenceUi(activeLang);
   const chrome = sideMenuUi(activeLang);
+  const gUi = gamesUi(activeLang);
   const prefCatalog = resolvePrefCatalog(loadPrefCatalogSession());
   const [langOpen, setLangOpen] = useState(false);
   const [allergyOpen, setAllergyOpen] = useState(() => prefsActive(dietaryPrefs));
   const langRef = useRef<HTMLDivElement>(null);
-  const en = (activeLang || 'tr').split('-')[0] === 'en';
   const gameIds = enabledMenuGames(gamesConfig ?? (gamesEnabled ? true : false));
   const gameCards = MENU_GAMES_CATALOG.filter((g) => gameIds.includes(g.id));
 
@@ -171,48 +172,54 @@ export default function PublicSideMenu({
             <div className="public-side-menu__section public-side-menu__games">
               <p className="public-side-menu__section-title">
                 <Gamepad2 className="w-4 h-4" />
-                {chrome.games}
+                {gUi.games}
               </p>
 
               {gamesPromo ? (
                 <div className="public-side-menu__games-promo">
-                  <p>{chrome.gamesPromo}</p>
+                  <p>{gUi.gamesPromo}</p>
                   <div className="public-side-menu__games-promo-list">
-                    {gameCards.map((g) => (
-                      <button
-                        key={g.id}
-                        type="button"
-                        className="public-side-menu__games-promo-item"
-                        onClick={() => openGame(g.id)}
-                      >
-                        <span className="public-side-menu__games-ok" aria-hidden>
-                          <Check className="w-3.5 h-3.5" strokeWidth={2.75} />
-                        </span>
-                        <span className="min-w-0">
-                          <strong>{en ? g.titleEn : g.titleTr}</strong>
-                          <small>{en ? g.blurbEn : g.blurbTr}</small>
-                        </span>
-                      </button>
-                    ))}
+                    {gameCards.map((g) => {
+                      const entry = gameCatalogEntry(g.id, activeLang);
+                      return (
+                        <button
+                          key={g.id}
+                          type="button"
+                          className="public-side-menu__games-promo-item"
+                          onClick={() => openGame(g.id)}
+                        >
+                          <span className="public-side-menu__games-ok" aria-hidden>
+                            <Check className="w-3.5 h-3.5" strokeWidth={2.75} />
+                          </span>
+                          <span className="min-w-0">
+                            <strong>{entry.title}</strong>
+                            <small>{entry.blurb}</small>
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ) : (
                 <div className="public-side-menu__games-grid">
-                  {gameCards.map((g) => (
-                    <button
-                      key={g.id}
-                      type="button"
-                      className="public-side-menu__game-card"
-                      onClick={() => openGame(g.id)}
-                    >
-                      <span className="public-side-menu__games-ok is-quiet" aria-hidden>
-                        <Check className="w-3 h-3" strokeWidth={2.75} />
-                      </span>
-                      <em>{en ? g.badgeEn : g.badgeTr}</em>
-                      <strong>{en ? g.titleEn : g.titleTr}</strong>
-                      <span>{en ? g.blurbEn : g.blurbTr}</span>
-                    </button>
-                  ))}
+                  {gameCards.map((g) => {
+                    const entry = gameCatalogEntry(g.id, activeLang);
+                    return (
+                      <button
+                        key={g.id}
+                        type="button"
+                        className="public-side-menu__game-card"
+                        onClick={() => openGame(g.id)}
+                      >
+                        <span className="public-side-menu__games-ok is-quiet" aria-hidden>
+                          <Check className="w-3 h-3" strokeWidth={2.75} />
+                        </span>
+                        <em>{entry.badge}</em>
+                        <strong>{entry.title}</strong>
+                        <span>{entry.blurb}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

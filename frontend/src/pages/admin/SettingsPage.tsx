@@ -201,7 +201,7 @@ export default function SettingsPage() {
         {
           const ttl = Math.round(Number(d.settings.table_session_code_ttl_minutes));
           setTableSessionCodeTtl(
-            Number.isFinite(ttl) ? Math.min(24 * 60, Math.max(15, ttl)) : 120
+            Number.isFinite(ttl) ? Math.min(120, Math.max(15, ttl)) : 120
           );
         }
         try {
@@ -1293,8 +1293,8 @@ export default function SettingsPage() {
                   <input
                     type="range"
                     min={15}
-                    max={480}
-                    step={15}
+                    max={120}
+                    step={5}
                     value={tableSessionCodeTtl}
                     onChange={(e) => void saveTableSessionCodeTtl(Number(e.target.value))}
                   />

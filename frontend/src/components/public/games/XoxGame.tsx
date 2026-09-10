@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { getMenuGameGuestId } from '@/lib/menuGames';
+import { gamesUi } from '@/lib/menuGamesUi';
 import { resolveTableContext } from '@/lib/tableContext';
 
 type XoxMark = 'X' | 'O';
@@ -16,7 +17,7 @@ type Room = {
 };
 
 export default function XoxGame({ slug, lang = 'tr' }: { slug: string; lang?: string }) {
-  const en = (lang || 'tr').split('-')[0] === 'en';
+  const ui = gamesUi(lang);
   const guestId = useRef(getMenuGameGuestId()).current;
   const table = useRef(resolveTableContext()).current;
   const roomIdRef = useRef<string | null>(null);
@@ -39,7 +40,7 @@ export default function XoxGame({ slug, lang = 'tr' }: { slug: string; lang?: st
       roomIdRef.current = res.room.id;
       setRoom(res.room);
     } catch (e) {
-      setError(e instanceof Error ? e.message : en ? 'Could not join' : 'Katılınamadı');
+      setError(e instanceof Error ? e.message : ui.joinFail);
     } finally {
       setBusy(false);
     }
@@ -84,7 +85,7 @@ export default function XoxGame({ slug, lang = 'tr' }: { slug: string; lang?: st
       );
       setRoom(res.room);
     } catch (e) {
-      setError(e instanceof Error ? e.message : en ? 'Move failed' : 'Hamle olmadı');
+      setError(e instanceof Error ? e.message : ui.moveFail);
     } finally {
       setBusy(false);
     }
@@ -103,7 +104,7 @@ export default function XoxGame({ slug, lang = 'tr' }: { slug: string; lang?: st
       );
       setRoom(res.room);
     } catch (e) {
-      setError(e instanceof Error ? e.message : en ? 'Rematch failed' : 'Tekrar başlamadı');
+      setError(e instanceof Error ? e.message : ui.rematchFail);
     } finally {
       setBusy(false);
     }
@@ -112,52 +113,34 @@ export default function XoxGame({ slug, lang = 'tr' }: { slug: string; lang?: st
   if (!table.masa) {
     return (
       <div className="menu-game-xox__msg">
-        <p>
-          {en
-            ? 'Scan the table QR first so we can match you with the same table.'
-            : 'Aynı masadaki kişiyle eşleşmek için önce masa QR’sini okutun.'}
-        </p>
+        <p>{ui.noTable}</p>
       </div>
     );
   }
 
   const status = !room
-    ? en
-      ? 'Connecting…'
-      : 'Bağlanıyor…'
+    ? ui.connecting
     : room.waiting
-      ? en
-        ? 'Waiting for someone at your table…'
-        : 'Masadaki diğer kişi bekleniyor…'
+      ? ui.waiting
       : room.winner === 'draw'
-        ? en
-          ? 'Draw!'
-          : 'Berabere!'
+        ? ui.draw
         : room.winner
           ? room.yourMark === room.winner
-            ? en
-              ? 'You win!'
-              : 'Kazandın!'
-            : en
-              ? 'You lost'
-              : 'Kaybettin'
+            ? ui.youWin
+            : ui.youLose
           : room.yourMark === room.turn
-            ? en
-              ? 'Your turn'
-              : 'Sıra sende'
-            : en
-              ? 'Opponent’s turn'
-              : 'Rakip oynuyor';
+            ? ui.yourTurn
+            : ui.oppTurn;
 
   return (
     <div className="menu-game-xox">
       <div className="menu-game-xox__bar">
         <span>
-          {en ? 'Table' : 'Masa'} <strong>{table.masa}</strong>
+          {ui.table} <strong>{table.masa}</strong>
           {room?.yourMark ? (
             <>
               {' '}
-              · {en ? 'You' : 'Sen'}: <strong>{room.yourMark}</strong>
+              · {ui.you}: <strong>{room.yourMark}</strong>
             </>
           ) : null}
         </span>
@@ -190,11 +173,11 @@ export default function XoxGame({ slug, lang = 'tr' }: { slug: string; lang?: st
       <div className="menu-game-xox__actions">
         {room?.winner ? (
           <button type="button" className="menu-games__primary" onClick={() => void rematch()}>
-            {en ? 'Play again' : 'Tekrar oyna'}
+            {ui.playAgain}
           </button>
         ) : null}
         <button type="button" className="menu-games__ghost" onClick={() => void join()} disabled={busy}>
-          {en ? 'Rejoin' : 'Yeniden katıl'}
+          {ui.rejoin}
         </button>
       </div>
     </div>

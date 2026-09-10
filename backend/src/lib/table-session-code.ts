@@ -13,7 +13,7 @@ export function isTableSessionCodeEnabled(raw?: string | null): boolean {
 export function parseTableSessionCodeTtl(raw?: string | null): number {
   const n = Math.round(Number(raw));
   if (!Number.isFinite(n)) return DEFAULT_TABLE_SESSION_CODE_TTL;
-  return Math.min(24 * 60, Math.max(15, n));
+  return Math.min(120, Math.max(15, n));
 }
 
 export async function loadTableSessionCodeConfig(restaurantId: number) {

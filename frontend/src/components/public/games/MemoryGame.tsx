@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { imageUrl } from '@/lib/api';
 import type { MemoryPair, MemoryPairCount } from '@/lib/menuGamesConfig';
+import { gamesUi } from '@/lib/menuGamesUi';
 
 const EMOJIS = ['🍕', '🍔', '🍣', '🍩', '🌮', '🥗', '🍜', '🍰'];
 
@@ -63,7 +64,7 @@ export default function MemoryGame({
   pairCount = 6,
   pairs = [],
 }: Props) {
-  const en = (lang || 'tr').split('-')[0] === 'en';
+  const ui = gamesUi(lang);
   const [cards, setCards] = useState<Card[]>(() => buildDeck(pairCount, pairs));
   const [lock, setLock] = useState(false);
   const [moves, setMoves] = useState(0);
@@ -136,17 +137,15 @@ export default function MemoryGame({
     <div className="menu-game-memory">
       <div className="menu-game-memory__bar">
         <span>
-          {en ? 'Moves' : 'Hamle'}: <strong>{moves}</strong>
+          {ui.moves}: <strong>{moves}</strong>
         </span>
         {wonAt ? (
-          <span className="menu-game-memory__win">
-            {en ? `Done in ${secs}s` : `${secs} sn’de bitti`}
-          </span>
+          <span className="menu-game-memory__win">{ui.doneIn(secs || 1)}</span>
         ) : (
-          <span>{en ? 'Match the pairs' : 'Eşleri bul'}</span>
+          <span>{ui.matchPairs}</span>
         )}
         <button type="button" onClick={reset}>
-          {en ? 'Restart' : 'Yeniden'}
+          {ui.restart}
         </button>
       </div>
       <div
@@ -161,7 +160,7 @@ export default function MemoryGame({
             }`}
             onClick={() => flip(c.id)}
             disabled={lock || c.matched}
-            aria-label={en ? 'Card' : 'Kart'}
+            aria-label={ui.card}
           >
             <span className="menu-game-memory__face menu-game-memory__face--back">?</span>
             <span className="menu-game-memory__face menu-game-memory__face--front">

@@ -7,6 +7,7 @@ import {
   MENU_GAMES_CATALOG,
   type MenuGameId,
 } from '@/lib/menuGames';
+import { gameCatalogEntry, gamesUi } from '@/lib/menuGamesUi';
 import type { PublicMenuGames } from '@/lib/menuGamesConfig';
 
 type Props = {
@@ -26,7 +27,7 @@ export default function MenuGamesOverlay({
   initialGame = null,
   gamesConfig,
 }: Props) {
-  const en = (lang || 'tr').split('-')[0] === 'en';
+  const ui = gamesUi(lang);
   const enabled = useMemo(() => enabledMenuGames(gamesConfig), [gamesConfig]);
   const [active, setActive] = useState<MenuGameId | null>(initialGame);
 
@@ -51,10 +52,9 @@ export default function MenuGamesOverlay({
   const catalog = MENU_GAMES_CATALOG.filter((g) => enabled.includes(g.id));
 
   const title = useMemo(() => {
-    if (!active) return en ? 'Games' : 'Oyunlar';
-    const g = MENU_GAMES_CATALOG.find((x) => x.id === active);
-    return g ? (en ? g.titleEn : g.titleTr) : en ? 'Games' : 'Oyunlar';
-  }, [active, en]);
+    if (!active) return ui.title;
+    return gameCatalogEntry(active, lang).title;
+  }, [active, lang, ui.title]);
 
   const memoryPairs =
     typeof gamesConfig === 'object' && gamesConfig ? gamesConfig.memory?.pairs || [] : [];
@@ -65,14 +65,14 @@ export default function MenuGamesOverlay({
 
   return (
     <div className="menu-games" role="dialog" aria-modal="true" aria-labelledby="menu-games-title">
-      <button type="button" className="menu-games__scrim" aria-label="Kapat" onClick={onClose} />
+      <button type="button" className="menu-games__scrim" aria-label={ui.close} onClick={onClose} />
       <div className="menu-games__panel">
         <header className="menu-games__head">
           <div className="menu-games__head-icon">
             <Gamepad2 className="w-5 h-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="menu-games__eyebrow">{en ? 'While you wait' : 'Beklerken'}</p>
+            <p className="menu-games__eyebrow">{ui.eyebrow}</p>
             <h2 id="menu-games-title">{title}</h2>
           </div>
           <button
@@ -82,7 +82,7 @@ export default function MenuGamesOverlay({
               if (active) setActive(null);
               else onClose();
             }}
-            aria-label={en ? 'Close' : 'Kapat'}
+            aria-label={ui.close}
           >
             <X className="w-5 h-5" />
           </button>
@@ -91,21 +91,24 @@ export default function MenuGamesOverlay({
         <div className="menu-games__body">
           {!active ? (
             <div className="menu-games__grid">
-              {catalog.map((g) => (
-                <button
-                  key={g.id}
-                  type="button"
-                  className="menu-games__tile"
-                  onClick={() => setActive(g.id)}
-                >
-                  <span className="menu-games__tile-ok" aria-hidden>
-                    <Check className="w-3.5 h-3.5" strokeWidth={2.75} />
-                  </span>
-                  <span className="menu-games__tile-badge">{en ? g.badgeEn : g.badgeTr}</span>
-                  <strong>{en ? g.titleEn : g.titleTr}</strong>
-                  <span>{en ? g.blurbEn : g.blurbTr}</span>
-                </button>
-              ))}
+              {catalog.map((g) => {
+                const entry = gameCatalogEntry(g.id, lang);
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    className="menu-games__tile"
+                    onClick={() => setActive(g.id)}
+                  >
+                    <span className="menu-games__tile-ok" aria-hidden>
+                      <Check className="w-3.5 h-3.5" strokeWidth={2.75} />
+                    </span>
+                    <span className="menu-games__tile-badge">{entry.badge}</span>
+                    <strong>{entry.title}</strong>
+                    <span>{entry.blurb}</span>
+                  </button>
+                );
+              })}
             </div>
           ) : active === 'memory' ? (
             <MemoryGame lang={lang} pairCount={pairCount} pairs={memoryPairs} />
