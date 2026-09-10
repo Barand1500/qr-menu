@@ -133,7 +133,7 @@ export default function GamesScreenPage() {
 
   return (
     <div>
-      <PageHeader title="Oyun Ekranları" />
+      <PageHeader title="Oyun Ekranı" />
       <p className="text-sm admin-text-muted -mt-4 mb-6 max-w-2xl">
         Menü yan panelindeki oyunları açıp kapatın. Garson çağrılınca misafire oyun önerisi gösterilir.
       </p>

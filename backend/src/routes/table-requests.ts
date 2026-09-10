@@ -19,8 +19,15 @@ router.get('/stats', async (req, res) => {
 
   const byTable = new Map<string, { tableNumber: string; groupSlug: string | null; count: number }>();
   const byHour = Array.from({ length: 24 }, () => 0);
+  const byDayMap = new Map<string, { date: string; waiter: number; bill: number; total: number }>();
   let waiter = 0;
   let bill = 0;
+
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    const key = d.toISOString().slice(0, 10);
+    byDayMap.set(key, { date: key, waiter: 0, bill: 0, total: 0 });
+  }
 
   for (const row of rows) {
     const key = `${row.groupSlug || ''}::${row.tableNumber}`;
@@ -32,11 +39,21 @@ router.get('/stats', async (req, res) => {
     cur.count += 1;
     byTable.set(key, cur);
     byHour[new Date(row.createdAt).getHours()] += 1;
-    if (row.type === 'bill') bill += 1;
-    else waiter += 1;
+    const dayKey = new Date(row.createdAt).toISOString().slice(0, 10);
+    const day = byDayMap.get(dayKey) || { date: dayKey, waiter: 0, bill: 0, total: 0 };
+    day.total += 1;
+    if (row.type === 'bill') {
+      bill += 1;
+      day.bill += 1;
+    } else {
+      waiter += 1;
+      day.waiter += 1;
+    }
+    byDayMap.set(dayKey, day);
   }
 
   const topTables = [...byTable.values()].sort((a, b) => b.count - a.count).slice(0, 12);
+  const byDay = [...byDayMap.values()];
 
   res.json({
     days,
@@ -45,6 +62,7 @@ router.get('/stats', async (req, res) => {
     bill,
     topTables,
     byHour,
+    byDay,
   });
 });
 
