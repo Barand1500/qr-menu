@@ -26,6 +26,7 @@ import tableFloorRouter from './routes/table-floor.js';
 import mapTilesRouter from './routes/map-tiles.js';
 import publicConfigRouter from './routes/public-config.js';
 import aiAssistantRouter from './routes/ai-assistant.js';
+import customerAuthRouter from './routes/customer-auth.js';
 
 export function createApp() {
   const app = express();
@@ -52,6 +53,7 @@ export function createApp() {
   });
 
   app.use('/api/auth', authRouter);
+  app.use('/api/customer/auth', customerAuthRouter);
   app.use('/api/admin/groups', groupsRouter);
   app.use('/api/admin/products', productsRouter);
   app.use('/api/admin/dashboard', dashboardRouter);

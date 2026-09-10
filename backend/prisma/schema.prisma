@@ -359,3 +359,23 @@ model CampaignItem {
   @@index([productId])
   @@map("kampanya_urunleri")
 }
+
+/// QR menü müşteri hesabı (tüm restoranlarda ortak)
+model MenuCustomer {
+  id             Int       @id @default(autoincrement())
+  email          String?   @unique @db.VarChar(150)
+  phone          String?   @unique @db.VarChar(30)
+  passwordHash   String    @map("sifre_hash") @db.VarChar(255)
+  fullName       String    @map("ad_soyad") @db.VarChar(150)
+  allergenTags   Json      @default("[]") @map("alerjenler")
+  dietTags       Json      @default("[]") @map("diyetler")
+  likedFoods     Json      @default("[]") @map("sevdigim")
+  dislikedFoods  Json      @default("[]") @map("sevmedigim")
+  /// { "restaurantId": puan } — restoran bazlı puanlar tek JSON satırında
+  pointsJson     Json      @default("{}") @map("puanlar")
+  kvkkAcceptedAt DateTime  @map("kvkk_onay")
+  createdAt      DateTime  @default(now()) @map("olusturma")
+  updatedAt      DateTime  @updatedAt @map("guncelleme")
+
+  @@map("menu_musteriler")
+}

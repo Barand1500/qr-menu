@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Layers3, Settings2, ShoppingBag, X } from 'lucide-react';
+import { Layers3, Settings2, ShoppingBag, UserRound, X } from 'lucide-react';
 import { Button } from '@/components/ui';
 import {
   DEFAULT_ANIMASYON_CONFIG,
@@ -42,7 +42,7 @@ export default function AnimasyonThemeSettingsModal({
               <Settings2 className="w-3.5 h-3.5" /> Animasyonlu
             </p>
             <h2 id="animasyon-settings-title">Tema ayarları</h2>
-            <p>Varyantları ve sepeti buradan açıp kapatabilirsin.</p>
+            <p>Varyant, sepet ve kullanıcı profilini buradan açıp kapatabilirsin.</p>
           </div>
           <button type="button" className="linear-settings__close" onClick={onClose} aria-label="Kapat">
             <X className="w-5 h-5" />
@@ -89,6 +89,24 @@ export default function AnimasyonThemeSettingsModal({
           <p className="animasyon-settings__hint">
             Varsayılan: {DEFAULT_ANIMASYON_CONFIG.cartEnabled ? 'açık' : 'kapalı'}. Sepet kapalıysa
             ürünler yine kaydırılır; sepete ekleme ve sepet ikonu gizlenir.
+          </p>
+
+          <button
+            type="button"
+            className="addon-toggle"
+            onClick={() => setDraft((d) => ({ ...d, userProfileEnabled: !d.userProfileEnabled }))}
+            aria-pressed={draft.userProfileEnabled}
+          >
+            <span className="inline-flex items-center gap-2">
+              <UserRound className="w-4 h-4 opacity-70" />
+              {draft.userProfileEnabled ? 'Kullanıcı profili açık' : 'Kullanıcı profili kapalı'}
+            </span>
+            <span className={`addon-toggle__switch${draft.userProfileEnabled ? ' is-on' : ''}`} aria-hidden>
+              <span className="addon-toggle__knob" />
+            </span>
+          </button>
+          <p className="animasyon-settings__hint">
+            Menü header’da giriş / profil. Kapalıyken görünmez. Varsayılan kapalı.
           </p>
         </div>
 

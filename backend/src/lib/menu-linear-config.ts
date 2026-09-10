@@ -24,6 +24,7 @@ export type LinearThemeConfig = {
   features: LinearFeatureLine[];
   variantsEnabled: boolean;
   cartEnabled: boolean;
+  userProfileEnabled: boolean;
 };
 
 export const DEFAULT_LINEAR_CONFIG: LinearThemeConfig = {
@@ -37,6 +38,7 @@ export const DEFAULT_LINEAR_CONFIG: LinearThemeConfig = {
   ],
   variantsEnabled: true,
   cartEnabled: false,
+  userProfileEnabled: false,
 };
 
 function isIcon(v: unknown): v is LinearFeatureIcon {
@@ -73,6 +75,7 @@ export function parseLinearThemeConfig(raw?: string | null): LinearThemeConfig {
       features,
       variantsEnabled: data.variantsEnabled !== false,
       cartEnabled: data.cartEnabled === true,
+      userProfileEnabled: data.userProfileEnabled === true,
     };
   } catch {
     return {

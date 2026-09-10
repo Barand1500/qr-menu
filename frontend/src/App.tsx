@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { CustomerAuthProvider } from '@/contexts/CustomerAuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import LoginPage from '@/pages/LoginPage';
 import AdminLayout from '@/layouts/AdminLayout';
@@ -133,9 +134,11 @@ function AppRouter() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppRouter />
-      </BrowserRouter>
+      <CustomerAuthProvider>
+        <BrowserRouter>
+          <AppRouter />
+        </BrowserRouter>
+      </CustomerAuthProvider>
     </AuthProvider>
   );
 }

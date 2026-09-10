@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Clock3,
   Copy,
   NotebookPen,
@@ -300,6 +301,7 @@ export default function TableFloorPage() {
   const [floorSkin, setFloorSkin] = useState(readFloorSkin);
   const [soundOn, setSoundOn] = useState(readFloorSoundOn);
   const [statusFilter, setStatusFilter] = useState<'all' | 'occupied'>('all');
+  const [occupiedOpen, setOccupiedOpen] = useState({ pending: true, filled: true });
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [selectedGroupSlug, setSelectedGroupSlug] = useState<string>('');
   const [now, setNow] = useState(() => Date.now());
@@ -1244,28 +1246,64 @@ export default function TableFloorPage() {
           ) : (
             <div className="table-floor__occupied-view">
               {occupiedSections.pending.length > 0 ? (
-                <section className="table-floor__section table-floor__section--pending">
-                  <div className="table-floor__section-head">
+                <section
+                  className={`table-floor__section table-floor__section--pending${
+                    occupiedOpen.pending ? ' is-open' : ' is-collapsed'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    className="table-floor__section-head"
+                    aria-expanded={occupiedOpen.pending}
+                    onClick={() =>
+                      setOccupiedOpen((prev) => ({ ...prev, pending: !prev.pending }))
+                    }
+                  >
                     <h3>Kod beklenen masalar</h3>
                     <em>{occupiedSections.pending.length}</em>
-                  </div>
-                  <div className="table-floor__grid">
-                    {occupiedSections.pending.map(renderFloorTableRow)}
-                  </div>
+                    <ChevronDown
+                      className="table-floor__section-chevron"
+                      strokeWidth={2.4}
+                      aria-hidden
+                    />
+                  </button>
+                  {occupiedOpen.pending ? (
+                    <div className="table-floor__grid">
+                      {occupiedSections.pending.map(renderFloorTableRow)}
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
-              <section className="table-floor__section table-floor__section--filled">
-                <div className="table-floor__section-head">
+              <section
+                className={`table-floor__section table-floor__section--filled${
+                  occupiedOpen.filled ? ' is-open' : ' is-collapsed'
+                }`}
+              >
+                <button
+                  type="button"
+                  className="table-floor__section-head"
+                  aria-expanded={occupiedOpen.filled}
+                  onClick={() =>
+                    setOccupiedOpen((prev) => ({ ...prev, filled: !prev.filled }))
+                  }
+                >
                   <h3>Dolu masalar</h3>
                   <em>{occupiedSections.filled.length}</em>
-                </div>
-                {occupiedSections.filled.length ? (
-                  <div className="table-floor__grid">
-                    {occupiedSections.filled.map(renderFloorTableRow)}
-                  </div>
-                ) : (
-                  <p className="table-floor__section-empty">Kod OK dolu masa yok.</p>
-                )}
+                  <ChevronDown
+                    className="table-floor__section-chevron"
+                    strokeWidth={2.4}
+                    aria-hidden
+                  />
+                </button>
+                {occupiedOpen.filled ? (
+                  occupiedSections.filled.length ? (
+                    <div className="table-floor__grid">
+                      {occupiedSections.filled.map(renderFloorTableRow)}
+                    </div>
+                  ) : (
+                    <p className="table-floor__section-empty">Kod OK dolu masa yok.</p>
+                  )
+                ) : null}
               </section>
             </div>
           )

@@ -9,6 +9,7 @@ import {
   Settings2,
   ShoppingBag,
   Sparkles,
+  UserRound,
   Star,
   UtensilsCrossed,
   X,
@@ -82,7 +83,7 @@ export default function LinearThemeSettingsModal({
               <Settings2 className="w-3.5 h-3.5" /> Linear
             </p>
             <h2 id="linear-settings-title">Tema ayarları</h2>
-            <p>Varyant, sepet, sol panel metni ve özellik satırlarını buradan düzenle.</p>
+            <p>Varyant, sepet, profil, sol panel metni ve özellik satırlarını buradan düzenle.</p>
           </div>
           <button type="button" className="linear-settings__close" onClick={onClose} aria-label="Kapat">
             <X className="w-5 h-5" />
@@ -127,6 +128,24 @@ export default function LinearThemeSettingsModal({
             <p className="linear-settings__hint">
               Açıkken ürün detayında “Sepete ekle” ve menüde sepet ikonu çıkar. Varsayılan:{' '}
               {DEFAULT_LINEAR_CONFIG.cartEnabled ? 'açık' : 'kapalı'}.
+            </p>
+
+            <button
+              type="button"
+              className="addon-toggle"
+              onClick={() => setDraft((d) => ({ ...d, userProfileEnabled: !d.userProfileEnabled }))}
+              aria-pressed={draft.userProfileEnabled}
+            >
+              <span className="inline-flex items-center gap-2">
+                <UserRound className="w-4 h-4 opacity-70" />
+                {draft.userProfileEnabled ? 'Kullanıcı profili açık' : 'Kullanıcı profili kapalı'}
+              </span>
+              <span className={`addon-toggle__switch${draft.userProfileEnabled ? ' is-on' : ''}`} aria-hidden>
+                <span className="addon-toggle__knob" />
+              </span>
+            </button>
+            <p className="linear-settings__hint">
+              Menü header’da giriş / profil. Kapalıyken görünmez. Varsayılan kapalı.
             </p>
           </div>
 

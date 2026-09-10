@@ -259,6 +259,18 @@ export default function ProductsPage() {
   const [rollFrom, setRollFrom] = useState<number | null>(null);
   const productsRef = useRef(products);
   productsRef.current = products;
+  const animTokenRef = useRef({ cancelled: false });
+  const bulkToastTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      animTokenRef.current.cancelled = true;
+      if (bulkToastTimerRef.current != null) {
+        window.clearTimeout(bulkToastTimerRef.current);
+        bulkToastTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const refreshBulkStatus = useCallback(async () => {
     try {
@@ -309,12 +321,18 @@ export default function ProductsPage() {
     }[],
     kind: 'apply' | 'restore'
   ) {
+    animTokenRef.current = { cancelled: false };
+    const token = animTokenRef.current;
     setBulkAnimating(true);
+
     for (const u of updates) {
+      if (token.cancelled) break;
+
       const row = document.querySelector(`[data-product-row="${u.id}"]`);
       if (row) {
         row.scrollIntoView({ behavior: 'smooth', block: 'center' });
         await sleep(420);
+        if (token.cancelled) break;
       }
 
       const current = productsRef.current.find((p) => p.id === u.id);
@@ -335,6 +353,9 @@ export default function ProductsPage() {
       );
       await sleep(720);
     }
+
+    if (token.cancelled) return;
+
     setRollingId(null);
     setRollFrom(null);
     setBulkAnimating(false);
@@ -344,8 +365,15 @@ export default function ProductsPage() {
   async function handleBulkApplied(result: BulkPriceApplyResult) {
     setBulkOpen(false);
     setBulkToast('İşlem başarıyla başlatıldı');
-    window.setTimeout(() => setBulkToast(null), 3200);
+    if (bulkToastTimerRef.current != null) window.clearTimeout(bulkToastTimerRef.current);
+    bulkToastTimerRef.current = window.setTimeout(() => {
+      setBulkToast(null);
+      bulkToastTimerRef.current = null;
+    }, 3200);
+
     await runPriceSequence(result.updates, 'apply');
+    if (animTokenRef.current.cancelled) return;
+
     if (result.skipped.length > 0) {
       window.alert(
         `${result.skipped.length} ürün atlandı (fiyat 0 altına düşerdi):\n` +

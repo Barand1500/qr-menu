@@ -3,11 +3,13 @@ export const MENU_LUXURY_CONFIG_KEY = 'menu_luxury_config';
 export type LuxuryThemeConfig = {
   variantsEnabled: boolean;
   cartEnabled: boolean;
+  userProfileEnabled: boolean;
 };
 
 export const DEFAULT_LUXURY_CONFIG: LuxuryThemeConfig = {
   variantsEnabled: true,
   cartEnabled: false,
+  userProfileEnabled: false,
 };
 
 export function parseLuxuryThemeConfig(raw?: string | null): LuxuryThemeConfig {
@@ -17,6 +19,7 @@ export function parseLuxuryThemeConfig(raw?: string | null): LuxuryThemeConfig {
     return {
       variantsEnabled: data.variantsEnabled !== false,
       cartEnabled: data.cartEnabled === true,
+      userProfileEnabled: data.userProfileEnabled === true,
     };
   } catch {
     return { ...DEFAULT_LUXURY_CONFIG };

@@ -3,11 +3,13 @@ export const MENU_ALIVE_CONFIG_KEY = 'menu_alive_config';
 export type AliveThemeConfig = {
   variantsEnabled: boolean;
   cartEnabled: boolean;
+  userProfileEnabled: boolean;
 };
 
 export const DEFAULT_ALIVE_CONFIG: AliveThemeConfig = {
   variantsEnabled: true,
   cartEnabled: false,
+  userProfileEnabled: false,
 };
 
 export function parseAliveThemeConfig(raw?: string | null): AliveThemeConfig {
@@ -17,6 +19,7 @@ export function parseAliveThemeConfig(raw?: string | null): AliveThemeConfig {
     return {
       variantsEnabled: data.variantsEnabled !== false,
       cartEnabled: data.cartEnabled === true,
+      userProfileEnabled: data.userProfileEnabled === true,
     };
   } catch {
     return { ...DEFAULT_ALIVE_CONFIG };

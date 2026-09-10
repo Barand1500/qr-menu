@@ -5,11 +5,14 @@ export type AnimasyonThemeConfig = {
   cartEnabled: boolean;
   /** Ürün varyant / ekstra seçenekleri görünsün mü */
   variantsEnabled: boolean;
+  /** Menü header’da giriş / profil açık mı */
+  userProfileEnabled: boolean;
 };
 
 export const DEFAULT_ANIMASYON_CONFIG: AnimasyonThemeConfig = {
   cartEnabled: true,
   variantsEnabled: true,
+  userProfileEnabled: false,
 };
 
 export function parseAnimasyonThemeConfig(raw?: string | null): AnimasyonThemeConfig {
@@ -19,6 +22,7 @@ export function parseAnimasyonThemeConfig(raw?: string | null): AnimasyonThemeCo
     return {
       cartEnabled: data.cartEnabled !== false,
       variantsEnabled: data.variantsEnabled !== false,
+      userProfileEnabled: data.userProfileEnabled === true,
     };
   } catch {
     return { ...DEFAULT_ANIMASYON_CONFIG };

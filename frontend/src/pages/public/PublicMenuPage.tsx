@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, UserRound, X } from 'lucide-react';
 import { api, formatMoney, getSessionId, imageUrl } from '@/lib/api';
 import PublicMenuHeader from '@/components/public/PublicMenuHeader';
 import PublicMobileNav from '@/components/public/PublicMobileNav';
@@ -10,6 +10,9 @@ import PopularSearchProducts, {
   type PopularProduct,
 } from '@/components/public/PopularSearchProducts';
 import { useDemoData } from '@/contexts/DemoDataContext';
+import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
+import MenuCustomerAuthModal from '@/components/public/MenuCustomerAuthModal';
+import '@/menu-customer.css';
 import {
   DEMO_MENU_BANNERS,
   DEMO_POPULAR_PRODUCTS,
@@ -59,6 +62,7 @@ import {
   loadDietaryPrefs,
   preferenceUi,
   prefsActive,
+  productMatchesCustomerProfile,
   productMatchesPrefs,
   saveDietaryPrefs,
   type DietaryPrefs,
@@ -93,18 +97,19 @@ interface MenuData {
     menuAssistant?: boolean;
     menuAssistantStyle?: 'sunset' | 'berry' | 'dark';
     tableService?: boolean;
+    animasyon?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
+    sade?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
+    alive?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
+    luxury?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
+    siparis?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
     linear?: {
       headline: string;
       subhead: string;
       features: { icon: string; text: string }[];
       cartEnabled?: boolean;
       variantsEnabled?: boolean;
+      userProfileEnabled?: boolean;
     };
-    animasyon?: { cartEnabled?: boolean; variantsEnabled?: boolean };
-    sade?: { cartEnabled?: boolean; variantsEnabled?: boolean };
-    alive?: { cartEnabled?: boolean; variantsEnabled?: boolean };
-    luxury?: { cartEnabled?: boolean; variantsEnabled?: boolean };
-    siparis?: { cartEnabled?: boolean; variantsEnabled?: boolean };
   };
 }
 
@@ -220,8 +225,15 @@ function PublicMenuPageInner({
   const [popularProducts, setPopularProducts] = useState<PopularProduct[]>([]);
   const [dietaryPrefs, setDietaryPrefs] = useState<DietaryPrefs>(() => loadDietaryPrefs());
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [customerAuthOpen, setCustomerAuthOpen] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
   const [menuLoading, setMenuLoading] = useState(true);
+  const {
+    customer,
+    filterEnabled,
+    setFilterEnabled,
+    refresh: refreshCustomer,
+  } = useCustomerAuth();
   const sessionId = getSessionId();
   const menuThemeForMode = menu?.theme || 'sade';
   const { colorMode, toggleColorMode } = useMenuColorMode(menuThemeForMode);
@@ -242,6 +254,11 @@ function PublicMenuPageInner({
     const grup = searchParams.get('grup') || sessionStorage.getItem('menu_grup');
     if (masa) checkInTable(slug, masa, grup, coords ?? undefined);
   }, [slug, searchParams, coords]);
+
+  useEffect(() => {
+    if (!menu?.restaurant?.id || !customer) return;
+    void refreshCustomer(menu.restaurant.id).catch(() => undefined);
+  }, [menu?.restaurant?.id, customer?.id, refreshCustomer]);
 
   const campaignSlug =
     searchParams.get('kampanya') ||
@@ -393,22 +410,96 @@ function PublicMenuPageInner({
   if (!menu) return null;
 
   const allergyCopy = preferenceUi(lang);
-  const filteredPopular = popularProducts.filter((p) => productMatchesPrefs(p, dietaryPrefs));
-  const filteredSearchResults = searchResults.filter((r) => productMatchesPrefs(r, dietaryPrefs));
-  const filteredGroupProducts =
-    products?.products.filter((p) => productMatchesPrefs(p, dietaryPrefs)) ?? [];
+  const menuTheme = menu.theme || 'sade';
+  const isSade = menuTheme === 'sade';
+  const isAlive = menuTheme === 'alive';
+  const isLuxury = menuTheme === 'luxury';
+  const isLinear = menuTheme === 'linear';
+  const isAnimasyon = menuTheme === 'animasyon';
+  const isSiparis = menuTheme === 'siparis';
+
+  const profileEnabled =
+    (isSade && menu.features?.sade?.userProfileEnabled === true) ||
+    (isAlive && menu.features?.alive?.userProfileEnabled === true) ||
+    (isLuxury && menu.features?.luxury?.userProfileEnabled === true) ||
+    (isLinear && menu.features?.linear?.userProfileEnabled === true) ||
+    (isAnimasyon && menu.features?.animasyon?.userProfileEnabled === true) ||
+    (isSiparis && menu.features?.siparis?.userProfileEnabled === true);
+
+  const matchProduct = (p: {
+    name?: string | null;
+    allergenTags?: string[];
+    dietTags?: string[];
+    isVegan?: boolean;
+    isVegetarian?: boolean;
+    isGlutenFree?: boolean;
+    isDiabetic?: boolean;
+  }) => {
+    if (customer && profileEnabled) {
+      if (!filterEnabled) return true;
+      return productMatchesCustomerProfile(
+        p,
+        { allergens: customer.allergenTags || [], diets: customer.dietTags || [] },
+        customer.dislikedFoods || []
+      );
+    }
+    return productMatchesPrefs(p, dietaryPrefs);
+  };
+
+  const filteredPopular = popularProducts.filter((p) => matchProduct(p));
+  const filteredSearchResults = searchResults.filter((r) => matchProduct(r));
+  const filteredGroupProducts = products?.products.filter((p) => matchProduct(p)) ?? [];
   const filteredGroupChildren =
     products?.children
       ?.map((c) => ({
         ...c,
-        products: c.products.filter((p) => productMatchesPrefs(p, dietaryPrefs)),
+        products: c.products.filter((p) => matchProduct(p)),
       }))
       .filter((c) => c.products.length > 0) ?? [];
-  const allergyActive = prefsActive(dietaryPrefs);
+  const allergyActive =
+    customer && profileEnabled
+      ? filterEnabled &&
+        (prefsActive({
+          allergens: customer.allergenTags || [],
+          diets: customer.dietTags || [],
+        }) ||
+          (customer.dislikedFoods || []).length > 0)
+      : prefsActive(dietaryPrefs);
   const hasGroupContent =
     filteredGroupProducts.length > 0 || filteredGroupChildren.length > 0;
 
-  const allergyBanner = allergyActive ? (
+  const profileBanner =
+    profileEnabled && customer && filterEnabled ? (
+      <div className="public-profile-banner" role="status">
+        <p className="public-profile-banner__text">
+          Merhaba {customer.fullName.split(' ')[0] || customer.fullName}, sizin için menüyü
+          filtreledik.
+        </p>
+        <div className="public-profile-banner__actions">
+          <button type="button" className="is-off" onClick={() => setFilterEnabled(false)}>
+            Filtreyi kapat
+          </button>
+          <button type="button" className="is-edit" onClick={() => setCustomerAuthOpen(true)}>
+            Profil
+          </button>
+        </div>
+      </div>
+    ) : profileEnabled && customer && !filterEnabled ? (
+      <div className="public-profile-banner" role="status">
+        <p className="public-profile-banner__text">
+          Merhaba {customer.fullName.split(' ')[0] || customer.fullName} — kişisel filtre kapalı.
+        </p>
+        <div className="public-profile-banner__actions">
+          <button type="button" className="is-edit" onClick={() => setFilterEnabled(true)}>
+            Filtreyi aç
+          </button>
+        </div>
+      </div>
+    ) : null;
+
+  const allergyBanner = profileBanner ? (
+    profileBanner
+  ) : allergyActive ? (
     <div className="public-allergy-banner" role="status">
       <p className="public-allergy-banner__text">{allergyCopy.banner}</p>
       <button
@@ -493,13 +584,6 @@ function PublicMenuPageInner({
   ) : null;
 
   const searchPanelExtra = search.trim() ? searchResultsList : popularList;
-  const menuTheme = menu.theme || 'sade';
-  const isAlive = menuTheme === 'alive';
-  const isLuxury = menuTheme === 'luxury';
-  const isSiparis = menuTheme === 'siparis';
-  const isAnimasyon = menuTheme === 'animasyon';
-  const isLinear = menuTheme === 'linear';
-  const isSade = menuTheme === 'sade';
   const animasyonCartOn = menu.features?.animasyon?.cartEnabled !== false;
   const animasyonVariantsOn = menu.features?.animasyon?.variantsEnabled !== false;
   const sadeCartOn = menu.features?.sade?.cartEnabled === true;
@@ -522,6 +606,27 @@ function PublicMenuPageInner({
     (lang || 'tr').split('-')[0] === 'en'
       ? { title: 'What to eat?', sub: 'Ask me' }
       : { title: 'Ne yesem?', sub: 'Sana öneriyim' };
+
+  const profileIcon = profileEnabled ? (
+    <button
+      type="button"
+      className={`public-menu-header__icon-btn${customer ? ' is-active' : ''}`}
+      aria-label={customer ? 'Profil' : 'Giriş / Kayıt'}
+      title={customer ? 'Profil' : 'Giriş / Kayıt'}
+      onClick={() => setCustomerAuthOpen(true)}
+    >
+      <UserRound className="w-5 h-5" />
+    </button>
+  ) : null;
+
+  const headerExtraIcons = (
+    <>
+      {profileIcon}
+      {cartTheme ? (
+        <SiparisCartButton alwaysShow={isAnimasyon || isSade || isAlive || isLuxury || isLinear} />
+      ) : null}
+    </>
+  );
 
   const sideMenu = (
     <PublicSideMenu
@@ -588,9 +693,7 @@ function PublicMenuPageInner({
           searchOpen={searchOpen}
           onSearchToggle={toggleSearch}
           showMobileSearch={isSiparis || isAnimasyon}
-          extraIcons={
-          cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon || isSade || isAlive || isLuxury || isLinear} /> : null
-        }
+          extraIcons={headerExtraIcons}
           colorMode={hideColorToggle ? undefined : colorMode}
           onColorModeToggle={hideColorToggle ? undefined : toggleColorMode}
           tableServiceSlot={tableServiceSlot}
@@ -694,6 +797,15 @@ function PublicMenuPageInner({
         ) : cartTheme ? (
           <SiparisCartSheet lang={lang} />
         ) : null}
+        {profileEnabled ? (
+          <MenuCustomerAuthModal
+            open={customerAuthOpen}
+            onClose={() => setCustomerAuthOpen(false)}
+            restaurantId={menu.restaurant.id}
+            restaurantName={menu.restaurant.name}
+            lang={lang}
+          />
+        ) : null}
 
         {searchOpen && (
           <SearchOverlay
@@ -718,9 +830,7 @@ function PublicMenuPageInner({
         searchOpen={searchOpen}
         onSearchToggle={toggleSearch}
         showMobileSearch={isSiparis || isAnimasyon}
-        extraIcons={
-          cartTheme ? <SiparisCartButton alwaysShow={isAnimasyon || isSade || isAlive || isLuxury || isLinear} /> : null
-        }
+        extraIcons={headerExtraIcons}
         colorMode={hideColorToggle ? undefined : colorMode}
         onColorModeToggle={hideColorToggle ? undefined : toggleColorMode}
         tableServiceSlot={tableServiceSlot}
@@ -876,6 +986,15 @@ function PublicMenuPageInner({
         <AnimasyonCartSheet lang={lang} />
       ) : cartTheme ? (
         <SiparisCartSheet lang={lang} />
+      ) : null}
+      {profileEnabled ? (
+        <MenuCustomerAuthModal
+          open={customerAuthOpen}
+          onClose={() => setCustomerAuthOpen(false)}
+          restaurantId={menu.restaurant.id}
+          restaurantName={menu.restaurant.name}
+          lang={lang}
+        />
       ) : null}
 
       {searchOpen && (

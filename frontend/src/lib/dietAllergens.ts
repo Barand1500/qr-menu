@@ -99,6 +99,7 @@ export function prefsActive(prefs: DietaryPrefs): boolean {
 }
 
 export interface FilterableProduct {
+  name?: string | null;
   allergenTags?: string[] | null;
   dietTags?: string[] | null;
   allergens?: string | null;
@@ -129,6 +130,21 @@ export function productMatchesPrefs(product: FilterableProduct, prefs: DietaryPr
     }
   }
   return true;
+}
+
+/** Girişli müşteri: alerji/diyet + sevmediğim (ürün adında geçiyorsa hariç) */
+export function productMatchesCustomerProfile(
+  product: FilterableProduct,
+  prefs: DietaryPrefs,
+  dislikedFoods: string[]
+): boolean {
+  if (!productMatchesPrefs(product, prefs)) return false;
+  const name = String(product.name || '').toLowerCase();
+  if (!name) return true;
+  return !dislikedFoods.some((d) => {
+    const q = String(d || '').trim().toLowerCase();
+    return q.length > 0 && name.includes(q);
+  });
 }
 
 export function dietIdsFromFlags(flags: {
