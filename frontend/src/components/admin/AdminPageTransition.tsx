@@ -16,8 +16,12 @@ function isSpinnerOnly(root: HTMLElement) {
   const el = kids[0];
   const spin = el.querySelector('.animate-spin');
   if (!spin) return false;
-  // Spinner bileşeni: tek ortalanmış dönen halka
   return el.childElementCount <= 2 && el.querySelectorAll('.animate-spin').length >= 1;
+}
+
+/** Masa / ürün seçenekleri gibi tam ekran araçlar — kayma animasyonu bozar. */
+function shouldSkipPageAnim(pathname: string) {
+  return /\/(masa-gorunumu|urun-secenekleri)(\/|$)/.test(pathname);
 }
 
 function playPageEnter(root: HTMLElement) {
@@ -63,18 +67,20 @@ function playPageEnter(root: HTMLElement) {
 
 /**
  * Admin sayfa giriş animasyonu.
- * Spinner ile erken return eden sayfalarda içeriğin gerçekten gelmesini bekler.
+ * - Sadece pathname değişince (sekme / query / geri-ileri aynı sayfada tekrar yok)
+ * - Spinner bitene kadar bekler
  */
 export default function AdminPageTransition({ children }: { children: ReactNode }) {
   const location = useLocation();
   const rootRef = useRef<HTMLDivElement>(null);
-  const animKey = `${location.pathname}:${location.key || 'default'}`;
+  // location.key / search ASLA — Eklentiler sekmeleri setSearchParams ile key değiştirir
+  const pathKey = location.pathname;
 
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
 
-    if (prefersReducedMotion()) {
+    if (prefersReducedMotion() || shouldSkipPageAnim(pathKey)) {
       gsap.set(root, { clearProps: 'all' });
       return;
     }
@@ -99,13 +105,11 @@ export default function AdminPageTransition({ children }: { children: ReactNode 
       observer.disconnect();
     };
 
-    // Senkron içerik (spinner yok) — hemen; spinner ise MutationObserver bekler
     tryPlay();
     if (!played) {
       observer.observe(root, { childList: true, subtree: true });
     }
 
-    // Güvenlik: içerik geç gelirse yine dene
     const failSafe = window.setTimeout(() => {
       if (!played && !cancelled && !isSpinnerOnly(root)) tryPlay();
     }, 4000);
@@ -122,10 +126,11 @@ export default function AdminPageTransition({ children }: { children: ReactNode 
         if (targets.length) gsap.killTweensOf(targets);
       }
     };
-  }, [animKey]);
+  }, [pathKey]);
 
+  // key yok: query/sekme değişince tüm sayfa remount olmasın
   return (
-    <div ref={rootRef} className="admin-page-transition" key={animKey}>
+    <div ref={rootRef} className="admin-page-transition">
       {children}
     </div>
   );
