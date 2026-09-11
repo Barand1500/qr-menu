@@ -10055,6 +10055,10 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   background: color-mix(in srgb, #f59e0b 20%, transparent);
   color: #d97706;
 }
+.admin-notify__item-icon--code {
+  background: color-mix(in srgb, #0f766e 18%, transparent);
+  color: #0f766e;
+}
 .admin-notify__item-copy {
   display: flex;
   flex-direction: column;

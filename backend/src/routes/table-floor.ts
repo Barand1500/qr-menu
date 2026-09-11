@@ -29,12 +29,52 @@ import type { Prisma } from '@prisma/client';
 import {
   codeExpiryDate,
   generateUniqueAccessCode,
+  isCodeExpired,
   loadTableSessionCodeConfig,
   resolveCodeGateStatus,
 } from '../lib/table-session-code.js';
 
 const router = Router();
 router.use(authRequired);
+
+/** Ana ekran zili — kod bekleyen masalar (PIN dönmez) */
+router.get('/pending-codes', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  if (restaurantId == null) return res.status(401).json({ message: 'Yetkisiz' });
+
+  const cfg = await loadTableSessionCodeConfig(restaurantId);
+  if (!cfg.enabled) {
+    return res.json({ enabled: false, items: [] as unknown[] });
+  }
+
+  const sessions = await prisma.tableFloorSession.findMany({
+    where: {
+      restaurantId,
+      status: { in: [...ACTIVE_STATUSES] },
+      accessCode: { not: null },
+      codeVerifiedAt: null,
+    },
+    select: {
+      tableNumber: true,
+      groupSlug: true,
+      openedAt: true,
+      codeExpiresAt: true,
+    },
+    orderBy: { openedAt: 'desc' },
+    take: 40,
+  });
+
+  const items = sessions
+    .filter((s) => !isCodeExpired(s.codeExpiresAt))
+    .map((s) => ({
+      tableNumber: s.tableNumber,
+      groupSlug: s.groupSlug,
+      openedAt: s.openedAt.toISOString(),
+      expiresAt: s.codeExpiresAt?.toISOString() || null,
+    }));
+
+  res.json({ enabled: true, items });
+});
 
 type TableStylePayload = {
   name?: string;

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { HandHelping, Check, AlertCircle } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api, isCodeRequiredError } from '@/lib/api';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { resolveTableContext } from '@/lib/tableContext';
 import { notifyTableRequestCreated } from '@/lib/tableRequestNotify';
 import { notifyWaiterCalled } from '@/lib/menuGames';
+import { useTableSessionCode } from '@/components/public/TableSessionCodeGate';
 
 const COPY = {
   tr: {
@@ -37,6 +38,7 @@ export default function TableServiceButtons({
   const { slug: resolvedSlug } = useMenuSlug();
   const slug = slugProp ?? resolvedSlug;
   const t = ui(lang);
+  const { ensureUnlocked, markNeedsUnlock } = useTableSessionCode();
   const [tableCtx] = useState(() => resolveTableContext());
   const masa = tableCtx.masa;
   const grup = tableCtx.grup;
@@ -46,27 +48,42 @@ export default function TableServiceButtons({
 
   if (!slug || !enabled) return null;
 
+  async function postWaiter() {
+    return api<{
+      ok: boolean;
+      duplicate?: boolean;
+      id: number;
+      type: string;
+      tableNumber: string;
+      groupSlug?: string | null;
+      createdAt: string;
+    }>(`/api/menu/${slug}/table-request`, {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'waiter',
+        tableNumber: masa,
+        groupSlug: grup || undefined,
+      }),
+    });
+  }
+
   async function send() {
     if (busy || done || !masa) return;
     setBusy(true);
     setError(false);
     try {
-      const res = await api<{
-        ok: boolean;
-        duplicate?: boolean;
-        id: number;
-        type: string;
-        tableNumber: string;
-        groupSlug?: string | null;
-        createdAt: string;
-      }>(`/api/menu/${slug}/table-request`, {
-        method: 'POST',
-        body: JSON.stringify({
-          type: 'waiter',
-          tableNumber: masa,
-          groupSlug: grup || undefined,
-        }),
-      });
+      const unlocked = await ensureUnlocked();
+      if (!unlocked) return;
+      let res;
+      try {
+        res = await postWaiter();
+      } catch (err) {
+        if (!isCodeRequiredError(err)) throw err;
+        markNeedsUnlock();
+        const again = await ensureUnlocked();
+        if (!again) return;
+        res = await postWaiter();
+      }
       if (!res.duplicate) {
         notifyTableRequestCreated({
           id: res.id,
@@ -78,7 +95,6 @@ export default function TableServiceButtons({
       }
       notifyWaiterCalled();
       setDone(true);
-      // Sunucu 45 sn debounce ile uyumlu — tekrar tıklamada XHR hatası olmaz
       window.setTimeout(() => setDone(false), 45_000);
     } catch {
       setError(true);

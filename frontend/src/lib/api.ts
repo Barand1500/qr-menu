@@ -4,6 +4,24 @@ function getToken(): string | null {
   return localStorage.getItem('token') || sessionStorage.getItem('token');
 }
 
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+export function isCodeRequiredError(err: unknown): boolean {
+  if (err instanceof ApiError) return err.code === 'CODE_REQUIRED';
+  if (err instanceof Error) return /masa kodu/i.test(err.message);
+  return false;
+}
+
 export async function api<T>(
   path: string,
   options: RequestInit = {}
@@ -18,8 +36,11 @@ export async function api<T>(
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: 'İstek başarısız' }));
-    throw new Error(err.message || 'İstek başarısız');
+    const err = await res.json().catch(() => ({ message: 'İstek başarısız' })) as {
+      message?: string;
+      code?: string;
+    };
+    throw new ApiError(err.message || 'İstek başarısız', res.status, err.code);
   }
 
   return res.json();

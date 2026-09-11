@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, HandHelping, Receipt, Trash2, Volume2, VolumeX, X } from 'lucide-react';
+import { Bell, HandHelping, KeyRound, Receipt, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { api, formatMoney } from '@/lib/api';
 import { playAdminNotificationSound } from '@/lib/notificationSound';
 import { formatTableServiceLabel } from '@/lib/tableContext';
@@ -20,6 +20,7 @@ function readMuted() {
     return false;
   }
 }
+
 export interface TableServiceRequestRow {
   id: number;
   type: string;
@@ -30,6 +31,17 @@ export interface TableServiceRequestRow {
   isRead: boolean;
   createdAt: string;
 }
+
+type PendingCodeRow = {
+  tableNumber: string;
+  groupSlug: string | null;
+  openedAt: string;
+  expiresAt?: string | null;
+};
+
+type FeedItem =
+  | { kind: 'call'; sortAt: number; call: TableServiceRequestRow }
+  | { kind: 'code'; sortAt: number; code: PendingCodeRow; key: string };
 
 function typeLabel(type: string, hasOrder: boolean) {
   if (hasOrder) return 'Sipariş + garson';
@@ -48,10 +60,15 @@ function formatTime(iso: string) {
   }
 }
 
+function codeKey(row: PendingCodeRow) {
+  return `${row.groupSlug || ''}::${row.tableNumber}`;
+}
+
 export default function AdminNotificationBell() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<TableServiceRequestRow[]>([]);
+  const [pendingCodes, setPendingCodes] = useState<PendingCodeRow[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [clearing, setClearing] = useState(false);
@@ -59,6 +76,7 @@ export default function AdminNotificationBell() {
   const [muted, setMuted] = useState(readMuted);
   const panelRef = useRef<HTMLDivElement>(null);
   const prevUnread = useRef(0);
+  const prevCodeKeys = useRef<Set<string> | null>(null);
   const initialLoad = useRef(true);
   const mutedRef = useRef(muted);
 
@@ -80,40 +98,49 @@ export default function AdminNotificationBell() {
 
   const load = useCallback(async () => {
     try {
-      const res = await api<{
-        data: TableServiceRequestRow[];
-        unreadCount: number;
-        pagination?: { total: number };
-      }>('/api/admin/table-requests?limit=12');
-      setItems(res.data || []);
-      setUnreadCount(res.unreadCount || 0);
-      setTotalCount(res.pagination?.total ?? res.data?.length ?? 0);
+      const [calls, codes] = await Promise.all([
+        api<{
+          data: TableServiceRequestRow[];
+          unreadCount: number;
+          pagination?: { total: number };
+        }>('/api/admin/table-requests?limit=12'),
+        api<{ enabled: boolean; items: PendingCodeRow[] }>('/api/admin/table-floor/pending-codes').catch(
+          () => ({ enabled: false, items: [] as PendingCodeRow[] })
+        ),
+      ]);
+      setItems(calls.data || []);
+      setUnreadCount(calls.unreadCount || 0);
+      setTotalCount(calls.pagination?.total ?? calls.data?.length ?? 0);
+      setPendingCodes(codes.enabled ? codes.items || [] : []);
     } catch {
       /* offline */
     }
   }, []);
 
-  const applyInstantNotify = useCallback((payload?: TableRequestNotifyPayload) => {
-    if (payload?.id) {
-      setItems((prev) => {
-        if (prev.some((x) => x.id === payload.id)) return prev;
-        const row: TableServiceRequestRow = {
-          id: payload.id,
-          type: payload.type,
-          tableNumber: payload.tableNumber,
-          groupSlug: payload.groupSlug,
-          note: payload.note,
-          orderJson: payload.orderJson,
-          isRead: false,
-          createdAt: payload.createdAt,
-        };
-        return [row, ...prev].slice(0, 12);
-      });
-      setUnreadCount((c) => c + 1);
-      setTotalCount((c) => c + 1);
-    }
-    void load();
-  }, [load]);
+  const applyInstantNotify = useCallback(
+    (payload?: TableRequestNotifyPayload) => {
+      if (payload?.id) {
+        setItems((prev) => {
+          if (prev.some((x) => x.id === payload.id)) return prev;
+          const row: TableServiceRequestRow = {
+            id: payload.id,
+            type: payload.type,
+            tableNumber: payload.tableNumber,
+            groupSlug: payload.groupSlug,
+            note: payload.note,
+            orderJson: payload.orderJson,
+            isRead: false,
+            createdAt: payload.createdAt,
+          };
+          return [row, ...prev].slice(0, 12);
+        });
+        setUnreadCount((c) => c + 1);
+        setTotalCount((c) => c + 1);
+      }
+      void load();
+    },
+    [load]
+  );
 
   useEffect(() => {
     void load();
@@ -137,21 +164,28 @@ export default function AdminNotificationBell() {
     if (initialLoad.current) {
       initialLoad.current = false;
       prevUnread.current = unreadCount;
+      prevCodeKeys.current = new Set(pendingCodes.map(codeKey));
       return;
     }
-    if (unreadCount > prevUnread.current) {
-      if (!mutedRef.current) {
-        playAdminNotificationSound();
-        setRinging(true);
-        const t = window.setTimeout(() => setRinging(false), 2400);
-        prevUnread.current = unreadCount;
-        return () => window.clearTimeout(t);
-      }
-      prevUnread.current = unreadCount;
-      return;
-    }
+
+    const keys = new Set(pendingCodes.map(codeKey));
+    const prevKeys = prevCodeKeys.current || new Set<string>();
+    let newCode = false;
+    keys.forEach((k) => {
+      if (!prevKeys.has(k)) newCode = true;
+    });
+    prevCodeKeys.current = keys;
+
+    const newCall = unreadCount > prevUnread.current;
     prevUnread.current = unreadCount;
-  }, [unreadCount]);
+
+    if ((newCall || newCode) && !mutedRef.current) {
+      playAdminNotificationSound();
+      setRinging(true);
+      const t = window.setTimeout(() => setRinging(false), 2400);
+      return () => window.clearTimeout(t);
+    }
+  }, [unreadCount, pendingCodes]);
 
   useEffect(() => {
     if (!open) return;
@@ -162,14 +196,29 @@ export default function AdminNotificationBell() {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
 
+  const feed = useMemo<FeedItem[]>(() => {
+    const callItems: FeedItem[] = items.map((call) => ({
+      kind: 'call',
+      sortAt: new Date(call.createdAt).getTime(),
+      call,
+    }));
+    const codeItems: FeedItem[] = pendingCodes.map((code) => ({
+      kind: 'code',
+      sortAt: new Date(code.openedAt).getTime(),
+      code,
+      key: codeKey(code),
+    }));
+    return [...callItems, ...codeItems].sort((a, b) => b.sortAt - a.sortAt).slice(0, 16);
+  }, [items, pendingCodes]);
+
+  const badgeCount = unreadCount + pendingCodes.length;
+
   async function handleItemClick(item: TableServiceRequestRow) {
     if (!item.isRead) {
       try {
         await api(`/api/admin/table-requests/${item.id}/read`, { method: 'PATCH' });
         setUnreadCount((c) => Math.max(0, c - 1));
-        setItems((prev) =>
-          prev.map((x) => (x.id === item.id ? { ...x, isRead: true } : x))
-        );
+        setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, isRead: true } : x)));
       } catch {
         /* continue navigation */
       }
@@ -183,6 +232,14 @@ export default function AdminNotificationBell() {
     if (item.groupSlug) params.set('grup', item.groupSlug);
     params.set('cagri', String(item.id));
     params.set('tip', item.type);
+    navigate(`${adminPath('masa-gorunumu')}?${params}`);
+  }
+
+  function handleCodeClick(row: PendingCodeRow) {
+    setOpen(false);
+    const params = new URLSearchParams();
+    params.set('masa', row.tableNumber);
+    if (row.groupSlug) params.set('grup', row.groupSlug);
     navigate(`${adminPath('masa-gorunumu')}?${params}`);
   }
 
@@ -233,10 +290,8 @@ export default function AdminNotificationBell() {
             </span>
           ) : null}
         </span>
-        {unreadCount > 0 && (
-          <span className="admin-notify__badge">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
+        {badgeCount > 0 && (
+          <span className="admin-notify__badge">{badgeCount > 9 ? '9+' : badgeCount}</span>
         )}
       </button>
 
@@ -244,10 +299,8 @@ export default function AdminNotificationBell() {
         <div className="admin-notify__panel">
           <div className="admin-notify__head">
             <strong className="admin-notify__title">
-              Masa çağrıları
-              {totalCount > 0 && (
-                <span className="admin-notify__total">{totalCount}</span>
-              )}
+              Bildirimler
+              {badgeCount > 0 && <span className="admin-notify__total">{badgeCount}</span>}
             </strong>
             <div className="admin-notify__head-actions">
               <button
@@ -258,11 +311,7 @@ export default function AdminNotificationBell() {
                 title={muted ? 'Sesi aç' : 'Sessize al'}
                 aria-pressed={muted}
               >
-                {muted ? (
-                  <VolumeX className="w-3.5 h-3.5" />
-                ) : (
-                  <Volume2 className="w-3.5 h-3.5" />
-                )}
+                {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
               </button>
               {totalCount > 0 && (
                 <button
@@ -270,8 +319,8 @@ export default function AdminNotificationBell() {
                   className="admin-notify__clear"
                   onClick={() => void clearAll()}
                   disabled={clearing}
-                  aria-label="Tümünü temizle"
-                  title="Tümünü temizle"
+                  aria-label="Çağrıları temizle"
+                  title="Çağrıları temizle"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -282,16 +331,41 @@ export default function AdminNotificationBell() {
             </div>
           </div>
 
-          {items.length === 0 ? (
-            <p className="admin-notify__empty">Henüz çağrı yok</p>
+          {feed.length === 0 ? (
+            <p className="admin-notify__empty">Henüz bildirim yok</p>
           ) : (
             <ul className="admin-notify__list">
-              {items.map((item) => {
+              {feed.map((entry) => {
+                if (entry.kind === 'code') {
+                  return (
+                    <li key={`code-${entry.key}`}>
+                      <button
+                        type="button"
+                        className="admin-notify__item is-new is-code"
+                        onClick={() => handleCodeClick(entry.code)}
+                      >
+                        <span className="admin-notify__item-icon admin-notify__item-icon--code">
+                          <KeyRound className="w-4 h-4" />
+                        </span>
+                        <span className="admin-notify__item-copy">
+                          <strong>Kod bekleniyor</strong>
+                          <span>
+                            {formatTableServiceLabel(entry.code.tableNumber, entry.code.groupSlug)}
+                          </span>
+                          <span className="admin-notify__note">Misafir QR okuttu — kodu paylaşın</span>
+                        </span>
+                        <em>{formatTime(entry.code.openedAt)}</em>
+                      </button>
+                    </li>
+                  );
+                }
+
+                const item = entry.call;
                 const Icon = typeIcon(item.type);
                 const order = parseOrderJson(item.orderJson);
                 const noteText = item.note?.trim() || order?.note || null;
                 return (
-                  <li key={item.id}>
+                  <li key={`call-${item.id}`}>
                     <button
                       type="button"
                       className={`admin-notify__item${!item.isRead ? ' is-new' : ''}`}
@@ -302,22 +376,14 @@ export default function AdminNotificationBell() {
                       </span>
                       <span className="admin-notify__item-copy">
                         <strong>{typeLabel(item.type, Boolean(order))}</strong>
-                        <span>
-                          {formatTableServiceLabel(item.tableNumber, item.groupSlug)}
-                        </span>
+                        <span>{formatTableServiceLabel(item.tableNumber, item.groupSlug)}</span>
                         {order ? (
                           <span className="admin-notify__order">
-                            {order.items
-                              .map((i) => `${i.qty}× ${i.name}`)
-                              .join(' · ')}
-                            {order.totalPrice > 0
-                              ? ` — ${formatMoney(order.totalPrice, null)}`
-                              : ''}
+                            {order.items.map((i) => `${i.qty}× ${i.name}`).join(' · ')}
+                            {order.totalPrice > 0 ? ` — ${formatMoney(order.totalPrice, null)}` : ''}
                           </span>
                         ) : null}
-                        {noteText ? (
-                          <span className="admin-notify__note">Not: {noteText}</span>
-                        ) : null}
+                        {noteText ? <span className="admin-notify__note">Not: {noteText}</span> : null}
                       </span>
                       <em>{formatTime(item.createdAt)}</em>
                     </button>
@@ -331,10 +397,10 @@ export default function AdminNotificationBell() {
             className="admin-notify__goto"
             onClick={() => {
               setOpen(false);
-              navigate(`${adminPath('masa-gorunumu')}?panel=garson`);
+              navigate(adminPath('masa-gorunumu'));
             }}
           >
-            Tam ekran Garson paneli için tıklayınız
+            Masa görünümüne git
           </button>
         </div>
       )}

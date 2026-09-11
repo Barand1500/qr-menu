@@ -1,6 +1,6 @@
 import { Minus, Plus, ShoppingBag, X, HandHelping, Check, AlertCircle, TriangleAlert } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { formatMoney, imageUrl, api } from '@/lib/api';
+import { formatMoney, imageUrl, api, isCodeRequiredError } from '@/lib/api';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import SiparisKcal from '@/components/public/siparis/SiparisKcal';
 import { useSiparisCart } from '@/hooks/useSiparisCart';
@@ -9,6 +9,7 @@ import { resolveTableContext, formatTableServiceLabel } from '@/lib/tableContext
 import { notifyTableRequestCreated } from '@/lib/tableRequestNotify';
 import { notifyWaiterCalled } from '@/lib/menuGames';
 import { allergenLabel, loadDietaryPrefs } from '@/lib/dietAllergens';
+import { useTableSessionCode } from '@/components/public/TableSessionCodeGate';
 
 export default function SiparisCartSheet({ lang }: { lang: string }) {
   const { slug: hookSlug } = useMenuSlug();
@@ -24,6 +25,7 @@ export default function SiparisCartSheet({ lang }: { lang: string }) {
     setQty,
     setNote,
   } = useSiparisCart();
+  const { ensureUnlocked, markNeedsUnlock } = useTableSessionCode();
   const [tableCtx] = useState(() => resolveTableContext());
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -52,38 +54,56 @@ export default function SiparisCartSheet({ lang }: { lang: string }) {
     setBusy(true);
     setError(false);
     try {
-      const res = await api<{
-        ok: boolean;
-        id: number;
-        type: string;
-        tableNumber: string;
-        groupSlug?: string | null;
-        note?: string | null;
-        orderJson?: string | null;
-        createdAt: string;
-      }>(`/api/menu/${hookSlug}/table-request`, {
-        method: 'POST',
-        body: JSON.stringify({
-          type: 'waiter',
-          tableNumber: tableCtx.masa,
-          groupSlug: tableCtx.grup || undefined,
-          note: note.trim() || undefined,
-          order:
-            items.length > 0
-              ? {
-                  items: items.map((i) => ({
-                    name: i.name,
-                    qty: i.qty,
-                    price: i.price,
-                    calories: i.calories ?? null,
-                  })),
-                  totalPrice,
-                  totalCalories,
-                  currency: currency ?? null,
-                }
-              : undefined,
-        }),
-      });
+      const unlocked = await ensureUnlocked();
+      if (!unlocked) return;
+
+      const body = {
+        type: 'waiter' as const,
+        tableNumber: tableCtx.masa,
+        groupSlug: tableCtx.grup || undefined,
+        note: note.trim() || undefined,
+        order:
+          items.length > 0
+            ? {
+                items: items.map((i) => ({
+                  name: i.name,
+                  qty: i.qty,
+                  price: i.price,
+                  calories: i.calories ?? null,
+                })),
+                totalPrice,
+                totalCalories,
+                currency: currency ?? null,
+              }
+            : undefined,
+      };
+
+      async function post() {
+        return api<{
+          ok: boolean;
+          id: number;
+          type: string;
+          tableNumber: string;
+          groupSlug?: string | null;
+          note?: string | null;
+          orderJson?: string | null;
+          createdAt: string;
+        }>(`/api/menu/${hookSlug}/table-request`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+      }
+
+      let res;
+      try {
+        res = await post();
+      } catch (err) {
+        if (!isCodeRequiredError(err)) throw err;
+        markNeedsUnlock();
+        const again = await ensureUnlocked();
+        if (!again) return;
+        res = await post();
+      }
       notifyTableRequestCreated({
         id: res.id,
         type: res.type,
