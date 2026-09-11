@@ -97,7 +97,6 @@ type RewardDraft = {
 };
 
 type DiscountType = 'percent' | 'amount';
-type FloatTarget = 'points' | 'discount' | 'debt';
 
 const REWARD_KINDS: {
   id: PointsRewardKind;
@@ -198,56 +197,97 @@ function ledgerKindLabel(kind: string) {
   return kind;
 }
 
-function playFloatChip(
-  fromEl: HTMLElement | null | undefined,
-  toEl: HTMLElement | null | undefined,
-  label: string
-) {
-  if (!fromEl || !toEl) return;
-  if (prefersReducedMotion()) {
-    toEl.classList.add('is-chip-bump');
-    window.setTimeout(() => toEl.classList.remove('is-chip-bump'), 420);
-    return;
-  }
+function SearchableSelect({
+  options,
+  value,
+  onChange,
+  placeholder,
+}: {
+  options: RewardOption[];
+  value: string;
+  onChange: (next: string) => void;
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected = options.find((o) => String(o.id) === value);
+  const filtered = useMemo(() => {
+    const s = q.trim().toLocaleLowerCase('tr');
+    if (!s) return options.slice(0, 100);
+    return options
+      .filter((o) => o.name.toLocaleLowerCase('tr').includes(s))
+      .slice(0, 100);
+  }, [options, q]);
 
-  const from = fromEl.getBoundingClientRect();
-  const to = toEl.getBoundingClientRect();
-  const chip = document.createElement('div');
-  chip.className = 'admin-customers__float-chip';
-  chip.textContent = label;
-  chip.style.left = `${from.left + from.width / 2}px`;
-  chip.style.top = `${from.top + from.height / 2}px`;
-  document.body.appendChild(chip);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
 
-  const dx = to.left + to.width / 2 - (from.left + from.width / 2);
-  const dy = to.top + to.height / 2 - (from.top + from.height / 2);
-
-  gsap.fromTo(
-    chip,
-    { x: -28, y: -10, opacity: 0, scale: 0.85 },
-    {
-      x: 0,
-      y: 0,
-      opacity: 1,
-      scale: 1,
-      duration: 0.12,
-      ease: 'power2.out',
-      onComplete: () => {
-        gsap.to(chip, {
-          x: dx,
-          y: dy,
-          scale: 0.72,
-          opacity: 0.2,
-          duration: 0.55,
-          ease: 'power2.in',
-          onComplete: () => {
-            chip.remove();
-            toEl.classList.add('is-chip-bump');
-            window.setTimeout(() => toEl.classList.remove('is-chip-bump'), 420);
-          },
-        });
-      },
-    }
+  return (
+    <div className={`admin-customers__combo${open ? ' is-open' : ''}`} ref={rootRef}>
+      <button
+        type="button"
+        className="admin-customers__combo-trigger"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => {
+          setOpen((v) => !v);
+          setQ('');
+        }}
+      >
+        <span className={selected ? '' : 'is-placeholder'}>
+          {selected?.name || placeholder}
+        </span>
+        <Search className="w-3.5 h-3.5" />
+      </button>
+      {open ? (
+        <div className="admin-customers__combo-panel" role="listbox">
+          <div className="admin-customers__combo-search">
+            <Search className="w-3.5 h-3.5" />
+            <input
+              autoFocus
+              type="search"
+              value={q}
+              placeholder="Ara…"
+              aria-label="Ara"
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setOpen(false);
+              }}
+            />
+          </div>
+          <ul>
+            {filtered.length === 0 ? (
+              <li className="is-empty">Sonuç yok</li>
+            ) : (
+              filtered.map((o) => (
+                <li key={o.id}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={String(o.id) === value}
+                    className={String(o.id) === value ? 'is-active' : ''}
+                    onClick={() => {
+                      onChange(String(o.id));
+                      setOpen(false);
+                      setQ('');
+                    }}
+                  >
+                    {o.name}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -302,9 +342,8 @@ export default function CustomersPage() {
   const pointsStatRef = useRef<HTMLDivElement>(null);
   const discountStatRef = useRef<HTMLDivElement>(null);
   const debtStatRef = useRef<HTMLDivElement>(null);
-  const pointsActionRef = useRef<HTMLElement | null>(null);
-  const discountActionRef = useRef<HTMLElement | null>(null);
-  const debtActionRef = useRef<HTMLElement | null>(null);
+  const ledgerListRef = useRef<HTMLUListElement>(null);
+  const undoBtnRef = useRef<HTMLButtonElement>(null);
   const selectedIdRef = useRef<number | null>(null);
   const animTokenRef = useRef(0);
   const skipEnterAnimRef = useRef(false);
@@ -568,6 +607,39 @@ export default function CustomersPage() {
     }
   }
 
+  useGSAP(
+    () => {
+      const list = ledgerListRef.current;
+      if (!list || detailTab !== 'ledger' || ledger.length === 0) return;
+      if (prefersReducedMotion()) return;
+      const items = list.querySelectorAll(':scope > li');
+      gsap.fromTo(
+        items,
+        { y: -14, opacity: 0.35 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.32,
+          stagger: 0.035,
+          ease: 'power2.out',
+          overwrite: 'auto',
+        }
+      );
+      const undo = undoBtnRef.current;
+      if (undo) {
+        gsap.fromTo(
+          undo,
+          { scale: 0.86, opacity: 0 },
+          { scale: 1, opacity: 1, duration: 0.28, ease: 'back.out(1.6)' }
+        );
+      }
+    },
+    {
+      dependencies: [ledger[0]?.id, ledger.length, detailTab, ledgerPage],
+      revertOnUpdate: true,
+    }
+  );
+
   async function refreshSelected(opts?: { skipAnim?: boolean }) {
     if (selectedId == null) return;
     await loadList();
@@ -578,23 +650,7 @@ export default function CustomersPage() {
     });
   }
 
-  function floatTo(target: FloatTarget, label: string) {
-    const from =
-      target === 'points'
-        ? pointsActionRef.current
-        : target === 'discount'
-          ? discountActionRef.current
-          : debtActionRef.current;
-    const to =
-      target === 'points'
-        ? pointsStatRef.current
-        : target === 'discount'
-          ? discountStatRef.current
-          : debtStatRef.current;
-    playFloatChip(from, to, label);
-  }
-
-  async function savePoints(mode: 'set' | 'delta', value: number, chipLabel?: string) {
+  async function savePoints(mode: 'set' | 'delta', value: number) {
     if (!detail || busy) return;
     setBusy(true);
     try {
@@ -603,11 +659,6 @@ export default function CustomersPage() {
         body: JSON.stringify(mode === 'set' ? { set: value } : { delta: value }),
       });
       setToast('Puan güncellendi');
-      floatTo(
-        'points',
-        chipLabel ||
-          (mode === 'delta' ? `${value > 0 ? '+' : ''}${value} p` : `${value} p`)
-      );
       await refreshSelected();
     } catch (e) {
       setToast(e instanceof Error ? e.message : 'Puan kaydedilemedi');
@@ -620,7 +671,6 @@ export default function CustomersPage() {
     type?: DiscountType;
     value?: number;
     note?: string;
-    chipLabel?: string;
   }) {
     if (!detail || busy) return;
     const type = opts?.type ?? discountType;
@@ -634,11 +684,6 @@ export default function CustomersPage() {
         body: JSON.stringify({ type, value, note }),
       });
       setToast(value <= 0 ? 'İndirim kaldırıldı' : 'İndirim kaydedildi');
-      floatTo(
-        'discount',
-        opts?.chipLabel ||
-          (value <= 0 ? 'Kaldır' : type === 'amount' ? `${value}₺` : `%${value}`)
-      );
       await refreshSelected();
     } catch (e) {
       setToast(e instanceof Error ? e.message : 'İndirim kaydedilemedi');
@@ -658,7 +703,8 @@ export default function CustomersPage() {
         body: JSON.stringify({ amount, note: debtNote }),
       });
       setToast('Borç eklendi');
-      floatTo('debt', `+${formatMoney(amount)}`);
+      setDebtAmount('');
+      setDebtNote('');
       setDetailTab('ledger');
       setLedgerPage(1);
       await refreshSelected();
@@ -680,7 +726,8 @@ export default function CustomersPage() {
         body: JSON.stringify({ amount, note: payNote }),
       });
       setToast('Ödeme kaydedildi');
-      floatTo('debt', `−${formatMoney(amount)}`);
+      setPayAmount('');
+      setPayNote('');
       setDetailTab('ledger');
       setLedgerPage(1);
       await refreshSelected();
@@ -1235,31 +1282,26 @@ export default function CustomersPage() {
                   <div className="admin-customers__tab-body" key={detailTab}>
                     {detailTab === 'manage' ? (
                       <div className="admin-customers__manage">
-                        <section className="admin-customers__block" ref={pointsActionRef}>
+                        <section className="admin-customers__block">
                           <div className="admin-customers__block-head">
                             <h3>
                               <Coins className="w-4 h-4" /> Puan
                             </h3>
-                            <div className="admin-customers__quick">
+                            <div className="admin-customers__quick admin-customers__quick--points">
                               {[10, 50, 100].map((n) => (
                                 <button
                                   key={`p-${n}`}
                                   type="button"
                                   disabled={busy}
-                                  onClick={() => void savePoints('delta', n, `+${n} p`)}
+                                  onClick={() => {
+                                    const base = Number(pointsDraft) || detail.points || 0;
+                                    setPointsDraft(String(Math.max(0, base + n)));
+                                  }}
                                 >
                                   <Plus className="w-3.5 h-3.5" />
                                   {n}
                                 </button>
                               ))}
-                              <button
-                                type="button"
-                                disabled={busy || detail.points <= 0}
-                                onClick={() => void savePoints('delta', -10, '−10 p')}
-                              >
-                                <Minus className="w-3.5 h-3.5" />
-                                10
-                              </button>
                             </div>
                           </div>
                           <div className="admin-customers__inline">
@@ -1273,14 +1315,24 @@ export default function CustomersPage() {
                             />
                             <button
                               type="button"
+                              className="admin-customers__quick-minus"
+                              disabled={busy || (Number(pointsDraft) || detail.points) <= 0}
+                              title="−10"
+                              aria-label="10 puan azalt"
+                              onClick={() => {
+                                const base = Number(pointsDraft) || detail.points || 0;
+                                setPointsDraft(String(Math.max(0, base - 10)));
+                              }}
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                              10
+                            </button>
+                            <button
+                              type="button"
                               className="admin-customers__primary"
                               disabled={busy}
                               onClick={() =>
-                                void savePoints(
-                                  'set',
-                                  Number(pointsDraft) || 0,
-                                  `${Number(pointsDraft) || 0} p`
-                                )
+                                void savePoints('set', Number(pointsDraft) || 0)
                               }
                             >
                               Kaydet
@@ -1288,7 +1340,7 @@ export default function CustomersPage() {
                           </div>
                         </section>
 
-                        <section className="admin-customers__block" ref={discountActionRef}>
+                        <section className="admin-customers__block">
                           <div className="admin-customers__block-head">
                             <h3>
                               <Percent className="w-4 h-4" /> Özel indirim
@@ -1318,14 +1370,7 @@ export default function CustomersPage() {
                                 key={`d-${discountType}-${n}`}
                                 type="button"
                                 disabled={busy}
-                                onClick={() =>
-                                  void saveDiscount({
-                                    type: discountType,
-                                    value: n,
-                                    chipLabel:
-                                      discountType === 'amount' ? `${n}₺` : `%${n}`,
-                                  })
-                                }
+                                onClick={() => setDiscountDraft(String(n))}
                               >
                                 {discountType === 'amount' ? `${n}₺` : `%${n}`}
                               </button>
@@ -1333,13 +1378,7 @@ export default function CustomersPage() {
                             <button
                               type="button"
                               disabled={busy}
-                              onClick={() =>
-                                void saveDiscount({
-                                  type: discountType,
-                                  value: 0,
-                                  chipLabel: 'Kaldır',
-                                })
-                              }
+                              onClick={() => setDiscountDraft('0')}
                             >
                               Kaldır
                             </button>
@@ -1376,7 +1415,7 @@ export default function CustomersPage() {
                           </div>
                         </section>
 
-                        <section className="admin-customers__block" ref={debtActionRef}>
+                        <section className="admin-customers__block">
                           <div className="admin-customers__block-head">
                             <h3>
                               <Wallet className="w-4 h-4" /> Hesap / borç
@@ -1461,19 +1500,6 @@ export default function CustomersPage() {
                       </div>
                     ) : (
                       <div className="admin-customers__ledger-wrap">
-                        {ledgerTotal > 0 ? (
-                          <div className="admin-customers__ledger-actions">
-                            <button
-                              type="button"
-                              className="admin-customers__undo"
-                              disabled={busy}
-                              onClick={() => void undoLast()}
-                            >
-                              <Undo2 className="w-3.5 h-3.5" />
-                              Son işlemi geri al
-                            </button>
-                          </div>
-                        ) : null}
                         {ledger.length === 0 ? (
                           <div className="admin-customers__ledger-empty">
                             <Receipt className="w-7 h-7" />
@@ -1481,29 +1507,46 @@ export default function CustomersPage() {
                           </div>
                         ) : (
                           <>
-                            <ul className="admin-customers__ledger">
+                            <ul className="admin-customers__ledger" ref={ledgerListRef}>
                               {ledger.map((e, i) => (
                                 <li
                                   key={e.id}
-                                  className={`is-${e.kind}`}
-                                  style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+                                  className={`is-${e.kind}${
+                                    i === 0 && ledgerPage === 1 ? ' is-latest' : ''
+                                  }`}
                                 >
-                                  <div>
-                                    <strong>{ledgerKindLabel(e.kind)}</strong>
-                                    <small>{formatDate(e.createdAt)}</small>
-                                    {e.note ? (
-                                      <span className="admin-customers__ledger-note">{e.note}</span>
-                                    ) : null}
+                                  <div className="admin-customers__ledger-main">
+                                    <div>
+                                      <strong>{ledgerKindLabel(e.kind)}</strong>
+                                      <small>{formatDate(e.createdAt)}</small>
+                                      {e.note ? (
+                                        <span className="admin-customers__ledger-note">
+                                          {e.note}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    <em>
+                                      {e.kind === 'points'
+                                        ? `${e.amount > 0 ? '+' : ''}${e.amount} p`
+                                        : e.kind === 'discount'
+                                          ? e.amount <= 0
+                                            ? 'Kaldırıldı'
+                                            : String(e.amount)
+                                          : `${e.kind === 'payment' ? '−' : '+'}${formatMoney(e.amount)}`}
+                                    </em>
                                   </div>
-                                  <em>
-                                    {e.kind === 'points'
-                                      ? `${e.amount > 0 ? '+' : ''}${e.amount} p`
-                                      : e.kind === 'discount'
-                                        ? e.amount <= 0
-                                          ? 'Kaldırıldı'
-                                          : String(e.amount)
-                                        : `${e.kind === 'payment' ? '−' : '+'}${formatMoney(e.amount)}`}
-                                  </em>
+                                  {i === 0 && ledgerPage === 1 ? (
+                                    <button
+                                      ref={undoBtnRef}
+                                      type="button"
+                                      className="admin-customers__ledger-undo"
+                                      disabled={busy}
+                                      onClick={() => void undoLast()}
+                                    >
+                                      <Undo2 className="w-3.5 h-3.5" />
+                                      Geri al
+                                    </button>
+                                  ) : null}
                                 </li>
                               ))}
                             </ul>
@@ -1662,41 +1705,31 @@ export default function CustomersPage() {
                   ) : null}
 
                   {rewardDraft.kind === 'product' ? (
-                    <label>
+                    <label className="admin-customers__reward-fields-wide">
                       <span>Ürün</span>
-                      <select
+                      <SearchableSelect
+                        options={rewardProducts}
                         value={rewardDraft.productId}
-                        onChange={(e) =>
-                          setRewardDraft((d) => ({ ...d, productId: e.target.value }))
+                        placeholder="Ürün seçin…"
+                        onChange={(id) =>
+                          setRewardDraft((d) => ({ ...d, productId: id }))
                         }
-                      >
-                        <option value="">Ürün seçin…</option>
-                        {rewardProducts.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </label>
                   ) : null}
 
                   {rewardDraft.kind === 'group' ? (
                     <>
-                      <label>
+                      <label className="admin-customers__reward-fields-wide">
                         <span>Grup</span>
-                        <select
+                        <SearchableSelect
+                          options={rewardGroups}
                           value={rewardDraft.groupId}
-                          onChange={(e) =>
-                            setRewardDraft((d) => ({ ...d, groupId: e.target.value }))
+                          placeholder="Grup seçin…"
+                          onChange={(id) =>
+                            setRewardDraft((d) => ({ ...d, groupId: id }))
                           }
-                        >
-                          <option value="">Grup seçin…</option>
-                          {rewardGroups.map((g) => (
-                            <option key={g.id} value={g.id}>
-                              {g.name}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </label>
                       <label>
                         <span>% İndirim</span>

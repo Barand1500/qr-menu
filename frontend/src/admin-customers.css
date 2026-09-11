@@ -16,24 +16,27 @@
 }
 
 .admin-customers__toast {
-  position: sticky;
-  top: 0.75rem;
-  z-index: 20;
-  margin-bottom: 0.85rem;
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 80;
+  max-width: min(22rem, calc(100vw - 2rem));
+  margin: 0;
   padding: 0.7rem 1rem;
   border-radius: 0.85rem;
   font-size: 0.875rem;
   font-weight: 650;
   color: var(--admin-accent-text, var(--admin-text));
-  background: var(--admin-accent-soft);
+  background: var(--admin-card);
   border: 1px solid color-mix(in srgb, var(--admin-accent) 28%, transparent);
+  box-shadow: 0 10px 28px color-mix(in srgb, #000 12%, transparent);
   animation: admin-customers-toast 0.28s ease both;
 }
 
 @keyframes admin-customers-toast {
   from {
     opacity: 0;
-    transform: translateY(-0.35rem);
+    transform: translateY(-0.4rem) translateX(0.35rem);
   }
   to {
     opacity: 1;
@@ -50,7 +53,7 @@
 
 @media (min-width: 1024px) {
   .admin-customers__layout {
-    grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+    grid-template-columns: minmax(0, 0.92fr) minmax(380px, 1.15fr);
     min-height: min(62vh, 640px);
   }
 }
@@ -697,17 +700,27 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  display: grid;
-  gap: 0.45rem;
-  padding-right: 0.15rem;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-right: 0.1rem;
 }
 
 .admin-customers__block {
-  padding: 0.55rem 0.65rem;
-  border-radius: 0.8rem;
-  border: 1px solid var(--admin-card-border);
-  background: color-mix(in srgb, var(--admin-input-bg) 40%, var(--admin-card));
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.7rem 0.35rem;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--admin-card-border);
+  background: transparent;
+}
+
+.admin-customers__block:last-child {
+  border-bottom: 0;
 }
 
 .admin-customers__block-head {
@@ -716,7 +729,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.35rem;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0;
 }
 
 .admin-customers__block h3 {
@@ -735,13 +748,51 @@
   gap: 0.3rem;
 }
 
+.admin-customers__quick--points {
+  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.3rem;
+  min-width: 9.5rem;
+}
+
+.admin-customers__quick--points button {
+  justify-content: center;
+  padding-inline: 0.4rem;
+}
+
+.admin-customers__quick-minus {
+  border: 1px solid var(--admin-card-border);
+  border-radius: 0.65rem;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.76rem;
+  font-weight: 750;
+  background: var(--admin-card);
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.admin-customers__quick-minus:hover:not(:disabled) {
+  border-color: color-mix(in srgb, #ef4444 40%, transparent);
+  color: #dc2626;
+}
+
+.admin-customers__quick-minus:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .admin-customers__quick button {
   border: 1px solid var(--admin-card-border);
   border-radius: 999px;
   padding: 0.28rem 0.55rem;
   font-size: 0.72rem;
   font-weight: 750;
-  background: var(--admin-card);
+  background: var(--admin-input-bg);
   color: var(--admin-text-muted);
   cursor: pointer;
   display: inline-flex;
@@ -927,12 +978,6 @@
   gap: 0.5rem;
 }
 
-.admin-customers__ledger-actions {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: flex-end;
-}
-
 .admin-customers__ledger-empty {
   flex: 1;
   display: grid;
@@ -960,15 +1005,50 @@
 }
 
 .admin-customers__ledger li {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.8rem;
+  background: var(--admin-input-bg);
+  border: 1px solid var(--admin-card-border);
+}
+
+.admin-customers__ledger li.is-latest {
+  border-color: color-mix(in srgb, var(--admin-accent) 32%, var(--admin-card-border));
+  background: color-mix(in srgb, var(--admin-accent-soft) 40%, var(--admin-input-bg));
+}
+
+.admin-customers__ledger-main {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.75rem;
-  padding: 0.65rem 0.7rem;
-  border-radius: 0.8rem;
-  background: var(--admin-input-bg);
-  border: 1px solid var(--admin-card-border);
-  animation: admin-customers-row 0.28s ease both;
+}
+
+.admin-customers__ledger-undo {
+  justify-self: start;
+  border: 1px solid color-mix(in srgb, var(--admin-accent) 28%, var(--admin-card-border));
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 750;
+  background: var(--admin-card);
+  color: var(--admin-accent-text, var(--admin-accent));
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.admin-customers__ledger-undo:hover:not(:disabled) {
+  background: var(--admin-accent-soft);
+  transform: translateY(-1px);
+}
+
+.admin-customers__ledger-undo:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .admin-customers__ledger li strong {
@@ -1489,6 +1569,102 @@
   color: var(--admin-text);
   font-size: 0.82rem;
   width: 100%;
+}
+
+.admin-customers__combo {
+  position: relative;
+}
+
+.admin-customers__combo-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 1px solid var(--admin-input-border);
+  border-radius: 0.65rem;
+  padding: 0.42rem 0.55rem;
+  background: var(--admin-input-bg);
+  color: var(--admin-text);
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-customers__combo-trigger .is-placeholder {
+  color: var(--admin-text-muted);
+}
+
+.admin-customers__combo.is-open .admin-customers__combo-trigger {
+  border-color: color-mix(in srgb, var(--admin-accent) 45%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-accent) 16%, transparent);
+}
+
+.admin-customers__combo-panel {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.3rem);
+  border-radius: 0.75rem;
+  border: 1px solid var(--admin-card-border);
+  background: var(--admin-card);
+  box-shadow: 0 12px 28px color-mix(in srgb, #000 14%, transparent);
+  overflow: hidden;
+  animation: admin-customers-tab 0.2s ease both;
+}
+
+.admin-customers__combo-search {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid var(--admin-card-border);
+  color: var(--admin-text-muted);
+  background: color-mix(in srgb, var(--admin-input-bg) 70%, var(--admin-card));
+}
+
+.admin-customers__combo-search input {
+  border: 0;
+  outline: none;
+  width: 100%;
+  background: transparent;
+  color: var(--admin-text);
+  font-size: 0.82rem;
+  padding: 0;
+}
+
+.admin-customers__combo-panel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem;
+  max-height: 12rem;
+  overflow: auto;
+}
+
+.admin-customers__combo-panel li.is-empty {
+  padding: 0.7rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--admin-text-muted);
+}
+
+.admin-customers__combo-panel button {
+  width: 100%;
+  border: 0;
+  border-radius: 0.55rem;
+  padding: 0.45rem 0.55rem;
+  background: transparent;
+  color: var(--admin-text);
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-customers__combo-panel button:hover,
+.admin-customers__combo-panel button.is-active {
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent-text, var(--admin-accent));
 }
 
 .admin-customers__reward-composer-actions {
