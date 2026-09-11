@@ -71,19 +71,20 @@
   overflow: hidden;
 }
 
-.admin-customers__list-panel {
+.admin-customers__list-panel,
+.admin-customers__detail {
   display: flex;
   flex-direction: column;
+  height: min(78vh, 760px);
   min-height: 28rem;
-  max-height: min(78vh, 820px);
+  max-height: min(78vh, 760px);
+}
+
+.admin-customers__list-panel {
   animation: admin-customers-panel 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .admin-customers__detail {
-  min-height: 28rem;
-  max-height: min(78vh, 820px);
-  display: flex;
-  flex-direction: column;
   animation: admin-customers-panel 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
 }
 
@@ -331,10 +332,11 @@
 .admin-customers__detail-inner {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.7rem;
   padding: 0.95rem;
-  overflow: auto;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
   animation: admin-customers-detail 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -354,6 +356,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 .admin-customers__detail-title {
@@ -395,23 +398,24 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.45rem;
+  flex-shrink: 0;
 }
 
 .admin-customers__stat {
   display: grid;
   gap: 0.15rem;
-  padding: 0.65rem 0.7rem;
+  padding: 0.55rem 0.65rem;
   border-radius: 0.85rem;
   background: var(--admin-input-bg);
   border: 1px solid var(--admin-card-border);
   color: var(--admin-text-muted);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
 .admin-customers__stat strong {
   color: var(--admin-text);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
 }
 
 .admin-customers__stat.is-warn strong {
@@ -422,19 +426,98 @@
   color: #fca5a5;
 }
 
-.admin-customers__card {
-  padding: 0.85rem;
-  border-radius: 0.95rem;
+.admin-customers__tabs {
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.2rem;
+  border-radius: 999px;
+  background: var(--admin-input-bg);
   border: 1px solid var(--admin-card-border);
-  background: color-mix(in srgb, var(--admin-input-bg) 45%, var(--admin-card));
+  flex-shrink: 0;
 }
 
-.admin-customers__card h3 {
-  margin: 0 0 0.65rem;
+.admin-customers__tabs button {
+  flex: 1;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+  color: var(--admin-text-muted);
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.admin-customers__tabs button.is-active {
+  background: var(--admin-accent);
+  color: var(--admin-btn-primary-text, #fff);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--admin-accent) 28%, transparent);
+}
+
+.admin-customers__tabs em {
+  font-style: normal;
+  font-size: 0.68rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, #fff 22%, transparent);
+}
+
+.admin-customers__tab-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: admin-customers-tab 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes admin-customers-tab {
+  from {
+    opacity: 0;
+    transform: translateY(0.35rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.admin-customers__manage {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 0.65rem;
+  padding-right: 0.15rem;
+}
+
+.admin-customers__block {
+  padding: 0.75rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--admin-card-border);
+  background: color-mix(in srgb, var(--admin-input-bg) 40%, var(--admin-card));
+}
+
+.admin-customers__block-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  margin-bottom: 0.55rem;
+}
+
+.admin-customers__block h3 {
+  margin: 0;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.84rem;
+  gap: 0.35rem;
+  font-size: 0.82rem;
   font-weight: 800;
   color: var(--admin-text);
 }
@@ -442,22 +525,21 @@
 .admin-customers__quick {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-bottom: 0.55rem;
+  gap: 0.3rem;
 }
 
 .admin-customers__quick button {
   border: 1px solid var(--admin-card-border);
   border-radius: 999px;
-  padding: 0.32rem 0.65rem;
-  font-size: 0.74rem;
+  padding: 0.28rem 0.55rem;
+  font-size: 0.72rem;
   font-weight: 750;
   background: var(--admin-card);
   color: var(--admin-text-muted);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.15rem;
   transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 
@@ -483,7 +565,7 @@
   min-width: 0;
   border: 1px solid var(--admin-input-border);
   border-radius: 0.7rem;
-  padding: 0.5rem 0.65rem;
+  padding: 0.48rem 0.65rem;
   background: var(--admin-input-bg);
   color: var(--admin-text);
   font-size: 0.84rem;
@@ -494,7 +576,7 @@
 .admin-customers__ok {
   border: 0;
   border-radius: 0.7rem;
-  padding: 0.5rem 0.8rem;
+  padding: 0.48rem 0.75rem;
   font-size: 0.8rem;
   font-weight: 750;
   cursor: pointer;
@@ -537,8 +619,8 @@
 }
 
 .admin-customers__balance {
-  margin: 0 0 0.65rem;
-  font-size: 0.84rem;
+  margin: 0;
+  font-size: 0.78rem;
   color: var(--admin-text-muted);
 }
 
@@ -556,96 +638,110 @@
 
 .admin-customers__forms {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 .admin-customers__forms > div > span {
   display: block;
-  margin-bottom: 0.35rem;
-  font-size: 0.72rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.68rem;
   font-weight: 750;
   color: var(--admin-text-subtle);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.admin-customers__muted {
-  margin: 0;
-  font-size: 0.84rem;
+.admin-customers__ledger-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-customers__ledger-empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  gap: 0.4rem;
   color: var(--admin-text-muted);
+  text-align: center;
+}
+
+.admin-customers__ledger-empty p {
+  margin: 0;
+  font-size: 0.88rem;
 }
 
 .admin-customers__ledger {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0.15rem;
   display: grid;
   gap: 0.4rem;
-  max-height: 14rem;
   overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
 }
 
 .admin-customers__ledger li {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 0.75rem;
-  padding: 0.55rem 0.65rem;
-  border-radius: 0.75rem;
-  background: var(--admin-card);
+  padding: 0.65rem 0.7rem;
+  border-radius: 0.8rem;
+  background: var(--admin-input-bg);
   border: 1px solid var(--admin-card-border);
   animation: admin-customers-row 0.28s ease both;
 }
 
 .admin-customers__ledger li strong {
   display: block;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   color: var(--admin-text);
 }
 
 .admin-customers__ledger li small {
+  display: block;
+  margin-top: 0.12rem;
   font-size: 0.7rem;
   color: var(--admin-text-subtle);
 }
 
-.admin-customers__ledger-right {
-  text-align: right;
-  display: grid;
-  gap: 0.1rem;
+.admin-customers__ledger-note {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.74rem;
+  color: var(--admin-text-muted);
 }
 
-.admin-customers__ledger-right em {
+.admin-customers__ledger li em {
   font-style: normal;
-  font-size: 0.84rem;
+  font-size: 0.88rem;
   font-weight: 800;
   color: var(--admin-text);
-}
-
-.admin-customers__ledger-right span {
-  font-size: 0.7rem;
-  color: var(--admin-text-muted);
-  max-width: 10rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.admin-customers__ledger li.is-debt .admin-customers__ledger-right em {
+.admin-customers__ledger li.is-debt em {
   color: #dc2626;
 }
 
-.admin-customers__ledger li.is-payment .admin-customers__ledger-right em {
+.admin-customers__ledger li.is-payment em {
   color: #059669;
 }
 
-.admin-customers__ledger li.is-points .admin-customers__ledger-right em {
+.admin-customers__ledger li.is-points em {
   color: var(--admin-accent-text, var(--admin-accent));
 }
 
-[data-theme='dark'] .admin-customers__ledger li.is-debt .admin-customers__ledger-right em {
+[data-theme='dark'] .admin-customers__ledger li.is-debt em {
   color: #fca5a5;
 }
 
-[data-theme='dark'] .admin-customers__ledger li.is-payment .admin-customers__ledger-right em {
+[data-theme='dark'] .admin-customers__ledger li.is-payment em {
   color: #6ee7b7;
 }
 
@@ -660,8 +756,8 @@
 
   .admin-customers__detail.is-visible {
     display: flex;
-    min-height: min(88vh, 900px);
-    max-height: none;
+    height: min(88vh, 900px);
+    max-height: min(88vh, 900px);
     animation: admin-customers-detail 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }
@@ -671,6 +767,7 @@
   .admin-customers__list-panel,
   .admin-customers__detail,
   .admin-customers__detail-inner,
+  .admin-customers__tab-body,
   .admin-customers__list > li,
   .admin-customers__toast,
   .admin-customers__ledger li {

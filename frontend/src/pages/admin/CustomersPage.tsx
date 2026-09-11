@@ -77,6 +77,7 @@ export default function CustomersPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [detailTab, setDetailTab] = useState<'manage' | 'ledger'>('manage');
 
   const [pointsDraft, setPointsDraft] = useState('');
   const [discountDraft, setDiscountDraft] = useState('');
@@ -122,8 +123,9 @@ export default function CustomersPage() {
     return () => window.clearTimeout(t);
   }, [toast]);
 
-  async function openCustomer(id: number) {
+  async function openCustomer(id: number, opts?: { keepTab?: boolean }) {
     setSelectedId(id);
+    if (!opts?.keepTab) setDetailTab('manage');
     setDetailLoading(true);
     try {
       const res = await api<{ customer: CustomerRow; ledger: LedgerEntry[] }>(
@@ -148,7 +150,7 @@ export default function CustomersPage() {
   async function refreshSelected() {
     if (selectedId == null) return;
     await loadList();
-    await openCustomer(selectedId);
+    await openCustomer(selectedId, { keepTab: true });
   }
 
   async function savePoints(mode: 'set' | 'delta', value: number) {
@@ -197,6 +199,7 @@ export default function CustomersPage() {
         body: JSON.stringify({ amount: Number(debtAmount), note: debtNote }),
       });
       setToast('Borç eklendi');
+      setDetailTab('ledger');
       await refreshSelected();
     } catch (e) {
       setToast(e instanceof Error ? e.message : 'Borç eklenemedi');
@@ -214,6 +217,7 @@ export default function CustomersPage() {
         body: JSON.stringify({ amount: Number(payAmount), note: payNote }),
       });
       setToast('Ödeme kaydedildi');
+      setDetailTab('ledger');
       await refreshSelected();
     } catch (e) {
       setToast(e instanceof Error ? e.message : 'Ödeme kaydedilemedi');
@@ -387,199 +391,241 @@ export default function CustomersPage() {
                 </div>
               ) : null}
 
-              <section className="admin-customers__card">
-                <h3>
-                  <Coins className="w-4 h-4" /> Puan
-                </h3>
-                <div className="admin-customers__quick">
-                  {[10, 50, 100].map((n) => (
-                    <button
-                      key={`p-${n}`}
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void savePoints('delta', n)}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      {n}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    disabled={busy || detail.points <= 0}
-                    onClick={() => void savePoints('delta', -10)}
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                    10
-                  </button>
-                </div>
-                <div className="admin-customers__inline">
-                  <input
-                    type="number"
-                    min={0}
-                    value={pointsDraft}
-                    onChange={(e) => setPointsDraft(e.target.value)}
-                    aria-label="Puan"
-                  />
-                  <button
-                    type="button"
-                    className="admin-customers__primary"
-                    disabled={busy}
-                    onClick={() => void savePoints('set', Number(pointsDraft) || 0)}
-                  >
-                    Kaydet
-                  </button>
-                </div>
-              </section>
+              <div className="admin-customers__tabs" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={detailTab === 'manage'}
+                  className={detailTab === 'manage' ? 'is-active' : ''}
+                  onClick={() => setDetailTab('manage')}
+                >
+                  İşlemler
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={detailTab === 'ledger'}
+                  className={detailTab === 'ledger' ? 'is-active' : ''}
+                  onClick={() => setDetailTab('ledger')}
+                >
+                  Hareketler
+                  {ledger.length > 0 ? <em>{ledger.length}</em> : null}
+                </button>
+              </div>
 
-              <section className="admin-customers__card">
-                <h3>
-                  <Percent className="w-4 h-4" /> Özel indirim
-                </h3>
-                <div className="admin-customers__quick">
-                  {[5, 10, 15, 20].map((n) => (
-                    <button
-                      key={`d-${n}`}
-                      type="button"
-                      disabled={busy}
-                      onClick={() => setDiscountDraft(String(n))}
-                    >
-                      %{n}
-                    </button>
-                  ))}
-                  <button type="button" disabled={busy} onClick={() => setDiscountDraft('0')}>
-                    Kaldır
-                  </button>
-                </div>
-                <div className="admin-customers__inline">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    placeholder="%"
-                    value={discountDraft}
-                    onChange={(e) => setDiscountDraft(e.target.value)}
-                    aria-label="İndirim yüzdesi"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Not (isteğe bağlı)"
-                    value={discountNote}
-                    onChange={(e) => setDiscountNote(e.target.value)}
-                    aria-label="İndirim notu"
-                  />
-                  <button
-                    type="button"
-                    className="admin-customers__primary"
-                    disabled={busy}
-                    onClick={() => void saveDiscount()}
-                  >
-                    Uygula
-                  </button>
-                </div>
-              </section>
+              <div className="admin-customers__tab-body" key={detailTab}>
+                {detailTab === 'manage' ? (
+                  <div className="admin-customers__manage">
+                    <section className="admin-customers__block">
+                      <div className="admin-customers__block-head">
+                        <h3>
+                          <Coins className="w-4 h-4" /> Puan
+                        </h3>
+                        <div className="admin-customers__quick">
+                          {[10, 50, 100].map((n) => (
+                            <button
+                              key={`p-${n}`}
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void savePoints('delta', n)}
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              {n}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            disabled={busy || detail.points <= 0}
+                            onClick={() => void savePoints('delta', -10)}
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                            10
+                          </button>
+                        </div>
+                      </div>
+                      <div className="admin-customers__inline">
+                        <input
+                          type="number"
+                          min={0}
+                          value={pointsDraft}
+                          onChange={(e) => setPointsDraft(e.target.value)}
+                          aria-label="Puan"
+                        />
+                        <button
+                          type="button"
+                          className="admin-customers__primary"
+                          disabled={busy}
+                          onClick={() => void savePoints('set', Number(pointsDraft) || 0)}
+                        >
+                          Kaydet
+                        </button>
+                      </div>
+                    </section>
 
-              <section className="admin-customers__card">
-                <h3>
-                  <Wallet className="w-4 h-4" /> Hesap / borç
-                </h3>
-                <p className="admin-customers__balance">
-                  Güncel bakiye:{' '}
-                  <strong className={detail.debtBalance > 0 ? 'is-debt' : ''}>
-                    {formatMoney(detail.debtBalance)}
-                  </strong>
-                </p>
-                <div className="admin-customers__forms">
-                  <div>
-                    <span>Borç ekle</span>
-                    <div className="admin-customers__inline">
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        placeholder="Tutar"
-                        value={debtAmount}
-                        onChange={(e) => setDebtAmount(e.target.value)}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Not"
-                        value={debtNote}
-                        onChange={(e) => setDebtNote(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="admin-customers__warn"
-                        disabled={busy || !(Number(debtAmount) > 0)}
-                        onClick={() => void addDebt()}
-                      >
-                        Ekle
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <span>Ödeme / kapat</span>
-                    <div className="admin-customers__inline">
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        placeholder="Tutar"
-                        value={payAmount}
-                        onChange={(e) => setPayAmount(e.target.value)}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Not"
-                        value={payNote}
-                        onChange={(e) => setPayNote(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="admin-customers__ok"
-                        disabled={busy || detail.debtBalance <= 0 || !(Number(payAmount) > 0)}
-                        onClick={() => void addPayment()}
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        Öde
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </section>
+                    <section className="admin-customers__block">
+                      <div className="admin-customers__block-head">
+                        <h3>
+                          <Percent className="w-4 h-4" /> Özel indirim
+                        </h3>
+                        <div className="admin-customers__quick">
+                          {[5, 10, 15, 20].map((n) => (
+                            <button
+                              key={`d-${n}`}
+                              type="button"
+                              disabled={busy}
+                              onClick={() => setDiscountDraft(String(n))}
+                            >
+                              %{n}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => setDiscountDraft('0')}
+                          >
+                            Kaldır
+                          </button>
+                        </div>
+                      </div>
+                      <div className="admin-customers__inline">
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          placeholder="%"
+                          value={discountDraft}
+                          onChange={(e) => setDiscountDraft(e.target.value)}
+                          aria-label="İndirim yüzdesi"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Not"
+                          value={discountNote}
+                          onChange={(e) => setDiscountNote(e.target.value)}
+                          aria-label="İndirim notu"
+                        />
+                        <button
+                          type="button"
+                          className="admin-customers__primary"
+                          disabled={busy}
+                          onClick={() => void saveDiscount()}
+                        >
+                          Uygula
+                        </button>
+                      </div>
+                    </section>
 
-              <section className="admin-customers__card admin-customers__card--ledger">
-                <h3>
-                  <Receipt className="w-4 h-4" /> Hareketler
-                </h3>
-                {ledger.length === 0 ? (
-                  <p className="admin-customers__muted">Henüz hareket yok.</p>
-                ) : (
-                  <ul className="admin-customers__ledger">
-                    {ledger.map((e) => (
-                      <li key={e.id} className={`is-${e.kind}`}>
-                        <div>
-                          <strong>
-                            {e.kind === 'debt'
-                              ? 'Borç'
-                              : e.kind === 'payment'
-                                ? 'Ödeme'
-                                : 'Puan'}
+                    <section className="admin-customers__block">
+                      <div className="admin-customers__block-head">
+                        <h3>
+                          <Wallet className="w-4 h-4" /> Hesap / borç
+                        </h3>
+                        <p className="admin-customers__balance">
+                          Bakiye{' '}
+                          <strong className={detail.debtBalance > 0 ? 'is-debt' : ''}>
+                            {formatMoney(detail.debtBalance)}
                           </strong>
-                          <small>{formatDate(e.createdAt)}</small>
+                        </p>
+                      </div>
+                      <div className="admin-customers__forms">
+                        <div>
+                          <span>Borç ekle</span>
+                          <div className="admin-customers__inline">
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              placeholder="Tutar"
+                              value={debtAmount}
+                              onChange={(e) => setDebtAmount(e.target.value)}
+                            />
+                            <input
+                              type="text"
+                              placeholder="Not"
+                              value={debtNote}
+                              onChange={(e) => setDebtNote(e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              className="admin-customers__warn"
+                              disabled={busy || !(Number(debtAmount) > 0)}
+                              onClick={() => void addDebt()}
+                            >
+                              Ekle
+                            </button>
+                          </div>
                         </div>
-                        <div className="admin-customers__ledger-right">
-                          <em>
-                            {e.kind === 'points'
-                              ? `${e.amount > 0 ? '+' : ''}${e.amount} p`
-                              : `${e.kind === 'payment' ? '−' : '+'}${formatMoney(e.amount)}`}
-                          </em>
-                          {e.note ? <span>{e.note}</span> : null}
+                        <div>
+                          <span>Ödeme / kapat</span>
+                          <div className="admin-customers__inline">
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              placeholder="Tutar"
+                              value={payAmount}
+                              onChange={(e) => setPayAmount(e.target.value)}
+                            />
+                            <input
+                              type="text"
+                              placeholder="Not"
+                              value={payNote}
+                              onChange={(e) => setPayNote(e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              className="admin-customers__ok"
+                              disabled={
+                                busy || detail.debtBalance <= 0 || !(Number(payAmount) > 0)
+                              }
+                              onClick={() => void addPayment()}
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              Öde
+                            </button>
+                          </div>
                         </div>
-                      </li>
-                    ))}
-                  </ul>
+                      </div>
+                    </section>
+                  </div>
+                ) : (
+                  <div className="admin-customers__ledger-wrap">
+                    {ledger.length === 0 ? (
+                      <div className="admin-customers__ledger-empty">
+                        <Receipt className="w-7 h-7" />
+                        <p>Henüz hareket yok</p>
+                      </div>
+                    ) : (
+                      <ul className="admin-customers__ledger">
+                        {ledger.map((e, i) => (
+                          <li
+                            key={e.id}
+                            className={`is-${e.kind}`}
+                            style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+                          >
+                            <div>
+                              <strong>
+                                {e.kind === 'debt'
+                                  ? 'Borç'
+                                  : e.kind === 'payment'
+                                    ? 'Ödeme'
+                                    : 'Puan'}
+                              </strong>
+                              <small>{formatDate(e.createdAt)}</small>
+                              {e.note ? <span className="admin-customers__ledger-note">{e.note}</span> : null}
+                            </div>
+                            <em>
+                              {e.kind === 'points'
+                                ? `${e.amount > 0 ? '+' : ''}${e.amount} p`
+                                : `${e.kind === 'payment' ? '−' : '+'}${formatMoney(e.amount)}`}
+                            </em>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 )}
-              </section>
+              </div>
             </div>
           )}
         </aside>
