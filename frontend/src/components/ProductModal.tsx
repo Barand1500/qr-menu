@@ -11,6 +11,9 @@ import {
   type PrefCatalog,
 } from '@/lib/prefCatalog';
 import { ManageableTagPillGroup } from '@/components/CatalogTagManager';
+import IngredientPoolPicker from '@/components/admin/IngredientPoolPicker';
+import { syncIngredientsFromPoolSelection } from '@/lib/ingredientPool';
+import '@/ingredient-pool.css';
 
 export interface ProductTranslationFields {
   name: string;
@@ -242,12 +245,16 @@ export default function ProductModal({
   const [activeLang, setActiveLang] = useState(sortedLangs[0]?.code || 'tr');
   const [emptyDietWarned, setEmptyDietWarned] = useState(false);
   const [dietTabPulse, setDietTabPulse] = useState(false);
+  const [ingredientsMode, setIngredientsMode] = useState<'manual' | 'pool'>('manual');
+  const [poolPickerOpen, setPoolPickerOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setActiveTab('general');
     setEmptyDietWarned(false);
     setDietTabPulse(false);
+    setIngredientsMode('manual');
+    setPoolPickerOpen(false);
     const tr = languages.find((l) => l.code === 'tr');
     setActiveLang(tr?.code || languages[0]?.code || 'tr');
     // Yalnızca modal açıldığında sıfırla — onClose/languages her render'da değişebilir
@@ -255,13 +262,22 @@ export default function ProductModal({
   }, [open]);
 
   useEffect(() => {
+    if (activeTab !== 'translations') setPoolPickerOpen(false);
+  }, [activeTab]);
+
+  useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Escape') return;
+      if (poolPickerOpen) {
+        setPoolPickerOpen(false);
+        return;
+      }
+      onClose();
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open, onClose, poolPickerOpen]);
 
   function hasAnyDietSelection() {
     return (
@@ -321,13 +337,14 @@ export default function ProductModal({
   }));
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-    >
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/35 backdrop-blur-[6px]" />
 
       <div
-        className="relative w-full sm:max-w-xl max-h-[90vh] overflow-hidden flex flex-col rounded-t-[28px] sm:rounded-[28px] shadow-2xl animate-slide-up"
+        className={`product-modal-shell relative z-10 px-0 sm:px-2 ${poolPickerOpen ? 'is-pool-open' : ''}`}
+      >
+      <div
+        className="product-modal-shell__main relative w-full max-h-[90vh] overflow-hidden flex flex-col rounded-t-[28px] sm:rounded-[28px] shadow-2xl animate-slide-up"
         style={{
           background: 'var(--admin-card)',
           border: '1px solid var(--admin-card-border)',
@@ -535,15 +552,42 @@ export default function ProductModal({
                     value={currentTranslation.description}
                     onChange={(val) => updateTranslation('description', val)}
                   />
-                  <TranslatableTextarea
-                    key={`ing-${currentLang.code}`}
-                    label="İçindekiler"
-                    rows={2}
-                    sourceText={trTranslation.ingredients}
-                    targetLang={currentLang.code}
-                    value={currentTranslation.ingredients}
-                    onChange={(val) => updateTranslation('ingredients', val)}
-                  />
+                  <div>
+                    <div className="ingredient-mode-toggle" role="group" aria-label="İçindekiler kaynağı">
+                      <button
+                        type="button"
+                        className={ingredientsMode === 'pool' ? 'is-active' : ''}
+                        onClick={() => {
+                          setIngredientsMode('pool');
+                          setPoolPickerOpen(true);
+                        }}
+                      >
+                        Havuz
+                      </button>
+                      <button
+                        type="button"
+                        className={ingredientsMode === 'manual' ? 'is-active' : ''}
+                        onClick={() => {
+                          setIngredientsMode('manual');
+                          setPoolPickerOpen(false);
+                        }}
+                      >
+                        Elle
+                      </button>
+                    </div>
+                    <TranslatableTextarea
+                      key={`ing-${currentLang.code}`}
+                      label="İçindekiler"
+                      rows={2}
+                      sourceText={trTranslation.ingredients}
+                      targetLang={currentLang.code}
+                      value={currentTranslation.ingredients}
+                      onChange={(val) => updateTranslation('ingredients', val)}
+                      onFocus={() => {
+                        if (ingredientsMode === 'pool') setPoolPickerOpen(true);
+                      }}
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -637,6 +681,23 @@ export default function ProductModal({
             </Button>
           </div>
         </div>
+      </div>
+
+      <IngredientPoolPicker
+        open={poolPickerOpen && ingredientsMode === 'pool'}
+        currentIngredients={currentTranslation.ingredients}
+        onClose={() => setPoolPickerOpen(false)}
+        onSelectionChange={(names, allPoolNames) => {
+          updateTranslation(
+            'ingredients',
+            syncIngredientsFromPoolSelection(
+              currentTranslation.ingredients,
+              names,
+              allPoolNames
+            )
+          );
+        }}
+      />
       </div>
     </div>
   );

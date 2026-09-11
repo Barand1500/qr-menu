@@ -678,12 +678,20 @@ export default function ProductsPage() {
         title="Ürünler"
         actions={
           <div className="flex flex-wrap gap-2">
-            <Link to={adminPath('urun-secenekleri')}>
-              <Button variant="secondary">
-                <Layers3 className="w-4 h-4" />
-                Varyant / seçenek
-              </Button>
-            </Link>
+            <div className="flex flex-col items-stretch self-center min-w-0">
+              <Link to={adminPath('urun-secenekleri')}>
+                <Button variant="secondary" className="w-full">
+                  <Layers3 className="w-4 h-4" />
+                  Varyant / seçenek
+                </Button>
+              </Link>
+              <Link
+                to={adminPath('icerik-havuzu')}
+                className="mt-0.5 w-full text-center text-[11px] leading-tight admin-text-muted hover:text-[var(--admin-accent)] transition px-0.5"
+              >
+                İçerik havuzu
+              </Link>
+            </div>
             {BULK_PRICE_UI_ENABLED && (
               <div className="flex flex-col items-stretch self-center min-w-0">
                 <Button

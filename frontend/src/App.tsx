@@ -22,6 +22,7 @@ import ExtensionsHubPage from '@/pages/admin/ExtensionsHubPage';
 import BulkTranslatePage from '@/pages/admin/BulkTranslatePage';
 import TableFloorPage from '@/pages/admin/TableFloorPage';
 import ProductVariantsPage from '@/pages/admin/ProductVariantsPage';
+import IngredientPoolPage from '@/pages/admin/IngredientPoolPage';
 import GarsonAppPage from '@/pages/GarsonAppPage';
 import PublicWelcomePage from '@/pages/public/PublicWelcomePage';
 import PublicMenuPage from '@/pages/public/PublicMenuPage';
@@ -56,6 +57,7 @@ function AdminRoutes({ slug }: { slug: string }) {
         <Route index element={<DashboardPage />} />
         <Route path="groups" element={<GroupsPage />} />
         <Route path="products" element={<ProductsPage />} />
+        <Route path="icerik-havuzu" element={<IngredientPoolPage />} />
         <Route path="showcase" element={<ShowcasePage />} />
         <Route path="barcode" element={<BarcodePage />} />
         <Route path="bulk-translate" element={<BulkTranslatePage />} />

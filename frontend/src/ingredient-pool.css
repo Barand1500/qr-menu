@@ -1,0 +1,303 @@
+/* İçerik havuzu — ürün modalı sağ panel */
+
+.product-modal-shell {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+  max-width: 100%;
+  width: 100%;
+  transition: gap 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.product-modal-shell.is-pool-open {
+  gap: 0.85rem;
+  max-width: min(1080px, 100%);
+}
+
+.product-modal-shell__main {
+  min-width: 0;
+  flex: 1 1 auto;
+  width: min(560px, 100%);
+  transition: width 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.product-modal-shell.is-pool-open .product-modal-shell__main {
+  width: min(520px, 100%);
+}
+
+.ingredient-mode-toggle {
+  display: inline-flex;
+  gap: 0.35rem;
+  margin-bottom: 0.55rem;
+  padding: 0.2rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--admin-accent, #0ea5e9) 8%, #f1f5f9);
+  border: 1px solid color-mix(in srgb, var(--admin-accent, #0ea5e9) 16%, transparent);
+}
+
+.ingredient-mode-toggle button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 750;
+  color: #64748b;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.ingredient-mode-toggle button.is-active {
+  background: var(--admin-accent, #0ea5e9);
+  color: #fff;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--admin-accent, #0ea5e9) 35%, transparent);
+}
+
+.ingredient-pool-picker {
+  flex: 0 0 min(320px, 42vw);
+  width: min(320px, 42vw);
+  max-height: min(88vh, 720px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 1.15rem;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+  transform-origin: right center;
+  animation: ingredient-pool-slide 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes ingredient-pool-slide {
+  from {
+    opacity: 0;
+    transform: translateX(1.75rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ingredient-pool-picker__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.95rem 1rem 0.75rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.ingredient-pool-picker__eyebrow {
+  margin: 0;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--admin-accent, #0284c7);
+}
+
+.ingredient-pool-picker__head h3 {
+  margin: 0.15rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.ingredient-pool-picker__close {
+  border: 0;
+  background: #f1f5f9;
+  color: #64748b;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.6rem;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.ingredient-pool-picker__tools {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.ingredient-pool-picker__search {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.ingredient-pool-picker__search input {
+  border: 0;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 0.85rem;
+  color: #0f172a;
+}
+
+.ingredient-pool-picker__tools select {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 0.7rem;
+  padding: 0.45rem 0.65rem;
+  background: #fff;
+  font-size: 0.8rem;
+  color: #334155;
+}
+
+.ingredient-pool-picker__body {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 0 0.75rem 0.75rem;
+  min-height: 12rem;
+}
+
+.ingredient-pool-picker__empty {
+  margin: 1.5rem 0.5rem;
+  text-align: center;
+  font-size: 0.84rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.ingredient-pool-picker__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.ingredient-pool-picker__chip {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  text-align: left;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 0.8rem;
+  padding: 0.55rem 0.65rem;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.ingredient-pool-picker__chip:hover {
+  border-color: color-mix(in srgb, var(--admin-accent, #0ea5e9) 40%, transparent);
+  transform: translateX(2px);
+}
+
+.ingredient-pool-picker__chip.is-on {
+  background: color-mix(in srgb, var(--admin-accent, #0ea5e9) 10%, #fff);
+  border-color: color-mix(in srgb, var(--admin-accent, #0ea5e9) 45%, transparent);
+}
+
+.ingredient-pool-picker__check {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  border: 1.5px solid #cbd5e1;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: #fff;
+}
+
+.ingredient-pool-picker__chip.is-on .ingredient-pool-picker__check {
+  background: var(--admin-accent, #0ea5e9);
+  border-color: var(--admin-accent, #0ea5e9);
+}
+
+.ingredient-pool-picker__chip strong {
+  display: block;
+  font-size: 0.86rem;
+  color: #0f172a;
+}
+
+.ingredient-pool-picker__chip em {
+  display: block;
+  margin-top: 0.1rem;
+  font-style: normal;
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.ingredient-pool-picker__foot {
+  display: flex;
+  gap: 0.45rem;
+  padding: 0.75rem 0.9rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.ingredient-pool-picker__ghost,
+.ingredient-pool-picker__primary {
+  flex: 1;
+  border-radius: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.ingredient-pool-picker__ghost {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  color: #475569;
+}
+
+.ingredient-pool-picker__primary {
+  border: 0;
+  background: var(--admin-accent, #0ea5e9);
+  color: #fff;
+}
+
+.ingredient-pool-picker__primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 860px) {
+  .product-modal-shell.is-pool-open {
+    flex-direction: column;
+    align-items: center;
+    max-height: 96vh;
+    overflow: auto;
+  }
+
+  .ingredient-pool-picker {
+    flex-basis: auto;
+    width: min(520px, 100%);
+    max-height: 46vh;
+    animation-name: ingredient-pool-slide-up;
+  }
+
+  @keyframes ingredient-pool-slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(1rem) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ingredient-pool-picker,
+  .ingredient-mode-toggle button,
+  .ingredient-pool-picker__chip,
+  .product-modal-shell,
+  .product-modal-shell__main {
+    animation: none !important;
+    transition: none !important;
+  }
+}

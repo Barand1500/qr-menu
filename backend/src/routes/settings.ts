@@ -34,6 +34,12 @@ import { loadPrefCatalog,
   serializePrefCatalog,
 } from '../lib/pref-catalog.js';
 import {
+  INGREDIENT_POOL_KEY,
+  loadIngredientPool,
+  normalizeIngredientPool,
+  serializeIngredientPool,
+} from '../lib/ingredient-pool.js';
+import {
   GEO_LOCK_KEY,
   loadGeoLock,
   parseGeoLock,
@@ -583,6 +589,27 @@ router.put('/pref-catalog', async (req, res) => {
   });
 
   res.json(catalog);
+});
+
+router.get('/ingredient-pool', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const pool = await loadIngredientPool(restaurantId!);
+  res.json(pool);
+});
+
+router.put('/ingredient-pool', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const pool = normalizeIngredientPool(req.body);
+  await prisma.setting.upsert({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: INGREDIENT_POOL_KEY } },
+    update: { value: serializeIngredientPool(pool) },
+    create: {
+      restaurantId: restaurantId!,
+      key: INGREDIENT_POOL_KEY,
+      value: serializeIngredientPool(pool),
+    },
+  });
+  res.json(pool);
 });
 
 router.get('/geo-lock', async (req, res) => {
