@@ -26,6 +26,7 @@ export default function AnimasyonCartSheet({ lang }: { lang: string }) {
     setSheetOpen,
     setQty,
     setNote,
+    clear,
   } = useSiparisCart();
   const { ensureUnlocked, markNeedsUnlock } = useTableSessionCode();
   const [tableCtx] = useState(() => resolveTableContext());
@@ -155,8 +156,13 @@ export default function AnimasyonCartSheet({ lang }: { lang: string }) {
         createdAt: res.createdAt,
       });
       notifyWaiterCalled();
+      // Ortak sepet — sipariş iletildikten sonra temizle (tüm temalar)
+      clear();
       setDone(true);
-      window.setTimeout(() => setDone(false), 3500);
+      window.setTimeout(() => {
+        setDone(false);
+        closeAnimated();
+      }, 1600);
     } catch {
       setError(true);
       window.setTimeout(() => setError(false), 2800);

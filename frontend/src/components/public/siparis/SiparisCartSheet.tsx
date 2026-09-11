@@ -24,6 +24,7 @@ export default function SiparisCartSheet({ lang }: { lang: string }) {
     setSheetOpen,
     setQty,
     setNote,
+    clear,
   } = useSiparisCart();
   const { ensureUnlocked, markNeedsUnlock } = useTableSessionCode();
   const [tableCtx] = useState(() => resolveTableContext());
@@ -114,8 +115,13 @@ export default function SiparisCartSheet({ lang }: { lang: string }) {
         createdAt: res.createdAt,
       });
       notifyWaiterCalled();
+      // Tüm temalar aynı sepeti kullanır — sipariş iletildikten sonra temizle
+      clear();
       setDone(true);
-      window.setTimeout(() => setDone(false), 3500);
+      window.setTimeout(() => {
+        setDone(false);
+        setSheetOpen(false);
+      }, 1600);
     } catch {
       setError(true);
       window.setTimeout(() => setError(false), 2800);

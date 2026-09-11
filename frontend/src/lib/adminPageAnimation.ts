@@ -10,19 +10,21 @@ export function getAdminPageAnimPreset() {
   };
 }
 
-/** Sayfa kökündeki kutuları topla (tek sarmalayıcıyı deler). */
+/** Sayfa kökündeki kutuları topla (tek / iç içe sarmalayıcıları deler). */
 export function collectAdminPageAnimTargets(root: HTMLElement): HTMLElement[] {
-  const direct = Array.from(root.children).filter(
+  let pool = Array.from(root.children).filter(
     (n): n is HTMLElement => n instanceof HTMLElement
   );
-  if (direct.length === 0) return [];
+  if (pool.length === 0) return [];
 
-  let pool = direct;
-  if (direct.length === 1) {
-    const inner = Array.from(direct[0].children).filter(
+  // Tek çocuk → içeriğe in (en fazla 2 seviye)
+  for (let depth = 0; depth < 2; depth++) {
+    if (pool.length !== 1) break;
+    const inner = Array.from(pool[0].children).filter(
       (n): n is HTMLElement => n instanceof HTMLElement
     );
-    if (inner.length >= 2) pool = inner;
+    if (inner.length < 2) break;
+    pool = inner;
   }
 
   return pool.filter((el) => {
