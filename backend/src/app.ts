@@ -28,6 +28,7 @@ import publicConfigRouter from './routes/public-config.js';
 import aiAssistantRouter from './routes/ai-assistant.js';
 import customerAuthRouter from './routes/customer-auth.js';
 import menuGamesRouter from './routes/menu-games.js';
+import customersRouter from './routes/customers.js';
 
 export function createApp() {
   const app = express();
@@ -61,6 +62,7 @@ export function createApp() {
   app.use('/api/admin/stats', statsRouter);
   app.use('/api/admin/showcase', showcaseRouter);
   app.use('/api/admin/users', usersRouter);
+  app.use('/api/admin/customers', customersRouter);
   app.use('/api/admin/settings', settingsRouter);
   app.use('/api/admin/languages', languagesRouter);
   app.use('/api/admin/translate', translateRouter);

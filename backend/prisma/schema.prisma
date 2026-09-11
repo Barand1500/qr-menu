@@ -47,6 +47,7 @@ model Restaurant {
   qrTableGroups  QrTableGroup[]
   campaigns      Campaign[]
   tableSessions  TableFloorSession[]
+  customerLedger MenuCustomerLedger[]
 
   @@map("restoranlar")
 }
@@ -375,9 +376,35 @@ model MenuCustomer {
   drinksAlcohol  Boolean?  @map("alkol_tuketir")
   /// { "restaurantId": puan } — restoran bazlı puanlar tek JSON satırında
   pointsJson     Json      @default("{}") @map("puanlar")
+  /// { "restaurantId": { percent, note?, expiresAt? } }
+  discountsJson  Json      @default("{}") @map("indirimler")
   kvkkAcceptedAt DateTime  @map("kvkk_onay")
   createdAt      DateTime  @default(now()) @map("olusturma")
   updatedAt      DateTime  @updatedAt @map("guncelleme")
 
+  ledgerEntries MenuCustomerLedger[]
+
   @@map("menu_musteriler")
+}
+
+/// Restoran bazlı müşteri hesap hareketi (borç / ödeme / puan)
+model MenuCustomerLedger {
+  id              Int      @id @default(autoincrement())
+  restaurantId    Int      @map("restoran_id")
+  customerId      Int      @map("musteri_id")
+  /// debt | payment | points
+  kind            String   @db.VarChar(20)
+  amount          Float    @default(0)
+  note            String?  @db.VarChar(300)
+  balanceAfter    Float?   @map("bakiye_sonra")
+  pointsAfter     Int?     @map("puan_sonra")
+  createdByUserId Int?     @map("olusturan_id")
+  createdAt       DateTime @default(now()) @map("olusturma")
+
+  customer   MenuCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  restaurant Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, customerId, createdAt])
+  @@index([restaurantId, kind])
+  @@map("menu_musteri_hesap")
 }

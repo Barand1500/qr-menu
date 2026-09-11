@@ -12,6 +12,7 @@ import ShowcasePage from '@/pages/admin/ShowcasePage';
 import BarcodePage from '@/pages/admin/BarcodePage';
 import StatsPage from '@/pages/admin/StatsPage';
 import UsersPage from '@/pages/admin/UsersPage';
+import CustomersPage from '@/pages/admin/CustomersPage';
 import ComplaintsPage from '@/pages/admin/ComplaintsPage';
 import SuggestionsPage from '@/pages/admin/SuggestionsPage';
 import SettingsPage from '@/pages/admin/SettingsPage';
@@ -68,6 +69,7 @@ function AdminRoutes({ slug }: { slug: string }) {
         <Route path="complaints" element={<ComplaintsPage />} />
         <Route path="suggestions" element={<SuggestionsPage />} />
         <Route path="users" element={<UsersPage />} />
+        <Route path="customers" element={<CustomersPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="extensions" element={<ExtensionsHubPage />} />
         <Route

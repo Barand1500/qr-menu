@@ -47,6 +47,7 @@ function buildNav() {
       { to: adminPath('complaints'), label: 'Şikayet Kutusu', tourId: 'nav-complaints' },
     ],
     managementNav: [
+      { to: adminPath('customers'), label: 'Müşteriler', tourId: 'nav-customers' },
       { to: adminPath('users'), label: 'Kullanıcılar', tourId: 'nav-users' },
       { to: adminPath('settings'), label: 'Ayarlar', tourId: 'nav-settings' },
     ],
