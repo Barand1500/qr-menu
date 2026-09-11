@@ -29,8 +29,6 @@ import {
   Package,
   Folders,
   Type,
-  MousePointerClick,
-  ArrowLeft,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PageHeader, Spinner } from '@/components/ui';
@@ -361,56 +359,50 @@ export default function CustomersPage() {
         return;
       }
 
-      const arrow = root.querySelector('.admin-customers__empty-arrow');
-      const chevrons = root.querySelectorAll('.admin-customers__empty-chevron');
-      const pulse = root.querySelector('.admin-customers__empty-pulse');
+      const ring = root.querySelector('.admin-customers__empty-ring');
+      const icon = root.querySelector('.admin-customers__empty-icon');
+      const ghosts = root.querySelectorAll('.admin-customers__empty-ghost');
       const copy = root.querySelector('.admin-customers__empty-copy');
+      const cue = root.querySelector('.admin-customers__empty-cue');
 
       gsap.fromTo(
-        root,
-        { opacity: 0, y: 12 },
-        { opacity: 1, y: 0, duration: 0.42, ease: 'power2.out' }
+        [icon, copy, cue].filter(Boolean),
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.45, stagger: 0.06, ease: 'power2.out' }
       );
 
-      if (copy) {
-        gsap.to(copy, {
-          y: -4,
-          duration: 1.6,
+      if (ring) {
+        gsap.to(ring, {
+          scale: 1.06,
+          opacity: 0.45,
+          duration: 2.2,
           ease: 'sine.inOut',
           yoyo: true,
           repeat: -1,
         });
       }
 
-      if (arrow) {
-        gsap.to(arrow, {
-          x: -10,
-          duration: 0.75,
-          ease: 'power1.inOut',
-          yoyo: true,
-          repeat: -1,
-        });
-      }
-
-      if (chevrons.length) {
-        gsap.to(chevrons, {
-          opacity: 0.35,
-          duration: 0.6,
+      if (ghosts.length) {
+        gsap.fromTo(
+          ghosts,
+          { x: 12, opacity: 0 },
+          {
+            x: 0,
+            opacity: 1,
+            duration: 0.5,
+            stagger: 0.08,
+            ease: 'power2.out',
+            delay: 0.15,
+          }
+        );
+        gsap.to(ghosts, {
+          x: -3,
+          duration: 1.8,
           stagger: 0.12,
           ease: 'sine.inOut',
           yoyo: true,
           repeat: -1,
-        });
-      }
-
-      if (pulse) {
-        gsap.to(pulse, {
-          scale: 1.08,
-          opacity: 0.35,
-          duration: 1.15,
-          ease: 'sine.inOut',
-          yoyo: true,
-          repeat: -1,
+          delay: 0.7,
         });
       }
     },
@@ -1179,29 +1171,31 @@ export default function CustomersPage() {
             {!selectedId ? (
               <div className="admin-customers__detail-empty" ref={emptyHintRef}>
                 <div className="admin-customers__empty-hint">
-                  <div className="admin-customers__empty-arrow" aria-hidden>
-                    <span className="admin-customers__empty-pulse" />
-                    <span className="admin-customers__empty-chevron">
-                      <ChevronLeft className="w-5 h-5" />
-                    </span>
-                    <span className="admin-customers__empty-chevron">
-                      <ChevronLeft className="w-5 h-5" />
-                    </span>
-                    <span className="admin-customers__empty-chevron is-lead">
-                      <ArrowLeft className="w-6 h-6" />
+                  <div className="admin-customers__empty-visual" aria-hidden>
+                    <span className="admin-customers__empty-ring" />
+                    <span className="admin-customers__empty-icon">
+                      <UserRound className="w-7 h-7" />
                     </span>
                   </div>
+
                   <div className="admin-customers__empty-copy">
-                    <span className="admin-customers__empty-badge">
-                      <MousePointerClick className="w-3.5 h-3.5" />
-                      Sol liste
-                    </span>
-                    <h3>Buradan seçim yapın</h3>
+                    <h3>Müşteri seçin</h3>
                     <p>
-                      Soldaki müşteriye dokunun; puan, indirim ve hesabı bu panelde
-                      yönetirsiniz.
+                      Soldaki listeden birini seçin. Puan, indirim ve hesap burada
+                      açılır.
                     </p>
                   </div>
+
+                  <div className="admin-customers__empty-ghosts" aria-hidden>
+                    <span className="admin-customers__empty-ghost" />
+                    <span className="admin-customers__empty-ghost" />
+                    <span className="admin-customers__empty-ghost" />
+                  </div>
+
+                  <p className="admin-customers__empty-cue">
+                    <span className="admin-customers__empty-cue-line" />
+                    Listeye bakın
+                  </p>
                 </div>
               </div>
             ) : detailLoading && !detail ? (
@@ -1257,26 +1251,28 @@ export default function CustomersPage() {
                     </div>
                   ) : null}
 
-                  <div className="admin-customers__tabs" role="tablist">
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={detailTab === 'manage'}
-                      className={detailTab === 'manage' ? 'is-active' : ''}
-                      onClick={() => setDetailTab('manage')}
-                    >
-                      İşlemler
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={detailTab === 'ledger'}
-                      className={detailTab === 'ledger' ? 'is-active' : ''}
-                      onClick={() => setDetailTab('ledger')}
-                    >
-                      Hareketler
-                      {ledgerTotal > 0 ? <em>{ledgerTotal}</em> : null}
-                    </button>
+                  <div className="admin-customers__tabs-wrap">
+                    <div className="admin-customers__tabs" role="tablist">
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={detailTab === 'manage'}
+                        className={detailTab === 'manage' ? 'is-active' : ''}
+                        onClick={() => setDetailTab('manage')}
+                      >
+                        İşlemler
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={detailTab === 'ledger'}
+                        className={detailTab === 'ledger' ? 'is-active' : ''}
+                        onClick={() => setDetailTab('ledger')}
+                      >
+                        Hareketler
+                        {ledgerTotal > 0 ? <em>{ledgerTotal}</em> : null}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="admin-customers__tab-body" key={detailTab}>
@@ -1701,26 +1697,67 @@ export default function CustomersPage() {
                           }
                         />
                       </label>
+                      <label>
+                        <span>Puan maliyeti</span>
+                        <input
+                          inputMode="numeric"
+                          placeholder="100"
+                          value={rewardDraft.pointsCost}
+                          onChange={(e) =>
+                            setRewardDraft((d) => ({
+                              ...d,
+                              pointsCost: sanitizeNumberInput(e.target.value),
+                            }))
+                          }
+                        />
+                      </label>
                     </>
                   ) : null}
 
                   {rewardDraft.kind === 'product' ? (
-                    <label className="admin-customers__reward-fields-wide">
-                      <span>Ürün</span>
-                      <SearchableSelect
-                        options={rewardProducts}
-                        value={rewardDraft.productId}
-                        placeholder="Ürün seçin…"
-                        onChange={(id) =>
-                          setRewardDraft((d) => ({ ...d, productId: id }))
-                        }
-                      />
-                    </label>
+                    <>
+                      <label>
+                        <span>Ürün</span>
+                        <SearchableSelect
+                          options={rewardProducts}
+                          value={rewardDraft.productId}
+                          placeholder="Ürün seçin…"
+                          onChange={(id) =>
+                            setRewardDraft((d) => ({ ...d, productId: id }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>Not</span>
+                        <input
+                          type="text"
+                          placeholder="Opsiyonel"
+                          value={rewardDraft.description}
+                          onChange={(e) =>
+                            setRewardDraft((d) => ({ ...d, description: e.target.value }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>Puan maliyeti</span>
+                        <input
+                          inputMode="numeric"
+                          placeholder="100"
+                          value={rewardDraft.pointsCost}
+                          onChange={(e) =>
+                            setRewardDraft((d) => ({
+                              ...d,
+                              pointsCost: sanitizeNumberInput(e.target.value),
+                            }))
+                          }
+                        />
+                      </label>
+                    </>
                   ) : null}
 
                   {rewardDraft.kind === 'group' ? (
                     <>
-                      <label className="admin-customers__reward-fields-wide">
+                      <label>
                         <span>Grup</span>
                         <SearchableSelect
                           options={rewardGroups}
@@ -1747,57 +1784,67 @@ export default function CustomersPage() {
                           }
                         />
                       </label>
+                      <label>
+                        <span>Puan maliyeti</span>
+                        <input
+                          inputMode="numeric"
+                          placeholder="500"
+                          value={rewardDraft.pointsCost}
+                          onChange={(e) =>
+                            setRewardDraft((d) => ({
+                              ...d,
+                              pointsCost: sanitizeNumberInput(e.target.value),
+                            }))
+                          }
+                        />
+                      </label>
                     </>
                   ) : null}
 
                   {rewardDraft.kind === 'wallet' ? (
-                    <label>
-                      <span>İndirim tutarı (₺)</span>
-                      <input
-                        inputMode="decimal"
-                        placeholder="1"
-                        value={rewardDraft.amountValue}
-                        onChange={(e) =>
-                          setRewardDraft((d) => ({
-                            ...d,
-                            amountValue: sanitizeNumberInput(e.target.value, {
-                              allowDecimal: true,
-                            }),
-                          }))
-                        }
-                      />
-                    </label>
-                  ) : null}
-
-                  <label>
-                    <span>
-                      {rewardDraft.kind === 'wallet' ? 'Kaç puan?' : 'Puan maliyeti'}
-                    </span>
-                    <input
-                      inputMode="numeric"
-                      placeholder="100"
-                      value={rewardDraft.pointsCost}
-                      onChange={(e) =>
-                        setRewardDraft((d) => ({
-                          ...d,
-                          pointsCost: sanitizeNumberInput(e.target.value),
-                        }))
-                      }
-                    />
-                  </label>
-
-                  {rewardDraft.kind !== 'custom' ? (
-                    <label className="admin-customers__reward-fields-wide">
-                      <span>Not (opsiyonel)</span>
-                      <input
-                        type="text"
-                        placeholder="İç not"
-                        value={rewardDraft.description}
-                        onChange={(e) =>
-                          setRewardDraft((d) => ({ ...d, description: e.target.value }))
-                        }
-                      />
-                    </label>
+                    <>
+                      <label>
+                        <span>İndirim tutarı (₺)</span>
+                        <input
+                          inputMode="decimal"
+                          placeholder="1"
+                          value={rewardDraft.amountValue}
+                          onChange={(e) =>
+                            setRewardDraft((d) => ({
+                              ...d,
+                              amountValue: sanitizeNumberInput(e.target.value, {
+                                allowDecimal: true,
+                              }),
+                            }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>Not</span>
+                        <input
+                          type="text"
+                          placeholder="Opsiyonel"
+                          value={rewardDraft.description}
+                          onChange={(e) =>
+                            setRewardDraft((d) => ({ ...d, description: e.target.value }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>Puan maliyeti</span>
+                        <input
+                          inputMode="numeric"
+                          placeholder="100"
+                          value={rewardDraft.pointsCost}
+                          onChange={(e) =>
+                            setRewardDraft((d) => ({
+                              ...d,
+                              pointsCost: sanitizeNumberInput(e.target.value),
+                            }))
+                          }
+                        />
+                      </label>
+                    </>
                   ) : null}
                 </div>
 
