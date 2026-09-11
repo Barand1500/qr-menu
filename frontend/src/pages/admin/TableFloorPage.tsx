@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  Check,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -600,6 +601,26 @@ export default function TableFloorPage() {
         body: JSON.stringify({ tableNumber: table.code, groupSlug: selectedGroupSlug || activeGroup.id }),
       });
       await load(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function approveTableCode(table: FloorTable) {
+    if (!activeGroup || busy) return;
+    setBusy(true);
+    try {
+      await api('/api/admin/table-floor/approve-code', {
+        method: 'POST',
+        body: JSON.stringify({
+          tableNumber: table.code,
+          groupSlug: selectedGroupSlug || activeGroup.id,
+          sessionId: table.sessionId,
+        }),
+      });
+      await load(true);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Kod onaylanamadı');
     } finally {
       setBusy(false);
     }
@@ -1702,6 +1723,27 @@ export default function TableFloorPage() {
                               </div>
                             );
                           })()
+                        ) : null}
+                        {selected.accessCode && selected.codeStatus === 'pending' ? (
+                          <button
+                            type="button"
+                            className="table-floor__access-code-approve"
+                            disabled={busy}
+                            title="Kodu onayla (müşteri girmiş gibi)"
+                            aria-label="Kodu onayla"
+                            onClick={() => void approveTableCode(selected)}
+                          >
+                            <Check className="w-4 h-4" strokeWidth={2.75} />
+                          </button>
+                        ) : null}
+                        {selected.accessCode && selected.codeStatus === 'verified' ? (
+                          <div
+                            className="table-floor__access-code-approve is-done"
+                            title="Kod onaylandı"
+                            aria-label="Kod onaylandı"
+                          >
+                            <Check className="w-4 h-4" strokeWidth={2.75} />
+                          </div>
                         ) : null}
                       </div>
                     </div>

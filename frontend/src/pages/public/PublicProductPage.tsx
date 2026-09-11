@@ -34,6 +34,7 @@ import SiparisCartSheet from '@/components/public/siparis/SiparisCartSheet';
 import AnimasyonCartSheet from '@/components/public/animasyon/AnimasyonCartSheet';
 import { SiparisCartProvider } from '@/hooks/useSiparisCart';
 import MaintenanceGate from '@/components/public/MaintenanceGate';
+import TableSessionCodeGate from '@/components/public/TableSessionCodeGate';
 import { useEffect, useState } from 'react';
 import type { ProductOptionGroup } from '@/lib/productOptions';
 
@@ -82,7 +83,9 @@ export default function PublicProductPage() {
   const { slug } = useMenuSlug();
   return (
     <MaintenanceGate slug={slug}>
-      <PublicProductPageInner />
+      <TableSessionCodeGate slug={slug}>
+        <PublicProductPageInner />
+      </TableSessionCodeGate>
     </MaintenanceGate>
   );
 }

@@ -334,6 +334,62 @@ router.post('/regenerate-code', async (req, res) => {
   }
 });
 
+/** Admin, müşteri yerine kodu onaylar (masa yanında tik) */
+router.post('/approve-code', async (req, res) => {
+  try {
+    const restaurantId = await getRestaurantId(req);
+    const { tableNumber, groupSlug, sessionId } = req.body as {
+      tableNumber?: string;
+      groupSlug?: string;
+      sessionId?: number | string | null;
+    };
+
+    const sid = sessionId != null && sessionId !== '' ? Number(sessionId) : NaN;
+    let session =
+      Number.isFinite(sid) && sid > 0
+        ? await prisma.tableFloorSession.findFirst({
+            where: {
+              id: sid,
+              restaurantId: restaurantId!,
+              status: { in: [...ACTIVE_STATUSES] },
+            },
+          })
+        : null;
+
+    if (!session) {
+      const masa = String(tableNumber || '').trim();
+      if (!masa) return res.status(400).json({ message: 'Masa gerekli' });
+      session = await findActiveSession(
+        restaurantId!,
+        masa,
+        groupSlug ? String(groupSlug).trim() : null
+      );
+    }
+
+    if (!session) {
+      return res.status(404).json({ message: 'Aktif masa oturumu yok' });
+    }
+
+    if (!session.accessCode) {
+      return res.status(400).json({ message: 'Bu masada erişim kodu yok' });
+    }
+
+    if (session.codeExpiresAt && session.codeExpiresAt.getTime() <= Date.now()) {
+      return res.status(400).json({ message: 'Kod süresi dolmuş; önce yeni kod üretin' });
+    }
+
+    const updated = await prisma.tableFloorSession.update({
+      where: { id: session.id },
+      data: { codeVerifiedAt: new Date() },
+    });
+
+    res.json({ ok: true, session: serializeSession(updated) });
+  } catch (err) {
+    console.error('approve-code', err);
+    res.status(500).json({ message: 'Kod onaylanamadı' });
+  }
+});
+
 router.post('/close', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   const { tableNumber, groupSlug, sessionId, paid } = req.body as {
