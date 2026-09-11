@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, KeyRound, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check, MapPinned, Expand, Wand2 } from 'lucide-react';
+import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, KeyRound, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check, MapPinned, Expand } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
@@ -34,12 +34,6 @@ import {
   SUPPORT_PHONE_TEL,
   supportWhatsAppUrl,
 } from '@/lib/supportContact';
-import {
-  ADMIN_PAGE_ANIM_OPTIONS,
-  readAdminPageAnimLevel,
-  writeAdminPageAnimLevel,
-  type AdminPageAnimLevel,
-} from '@/lib/adminPageAnimation';
 
 interface Language {
   id: number;
@@ -146,9 +140,6 @@ export default function SettingsPage() {
   const [languagesHighlight, setLanguagesHighlight] = useState(false);
   const [socialLinks, setSocialLinks] = useState<SocialLinkConfig[]>(mergeSocialConfigs([]));
   const [welcomeMusicUrl, setWelcomeMusicUrl] = useState('');
-  const [pageAnimLevel, setPageAnimLevel] = useState<AdminPageAnimLevel>(() =>
-    readAdminPageAnimLevel()
-  );
   const [tableServiceEnabled, setTableServiceEnabled] = useState(true);
   const [tableSessionCodeEnabled, setTableSessionCodeEnabled] = useState(false);
   const [tableSessionCodeTtl, setTableSessionCodeTtl] = useState(120);
@@ -1335,37 +1326,6 @@ export default function SettingsPage() {
                 </span>
               </button>
             </div>
-
-            <div className="settings-anim-level">
-              <div className="settings-anim-level__head">
-                <Wand2 className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
-                <div>
-                  <p className="settings-anim-level__title">Animasyon oranı</p>
-                  <p className="settings-anim-level__hint">
-                    Admin sayfalarına geçerken kutuların yukarı kayma şiddeti
-                  </p>
-                </div>
-              </div>
-              <div className="settings-anim-level__opts" role="radiogroup" aria-label="Animasyon oranı">
-                {ADMIN_PAGE_ANIM_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={pageAnimLevel === opt.id}
-                    className={pageAnimLevel === opt.id ? 'is-active' : ''}
-                    onClick={() => {
-                      setPageAnimLevel(opt.id);
-                      writeAdminPageAnimLevel(opt.id);
-                    }}
-                  >
-                    <strong>{opt.label}</strong>
-                    <span>{opt.hint}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <p className="settings-menu-features__hint">
               Menüdeki yüzen butonları buradan açıp kapatabilirsiniz. Menü Asistanı için önce
               Eklentiler’den satın almanız gerekir.

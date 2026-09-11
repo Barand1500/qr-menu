@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-
 import { AuthProvider } from '@/contexts/AuthContext';
 import { CustomerAuthProvider } from '@/contexts/CustomerAuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import AdminPageTransition from '@/components/admin/AdminPageTransition';
 import LoginPage from '@/pages/LoginPage';
 import AdminLayout from '@/layouts/AdminLayout';
 import DashboardPage from '@/pages/admin/DashboardPage';
@@ -52,8 +53,22 @@ function AdminRoutes({ slug }: { slug: string }) {
   const base = `/${slug}`;
   return (
     <Route element={<ProtectedRoute />}>
-      <Route path={`${base}/masa-gorunumu`} element={<TableFloorPage />} />
-      <Route path={`${base}/urun-secenekleri`} element={<ProductVariantsPage />} />
+      <Route
+        path={`${base}/masa-gorunumu`}
+        element={
+          <AdminPageTransition>
+            <TableFloorPage />
+          </AdminPageTransition>
+        }
+      />
+      <Route
+        path={`${base}/urun-secenekleri`}
+        element={
+          <AdminPageTransition>
+            <ProductVariantsPage />
+          </AdminPageTransition>
+        }
+      />
       <Route path={base} element={<AdminLayout />}>
         <Route index element={<DashboardPage />} />
         <Route path="groups" element={<GroupsPage />} />
