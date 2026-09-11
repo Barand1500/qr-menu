@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Input, Textarea, type InputProps, type TextareaProps } from '@/components/ui';
 import { autoTranslate } from '@/lib/translate';
 
@@ -16,6 +16,8 @@ interface TranslatableTextareaProps extends Omit<TextareaProps, 'onChange'> {
   sourceText: string;
   sourceLang?: string;
   targetLang: string;
+  /** Alanın sağ üstünde (Çeviri ile aynı hizada) ek kontrol */
+  endAction?: ReactNode;
 }
 
 function AutoButton({
@@ -115,6 +117,7 @@ export function TranslatableTextarea({
   sourceLang = 'tr',
   targetLang,
   className = '',
+  endAction,
   ...props
 }: TranslatableTextareaProps) {
   const { loading, showAuto, handleAuto } = useAutoTranslate(
@@ -124,7 +127,7 @@ export function TranslatableTextarea({
     onChange
   );
 
-  if (!showAuto) {
+  if (!showAuto && !endAction) {
     return (
       <Textarea
         {...props}
@@ -135,15 +138,38 @@ export function TranslatableTextarea({
     );
   }
 
+  const wrapClass = [
+    'float-field-action-wrap',
+    'float-field-action-wrap--textarea',
+    endAction ? 'has-end-action' : '',
+    showAuto ? 'has-translate' : '',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <div className={`float-field-action-wrap float-field-action-wrap--textarea ${className}`}>
+    <div className={wrapClass}>
       <Textarea
         {...props}
         className="float-field-action-wrap__field"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
-      <AutoButton loading={loading} onClick={handleAuto} className="float-field-action-btn--top" />
+      {endAction ? (
+        <div className="float-field-action-cluster">
+          {endAction}
+          {showAuto ? (
+            <AutoButton
+              loading={loading}
+              onClick={handleAuto}
+              className="float-field-action-btn--inline"
+            />
+          ) : null}
+        </div>
+      ) : (
+        <AutoButton loading={loading} onClick={handleAuto} className="float-field-action-btn--top" />
+      )}
     </div>
   );
 }

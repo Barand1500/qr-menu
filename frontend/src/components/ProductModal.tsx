@@ -552,42 +552,46 @@ export default function ProductModal({
                     value={currentTranslation.description}
                     onChange={(val) => updateTranslation('description', val)}
                   />
-                  <div>
-                    <div className="ingredient-mode-toggle" role="group" aria-label="İçindekiler kaynağı">
-                      <button
-                        type="button"
-                        className={ingredientsMode === 'pool' ? 'is-active' : ''}
-                        onClick={() => {
-                          setIngredientsMode('pool');
-                          setPoolPickerOpen(true);
-                        }}
+                  <TranslatableTextarea
+                    key={`ing-${currentLang.code}`}
+                    label="İçindekiler"
+                    rows={2}
+                    sourceText={trTranslation.ingredients}
+                    targetLang={currentLang.code}
+                    value={currentTranslation.ingredients}
+                    onChange={(val) => updateTranslation('ingredients', val)}
+                    onFocus={() => {
+                      if (ingredientsMode === 'pool') setPoolPickerOpen(true);
+                    }}
+                    endAction={
+                      <div
+                        className="ingredient-mode-toggle ingredient-mode-toggle--field"
+                        role="group"
+                        aria-label="İçindekiler kaynağı"
                       >
-                        Havuz
-                      </button>
-                      <button
-                        type="button"
-                        className={ingredientsMode === 'manual' ? 'is-active' : ''}
-                        onClick={() => {
-                          setIngredientsMode('manual');
-                          setPoolPickerOpen(false);
-                        }}
-                      >
-                        Elle
-                      </button>
-                    </div>
-                    <TranslatableTextarea
-                      key={`ing-${currentLang.code}`}
-                      label="İçindekiler"
-                      rows={2}
-                      sourceText={trTranslation.ingredients}
-                      targetLang={currentLang.code}
-                      value={currentTranslation.ingredients}
-                      onChange={(val) => updateTranslation('ingredients', val)}
-                      onFocus={() => {
-                        if (ingredientsMode === 'pool') setPoolPickerOpen(true);
-                      }}
-                    />
-                  </div>
+                        <button
+                          type="button"
+                          className={ingredientsMode === 'pool' ? 'is-active' : ''}
+                          onClick={() => {
+                            setIngredientsMode('pool');
+                            setPoolPickerOpen(true);
+                          }}
+                        >
+                          Havuz
+                        </button>
+                        <button
+                          type="button"
+                          className={ingredientsMode === 'manual' ? 'is-active' : ''}
+                          onClick={() => {
+                            setIngredientsMode('manual');
+                            setPoolPickerOpen(false);
+                          }}
+                        >
+                          Elle
+                        </button>
+                      </div>
+                    }
+                  />
                 </div>
               )}
             </div>

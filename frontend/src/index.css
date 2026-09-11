@@ -1648,6 +1648,31 @@ body {
   padding-right: 4.25rem !important;
 }
 
+.float-field-action-cluster {
+  position: absolute;
+  right: 10px;
+  top: 1.2rem;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.float-field-action-btn--inline {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+.float-field-action-wrap--textarea.has-end-action .float-field__input {
+  padding-right: 7.75rem !important;
+}
+
+.float-field-action-wrap--textarea.has-end-action.has-translate .float-field__input {
+  padding-right: 12rem !important;
+}
+
 /* ─── Resimsiz ürün / grup placeholder ─── */
 .menu-media-ph {
   position: relative;
