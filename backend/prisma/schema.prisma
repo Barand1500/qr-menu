@@ -398,6 +398,7 @@ model MenuCustomerLedger {
   note            String?  @db.VarChar(300)
   balanceAfter    Float?   @map("bakiye_sonra")
   pointsAfter     Int?     @map("puan_sonra")
+  metaJson        Json?    @map("meta")
   createdByUserId Int?     @map("olusturan_id")
   createdAt       DateTime @default(now()) @map("olusturma")
 

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId } from '../lib/auth.js';
@@ -8,8 +9,12 @@ import {
   getDebtBalances,
   getRestaurantDiscount,
   getRestaurantPoints,
+  loadPointsRewards,
+  normalizePointsRewards,
   parseDiscountsJson,
+  savePointsRewards,
   serializeDiscountsJson,
+  type CustomerDiscount,
 } from '../lib/customer-admin.js';
 
 const router = Router();
@@ -50,6 +55,7 @@ function serializeLedger(entry: {
   note: string | null;
   balanceAfter: number | null;
   pointsAfter: number | null;
+  metaJson?: unknown;
   createdAt: Date;
 }) {
   return {
@@ -59,9 +65,27 @@ function serializeLedger(entry: {
     note: entry.note,
     balanceAfter: entry.balanceAfter,
     pointsAfter: entry.pointsAfter,
+    meta: entry.metaJson ?? null,
     createdAt: entry.createdAt.toISOString(),
   };
 }
+
+router.get('/points-rewards', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  if (restaurantId == null) return res.status(401).json({ message: 'Yetkisiz' });
+  const rules = await loadPointsRewards(restaurantId);
+  res.json({ rules });
+});
+
+router.put('/points-rewards', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  if (restaurantId == null) return res.status(401).json({ message: 'Yetkisiz' });
+  const rules = await savePointsRewards(
+    restaurantId,
+    normalizePointsRewards(req.body?.rules ?? req.body)
+  );
+  res.json({ rules });
+});
 
 router.get('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
@@ -171,6 +195,84 @@ router.get('/:id', async (req, res) => {
   });
 });
 
+router.delete('/:id', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  if (restaurantId == null || !req.user?.userId) {
+    return res.status(401).json({ message: 'Yetkisiz' });
+  }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ message: 'Geçersiz müşteri' });
+
+  const password = String(req.body?.password || '');
+  if (!password) return res.status(400).json({ message: 'Şifre gerekli' });
+
+  const admin = await prisma.user.findUnique({ where: { id: req.user.userId } });
+  if (!admin || admin.restaurantId !== restaurantId) {
+    return res.status(401).json({ message: 'Yetkisiz' });
+  }
+  const ok = await bcrypt.compare(password, admin.passwordHash);
+  if (!ok) return res.status(403).json({ message: 'Şifre hatalı' });
+
+  const row = await prisma.menuCustomer.findUnique({ where: { id }, select: { id: true } });
+  if (!row) return res.status(404).json({ message: 'Müşteri bulunamadı' });
+
+  await prisma.menuCustomer.delete({ where: { id } });
+  res.json({ ok: true, permanent: true });
+});
+
+router.post('/:id/undo', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  if (restaurantId == null) return res.status(401).json({ message: 'Yetkisiz' });
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ message: 'Geçersiz müşteri' });
+
+  const last = await prisma.menuCustomerLedger.findFirst({
+    where: { restaurantId, customerId: id },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (!last) return res.status(400).json({ message: 'Geri alınacak işlem yok' });
+
+  const customer = await prisma.menuCustomer.findUnique({ where: { id } });
+  if (!customer) return res.status(404).json({ message: 'Müşteri bulunamadı' });
+
+  if (last.kind === 'points') {
+    const map = parsePointsJson(customer.pointsJson);
+    const key = String(restaurantId);
+    const current = map[key] ?? 0;
+    map[key] = Math.max(0, Math.round(current - Number(last.amount)));
+    await prisma.menuCustomer.update({ where: { id }, data: { pointsJson: map } });
+  } else if (last.kind === 'discount') {
+    const map = parseDiscountsJson(customer.discountsJson);
+    const key = String(restaurantId);
+    const meta =
+      last.metaJson && typeof last.metaJson === 'object' && !Array.isArray(last.metaJson)
+        ? (last.metaJson as { previous?: CustomerDiscount | null })
+        : {};
+    if (meta.previous && meta.previous.value > 0) map[key] = meta.previous;
+    else delete map[key];
+    await prisma.menuCustomer.update({
+      where: { id },
+      data: { discountsJson: serializeDiscountsJson(map) as object },
+    });
+  }
+
+  await prisma.menuCustomerLedger.delete({ where: { id: last.id } });
+
+  const updated = await prisma.menuCustomer.findUnique({ where: { id } });
+  const debtBalance = await getCustomerDebtBalance(restaurantId, id);
+  const ledger = await prisma.menuCustomerLedger.findMany({
+    where: { restaurantId, customerId: id },
+    orderBy: { createdAt: 'desc' },
+    take: 40,
+  });
+
+  res.json({
+    ok: true,
+    customer: serializeCustomerRow(updated!, restaurantId, debtBalance),
+    ledger: ledger.map(serializeLedger),
+  });
+});
+
 router.patch('/:id/points', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   if (restaurantId == null) return res.status(401).json({ message: 'Yetkisiz' });
@@ -234,9 +336,13 @@ router.patch('/:id/discount', async (req, res) => {
   const row = await prisma.menuCustomer.findUnique({ where: { id } });
   if (!row) return res.status(404).json({ message: 'Müşteri bulunamadı' });
 
-  const percent = Number(req.body?.percent ?? 0);
-  if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
-    return res.status(400).json({ message: 'İndirim 0–100 arasında olmalı' });
+  const type: 'percent' | 'amount' = req.body?.type === 'amount' ? 'amount' : 'percent';
+  const value = Number(req.body?.value ?? req.body?.percent ?? req.body?.amount ?? 0);
+  if (!Number.isFinite(value) || value < 0) {
+    return res.status(400).json({ message: 'İndirim değeri geçersiz' });
+  }
+  if (type === 'percent' && value > 100) {
+    return res.status(400).json({ message: 'Yüzde indirim 0–100 olmalı' });
   }
   const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 200) : '';
   const expiresAt =
@@ -246,12 +352,31 @@ router.patch('/:id/discount', async (req, res) => {
 
   const map = parseDiscountsJson(row.discountsJson);
   const key = String(restaurantId);
-  if (percent <= 0) delete map[key];
-  else map[key] = { percent, note, expiresAt };
+  const previous = map[key] || null;
+  if (value <= 0) delete map[key];
+  else map[key] = { type, value, note, expiresAt };
 
   const updated = await prisma.menuCustomer.update({
     where: { id },
     data: { discountsJson: serializeDiscountsJson(map) as object },
+  });
+
+  await prisma.menuCustomerLedger.create({
+    data: {
+      restaurantId,
+      customerId: id,
+      kind: 'discount',
+      amount: value,
+      note:
+        note ||
+        (value <= 0
+          ? 'İndirim kaldırıldı'
+          : type === 'amount'
+            ? `${value}₺ indirim`
+            : `%${value} indirim`),
+      metaJson: { previous, next: value <= 0 ? null : { type, value, note, expiresAt } },
+      createdByUserId: req.user?.userId ?? null,
+    },
   });
 
   const debtBalance = await getCustomerDebtBalance(restaurantId, id);

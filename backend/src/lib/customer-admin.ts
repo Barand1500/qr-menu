@@ -2,12 +2,24 @@ import { prisma } from './prisma.js';
 import { parsePointsJson } from './customer-auth.js';
 
 export type CustomerDiscount = {
-  percent: number;
+  type: 'percent' | 'amount';
+  value: number;
   note: string;
   expiresAt: string | null;
 };
 
 export type CustomerDiscountsMap = Record<string, CustomerDiscount>;
+
+export type PointsRewardRule = {
+  id: string;
+  title: string;
+  pointsCost: number;
+  description: string;
+  active: boolean;
+  sortOrder: number;
+};
+
+export const POINTS_REWARDS_KEY = 'customer_points_rewards';
 
 export function parseDiscountsJson(raw: unknown): CustomerDiscountsMap {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
@@ -15,10 +27,22 @@ export function parseDiscountsJson(raw: unknown): CustomerDiscountsMap {
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
     if (!v || typeof v !== 'object' || Array.isArray(v)) continue;
     const row = v as Record<string, unknown>;
-    const percent = Number(row.percent);
-    if (!Number.isFinite(percent) || percent <= 0) continue;
+    const type: 'percent' | 'amount' =
+      row.type === 'amount' ? 'amount' : row.percent != null && row.value == null ? 'percent' : row.type === 'percent' ? 'percent' : row.amount != null ? 'amount' : 'percent';
+    const valueRaw =
+      row.value != null
+        ? Number(row.value)
+        : type === 'amount'
+          ? Number(row.amount)
+          : Number(row.percent);
+    if (!Number.isFinite(valueRaw) || valueRaw <= 0) continue;
+    const value =
+      type === 'percent'
+        ? Math.min(100, Math.round(valueRaw * 100) / 100)
+        : Math.round(valueRaw * 100) / 100;
     out[String(k)] = {
-      percent: Math.min(100, Math.round(percent * 100) / 100),
+      type,
+      value,
       note: typeof row.note === 'string' ? row.note.trim().slice(0, 200) : '',
       expiresAt:
         typeof row.expiresAt === 'string' && row.expiresAt.trim()
@@ -32,9 +56,13 @@ export function parseDiscountsJson(raw: unknown): CustomerDiscountsMap {
 export function serializeDiscountsJson(map: CustomerDiscountsMap): object {
   const out: Record<string, CustomerDiscount> = {};
   for (const [k, v] of Object.entries(map)) {
-    if (!v || v.percent <= 0) continue;
+    if (!v || v.value <= 0) continue;
     out[k] = {
-      percent: Math.min(100, Math.max(0, v.percent)),
+      type: v.type === 'amount' ? 'amount' : 'percent',
+      value:
+        v.type === 'amount'
+          ? Math.round(Math.max(0, v.value) * 100) / 100
+          : Math.min(100, Math.max(0, v.value)),
       note: String(v.note || '').slice(0, 200),
       expiresAt: v.expiresAt || null,
     };
@@ -48,7 +76,7 @@ export function getRestaurantDiscount(
 ): CustomerDiscount | null {
   const map = parseDiscountsJson(raw);
   const d = map[String(restaurantId)];
-  if (!d || d.percent <= 0) return null;
+  if (!d || d.value <= 0) return null;
   if (d.expiresAt) {
     const t = Date.parse(d.expiresAt);
     if (Number.isFinite(t) && t < Date.now()) return null;
@@ -93,4 +121,60 @@ export async function getDebtBalances(
 export async function getCustomerDebtBalance(restaurantId: number, customerId: number) {
   const map = await getDebtBalances(restaurantId, [customerId]);
   return map.get(customerId) || 0;
+}
+
+export function normalizePointsRewards(raw: unknown): PointsRewardRule[] {
+  const list = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === 'object' && Array.isArray((raw as { rules?: unknown }).rules)
+      ? (raw as { rules: unknown[] }).rules
+      : [];
+  const out: PointsRewardRule[] = [];
+  list.forEach((item, i) => {
+    if (!item || typeof item !== 'object') return;
+    const row = item as Record<string, unknown>;
+    const title = typeof row.title === 'string' ? row.title.trim().slice(0, 80) : '';
+    const pointsCost = Math.round(Number(row.pointsCost));
+    if (!title || !Number.isFinite(pointsCost) || pointsCost <= 0) return;
+    out.push({
+      id:
+        typeof row.id === 'string' && row.id.trim()
+          ? row.id.trim()
+          : `pr-${Date.now().toString(36)}-${i}`,
+      title,
+      pointsCost,
+      description:
+        typeof row.description === 'string' ? row.description.trim().slice(0, 200) : '',
+      active: row.active !== false,
+      sortOrder: Number.isFinite(Number(row.sortOrder)) ? Number(row.sortOrder) : i,
+    });
+  });
+  out.sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'tr'));
+  out.forEach((r, i) => {
+    r.sortOrder = i;
+  });
+  return out;
+}
+
+export async function loadPointsRewards(restaurantId: number): Promise<PointsRewardRule[]> {
+  const row = await prisma.setting.findFirst({
+    where: { restaurantId, key: POINTS_REWARDS_KEY },
+  });
+  if (!row?.value) return [];
+  try {
+    return normalizePointsRewards(JSON.parse(row.value));
+  } catch {
+    return [];
+  }
+}
+
+export async function savePointsRewards(restaurantId: number, rules: PointsRewardRule[]) {
+  const normalized = normalizePointsRewards(rules);
+  const value = JSON.stringify({ rules: normalized });
+  await prisma.setting.upsert({
+    where: { restaurantId_key: { restaurantId, key: POINTS_REWARDS_KEY } },
+    update: { value },
+    create: { restaurantId, key: POINTS_REWARDS_KEY, value },
+  });
+  return normalized;
 }
