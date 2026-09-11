@@ -378,14 +378,44 @@ export default function TableFloorPage() {
     void load();
   }, [load]);
 
+  function clearTableFocusParams() {
+    setSearchParams(
+      (prev) => {
+        if (!prev.get('masa') && !prev.get('grup')) return prev;
+        const next = new URLSearchParams(prev);
+        next.delete('masa');
+        next.delete('grup');
+        return next;
+      },
+      { replace: true }
+    );
+  }
+
+  function closeTableDrawer() {
+    setSelectedCode(null);
+    setSelectedGroupSlug('');
+    clearTableFocusParams();
+  }
+
+  /** Bildirim / deep-link: paneli bir kez aç, URL'den masa-grup'u sil (poll her seferinde yeniden açmasın) */
   useEffect(() => {
     const masa = searchParams.get('masa');
     const grup = searchParams.get('grup');
     if (!masa || !data) return;
     if (grup && data.groups.some((g) => g.id === grup)) setGroupId(grup);
     setSelectedCode(masa);
-    setSelectedGroupSlug(grup || groupId || data.groups[0]?.id || '');
-  }, [data, searchParams, groupId]);
+    setSelectedGroupSlug(grup || data.groups[0]?.id || '');
+    setSearchParams(
+      (prev) => {
+        if (!prev.get('masa') && !prev.get('grup')) return prev;
+        const next = new URLSearchParams(prev);
+        next.delete('masa');
+        next.delete('grup');
+        return next;
+      },
+      { replace: true }
+    );
+  }, [data, searchParams, setSearchParams]);
 
   useEffect(() => {
     const poll = window.setInterval(() => void load(true), 4000);
@@ -1170,10 +1200,7 @@ export default function TableFloorPage() {
               }`}
               onClick={() => {
                 setStatusFilter((prev) => (prev === 'occupied' ? 'all' : 'occupied'));
-                if (!pickMode) {
-                  setSelectedCode(null);
-                  setSelectedGroupSlug('');
-                }
+                if (!pickMode) closeTableDrawer();
               }}
             >
               Dolu masalar
@@ -1192,10 +1219,7 @@ export default function TableFloorPage() {
                   onClick={() => {
                     setStatusFilter('all');
                     setGroupId(g.id);
-                    if (!pickMode) {
-                      setSelectedCode(null);
-                      setSelectedGroupSlug('');
-                    }
+                    if (!pickMode) closeTableDrawer();
                   }}
                 >
                   {g.name}
@@ -1354,10 +1378,7 @@ export default function TableFloorPage() {
                 type="button"
                 className="table-floor__icon-btn"
                 aria-label="Kapat"
-                onClick={() => {
-                  setSelectedCode(null);
-                  setSelectedGroupSlug('');
-                }}
+                onClick={closeTableDrawer}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1801,10 +1822,7 @@ export default function TableFloorPage() {
           type="button"
           className="table-floor__scrim"
           aria-label="Paneli kapat"
-          onClick={() => {
-            setSelectedCode(null);
-            setSelectedGroupSlug('');
-          }}
+          onClick={closeTableDrawer}
         />
       ) : null}
 

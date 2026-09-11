@@ -1,7 +1,26 @@
 /** Karşılama ekranı canlı arka plan katmanları */
 
+import { useEffect, useState } from 'react';
+
 interface WelcomeSceneBackgroundProps {
   theme?: string;
+}
+
+function useIsCoarseMobile() {
+  const [mobile, setMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 900px)').matches;
+  });
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const onChange = () => setMobile(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  return mobile;
 }
 
 export default function WelcomeSceneBackground({
@@ -10,15 +29,18 @@ export default function WelcomeSceneBackground({
   const isCinema = theme === 'cinema';
   const isNeon = theme === 'neon';
   const isKitty = theme === 'kitty';
+  const isMobile = useIsCoarseMobile();
+  /** Neon Gece telefonda GPU/yazı flicker yapıyor — hareketsiz sade katman */
+  const neonStatic = isNeon && isMobile;
 
-  const bokehCount = isKitty ? 0 : isCinema ? 6 : isNeon ? 12 : 10;
-  const sparkleCount = isKitty ? 0 : isCinema ? 14 : isNeon ? 36 : 28;
+  const bokehCount = neonStatic || isKitty ? 0 : isCinema ? 6 : isNeon ? 12 : 10;
+  const sparkleCount = neonStatic || isKitty ? 0 : isCinema ? 14 : isNeon ? 36 : 28;
 
   return (
     <>
       <div className="welcome-scene__bg" aria-hidden>
         <div className="welcome-scene__gradient" />
-        {!isKitty ? (
+        {!isKitty && !neonStatic ? (
           <>
             <div className="welcome-scene__aurora welcome-scene__aurora--1" />
             <div className="welcome-scene__aurora welcome-scene__aurora--2" />
@@ -56,7 +78,7 @@ export default function WelcomeSceneBackground({
           </>
         ) : null}
 
-        {isCinema && (
+        {isCinema && !neonStatic && (
           <>
             <div className="welcome-scene__cinema-spotlight" />
             <div className="welcome-scene__cinema-vignette" />
@@ -66,7 +88,7 @@ export default function WelcomeSceneBackground({
           </>
         )}
 
-        {isNeon && (
+        {isNeon && !neonStatic && (
           <>
             <div className="welcome-scene__neon-grid" />
             <div className="welcome-scene__neon-beam welcome-scene__neon-beam--1" />
