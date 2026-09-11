@@ -24,6 +24,13 @@ import {
   Gift,
   Pencil,
   Power,
+  TriangleAlert,
+  Lock,
+  Package,
+  Folders,
+  Type,
+  MousePointerClick,
+  ArrowLeft,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PageHeader, Spinner } from '@/components/ui';
@@ -58,17 +65,93 @@ type LedgerEntry = {
   createdAt: string;
 };
 
+type PointsRewardKind = 'custom' | 'product' | 'group' | 'wallet';
+
 type PointsRewardRule = {
   id: string;
+  kind: PointsRewardKind;
   title: string;
   pointsCost: number;
   description: string;
   active: boolean;
   sortOrder: number;
+  productId: number | null;
+  productName: string;
+  groupId: number | null;
+  groupName: string;
+  discountPercent: number | null;
+  amountValue: number | null;
+};
+
+type RewardOption = { id: number; name: string };
+
+type RewardDraft = {
+  kind: PointsRewardKind;
+  title: string;
+  pointsCost: string;
+  description: string;
+  productId: string;
+  groupId: string;
+  discountPercent: string;
+  amountValue: string;
 };
 
 type DiscountType = 'percent' | 'amount';
 type FloatTarget = 'points' | 'discount' | 'debt';
+
+const REWARD_KINDS: {
+  id: PointsRewardKind;
+  label: string;
+  hint: string;
+  icon: typeof Type;
+}[] = [
+  { id: 'custom', label: 'Metin', hint: 'Serbest açıklama', icon: Type },
+  { id: 'product', label: 'Ürün', hint: 'Seçili ürün bedava', icon: Package },
+  { id: 'group', label: 'Grup', hint: 'Gruba % indirim', icon: Folders },
+  { id: 'wallet', label: 'Tutar', hint: 'Puan = ₺ indirim', icon: Wallet },
+];
+
+function emptyRewardDraft(kind: PointsRewardKind = 'custom'): RewardDraft {
+  return {
+    kind,
+    title: '',
+    pointsCost: '',
+    description: '',
+    productId: '',
+    groupId: '',
+    discountPercent: '10',
+    amountValue: '1',
+  };
+}
+
+function rewardKindMeta(kind: PointsRewardKind) {
+  return REWARD_KINDS.find((k) => k.id === kind) || REWARD_KINDS[0];
+}
+
+function rewardCardCopy(rule: PointsRewardRule) {
+  if (rule.kind === 'product') {
+    return {
+      headline: rule.productName || rule.title,
+      detail: 'Bedava ürün',
+    };
+  }
+  if (rule.kind === 'group') {
+    return {
+      headline: rule.groupName || rule.title,
+      detail: `%${rule.discountPercent ?? 0} grup indirimi`,
+    };
+  }
+  if (rule.kind === 'wallet') {
+    return {
+      headline: `${rule.pointsCost} puan = ${rule.amountValue ?? 0}₺`,
+      detail: 'Tutar indirimi',
+    };
+  }
+  return {
+    headline: rule.title,
+    detail: rule.description || 'Serbest kural',
+  };
+}
 
 function sanitizeNumberInput(raw: string, opts?: { allowDecimal?: boolean }): string {
   const allowDecimal = opts?.allowDecimal === true;
@@ -181,6 +264,9 @@ export default function CustomersPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<CustomerRow | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerTotal, setLedgerTotal] = useState(0);
+  const ledgerPageSize = 8;
   const [detailLoading, setDetailLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -200,18 +286,19 @@ export default function CustomersPage() {
   const [deleteBusy, setDeleteBusy] = useState(false);
 
   const [rewardRules, setRewardRules] = useState<PointsRewardRule[]>([]);
+  const [rewardProducts, setRewardProducts] = useState<RewardOption[]>([]);
+  const [rewardGroups, setRewardGroups] = useState<RewardOption[]>([]);
   const [rewardsLoading, setRewardsLoading] = useState(true);
   const [rewardsBusy, setRewardsBusy] = useState(false);
-  const [newRewardTitle, setNewRewardTitle] = useState('');
-  const [newRewardPoints, setNewRewardPoints] = useState('');
-  const [newRewardDesc, setNewRewardDesc] = useState('');
+  const [composerOpen, setComposerOpen] = useState(false);
   const [editingRewardId, setEditingRewardId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editPoints, setEditPoints] = useState('');
-  const [editDesc, setEditDesc] = useState('');
+  const [rewardDraft, setRewardDraft] = useState<RewardDraft>(() => emptyRewardDraft());
 
   const detailShellRef = useRef<HTMLDivElement>(null);
   const detailBodyRef = useRef<HTMLDivElement>(null);
+  const emptyHintRef = useRef<HTMLDivElement>(null);
+  const deleteBackdropRef = useRef<HTMLDivElement>(null);
+  const deleteCardRef = useRef<HTMLDivElement>(null);
   const pointsStatRef = useRef<HTMLDivElement>(null);
   const discountStatRef = useRef<HTMLDivElement>(null);
   const debtStatRef = useRef<HTMLDivElement>(null);
@@ -225,6 +312,71 @@ export default function CustomersPage() {
   useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
+
+  useGSAP(
+    () => {
+      const root = emptyHintRef.current;
+      if (!root || selectedId != null) return;
+      if (prefersReducedMotion()) {
+        gsap.set(root, { clearProps: 'all' });
+        return;
+      }
+
+      const arrow = root.querySelector('.admin-customers__empty-arrow');
+      const chevrons = root.querySelectorAll('.admin-customers__empty-chevron');
+      const pulse = root.querySelector('.admin-customers__empty-pulse');
+      const copy = root.querySelector('.admin-customers__empty-copy');
+
+      gsap.fromTo(
+        root,
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.42, ease: 'power2.out' }
+      );
+
+      if (copy) {
+        gsap.to(copy, {
+          y: -4,
+          duration: 1.6,
+          ease: 'sine.inOut',
+          yoyo: true,
+          repeat: -1,
+        });
+      }
+
+      if (arrow) {
+        gsap.to(arrow, {
+          x: -10,
+          duration: 0.75,
+          ease: 'power1.inOut',
+          yoyo: true,
+          repeat: -1,
+        });
+      }
+
+      if (chevrons.length) {
+        gsap.to(chevrons, {
+          opacity: 0.35,
+          duration: 0.6,
+          stagger: 0.12,
+          ease: 'sine.inOut',
+          yoyo: true,
+          repeat: -1,
+        });
+      }
+
+      if (pulse) {
+        gsap.to(pulse, {
+          scale: 1.08,
+          opacity: 0.35,
+          duration: 1.15,
+          ease: 'sine.inOut',
+          yoyo: true,
+          repeat: -1,
+        });
+      }
+    },
+    { dependencies: [selectedId], scope: emptyHintRef, revertOnUpdate: true }
+  );
 
   useGSAP(
     () => {
@@ -242,6 +394,27 @@ export default function CustomersPage() {
       );
     },
     { dependencies: [detail?.id], scope: detailShellRef }
+  );
+
+  useGSAP(
+    () => {
+      if (!deleteTarget) return;
+      const backdrop = deleteBackdropRef.current;
+      const card = deleteCardRef.current;
+      if (!backdrop || !card) return;
+      if (prefersReducedMotion()) {
+        gsap.set(backdrop, { autoAlpha: 1 });
+        gsap.set(card, { clearProps: 'all', autoAlpha: 1, y: 0, scale: 1 });
+        return;
+      }
+      gsap.fromTo(backdrop, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.22, ease: 'power2.out' });
+      gsap.fromTo(
+        card,
+        { y: 28, scale: 0.94, autoAlpha: 0 },
+        { y: 0, scale: 1, autoAlpha: 1, duration: 0.38, ease: 'power3.out' }
+      );
+    },
+    { dependencies: [deleteTarget?.id] }
   );
 
   const loadList = useCallback(async () => {
@@ -262,10 +435,18 @@ export default function CustomersPage() {
   }, [filter, search, page]);
 
   const loadRewards = useCallback(async () => {
-    const res = await api<{ rules: PointsRewardRule[] }>(
-      '/api/admin/customers/points-rewards'
+    const [rewardsRes, productsRes, groupsRes] = await Promise.all([
+      api<{ rules: PointsRewardRule[] }>('/api/admin/customers/points-rewards'),
+      api<{ data: RewardOption[] }>('/api/admin/products?limit=500'),
+      api<{ data: RewardOption[] }>('/api/admin/groups?limit=200'),
+    ]);
+    setRewardRules(rewardsRes.rules || []);
+    setRewardProducts(
+      (productsRes.data || []).map((p) => ({ id: p.id, name: p.name })).filter((p) => p.name)
     );
-    setRewardRules(res.rules || []);
+    setRewardGroups(
+      (groupsRes.data || []).map((g) => ({ id: g.id, name: g.name })).filter((g) => g.name)
+    );
   }, []);
 
   useEffect(() => {
@@ -341,13 +522,17 @@ export default function CustomersPage() {
     });
   }
 
-  async function openCustomer(id: number, opts?: { keepTab?: boolean; skipAnim?: boolean }) {
+  async function openCustomer(
+    id: number,
+    opts?: { keepTab?: boolean; skipAnim?: boolean; ledgerPage?: number }
+  ) {
     const prevId = selectedIdRef.current;
     const shouldAnimOut =
       !opts?.skipAnim && prevId != null && prevId !== id && detailBodyRef.current != null;
 
     const token = ++animTokenRef.current;
     skipEnterAnimRef.current = Boolean(opts?.skipAnim);
+    const pageForLedger = opts?.ledgerPage ?? (prevId === id ? ledgerPage : 1);
 
     if (shouldAnimOut) {
       await animateDetailOut();
@@ -356,14 +541,24 @@ export default function CustomersPage() {
 
     setSelectedId(id);
     if (!opts?.keepTab) setDetailTab('manage');
+    if (prevId !== id) setLedgerPage(1);
+    else if (opts?.ledgerPage != null) setLedgerPage(opts.ledgerPage);
     setDetailLoading(true);
     try {
-      const res = await api<{ customer: CustomerRow; ledger: LedgerEntry[] }>(
-        `/api/admin/customers/${id}`
-      );
+      const qs = new URLSearchParams({
+        ledgerPage: String(pageForLedger),
+        ledgerLimit: String(ledgerPageSize),
+      });
+      const res = await api<{
+        customer: CustomerRow;
+        ledger: LedgerEntry[];
+        ledgerPagination?: { page: number; limit: number; total: number };
+      }>(`/api/admin/customers/${id}?${qs}`);
       if (token !== animTokenRef.current) return;
       setDetail(res.customer);
       setLedger(res.ledger);
+      setLedgerTotal(res.ledgerPagination?.total ?? res.ledger.length);
+      if (res.ledgerPagination?.page) setLedgerPage(res.ledgerPagination.page);
       applyDetailForms(res.customer);
       setDetailLoading(false);
     } catch (e) {
@@ -376,7 +571,11 @@ export default function CustomersPage() {
   async function refreshSelected(opts?: { skipAnim?: boolean }) {
     if (selectedId == null) return;
     await loadList();
-    await openCustomer(selectedId, { keepTab: true, skipAnim: opts?.skipAnim ?? true });
+    await openCustomer(selectedId, {
+      keepTab: true,
+      skipAnim: opts?.skipAnim ?? true,
+      ledgerPage: 1,
+    });
   }
 
   function floatTo(target: FloatTarget, label: string) {
@@ -461,6 +660,7 @@ export default function CustomersPage() {
       setToast('Borç eklendi');
       floatTo('debt', `+${formatMoney(amount)}`);
       setDetailTab('ledger');
+      setLedgerPage(1);
       await refreshSelected();
     } catch (e) {
       setToast(e instanceof Error ? e.message : 'Borç eklenemedi');
@@ -482,6 +682,7 @@ export default function CustomersPage() {
       setToast('Ödeme kaydedildi');
       floatTo('debt', `−${formatMoney(amount)}`);
       setDetailTab('ledger');
+      setLedgerPage(1);
       await refreshSelected();
     } catch (e) {
       setToast(e instanceof Error ? e.message : 'Ödeme kaydedilemedi');
@@ -491,15 +692,18 @@ export default function CustomersPage() {
   }
 
   async function undoLast() {
-    if (!detail || busy || ledger.length === 0) return;
+    if (!detail || busy || ledgerTotal <= 0) return;
     setBusy(true);
     try {
-      const res = await api<{ customer: CustomerRow; ledger: LedgerEntry[] }>(
-        `/api/admin/customers/${detail.id}/undo`,
-        { method: 'POST' }
-      );
+      const res = await api<{
+        customer: CustomerRow;
+        ledger: LedgerEntry[];
+        ledgerPagination?: { page: number; limit: number; total: number };
+      }>(`/api/admin/customers/${detail.id}/undo`, { method: 'POST' });
       setDetail(res.customer);
       setLedger(res.ledger);
+      setLedgerTotal(res.ledgerPagination?.total ?? res.ledger.length);
+      setLedgerPage(res.ledgerPagination?.page ?? 1);
       applyDetailForms(res.customer);
       setToast('Son işlem geri alındı');
       await loadList();
@@ -512,10 +716,6 @@ export default function CustomersPage() {
 
   function requestDelete(customer: CustomerRow, e: ReactMouseEvent) {
     e.stopPropagation();
-    const ok = window.confirm(
-      `"${customer.fullName}" müşteri kaydı kalıcı olarak silinecek. Bu işlem geri alınamaz. Devam etmek istiyor musunuz?`
-    );
-    if (!ok) return;
     setDeleteTarget(customer);
     setDeletePassword('');
   }
@@ -570,54 +770,157 @@ export default function CustomersPage() {
     }
   }
 
-  async function addReward() {
-    const title = newRewardTitle.trim();
-    const pointsCost = Math.max(0, Math.round(Number(newRewardPoints) || 0));
-    if (!title || pointsCost <= 0) {
-      setToast('Başlık ve puan maliyeti gerekli');
-      return;
-    }
-    const rule: PointsRewardRule = {
-      id: crypto.randomUUID(),
-      title,
-      pointsCost,
-      description: newRewardDesc.trim(),
-      active: true,
-      sortOrder: rewardRules.length,
-    };
-    try {
-      await persistRewards([...rewardRules, rule], 'Ödül kuralı eklendi');
-      setNewRewardTitle('');
-      setNewRewardPoints('');
-      setNewRewardDesc('');
-    } catch {
-      /* toast already set */
-    }
+  function openRewardComposer(kind: PointsRewardKind = 'custom') {
+    setEditingRewardId(null);
+    setRewardDraft(emptyRewardDraft(kind));
+    setComposerOpen(true);
   }
 
   function startEditReward(rule: PointsRewardRule) {
     setEditingRewardId(rule.id);
-    setEditTitle(rule.title);
-    setEditPoints(String(rule.pointsCost));
-    setEditDesc(rule.description);
+    setRewardDraft({
+      kind: rule.kind || 'custom',
+      title: rule.title,
+      pointsCost: String(rule.pointsCost),
+      description: rule.description || '',
+      productId: rule.productId ? String(rule.productId) : '',
+      groupId: rule.groupId ? String(rule.groupId) : '',
+      discountPercent:
+        rule.discountPercent != null ? String(rule.discountPercent) : '10',
+      amountValue: rule.amountValue != null ? String(rule.amountValue) : '1',
+    });
+    setComposerOpen(true);
   }
 
-  async function saveEditReward() {
-    if (!editingRewardId) return;
-    const title = editTitle.trim();
-    const pointsCost = Math.max(0, Math.round(Number(editPoints) || 0));
-    if (!title || pointsCost <= 0) {
-      setToast('Başlık ve puan maliyeti gerekli');
-      return;
+  function closeRewardComposer() {
+    setComposerOpen(false);
+    setEditingRewardId(null);
+    setRewardDraft(emptyRewardDraft());
+  }
+
+  function buildRuleFromDraft(): PointsRewardRule | null {
+    const kind = rewardDraft.kind;
+    const pointsCost = Math.max(0, Math.round(Number(rewardDraft.pointsCost) || 0));
+    if (pointsCost <= 0) {
+      setToast('Puan maliyeti gerekli');
+      return null;
     }
-    const next = rewardRules.map((r) =>
-      r.id === editingRewardId
-        ? { ...r, title, pointsCost, description: editDesc.trim() }
-        : r
-    );
+
+    const productId = Number(rewardDraft.productId) || 0;
+    const groupId = Number(rewardDraft.groupId) || 0;
+    const discountPercent = Number(rewardDraft.discountPercent) || 0;
+    const amountValue = Number(rewardDraft.amountValue) || 0;
+    const product = rewardProducts.find((p) => p.id === productId);
+    const group = rewardGroups.find((g) => g.id === groupId);
+
+    if (kind === 'custom') {
+      const title = rewardDraft.title.trim();
+      if (!title) {
+        setToast('Başlık gerekli');
+        return null;
+      }
+      return {
+        id: editingRewardId || crypto.randomUUID(),
+        kind,
+        title,
+        pointsCost,
+        description: rewardDraft.description.trim(),
+        active: true,
+        sortOrder: rewardRules.length,
+        productId: null,
+        productName: '',
+        groupId: null,
+        groupName: '',
+        discountPercent: null,
+        amountValue: null,
+      };
+    }
+
+    if (kind === 'product') {
+      if (!product) {
+        setToast('Ürün seçin');
+        return null;
+      }
+      return {
+        id: editingRewardId || crypto.randomUUID(),
+        kind,
+        title: `${product.name} bedava`,
+        pointsCost,
+        description: rewardDraft.description.trim(),
+        active: true,
+        sortOrder: rewardRules.length,
+        productId: product.id,
+        productName: product.name,
+        groupId: null,
+        groupName: '',
+        discountPercent: null,
+        amountValue: null,
+      };
+    }
+
+    if (kind === 'group') {
+      if (!group) {
+        setToast('Grup seçin');
+        return null;
+      }
+      if (!(discountPercent > 0 && discountPercent <= 100)) {
+        setToast('Geçerli bir indirim yüzdesi girin');
+        return null;
+      }
+      return {
+        id: editingRewardId || crypto.randomUUID(),
+        kind,
+        title: `${group.name} %${discountPercent} indirim`,
+        pointsCost,
+        description: rewardDraft.description.trim(),
+        active: true,
+        sortOrder: rewardRules.length,
+        productId: null,
+        productName: '',
+        groupId: group.id,
+        groupName: group.name,
+        discountPercent,
+        amountValue: null,
+      };
+    }
+
+    if (!(amountValue > 0)) {
+      setToast('İndirim tutarı gerekli');
+      return null;
+    }
+    return {
+      id: editingRewardId || crypto.randomUUID(),
+      kind: 'wallet',
+      title: `${pointsCost} puan = ${amountValue}₺`,
+      pointsCost,
+      description: rewardDraft.description.trim(),
+      active: true,
+      sortOrder: rewardRules.length,
+      productId: null,
+      productName: '',
+      groupId: null,
+      groupName: '',
+      discountPercent: null,
+      amountValue,
+    };
+  }
+
+  async function saveRewardDraft() {
+    const built = buildRuleFromDraft();
+    if (!built) return;
     try {
-      await persistRewards(next, 'Ödül kuralı güncellendi');
-      setEditingRewardId(null);
+      if (editingRewardId) {
+        const prev = rewardRules.find((r) => r.id === editingRewardId);
+        const next = rewardRules.map((r) =>
+          r.id === editingRewardId
+            ? { ...built, id: editingRewardId, active: prev?.active !== false, sortOrder: r.sortOrder }
+            : r
+        );
+        await persistRewards(next, 'Ödül kuralı güncellendi');
+      } else {
+        await persistRewards([...rewardRules, built], 'Ödül kuralı eklendi');
+      }
+      closeRewardComposer();
     } catch {
       /* toast already set */
     }
@@ -642,7 +945,7 @@ export default function CustomersPage() {
         rewardRules.filter((r) => r.id !== id),
         'Ödül kuralı silindi'
       );
-      if (editingRewardId === id) setEditingRewardId(null);
+      if (editingRewardId === id) closeRewardComposer();
     } catch {
       /* toast already set */
     }
@@ -650,6 +953,7 @@ export default function CustomersPage() {
 
   const empty = !loading && items.length === 0;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const ledgerPageCount = Math.max(1, Math.ceil(ledgerTotal / ledgerPageSize));
 
   const summary = useMemo(() => {
     if (!detail) return null;
@@ -826,10 +1130,32 @@ export default function CustomersPage() {
         <aside className={`admin-customers__detail${selectedId ? ' is-visible' : ''}`}>
           <div className="admin-customers__detail-shell" ref={detailShellRef}>
             {!selectedId ? (
-              <div className="admin-customers__detail-empty">
-                <Receipt className="w-9 h-9" />
-                <h3>Müşteri seçin</h3>
-                <p>Listeden bir üyeye tıklayın; puan, indirim ve hesabı burada yönetirsiniz.</p>
+              <div className="admin-customers__detail-empty" ref={emptyHintRef}>
+                <div className="admin-customers__empty-hint">
+                  <div className="admin-customers__empty-arrow" aria-hidden>
+                    <span className="admin-customers__empty-pulse" />
+                    <span className="admin-customers__empty-chevron">
+                      <ChevronLeft className="w-5 h-5" />
+                    </span>
+                    <span className="admin-customers__empty-chevron">
+                      <ChevronLeft className="w-5 h-5" />
+                    </span>
+                    <span className="admin-customers__empty-chevron is-lead">
+                      <ArrowLeft className="w-6 h-6" />
+                    </span>
+                  </div>
+                  <div className="admin-customers__empty-copy">
+                    <span className="admin-customers__empty-badge">
+                      <MousePointerClick className="w-3.5 h-3.5" />
+                      Sol liste
+                    </span>
+                    <h3>Buradan seçim yapın</h3>
+                    <p>
+                      Soldaki müşteriye dokunun; puan, indirim ve hesabı bu panelde
+                      yönetirsiniz.
+                    </p>
+                  </div>
+                </div>
               </div>
             ) : detailLoading && !detail ? (
               <div className="admin-customers__loading">
@@ -859,6 +1185,8 @@ export default function CustomersPage() {
                         setSelectedId(null);
                         setDetail(null);
                         setLedger([]);
+                        setLedgerPage(1);
+                        setLedgerTotal(0);
                       }}
                     >
                       <X className="w-4 h-4" />
@@ -900,7 +1228,7 @@ export default function CustomersPage() {
                       onClick={() => setDetailTab('ledger')}
                     >
                       Hareketler
-                      {ledger.length > 0 ? <em>{ledger.length}</em> : null}
+                      {ledgerTotal > 0 ? <em>{ledgerTotal}</em> : null}
                     </button>
                   </div>
 
@@ -1133,7 +1461,7 @@ export default function CustomersPage() {
                       </div>
                     ) : (
                       <div className="admin-customers__ledger-wrap">
-                        {ledger.length > 0 ? (
+                        {ledgerTotal > 0 ? (
                           <div className="admin-customers__ledger-actions">
                             <button
                               type="button"
@@ -1152,32 +1480,78 @@ export default function CustomersPage() {
                             <p>Henüz hareket yok</p>
                           </div>
                         ) : (
-                          <ul className="admin-customers__ledger">
-                            {ledger.map((e, i) => (
-                              <li
-                                key={e.id}
-                                className={`is-${e.kind}`}
-                                style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
-                              >
-                                <div>
-                                  <strong>{ledgerKindLabel(e.kind)}</strong>
-                                  <small>{formatDate(e.createdAt)}</small>
-                                  {e.note ? (
-                                    <span className="admin-customers__ledger-note">{e.note}</span>
-                                  ) : null}
+                          <>
+                            <ul className="admin-customers__ledger">
+                              {ledger.map((e, i) => (
+                                <li
+                                  key={e.id}
+                                  className={`is-${e.kind}`}
+                                  style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+                                >
+                                  <div>
+                                    <strong>{ledgerKindLabel(e.kind)}</strong>
+                                    <small>{formatDate(e.createdAt)}</small>
+                                    {e.note ? (
+                                      <span className="admin-customers__ledger-note">{e.note}</span>
+                                    ) : null}
+                                  </div>
+                                  <em>
+                                    {e.kind === 'points'
+                                      ? `${e.amount > 0 ? '+' : ''}${e.amount} p`
+                                      : e.kind === 'discount'
+                                        ? e.amount <= 0
+                                          ? 'Kaldırıldı'
+                                          : String(e.amount)
+                                        : `${e.kind === 'payment' ? '−' : '+'}${formatMoney(e.amount)}`}
+                                  </em>
+                                </li>
+                              ))}
+                            </ul>
+                            {ledgerTotal > ledgerPageSize ? (
+                              <div className="admin-customers__pager admin-customers__pager--ledger">
+                                <span>
+                                  {(ledgerPage - 1) * ledgerPageSize + 1}–
+                                  {Math.min(ledgerPage * ledgerPageSize, ledgerTotal)} /{' '}
+                                  {ledgerTotal}
+                                </span>
+                                <div className="admin-customers__pager-btns">
+                                  <button
+                                    type="button"
+                                    disabled={ledgerPage <= 1 || busy}
+                                    aria-label="Önceki hareket sayfası"
+                                    onClick={() => {
+                                      if (selectedId == null) return;
+                                      void openCustomer(selectedId, {
+                                        keepTab: true,
+                                        skipAnim: true,
+                                        ledgerPage: ledgerPage - 1,
+                                      });
+                                    }}
+                                  >
+                                    <ChevronLeft className="w-4 h-4" />
+                                  </button>
+                                  <em>
+                                    {ledgerPage} / {ledgerPageCount}
+                                  </em>
+                                  <button
+                                    type="button"
+                                    disabled={ledgerPage >= ledgerPageCount || busy}
+                                    aria-label="Sonraki hareket sayfası"
+                                    onClick={() => {
+                                      if (selectedId == null) return;
+                                      void openCustomer(selectedId, {
+                                        keepTab: true,
+                                        skipAnim: true,
+                                        ledgerPage: ledgerPage + 1,
+                                      });
+                                    }}
+                                  >
+                                    <ChevronRight className="w-4 h-4" />
+                                  </button>
                                 </div>
-                                <em>
-                                  {e.kind === 'points'
-                                    ? `${e.amount > 0 ? '+' : ''}${e.amount} p`
-                                    : e.kind === 'discount'
-                                      ? e.amount <= 0
-                                        ? 'Kaldırıldı'
-                                        : String(e.amount)
-                                      : `${e.kind === 'payment' ? '−' : '+'}${formatMoney(e.amount)}`}
-                                </em>
-                              </li>
-                            ))}
-                          </ul>
+                              </div>
+                            ) : null}
+                          </>
                         )}
                       </div>
                     )}
@@ -1198,13 +1572,22 @@ export default function CustomersPage() {
           <div>
             <h2>
               <Gift className="w-4 h-4" />
-              Puan ile neler yapılır?
+              Puan ödülleri
             </h2>
             <p>
-              Müşterilerin puanlarını neye çevirebileceğini tanımlayın — çay, tatlı, tutar
-              indirimi…
+              Ürün, grup veya tutar indirimi tanımlayın. Masa görünümünde temaya
+              bağlanacak.
             </p>
           </div>
+          <button
+            type="button"
+            className="admin-customers__rewards-add"
+            disabled={rewardsBusy || rewardsLoading}
+            onClick={() => openRewardComposer('custom')}
+          >
+            <Plus className="w-4 h-4" />
+            Ekle
+          </button>
         </header>
 
         {rewardsLoading ? (
@@ -1213,153 +1596,280 @@ export default function CustomersPage() {
           </div>
         ) : (
           <>
-            <ul className="admin-customers__rewards-list">
-              {rewardRules.length === 0 ? (
-                <li className="admin-customers__rewards-empty">
-                  Henüz kural yok. Aşağıdan ilk ödülü ekleyin.
-                </li>
-              ) : (
-                rewardRules.map((rule) => (
-                  <li
-                    key={rule.id}
-                    className={`admin-customers__reward${rule.active ? '' : ' is-inactive'}`}
+            {composerOpen ? (
+              <div className="admin-customers__reward-composer">
+                <div className="admin-customers__reward-composer-top">
+                  <strong>{editingRewardId ? 'Kuralı düzenle' : 'Yeni kural'}</strong>
+                  <button
+                    type="button"
+                    className="admin-customers__icon-close"
+                    aria-label="Kapat"
+                    onClick={closeRewardComposer}
                   >
-                    {editingRewardId === rule.id ? (
-                      <div className="admin-customers__reward-edit">
-                        <input
-                          type="text"
-                          value={editTitle}
-                          onChange={(e) => setEditTitle(e.target.value)}
-                          placeholder="Başlık"
-                          aria-label="Ödül başlığı"
-                        />
-                        <input
-                          inputMode="numeric"
-                          value={editPoints}
-                          onChange={(e) =>
-                            setEditPoints(sanitizeNumberInput(e.target.value))
-                          }
-                          placeholder="Puan"
-                          aria-label="Puan maliyeti"
-                        />
-                        <input
-                          type="text"
-                          value={editDesc}
-                          onChange={(e) => setEditDesc(e.target.value)}
-                          placeholder="Açıklama"
-                          aria-label="Ödül açıklaması"
-                        />
-                        <div className="admin-customers__reward-edit-actions">
-                          <button
-                            type="button"
-                            className="admin-customers__primary"
-                            disabled={rewardsBusy}
-                            onClick={() => void saveEditReward()}
-                          >
-                            Kaydet
-                          </button>
-                          <button
-                            type="button"
-                            className="admin-customers__ghost"
-                            disabled={rewardsBusy}
-                            onClick={() => setEditingRewardId(null)}
-                          >
-                            İptal
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="admin-customers__reward-main">
-                          <strong>{rule.title}</strong>
-                          <em>{rule.pointsCost} puan</em>
-                          {rule.description ? <p>{rule.description}</p> : null}
-                        </div>
-                        <div className="admin-customers__reward-actions">
-                          <button
-                            type="button"
-                            aria-label={rule.active ? 'Pasifleştir' : 'Aktifleştir'}
-                            title={rule.active ? 'Pasifleştir' : 'Aktifleştir'}
-                            disabled={rewardsBusy}
-                            onClick={() => void toggleRewardActive(rule.id)}
-                          >
-                            <Power className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            aria-label="Düzenle"
-                            title="Düzenle"
-                            disabled={rewardsBusy}
-                            onClick={() => startEditReward(rule)}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            className="is-danger"
-                            aria-label="Sil"
-                            title="Sil"
-                            disabled={rewardsBusy}
-                            onClick={() => void deleteReward(rule.id)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </li>
-                ))
-              )}
-            </ul>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
 
-            <form
-              className="admin-customers__reward-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void addReward();
-              }}
-            >
-              <h3>Yeni ödül kuralı</h3>
-              <div className="admin-customers__reward-form-grid">
-                <input
-                  type="text"
-                  placeholder="Başlık (ör. Bedava çay)"
-                  value={newRewardTitle}
-                  onChange={(e) => setNewRewardTitle(e.target.value)}
-                  aria-label="Yeni ödül başlığı"
-                />
-                <input
-                  inputMode="numeric"
-                  placeholder="Puan maliyeti"
-                  value={newRewardPoints}
-                  onChange={(e) =>
-                    setNewRewardPoints(sanitizeNumberInput(e.target.value))
-                  }
-                  aria-label="Yeni ödül puan maliyeti"
-                />
-                <input
-                  type="text"
-                  placeholder="Kısa açıklama"
-                  value={newRewardDesc}
-                  onChange={(e) => setNewRewardDesc(e.target.value)}
-                  aria-label="Yeni ödül açıklaması"
-                />
+                <div className="admin-customers__reward-kinds" role="tablist">
+                  {REWARD_KINDS.map((k) => {
+                    const Icon = k.icon;
+                    return (
+                      <button
+                        key={k.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={rewardDraft.kind === k.id}
+                        className={rewardDraft.kind === k.id ? 'is-active' : ''}
+                        disabled={Boolean(editingRewardId)}
+                        onClick={() =>
+                          setRewardDraft((d) => ({ ...emptyRewardDraft(k.id), pointsCost: d.pointsCost, description: d.description }))
+                        }
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        <span>{k.label}</span>
+                        <small>{k.hint}</small>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="admin-customers__reward-fields">
+                  {rewardDraft.kind === 'custom' ? (
+                    <>
+                      <label>
+                        <span>Başlık</span>
+                        <input
+                          type="text"
+                          placeholder="Örn. Bedava çay"
+                          value={rewardDraft.title}
+                          onChange={(e) =>
+                            setRewardDraft((d) => ({ ...d, title: e.target.value }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>Açıklama</span>
+                        <input
+                          type="text"
+                          placeholder="Kısa not (opsiyonel)"
+                          value={rewardDraft.description}
+                          onChange={(e) =>
+                            setRewardDraft((d) => ({ ...d, description: e.target.value }))
+                          }
+                        />
+                      </label>
+                    </>
+                  ) : null}
+
+                  {rewardDraft.kind === 'product' ? (
+                    <label>
+                      <span>Ürün</span>
+                      <select
+                        value={rewardDraft.productId}
+                        onChange={(e) =>
+                          setRewardDraft((d) => ({ ...d, productId: e.target.value }))
+                        }
+                      >
+                        <option value="">Ürün seçin…</option>
+                        {rewardProducts.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+
+                  {rewardDraft.kind === 'group' ? (
+                    <>
+                      <label>
+                        <span>Grup</span>
+                        <select
+                          value={rewardDraft.groupId}
+                          onChange={(e) =>
+                            setRewardDraft((d) => ({ ...d, groupId: e.target.value }))
+                          }
+                        >
+                          <option value="">Grup seçin…</option>
+                          {rewardGroups.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>% İndirim</span>
+                        <input
+                          inputMode="decimal"
+                          placeholder="10"
+                          value={rewardDraft.discountPercent}
+                          onChange={(e) =>
+                            setRewardDraft((d) => ({
+                              ...d,
+                              discountPercent: sanitizeNumberInput(e.target.value, {
+                                allowDecimal: true,
+                              }),
+                            }))
+                          }
+                        />
+                      </label>
+                    </>
+                  ) : null}
+
+                  {rewardDraft.kind === 'wallet' ? (
+                    <label>
+                      <span>İndirim tutarı (₺)</span>
+                      <input
+                        inputMode="decimal"
+                        placeholder="1"
+                        value={rewardDraft.amountValue}
+                        onChange={(e) =>
+                          setRewardDraft((d) => ({
+                            ...d,
+                            amountValue: sanitizeNumberInput(e.target.value, {
+                              allowDecimal: true,
+                            }),
+                          }))
+                        }
+                      />
+                    </label>
+                  ) : null}
+
+                  <label>
+                    <span>
+                      {rewardDraft.kind === 'wallet' ? 'Kaç puan?' : 'Puan maliyeti'}
+                    </span>
+                    <input
+                      inputMode="numeric"
+                      placeholder="100"
+                      value={rewardDraft.pointsCost}
+                      onChange={(e) =>
+                        setRewardDraft((d) => ({
+                          ...d,
+                          pointsCost: sanitizeNumberInput(e.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+
+                  {rewardDraft.kind !== 'custom' ? (
+                    <label className="admin-customers__reward-fields-wide">
+                      <span>Not (opsiyonel)</span>
+                      <input
+                        type="text"
+                        placeholder="İç not"
+                        value={rewardDraft.description}
+                        onChange={(e) =>
+                          setRewardDraft((d) => ({ ...d, description: e.target.value }))
+                        }
+                      />
+                    </label>
+                  ) : null}
+                </div>
+
+                <div className="admin-customers__reward-composer-actions">
+                  <button
+                    type="button"
+                    className="admin-customers__ghost"
+                    disabled={rewardsBusy}
+                    onClick={closeRewardComposer}
+                  >
+                    İptal
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-customers__primary"
+                    disabled={rewardsBusy}
+                    onClick={() => void saveRewardDraft()}
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    {editingRewardId ? 'Kaydet' : 'Ekle'}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {rewardRules.length === 0 && !composerOpen ? (
+              <div className="admin-customers__rewards-empty">
+                <Gift className="w-6 h-6" />
+                <p>Henüz ödül yok</p>
                 <button
-                  type="submit"
+                  type="button"
                   className="admin-customers__primary"
-                  disabled={rewardsBusy}
+                  onClick={() => openRewardComposer('product')}
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  Ekle
+                  İlk kuralı ekle
                 </button>
               </div>
-            </form>
+            ) : (
+              <ul className="admin-customers__rewards-grid">
+                {rewardRules.map((rule) => {
+                  const meta = rewardKindMeta(rule.kind || 'custom');
+                  const copy = rewardCardCopy(rule);
+                  const Icon = meta.icon;
+                  return (
+                    <li
+                      key={rule.id}
+                      className={`admin-customers__reward-card is-${rule.kind || 'custom'}${
+                        rule.active ? '' : ' is-inactive'
+                      }`}
+                    >
+                      <div className="admin-customers__reward-card-top">
+                        <span className="admin-customers__reward-chip">
+                          <Icon className="w-3 h-3" />
+                          {meta.label}
+                        </span>
+                        <em>{rule.pointsCost} puan</em>
+                      </div>
+                      <strong>{copy.headline}</strong>
+                      <p>{copy.detail}</p>
+                      {rule.description && rule.kind === 'custom' ? (
+                        <small>{rule.description}</small>
+                      ) : null}
+                      <div className="admin-customers__reward-card-actions">
+                        <button
+                          type="button"
+                          aria-label={rule.active ? 'Pasifleştir' : 'Aktifleştir'}
+                          title={rule.active ? 'Pasifleştir' : 'Aktifleştir'}
+                          disabled={rewardsBusy}
+                          onClick={() => void toggleRewardActive(rule.id)}
+                        >
+                          <Power className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Düzenle"
+                          title="Düzenle"
+                          disabled={rewardsBusy}
+                          onClick={() => startEditReward(rule)}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          className="is-danger"
+                          aria-label="Sil"
+                          title="Sil"
+                          disabled={rewardsBusy}
+                          onClick={() => void deleteReward(rule.id)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </>
         )}
       </section>
 
       {deleteTarget ? (
         <div
+          ref={deleteBackdropRef}
           className="admin-customers__modal-backdrop"
           role="presentation"
           onClick={() => {
@@ -1370,23 +1880,48 @@ export default function CustomersPage() {
           }}
         >
           <div
+            ref={deleteCardRef}
             className="admin-customers__modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="customers-delete-title"
             onClick={(e) => e.stopPropagation()}
           >
+            <button
+              type="button"
+              className="admin-customers__modal-close"
+              aria-label="Kapat"
+              disabled={deleteBusy}
+              onClick={() => {
+                setDeleteTarget(null);
+                setDeletePassword('');
+              }}
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="admin-customers__modal-icon" aria-hidden>
+              <TriangleAlert className="w-6 h-6" />
+            </div>
+
             <h3 id="customers-delete-title">Müşteriyi sil</h3>
-            <p>
-              <strong>{deleteTarget.fullName}</strong> kalıcı olarak silinecek. Onaylamak
-              için yönetici şifrenizi girin.
+            <p className="admin-customers__modal-copy">
+              <strong>{deleteTarget.fullName}</strong> hesabı kalıcı olarak silinecek.
             </p>
+            <div className="admin-customers__modal-warn">
+              Bu işlem geri alınamaz. Puan, indirim ve borç hareketleri de silinir.
+            </div>
+
             <label className="admin-customers__modal-field">
-              <span>Şifre</span>
+              <span>
+                <Lock className="w-3.5 h-3.5" />
+                Yönetici şifresi
+              </span>
               <input
                 type="password"
                 autoFocus
                 autoComplete="current-password"
+                placeholder="Şifrenizi girin"
                 value={deletePassword}
                 onChange={(e) => setDeletePassword(e.target.value)}
                 onKeyDown={(e) => {
@@ -1394,6 +1929,7 @@ export default function CustomersPage() {
                 }}
               />
             </label>
+
             <div className="admin-customers__modal-actions">
               <button
                 type="button"
@@ -1412,6 +1948,7 @@ export default function CustomersPage() {
                 disabled={deleteBusy || !deletePassword.trim()}
                 onClick={() => void confirmDelete()}
               >
+                <Trash2 className="w-3.5 h-3.5" />
                 {deleteBusy ? 'Siliniyor…' : 'Kalıcı sil'}
               </button>
             </div>

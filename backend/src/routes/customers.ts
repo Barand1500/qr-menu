@@ -179,11 +179,21 @@ router.get('/:id', async (req, res) => {
   if (!row) return res.status(404).json({ message: 'Müşteri bulunamadı' });
 
   const debtBalance = await getCustomerDebtBalance(restaurantId, id);
-  const ledger = await prisma.menuCustomerLedger.findMany({
-    where: { restaurantId, customerId: id },
-    orderBy: { createdAt: 'desc' },
-    take: 40,
-  });
+  const ledgerPage = Math.max(1, parseInt(String(req.query.ledgerPage || '1'), 10) || 1);
+  const ledgerLimit = Math.min(
+    50,
+    Math.max(1, parseInt(String(req.query.ledgerLimit || '8'), 10) || 8)
+  );
+  const ledgerWhere = { restaurantId, customerId: id };
+  const [ledger, ledgerTotal] = await Promise.all([
+    prisma.menuCustomerLedger.findMany({
+      where: ledgerWhere,
+      orderBy: { createdAt: 'desc' },
+      skip: (ledgerPage - 1) * ledgerLimit,
+      take: ledgerLimit,
+    }),
+    prisma.menuCustomerLedger.count({ where: ledgerWhere }),
+  ]);
 
   res.json({
     customer: {
@@ -192,6 +202,7 @@ router.get('/:id', async (req, res) => {
       dietTags: row.dietTags,
     },
     ledger: ledger.map(serializeLedger),
+    ledgerPagination: { page: ledgerPage, limit: ledgerLimit, total: ledgerTotal },
   });
 });
 
@@ -260,16 +271,22 @@ router.post('/:id/undo', async (req, res) => {
 
   const updated = await prisma.menuCustomer.findUnique({ where: { id } });
   const debtBalance = await getCustomerDebtBalance(restaurantId, id);
-  const ledger = await prisma.menuCustomerLedger.findMany({
-    where: { restaurantId, customerId: id },
-    orderBy: { createdAt: 'desc' },
-    take: 40,
-  });
+  const ledgerWhere = { restaurantId, customerId: id };
+  const ledgerLimit = 8;
+  const [ledger, ledgerTotal] = await Promise.all([
+    prisma.menuCustomerLedger.findMany({
+      where: ledgerWhere,
+      orderBy: { createdAt: 'desc' },
+      take: ledgerLimit,
+    }),
+    prisma.menuCustomerLedger.count({ where: ledgerWhere }),
+  ]);
 
   res.json({
     ok: true,
     customer: serializeCustomerRow(updated!, restaurantId, debtBalance),
     ledger: ledger.map(serializeLedger),
+    ledgerPagination: { page: 1, limit: ledgerLimit, total: ledgerTotal },
   });
 });
 

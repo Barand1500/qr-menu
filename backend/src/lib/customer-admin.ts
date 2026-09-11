@@ -10,16 +10,116 @@ export type CustomerDiscount = {
 
 export type CustomerDiscountsMap = Record<string, CustomerDiscount>;
 
+export type PointsRewardKind = 'custom' | 'product' | 'group' | 'wallet';
+
 export type PointsRewardRule = {
   id: string;
+  kind: PointsRewardKind;
   title: string;
   pointsCost: number;
   description: string;
   active: boolean;
   sortOrder: number;
+  productId: number | null;
+  productName: string;
+  groupId: number | null;
+  groupName: string;
+  discountPercent: number | null;
+  amountValue: number | null;
 };
 
 export const POINTS_REWARDS_KEY = 'customer_points_rewards';
+
+function asKind(raw: unknown): PointsRewardKind {
+  if (raw === 'product' || raw === 'group' || raw === 'wallet' || raw === 'custom') return raw;
+  return 'custom';
+}
+
+function asOptionalId(raw: unknown): number | null {
+  const n = Math.round(Number(raw));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function asOptionalAmount(raw: unknown): number | null {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100) / 100;
+}
+
+function asOptionalPercent(raw: unknown): number | null {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.min(100, Math.round(n * 100) / 100);
+}
+
+export function normalizePointsRewards(raw: unknown): PointsRewardRule[] {
+  const list = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === 'object' && Array.isArray((raw as { rules?: unknown }).rules)
+      ? (raw as { rules: unknown[] }).rules
+      : [];
+  const out: PointsRewardRule[] = [];
+  list.forEach((item, i) => {
+    if (!item || typeof item !== 'object') return;
+    const row = item as Record<string, unknown>;
+    const kind = asKind(row.kind);
+    const pointsCost = Math.round(Number(row.pointsCost));
+    if (!Number.isFinite(pointsCost) || pointsCost <= 0) return;
+
+    const productId = kind === 'product' ? asOptionalId(row.productId) : null;
+    const groupId = kind === 'group' ? asOptionalId(row.groupId) : null;
+    const discountPercent = kind === 'group' ? asOptionalPercent(row.discountPercent) : null;
+    const amountValue = kind === 'wallet' ? asOptionalAmount(row.amountValue) : null;
+    const productName =
+      kind === 'product' && typeof row.productName === 'string'
+        ? row.productName.trim().slice(0, 120)
+        : '';
+    const groupName =
+      kind === 'group' && typeof row.groupName === 'string'
+        ? row.groupName.trim().slice(0, 120)
+        : '';
+
+    if (kind === 'product' && !productId) return;
+    if (kind === 'group' && (!groupId || !discountPercent)) return;
+    if (kind === 'wallet' && !amountValue) return;
+
+    let title = typeof row.title === 'string' ? row.title.trim().slice(0, 80) : '';
+    if (!title) {
+      if (kind === 'product') title = productName ? `${productName} bedava` : 'Ürün bedava';
+      else if (kind === 'group')
+        title = groupName
+          ? `${groupName} %${discountPercent} indirim`
+          : `%${discountPercent} grup indirimi`;
+      else if (kind === 'wallet') title = `${pointsCost} puan = ${amountValue}₺`;
+      else return;
+    }
+
+    out.push({
+      id:
+        typeof row.id === 'string' && row.id.trim()
+          ? row.id.trim()
+          : `pr-${Date.now().toString(36)}-${i}`,
+      kind,
+      title,
+      pointsCost,
+      description:
+        typeof row.description === 'string' ? row.description.trim().slice(0, 200) : '',
+      active: row.active !== false,
+      sortOrder: Number.isFinite(Number(row.sortOrder)) ? Number(row.sortOrder) : i,
+      productId,
+      productName,
+      groupId,
+      groupName,
+      discountPercent,
+      amountValue,
+    });
+  });
+  out.sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'tr'));
+  out.forEach((r, i) => {
+    r.sortOrder = i;
+  });
+  return out;
+}
 
 export function parseDiscountsJson(raw: unknown): CustomerDiscountsMap {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
@@ -121,39 +221,6 @@ export async function getDebtBalances(
 export async function getCustomerDebtBalance(restaurantId: number, customerId: number) {
   const map = await getDebtBalances(restaurantId, [customerId]);
   return map.get(customerId) || 0;
-}
-
-export function normalizePointsRewards(raw: unknown): PointsRewardRule[] {
-  const list = Array.isArray(raw)
-    ? raw
-    : raw && typeof raw === 'object' && Array.isArray((raw as { rules?: unknown }).rules)
-      ? (raw as { rules: unknown[] }).rules
-      : [];
-  const out: PointsRewardRule[] = [];
-  list.forEach((item, i) => {
-    if (!item || typeof item !== 'object') return;
-    const row = item as Record<string, unknown>;
-    const title = typeof row.title === 'string' ? row.title.trim().slice(0, 80) : '';
-    const pointsCost = Math.round(Number(row.pointsCost));
-    if (!title || !Number.isFinite(pointsCost) || pointsCost <= 0) return;
-    out.push({
-      id:
-        typeof row.id === 'string' && row.id.trim()
-          ? row.id.trim()
-          : `pr-${Date.now().toString(36)}-${i}`,
-      title,
-      pointsCost,
-      description:
-        typeof row.description === 'string' ? row.description.trim().slice(0, 200) : '',
-      active: row.active !== false,
-      sortOrder: Number.isFinite(Number(row.sortOrder)) ? Number(row.sortOrder) : i,
-    });
-  });
-  out.sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'tr'));
-  out.forEach((r, i) => {
-    r.sortOrder = i;
-  });
-  return out;
 }
 
 export async function loadPointsRewards(restaurantId: number): Promise<PointsRewardRule[]> {
