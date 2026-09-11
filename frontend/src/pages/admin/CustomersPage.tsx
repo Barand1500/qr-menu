@@ -10,6 +10,8 @@ import {
   Plus,
   Minus,
   Check,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PageHeader, Spinner } from '@/components/ui';
@@ -71,6 +73,9 @@ export default function CustomersPage() {
   const [search, setSearch] = useState('');
   const [searchDraft, setSearchDraft] = useState('');
   const [filter, setFilter] = useState<'all' | 'debtors'>('all');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 12;
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<CustomerRow | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
@@ -88,21 +93,31 @@ export default function CustomersPage() {
   const [payNote, setPayNote] = useState('');
 
   const loadList = useCallback(async () => {
-    const params = new URLSearchParams({ limit: '80', filter });
+    const params = new URLSearchParams({
+      limit: String(pageSize),
+      page: String(page),
+      filter,
+    });
     if (search.trim()) params.set('search', search.trim());
-    const res = await api<{ data: CustomerRow[]; debtorCount: number }>(
-      `/api/admin/customers?${params}`
-    );
+    const res = await api<{
+      data: CustomerRow[];
+      debtorCount: number;
+      pagination: { page: number; limit: number; total: number };
+    }>(`/api/admin/customers?${params}`);
     setItems(res.data);
     setDebtorCount(res.debtorCount);
-  }, [filter, search]);
+    setTotal(res.pagination?.total ?? res.data.length);
+  }, [filter, search, page]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     loadList()
       .catch(() => {
-        if (!cancelled) setItems([]);
+        if (!cancelled) {
+          setItems([]);
+          setTotal(0);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -113,7 +128,10 @@ export default function CustomersPage() {
   }, [loadList]);
 
   useEffect(() => {
-    const t = window.setTimeout(() => setSearch(searchDraft), 280);
+    const t = window.setTimeout(() => {
+      setSearch(searchDraft);
+      setPage(1);
+    }, 280);
     return () => window.clearTimeout(t);
   }, [searchDraft]);
 
@@ -227,6 +245,7 @@ export default function CustomersPage() {
   }
 
   const empty = !loading && items.length === 0;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   const summary = useMemo(() => {
     if (!detail) return null;
@@ -274,14 +293,20 @@ export default function CustomersPage() {
               <button
                 type="button"
                 className={filter === 'all' ? 'is-active' : ''}
-                onClick={() => setFilter('all')}
+                onClick={() => {
+                  setFilter('all');
+                  setPage(1);
+                }}
               >
                 Tümü
               </button>
               <button
                 type="button"
                 className={filter === 'debtors' ? 'is-active' : ''}
-                onClick={() => setFilter('debtors')}
+                onClick={() => {
+                  setFilter('debtors');
+                  setPage(1);
+                }}
               >
                 Borçlular
                 {debtorCount > 0 ? <em>{debtorCount}</em> : null}
@@ -299,40 +324,72 @@ export default function CustomersPage() {
               <p>Henüz müşteri yok veya arama sonucu boş.</p>
             </div>
           ) : (
-            <ul className="admin-customers__list">
-              {items.map((c, i) => (
-                <li key={c.id} style={{ animationDelay: `${Math.min(i, 14) * 28}ms` }}>
-                  <button
-                    type="button"
-                    className={`admin-customers__row${selectedId === c.id ? ' is-active' : ''}`}
-                    onClick={() => void openCustomer(c.id)}
-                  >
-                    <span className="admin-customers__avatar" aria-hidden>
-                      {initials(c.fullName)}
-                    </span>
-                    <span className="admin-customers__meta">
-                      <strong>{c.fullName}</strong>
-                      <small>
-                        {[c.phone, c.email].filter(Boolean).join(' · ') || 'İletişim yok'}
-                      </small>
-                    </span>
-                    <span className="admin-customers__badges">
-                      {c.discount ? (
-                        <span className="admin-customers__chip is-discount">
-                          %{c.discount.percent}
-                        </span>
-                      ) : null}
-                      {c.debtBalance > 0 ? (
-                        <span className="admin-customers__chip is-debt">
-                          {formatMoney(c.debtBalance)}
-                        </span>
-                      ) : null}
-                      <span className="admin-customers__chip is-points">{c.points} p</span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="admin-customers__list">
+                {items.map((c, i) => (
+                  <li key={c.id} style={{ animationDelay: `${Math.min(i, 14) * 28}ms` }}>
+                    <button
+                      type="button"
+                      className={`admin-customers__row${selectedId === c.id ? ' is-active' : ''}`}
+                      onClick={() => void openCustomer(c.id)}
+                    >
+                      <span className="admin-customers__avatar" aria-hidden>
+                        {initials(c.fullName)}
+                      </span>
+                      <span className="admin-customers__meta">
+                        <strong>{c.fullName}</strong>
+                        <small>
+                          {[c.phone, c.email].filter(Boolean).join(' · ') || 'İletişim yok'}
+                        </small>
+                      </span>
+                      <span className="admin-customers__badges">
+                        {c.discount ? (
+                          <span className="admin-customers__chip is-discount">
+                            %{c.discount.percent}
+                          </span>
+                        ) : null}
+                        {c.debtBalance > 0 ? (
+                          <span className="admin-customers__chip is-debt">
+                            {formatMoney(c.debtBalance)}
+                          </span>
+                        ) : null}
+                        <span className="admin-customers__chip is-points">{c.points} p</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {pageCount > 1 || total > 0 ? (
+                <div className="admin-customers__pager">
+                  <span>
+                    {total === 0
+                      ? '0 kayıt'
+                      : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} / ${total}`}
+                  </span>
+                  <div className="admin-customers__pager-btns">
+                    <button
+                      type="button"
+                      disabled={page <= 1 || loading}
+                      aria-label="Önceki sayfa"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <em>
+                      {page} / {pageCount}
+                    </em>
+                    <button
+                      type="button"
+                      disabled={page >= pageCount || loading}
+                      aria-label="Sonraki sayfa"
+                      onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </>
           )}
         </section>
 
