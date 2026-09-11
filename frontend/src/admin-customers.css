@@ -738,21 +738,21 @@
 .admin-customers__manage {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  justify-content: space-evenly;
   gap: 0;
-  padding: 0.15rem 0.1rem 0.1rem 0;
+  padding: 0.1rem 0 0;
 }
 
 .admin-customers__block {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   gap: 0.4rem;
-  min-height: 0;
-  padding: 0.55rem 0.25rem;
+  padding: 0.5rem 0.2rem;
   border: 0;
   border-radius: 0;
   border-bottom: 1px solid var(--admin-card-border);
@@ -760,12 +760,12 @@
 }
 
 .admin-customers__block:first-child {
-  padding-top: 0.35rem;
+  padding-top: 0.3rem;
 }
 
 .admin-customers__block:last-child {
   border-bottom: 0;
-  padding-bottom: 0.25rem;
+  padding-bottom: 0.15rem;
 }
 
 .admin-customers__block-head {
@@ -1001,12 +1001,12 @@
 
 .admin-customers__forms {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.4rem;
 }
 
 .admin-customers__forms > div > span {
   display: block;
-  margin-bottom: 0.22rem;
+  margin-bottom: 0.18rem;
   font-size: 0.68rem;
   font-weight: 750;
   color: var(--admin-text-subtle);

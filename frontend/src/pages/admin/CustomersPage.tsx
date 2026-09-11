@@ -1379,7 +1379,7 @@ export default function CustomersPage() {
                               Kaldır
                             </button>
                           </div>
-                          <div className="admin-customers__inline" style={{ marginTop: '0.45rem' }}>
+                          <div className="admin-customers__inline">
                             <input
                               inputMode="decimal"
                               placeholder={discountType === 'amount' ? '₺' : '%'}
