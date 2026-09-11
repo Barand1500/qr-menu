@@ -341,10 +341,10 @@ export default function ProductModal({
       <div className="absolute inset-0 bg-black/35 backdrop-blur-[6px]" />
 
       <div
-        className={`product-modal-shell relative z-10 px-0 sm:px-2 ${poolPickerOpen ? 'is-pool-open' : ''}`}
+        className={`product-modal-shell relative z-10 ${poolPickerOpen ? 'is-pool-open' : ''}`}
       >
       <div
-        className="product-modal-shell__main relative w-full max-h-[90vh] overflow-hidden flex flex-col rounded-t-[28px] sm:rounded-[28px] shadow-2xl animate-slide-up"
+        className="product-modal-shell__main relative w-full sm:max-w-xl max-h-[90vh] overflow-hidden flex flex-col rounded-t-[28px] sm:rounded-[28px] shadow-2xl animate-slide-up"
         style={{
           background: 'var(--admin-card)',
           border: '1px solid var(--admin-card-border)',

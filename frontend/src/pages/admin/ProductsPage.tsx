@@ -703,7 +703,7 @@ export default function ProductsPage() {
                   <Tags className="w-4 h-4" />
                   Toplu fiyat
                 </Button>
-                {bulkStatus.hasSnapshot && (
+                {bulkStatus.hasSnapshot ? (
                   <button
                     type="button"
                     onClick={() => setBulkRestoreOpen(true)}
@@ -717,6 +717,10 @@ export default function ProductsPage() {
                   >
                     Eski fiyata dön
                   </button>
+                ) : (
+                  <span className="mt-0.5 w-full text-center text-[11px] leading-tight admin-text-muted/80 truncate px-0.5">
+                    Henüz eski fiyat yok
+                  </span>
                 )}
               </div>
             )}
