@@ -65,14 +65,14 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
   {
     id: 'pick',
     title: 'Önce ürünü seç',
-    body: 'Soldaki listeden bir ürün seç. Seçenekler ürüne özeldir: Margarita’nın boyları ile Makarna’nın sosları aynı olmak zorunda değil.',
+    body: 'Galerideki ürün kartına tıkla. Seçenekler ürüne özeldir: Margarita’nın boyları ile Makarna’nın sosları aynı olmak zorunda değil.',
     bullets: [
       'Üründe önceden seçenek olması şart değil — boş ürüne de eklenir',
       'Rehber örnek için otomatik bir ürün seçer',
       'Gerçek kaydı etkilemez; sadece gösterim',
     ],
-    tip: 'Kendi ürününde çalışırken soldan ürünü seçip sağda grup eklersin.',
-    target: 'pv-list',
+    tip: 'Kendi ürününde çalışırken karta tıklayıp tam ekran düzenleyiciye girersin.',
+    target: 'pv-gallery',
     Icon: MousePointerClick,
   },
   {
@@ -91,7 +91,7 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
   {
     id: 'single',
     title: 'Tek seçim grubu ekle',
-    body: 'Sağ üstteki “Tek seçim” butonu boy / tür / porsiyon gibi “birini seç” alanları içindir. Müşteri aynı anda iki boy seçemez.',
+    body: 'Soldaki “Tek seçim” butonu boy / tür / porsiyon gibi “birini seç” alanları içindir. Müşteri aynı anda iki boy seçemez.',
     bullets: [
       'Grup adı örnekte: Boy',
       'Seçenekler: Büyük ve Mega',
@@ -103,8 +103,8 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
   },
   {
     id: 'single-fields',
-    title: 'Grup satırındaki ayarlar',
-    body: 'Her grubun üst satırında ne tür grup olduğu ve fiyatın nasıl işleneceği seçilir. Yanlış seçersen siparişte fiyat garip görünür.',
+    title: 'Kurallar çekmecesi',
+    body: 'Gelişmiş ayarlar ana listede değil — “Kurallar” ile açılan çekmecede. Tip, fiyat modu ve zorunluluk burada.',
     bullets: [
       'Tek seçim / Çoklu + miktar / Çoklu seçim → grup tipi',
       'Fiyatı değiştir → boy fiyatı taban olur',
@@ -112,13 +112,13 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
       'Zorunlu → siparişte boş bırakılamaz',
     ],
     tip: 'Boy için genelde: Tek seçim + Fiyatı değiştir + Zorunlu.',
-    target: 'pv-groups',
+    target: 'pv-rules-panel',
     Icon: SlidersHorizontal,
   },
   {
     id: 'type-max',
     title: 'Boy’a göre ekstra limiti',
-    body: 'İşte kritik nokta: ekstra üst sınırı her boy için farklı olabilir. Büyük’ün yanındaki “Ekstra”ya 5, Mega’ya 7 yaz. Siparişte o boy seçilince limit otomatik uygulanır.',
+    body: 'Kurallar çekmecesinde her boy için ekstra üst sınırı ayrı yazılır. Büyük’e 5, Mega’ya 7. Siparişte o boy seçilince limit otomatik uygulanır.',
     bullets: [
       'Büyük → Ekstra 5 (en fazla 5 adet ekstra)',
       'Mega → Ekstra 7',
@@ -126,7 +126,7 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
       'Özel limit yoksa ekstralar grubundaki genel “Maks” geçerli olur',
     ],
     tip: 'Limit sadece “Ekstra + miktar” gruplarına uygulanır; istek (çoklu seçim) sayılmaz.',
-    target: 'pv-groups',
+    target: 'pv-rules-panel',
     Icon: Layers3,
   },
   {
@@ -146,14 +146,14 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
   {
     id: 'multi-max',
     title: 'Grupta genel “Maks” ne işe yarar?',
-    body: 'Ekstralar satırındaki Maks, tüm boylar için ortak yedek limittir. Boyda “Ekstra 5 / 7” yazdıysan siparişte boy limiti önceliklidir; yazmadıysan bu Maks kullanılır.',
+    body: 'Kurallar’daki Maks, tüm boylar için ortak yedek limittir. Boyda “Ekstra 5 / 7” yazdıysan siparişte boy limiti önceliklidir; yazmadıysan bu Maks kullanılır.',
     bullets: [
       'Maks dolu + boyda limit yok → Maks geçerli',
       'Boyda Ekstra 5 yazıldı → Büyük seçilince 5',
       '∞ / 0 = sınırsız (o kaynak için)',
     ],
     tip: 'Pratikte boy limitlerini doldurup grup Maks’ı boş bırakmak da yeterli.',
-    target: 'pv-groups',
+    target: 'pv-rules-panel',
     Icon: ListChecks,
   },
   {
@@ -173,7 +173,7 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
   {
     id: 'exclude',
     title: '“Seçilince gizle” (sade koşul)',
-    body: 'Karmaşık kural motoru yok. Bir seçeneğin altında diğer seçenek chip’lerine basarsın: o seçenek seçilince işaretlediklerin sipariş ekranından kaybolur.',
+    body: 'Kurallar çekmecesinde chip’lere basarsın: o seçenek seçilince işaretlediklerin sipariş ekranından kaybolur.',
     bullets: [
       'Örnek: Acılı seçilince “Çocuk porsiyonu” gizlensin',
       'Chip kırmızı/yanıyorsa kural açık',
@@ -181,35 +181,35 @@ export const VARIANT_GUIDE_STEPS: GuideStep[] = [
       'Boy değişince veya seçim kalkınca liste yeniden ayarlanır',
     ],
     tip: 'Sadece gerçekten çakışan şeyler için kullan; her şeye kural koyma.',
-    target: 'pv-groups',
+    target: 'pv-rules-panel',
     Icon: Ban,
   },
   {
     id: 'copy',
     title: 'Seçenekleri kopyala',
-    body: 'Soldaki listede her ürünün yanında kopyala ikonu var. Seçenekli bir üründe buna basınca sağdaki gruplar ikona doğru “emilerek” kopyalanır.',
+    body: 'Galeri kartındaki kopyala ikonuna bas. Seçenekli bir üründen diğerlerine aktarmak için kopya alınır.',
     bullets: [
       'Önce seçenekleri olan ürünü bul',
-      'Soldaki kopyala ikonuna bas',
+      'Kart üzerindeki kopyala ikonuna bas',
       'Üstte “Kopya: …” yazısı çıkar',
       'Aynı ikona tekrar basarsan kopya iptal olur',
     ],
-    tip: 'Kaydedilmemiş düzenlemeyi kopyalarken o ürün seçiliyse ekrandaki (henüz kaydedilmemiş) hâli alınır.',
-    target: 'pv-list',
+    tip: 'Düzenleyicideyken kopyalarsan ekrandaki (henüz kaydedilmemiş) hâli alınır.',
+    target: 'pv-gallery',
     Icon: Copy,
   },
   {
     id: 'paste',
     title: 'Başka ürüne yapıştır',
-    body: 'Kopyadan sonra diğer ürünlerde yapıştır ikonu yanıp söner. Tıklayınca seçenekler o ürüne yazılır; kartlar ikondan çıkıp yerlerine oturur.',
+    body: 'Kopyadan sonra diğer kartlarda yapıştır ikonu görünür. Tıklayınca seçenekler o ürüne yazılır ve düzenleyici açılır.',
     bullets: [
       'Hedef üründe zaten seçenek varsa üzerine yazma onayı istenir',
       'Yapıştırınca otomatik kaydedilir (hemen API’ye gider)',
-      'Hedef ürün sağda açılır, sonucu görürsün',
+      'Hedef ürün düzenleyicide açılır',
       'Üstteki X ile kopyayı temizleyebilirsin',
     ],
     tip: 'Aynı pizzayı birkaç ürüne kopyalamak için bir kez kopyala, sırayla yapıştır.',
-    target: 'pv-list',
+    target: 'pv-gallery',
     Icon: ClipboardPaste,
   },
   {

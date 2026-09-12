@@ -15,9 +15,14 @@ import {
   Copy,
   ClipboardPaste,
   X,
+  SlidersHorizontal,
+  Tag,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
-import { api, formatMoney } from '@/lib/api';
+import { api, imageUrl } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
+import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import {
   emptyGroup,
   emptyOption,
@@ -31,11 +36,20 @@ import {
   VARIANT_GUIDE_STEPS,
   guideDemoPhase,
 } from '@/pages/admin/ProductVariantsGuide';
+import ProductVariantsWizard from '@/pages/admin/ProductVariantsWizard';
 import {
   animateCopySuck,
   animatePasteBurst,
   waitForGroupCards,
 } from '@/lib/productVariantsFly';
+import {
+  PV_LAYOUTS,
+  PV_LAYOUT_LABELS,
+  cycleProductVariantsLayout,
+  loadProductVariantsLayout,
+  saveProductVariantsLayout,
+  type ProductVariantsLayout,
+} from '@/lib/productVariantsLayout';
 import '@/product-variants.css';
 
 type ProductRow = {
@@ -44,6 +58,7 @@ type ProductRow = {
   groupName: string;
   price: number;
   isActive: boolean;
+  imageUrl?: string | null;
   optionGroups?: ProductOptionGroup[];
   optionSummary?: { groupCount: number; optionCount: number };
 };
@@ -52,6 +67,7 @@ type GuideSnapshot = {
   selectedId: number | null;
   groups: ProductOptionGroup[];
   dirty: boolean;
+  view: 'gallery' | 'editor';
 };
 
 type OptionsClipboard = {
@@ -60,7 +76,6 @@ type OptionsClipboard = {
   groups: ProductOptionGroup[];
 };
 
-/** Kopyada yeni id’ler — exclude bağları korunur */
 function cloneOptionGroups(groups: ProductOptionGroup[]): ProductOptionGroup[] {
   const idMap = new Map<string, string>();
   for (const g of groups) {
@@ -98,7 +113,6 @@ function normalizeLoadedGroups(raw: ProductOptionGroup[] | undefined): ProductOp
   }));
 }
 
-/** Rehber örneği — sabit id’ler (adımlar arası flicker olmasın) */
 function buildDemoGroups(
   basePrice: number,
   phase: ReturnType<typeof guideDemoPhase>
@@ -193,12 +207,44 @@ function toggleExclude(opt: ProductOption, targetId: string): string[] {
   return [...set];
 }
 
+function typeLabel(type: OptionGroupType) {
+  if (type === 'single') return 'Tek seçim';
+  if (type === 'multi') return 'Çoklu seçim';
+  return 'İstek';
+}
+
+function TypeIcon({ type }: { type: OptionGroupType }) {
+  if (type === 'single') return <CircleDot className="w-4 h-4" />;
+  if (type === 'multi') return <ListChecks className="w-4 h-4" />;
+  return <TextCursorInput className="w-4 h-4" />;
+}
+
+function productCounts(p: ProductRow, liveGroups?: ProductOptionGroup[]) {
+  if (liveGroups) {
+    return {
+      gCount: liveGroups.length,
+      oCount: liveGroups.reduce((n, g) => n + g.options.length, 0),
+    };
+  }
+  return {
+    gCount: p.optionSummary?.groupCount ?? p.optionGroups?.length ?? 0,
+    oCount:
+      p.optionSummary?.optionCount ??
+      p.optionGroups?.flatMap((g) => g.options).length ??
+      0,
+  };
+}
+
 export default function ProductVariantsPage() {
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string>('all');
+  const [layout, setLayout] = useState<ProductVariantsLayout>(() => loadProductVariantsLayout());
+  const [view, setView] = useState<'gallery' | 'editor'>('gallery');
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [groups, setGroups] = useState<ProductOptionGroup[]>([]);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -214,10 +260,6 @@ export default function ProductVariantsPage() {
     try {
       const res = await api<{ data: ProductRow[] }>('/api/admin/products?limit=500');
       setProducts(res.data || []);
-      setSelectedId((prev) => {
-        if (prev && res.data?.some((p) => p.id === prev)) return prev;
-        return res.data?.[0]?.id ?? null;
-      });
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Ürünler yüklenemedi');
     } finally {
@@ -237,14 +279,38 @@ export default function ProductVariantsPage() {
   useEffect(() => {
     if (guideOpen) return;
     if (!selected) {
-      setGroups([]);
-      setDirty(false);
+      if (layout === 'wizard' || view === 'editor') {
+        setGroups([]);
+        setDirty(false);
+      }
       return;
     }
+    // Galeri: sadece editördeyken yükle; sihirbaz: ürün seçilince yükle
+    if (layout === 'gallery' && view !== 'editor') return;
     setGroups(normalizeLoadedGroups(selected.optionGroups));
     setDirty(false);
-    setMessage(null);
-  }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps -- reset editor when product changes
+    setRulesOpen(false);
+  }, [selectedId, view, layout]); // eslint-disable-line react-hooks/exhaustive-deps -- reset editor when product/view/layout changes
+
+  useEffect(() => {
+    if (!groups.length) {
+      setActiveGroupId(null);
+      return;
+    }
+    if (!activeGroupId || !groups.some((g) => g.id === activeGroupId)) {
+      setActiveGroupId(groups[0].id);
+    }
+  }, [groups, activeGroupId]);
+
+  const activeGroup = useMemo(
+    () => groups.find((g) => g.id === activeGroupId) || null,
+    [groups, activeGroupId]
+  );
+
+  const activeGroupIndex = useMemo(
+    () => groups.findIndex((g) => g.id === activeGroupId),
+    [groups, activeGroupId]
+  );
 
   const categories = useMemo(() => {
     const map = new Map<string, number>();
@@ -263,10 +329,7 @@ export default function ProductVariantsPage() {
       const gName = (p.groupName || '').trim() || 'Diğer';
       if (category !== 'all' && gName !== category) return false;
       if (!q) return true;
-      return (
-        p.name.toLowerCase().includes(q) ||
-        gName.toLowerCase().includes(q)
-      );
+      return p.name.toLowerCase().includes(q) || gName.toLowerCase().includes(q);
     });
   }, [products, query, category]);
 
@@ -277,16 +340,84 @@ export default function ProductVariantsPage() {
     setMessage(null);
   }
 
+  function patchActiveGroup(patch: Partial<ProductOptionGroup>) {
+    if (activeGroupIndex < 0) return;
+    const next = [...groups];
+    next[activeGroupIndex] = { ...next[activeGroupIndex], ...patch };
+    updateGroups(next);
+  }
+
+  function patchActiveOption(oi: number, patch: Partial<ProductOption>) {
+    if (activeGroupIndex < 0) return;
+    const g = groups[activeGroupIndex];
+    const opts = [...g.options];
+    opts[oi] = { ...opts[oi], ...patch };
+    patchActiveGroup({ options: opts });
+  }
+
+  function openProduct(p: ProductRow) {
+    if (guideOpen) return;
+    if (dirty && selectedId !== p.id && (view === 'editor' || layout === 'wizard')) {
+      if (!confirm('Kaydedilmemiş değişiklikler var. Yine de geçilsin mi?')) return;
+    }
+    setSelectedId(p.id);
+    if (layout === 'gallery') {
+      setView('editor');
+      setRulesOpen(false);
+    }
+  }
+
+  function cycleLayout(dir: -1 | 1) {
+    if (guideOpen) return;
+    if (dirty) {
+      if (!confirm('Kaydedilmemiş değişiklikler var. Tasarım değiştirilsin mi?')) return;
+    }
+    setLayout((prev) => {
+      const next = cycleProductVariantsLayout(prev, dir);
+      setView('gallery');
+      setRulesOpen(false);
+      setDirty(false);
+      setMessage(`Görünüm: ${PV_LAYOUT_LABELS[next]}`);
+      return next;
+    });
+  }
+
+  function backToGallery() {
+    if (guideOpen) return;
+    if (dirty) {
+      if (!confirm('Kaydedilmemiş değişiklikler var. Galeriye dönülsün mü?')) return;
+    }
+    setView('gallery');
+    setRulesOpen(false);
+    setDirty(false);
+    setSelectedId(null);
+    setGroups([]);
+  }
+
   function applyGuideStep(index: number, productId: number | null, price: number) {
     const step = VARIANT_GUIDE_STEPS[index];
     const phase = guideDemoPhase(step?.id || 'welcome');
     setGuideStep(index);
+
+    const rulesSteps = new Set(['single-fields', 'type-max', 'multi-max', 'exclude']);
+    setRulesOpen(Boolean(step?.id && rulesSteps.has(step.id)));
+
+    const gallerySteps = new Set(['welcome', 'pick', 'idea', 'copy', 'paste']);
+    const showGallery = Boolean(step?.id && gallerySteps.has(step.id));
+
     if (phase === 'empty') {
+      setView('gallery');
       if (step?.id === 'pick' && productId) setSelectedId(productId);
       setGroups([]);
       return;
     }
-    setGroups(buildDemoGroups(price, phase));
+
+    const demo = buildDemoGroups(price, phase);
+    if (productId) setSelectedId(productId);
+    setGroups(demo);
+    setActiveGroupId(demo[0]?.id ?? null);
+    setView(showGallery ? 'gallery' : 'editor');
+
     window.requestAnimationFrame(() => {
       const target = step?.target;
       if (!target) return;
@@ -299,7 +430,11 @@ export default function ProductVariantsPage() {
   function startGuide() {
     if (saving) return;
     if (dirty && !guideOpen) {
-      if (!confirm('Kaydedilmemiş değişiklikler var. Rehber örneği geçici olarak gösterir; bitince eski haline döner. Devam?')) {
+      if (
+        !confirm(
+          'Kaydedilmemiş değişiklikler var. Rehber örneği geçici olarak gösterir; bitince eski haline döner. Devam?'
+        )
+      ) {
         return;
       }
     }
@@ -308,14 +443,23 @@ export default function ProductVariantsPage() {
       alert('Rehber için önce en az bir ürün olmalı.');
       return;
     }
+    // Rehber galeri düzenine göre yazıldı
+    if (layout !== 'gallery') {
+      setLayout('gallery');
+      saveProductVariantsLayout('gallery');
+    }
     const product = products.find((p) => p.id === pickId) || products[0];
     guideSnapshot.current = {
       selectedId,
       groups: groups.map((g) => ({
         ...g,
-        options: g.options.map((o) => ({ ...o, excludesOptionIds: [...(o.excludesOptionIds || [])] })),
+        options: g.options.map((o) => ({
+          ...o,
+          excludesOptionIds: [...(o.excludesOptionIds || [])],
+        })),
       })),
       dirty,
+      view,
     };
     setSelectedId(product.id);
     setDirty(false);
@@ -328,11 +472,17 @@ export default function ProductVariantsPage() {
     const snap = guideSnapshot.current;
     setGuideOpen(false);
     setGuideStep(0);
+    setRulesOpen(false);
     guideSnapshot.current = null;
     if (snap) {
       setSelectedId(snap.selectedId);
       setGroups(snap.groups);
       setDirty(snap.dirty);
+      setView(snap.view);
+    } else {
+      setView('gallery');
+      setSelectedId(null);
+      setGroups([]);
     }
     setMessage(null);
   }
@@ -400,7 +550,7 @@ export default function ProductVariantsPage() {
             : p
         )
       );
-      setGroups(updated.optionGroups || cleaned);
+      setGroups(normalizeLoadedGroups(updated.optionGroups) || cleaned);
       setDirty(false);
       setMessage('Seçenekler kaydedildi');
     } catch (err) {
@@ -420,27 +570,21 @@ export default function ProductVariantsPage() {
       return;
     }
     const sourceGroups =
-      p.id === selectedId ? groups : normalizeLoadedGroups(p.optionGroups);
+      p.id === selectedId && view === 'editor'
+        ? groups
+        : normalizeLoadedGroups(p.optionGroups);
     if (!sourceGroups.length) {
       alert('Bu üründe kopyalanacak seçenek yok.');
       return;
     }
 
-    // Animasyon için önce bu ürünü seç (sağ panel görünsün)
-    if (selectedId !== p.id) {
-      if (dirty) {
-        if (!confirm('Kaydedilmemiş değişiklikler var. Kopyalamak için ürün değişsin mi?')) {
-          return;
-        }
-      }
-      setSelectedId(p.id);
-      setGroups(sourceGroups);
-      setDirty(false);
-      await waitForGroupCards();
+    if (view === 'editor' && selectedId === p.id) {
+      const icon = document.querySelector<HTMLElement>(`[data-clip-id="${p.id}"]`);
+      await animateCopySuck(icon);
+    } else {
+      const icon = document.querySelector<HTMLElement>(`[data-clip-id="${p.id}"]`);
+      if (icon) await animateCopySuck(icon);
     }
-
-    const icon = document.querySelector<HTMLElement>(`[data-clip-id="${p.id}"]`);
-    await animateCopySuck(icon);
 
     setClipboard({
       fromId: p.id,
@@ -454,14 +598,9 @@ export default function ProductVariantsPage() {
     e.stopPropagation();
     e.preventDefault();
     if (!clipboard || clipboard.fromId === p.id || guideOpen || pasteBusyId) return;
-    const targetCount =
-      p.optionSummary?.groupCount ?? p.optionGroups?.length ?? 0;
+    const targetCount = p.optionSummary?.groupCount ?? p.optionGroups?.length ?? 0;
     if (targetCount > 0) {
-      if (
-        !confirm(
-          `“${p.name}” ürününde zaten seçenek var. Üzerine yazılsın mı?`
-        )
-      ) {
+      if (!confirm(`“${p.name}” ürününde zaten seçenek var. Üzerine yazılsın mı?`)) {
         return;
       }
     }
@@ -485,7 +624,10 @@ export default function ProductVariantsPage() {
         )
       );
       setSelectedId(p.id);
-      setGroups(normalizeLoadedGroups(updated.optionGroups));
+      setView('editor');
+      const nextGroups = normalizeLoadedGroups(updated.optionGroups);
+      setGroups(nextGroups);
+      setActiveGroupId(nextGroups[0]?.id ?? null);
       setDirty(false);
       setMessage(`Seçenekler “${p.name}” ürününe yapıştırıldı`);
 
@@ -505,40 +647,77 @@ export default function ProductVariantsPage() {
       type === 'single'
         ? { name: 'Tür seçimi', optName: 'Standart', price: selected?.price || 0, required: true }
         : type === 'choice'
-          ? {
-              name: 'İstekler',
-              optName: 'Maydanoz olmasın',
-              price: 0,
-              required: false,
-            }
+          ? { name: 'İstekler', optName: 'Maydanoz olmasın', price: 0, required: false }
           : { name: 'Ekstralar', optName: 'Ekstra', price: 10, required: false };
-    updateGroups([
-      ...groups,
-      emptyGroup({
-        type,
-        pricing: type === 'single' ? 'replace' : 'add',
-        required: defaults.required,
-        name: defaults.name,
-        options: [
-          emptyOption({
-            name: defaults.optName,
-            price: defaults.price,
-          }),
-        ],
-      }),
-    ]);
+    const g = emptyGroup({
+      type,
+      pricing: type === 'single' ? 'replace' : 'add',
+      required: defaults.required,
+      name: defaults.name,
+      options: [emptyOption({ name: defaults.optName, price: defaults.price })],
+    });
+    updateGroups([...groups, g]);
+    setActiveGroupId(g.id);
   }
 
+  const showMultiLimits = groups.some((g) => g.type === 'multi');
+
   return (
-    <div className="pv-page">
+    <div
+      className={`pv-page pv-page--${layout}${layout === 'gallery' ? (view === 'editor' ? ' is-editor' : ' is-gallery') : ' is-wizard'}`}
+    >
       <header className="pv-top">
-        <Link to={adminPath('products')} className="pv-back" aria-label="Ürünlere dön">
-          <ArrowLeft className="w-4 h-4" />
-          Geri
-        </Link>
+        {layout === 'gallery' && view === 'editor' ? (
+          <button type="button" className="pv-back" onClick={backToGallery} disabled={guideOpen}>
+            <ArrowLeft className="w-4 h-4" />
+            Galeri
+          </button>
+        ) : (
+          <Link to={adminPath('products')} className="pv-back" aria-label="Ürünlere dön">
+            <ArrowLeft className="w-4 h-4" />
+            Geri
+          </Link>
+        )}
         <div className="pv-brand">
-          <p>Ürün seçenekleri</p>
-          <strong>Varyant & ekstra yönetimi</strong>
+          <div className="pv-brand__title">
+            <button
+              type="button"
+              className="pv-skin-btn"
+              aria-label="Önceki tasarım"
+              title="Önceki tasarım"
+              disabled={guideOpen}
+              onClick={() => cycleLayout(-1)}
+            >
+              <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.5} />
+            </button>
+            <p>
+              {layout === 'wizard'
+                ? 'Kurulum sihirbazı'
+                : view === 'gallery'
+                  ? 'Menü seçenekleri galerisi'
+                  : 'Ürün düzenleyici'}
+            </p>
+            <button
+              type="button"
+              className="pv-skin-btn"
+              aria-label="Sonraki tasarım"
+              title="Sonraki tasarım"
+              disabled={guideOpen}
+              onClick={() => cycleLayout(1)}
+            >
+              <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+            </button>
+            <span className="pv-skin-index" aria-hidden>
+              {PV_LAYOUTS.indexOf(layout) + 1}/{PV_LAYOUTS.length}
+            </span>
+          </div>
+          <strong>
+            {layout === 'gallery' && view === 'editor' && selected
+              ? selected.name || `Ürün #${selected.id}`
+              : layout === 'wizard'
+                ? 'Varyant & ekstra yönetimi'
+                : 'Varyant & ekstra yönetimi'}
+          </strong>
         </div>
         <div className="pv-top-actions">
           {message ? (
@@ -571,488 +750,552 @@ export default function ProductVariantsPage() {
             <BookOpen className="w-4 h-4" />
             {guideOpen ? 'Rehberi kapat' : 'Rehber'}
           </button>
-          <button
-            type="button"
-            className="pv-btn pv-btn--primary"
-            data-tour="pv-save"
-            disabled={!selected || !dirty || saving || guideOpen}
-            onClick={() => void handleSave()}
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            Kaydet
-          </button>
+          {layout === 'gallery' && view === 'editor' ? (
+            <button
+              type="button"
+              className="pv-btn pv-btn--primary"
+              data-tour="pv-save"
+              disabled={!selected || !dirty || saving || guideOpen}
+              onClick={() => void handleSave()}
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              Kaydet
+            </button>
+          ) : null}
         </div>
       </header>
 
-      <div className="pv-body">
-        <aside className="pv-list-pane">
-          <div className="pv-search">
-            <Search className="w-4 h-4" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ürün veya grup ara…"
-            />
-          </div>
-          <div className="pv-cats" role="tablist" aria-label="Kategoriler">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={category === 'all'}
-              className={`pv-cat${category === 'all' ? ' is-active' : ''}`}
-              onClick={() => setCategory('all')}
-            >
-              Tümü
-              <em>{products.length}</em>
-            </button>
-            {categories.map((c) => (
+      {layout === 'wizard' ? (
+        <ProductVariantsWizard
+          products={products}
+          filtered={filtered}
+          loading={loading}
+          query={query}
+          category={category}
+          categories={categories}
+          onQuery={setQuery}
+          onCategory={setCategory}
+          selected={selected}
+          selectedId={selectedId}
+          onSelectProduct={(p) => openProduct(p as ProductRow)}
+          groups={groups}
+          activeGroupId={activeGroupId}
+          onActiveGroupId={setActiveGroupId}
+          onUpdateGroups={updateGroups}
+          dirty={dirty}
+          saving={saving}
+          guideOpen={guideOpen}
+          onSave={() => void handleSave()}
+        />
+      ) : view === 'gallery' ? (
+        <div className="pv-gallery" data-tour="pv-gallery">
+          <div className="pv-gallery__toolbar">
+            <div className="pv-search">
+              <Search className="w-4 h-4" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search…"
+                aria-label="Ürün ara"
+              />
+            </div>
+            <div className="pv-cats" role="tablist" aria-label="Kategoriler">
               <button
-                key={c.name}
                 type="button"
                 role="tab"
-                aria-selected={category === c.name}
-                className={`pv-cat${category === c.name ? ' is-active' : ''}`}
-                onClick={() => setCategory(c.name)}
+                aria-selected={category === 'all'}
+                className={`pv-cat${category === 'all' ? ' is-active' : ''}`}
+                onClick={() => setCategory('all')}
               >
-                <span>{c.name}</span>
-                <em>{c.count}</em>
+                Hepsi
               </button>
-            ))}
+              {categories.map((c) => (
+                <button
+                  key={c.name}
+                  type="button"
+                  role="tab"
+                  aria-selected={category === c.name}
+                  className={`pv-cat${category === c.name ? ' is-active' : ''}`}
+                  onClick={() => setCategory(c.name)}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="pv-list admin-scroll" data-tour="pv-list">
-            {loading ? (
-              <div className="pv-empty">Yükleniyor…</div>
-            ) : filtered.length === 0 ? (
-              <div className="pv-empty">Ürün yok</div>
-            ) : (
-              filtered.map((p) => {
-                const count = p.optionSummary?.optionCount ?? p.optionGroups?.flatMap((g) => g.options).length ?? 0;
-                const gCount = p.optionSummary?.groupCount ?? p.optionGroups?.length ?? 0;
-                const active = p.id === selectedId;
+
+          {loading ? (
+            <div className="pv-empty-state">Yükleniyor…</div>
+          ) : filtered.length === 0 ? (
+            <div className="pv-empty-state">Ürün yok</div>
+          ) : (
+            <div className="pv-grid admin-scroll" data-tour="pv-list">
+              {filtered.map((p) => {
+                const { gCount, oCount } = productCounts(p);
                 const isSource = clipboard?.fromId === p.id;
                 const showPaste = Boolean(clipboard && !isSource);
-                const canCopy =
-                  p.id === selectedId ? groups.length > 0 : gCount > 0;
+                const canCopy = gCount > 0;
                 return (
-                  <div
+                  <article
                     key={p.id}
-                    className={`pv-product${active ? ' is-active' : ''}${isSource ? ' is-clip-source' : ''}${showPaste ? ' has-paste' : ''}`}
+                    className={`pv-card${isSource ? ' is-clip-source' : ''}${showPaste ? ' has-paste' : ''}`}
                   >
-                    {showPaste ? (
-                      <button
-                        type="button"
-                        className="pv-product__clip is-paste"
-                        data-paste-id={p.id}
-                        title={`“${clipboard!.fromName}” seçeneklerini yapıştır`}
-                        disabled={guideOpen || pasteBusyId === p.id}
-                        onClick={(e) => void handlePasteOptions(p, e)}
-                      >
-                        {pasteBusyId === p.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <ClipboardPaste className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className={`pv-product__clip${isSource ? ' is-source' : ''}`}
-                        data-clip-id={p.id}
-                        title={isSource ? 'Kopyayı iptal et' : 'Seçenekleri kopyala'}
-                        disabled={guideOpen || !canCopy}
-                        onClick={(e) => void handleCopyOptions(p, e)}
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    )}
                     <button
                       type="button"
-                      className="pv-product__body"
+                      className="pv-card__hit"
                       disabled={guideOpen}
-                      onClick={() => {
-                        if (guideOpen) return;
-                        if (dirty && selectedId !== p.id) {
-                          if (!confirm('Kaydedilmemiş değişiklikler var. Yine de geçilsin mi?')) return;
-                        }
-                        setSelectedId(p.id);
-                      }}
+                      onClick={() => openProduct(p)}
                     >
-                      <div className="pv-product__main">
-                        <strong>{p.name || `Ürün #${p.id}`}</strong>
-                        <span>
-                          {p.groupName || 'Grup yok'} · {formatMoney(p.price)}
-                        </span>
+                      <div className="pv-card__media">
+                        {p.imageUrl ? (
+                          <img src={imageUrl(p.imageUrl)} alt="" />
+                        ) : (
+                          <MenuMediaPlaceholder kind="product" size="lg" label={p.name} />
+                        )}
                       </div>
-                      {gCount > 0 ? (
-                        <em className="pv-product__badge">
-                          {gCount} grup · {count} seçenek
-                        </em>
-                      ) : (
-                        <em className="pv-product__badge pv-product__badge--muted">Yok</em>
-                      )}
+                      <div className="pv-card__body">
+                        <strong>{p.name || `Ürün #${p.id}`}</strong>
+                        <span>{p.groupName || 'Grup yok'}</span>
+                        <p className="pv-card__meta">
+                          <Tag className="w-3.5 h-3.5" aria-hidden />
+                          {gCount > 0
+                            ? `${gCount} grup · ${oCount} seçenek`
+                            : 'Henüz seçenek yok'}
+                        </p>
+                      </div>
                     </button>
-                  </div>
+                    <div className="pv-card__actions">
+                      {showPaste ? (
+                        <button
+                          type="button"
+                          className="pv-card__clip is-paste"
+                          data-paste-id={p.id}
+                          title={`“${clipboard!.fromName}” seçeneklerini yapıştır`}
+                          disabled={guideOpen || pasteBusyId === p.id}
+                          onClick={(e) => void handlePasteOptions(p, e)}
+                        >
+                          {pasteBusyId === p.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <ClipboardPaste className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className={`pv-card__clip${isSource ? ' is-source' : ''}`}
+                          data-clip-id={p.id}
+                          title={isSource ? 'Kopyayı iptal et' : 'Seçenekleri kopyala'}
+                          disabled={guideOpen || !canCopy}
+                          onClick={(e) => void handleCopyOptions(p, e)}
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </article>
                 );
-              })
-            )}
-          </div>
-        </aside>
-
-        <main className="pv-editor">
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="pv-editor-shell">
           {!selected ? (
-            <div className="pv-hero-empty">
+            <div className="pv-empty-state">
               <Layers3 className="w-10 h-10" />
-              <h2>Ürün seç</h2>
-              <p>Soldan bir ürün seç; tek seçim veya miktarlı ekstra grupları ekle.</p>
+              <p>Ürün seçilmedi</p>
+              <button type="button" className="pv-btn" onClick={backToGallery}>
+                Galeriye dön
+              </button>
             </div>
           ) : (
             <>
-              <div className="pv-editor-head">
-                <div>
-                  <p className="pv-kicker">Seçili ürün</p>
-                  <h2>{selected.name}</h2>
-                  <p className="pv-sub">
-                    Tabana {formatMoney(selected.price)} · Masa görünümünde sipariş eklerken bu
-                    seçenekler çıkar
-                  </p>
-                </div>
-                <div className="pv-add-row">
-                  <button
-                    type="button"
-                    className="pv-btn"
-                    data-tour="pv-add-single"
-                    disabled={guideOpen}
-                    onClick={() => addGroup('single')}
-                  >
-                    <CircleDot className="w-4 h-4" />
-                    Tek seçim
-                  </button>
-                  <button
-                    type="button"
-                    className="pv-btn"
-                    data-tour="pv-add-multi"
-                    disabled={guideOpen}
-                    onClick={() => addGroup('multi')}
-                  >
-                    <ListChecks className="w-4 h-4" />
-                    Ekstra + miktar
-                  </button>
-                  <button
-                    type="button"
-                    className="pv-btn"
-                    data-tour="pv-add-choice"
-                    disabled={guideOpen}
-                    onClick={() => addGroup('choice')}
-                  >
-                    <TextCursorInput className="w-4 h-4" />
-                    Çoklu seçim
-                  </button>
-                </div>
-              </div>
-
               {guideOpen ? (
                 <div className="pv-demo-banner">
                   Rehber örneği — pizza boy + ekstra senaryosu. Kaydetmezsen kaybolur.
                 </div>
-              ) : (
-                <div className="pv-hint">
-                  <strong>Tek seçim</strong> — boy / tür (Büyük, Mega).
-                  <br />
-                  <strong>Ekstra + miktar</strong> — mantar ×2 gibi adetli ekler.
-                  <br />
-                  <strong>Çoklu seçim</strong> — düz yazı istekler: “maydanoz olmasın”, “ketçap
-                  olmasın”; birden fazla işaretlenir, yanına fiyat (çoğu zaman 0).
-                </div>
-              )}
+              ) : null}
 
-              {groups.length === 0 ? (
-                <div className="pv-hero-empty pv-hero-empty--soft">
-                  <p>
-                    {guideOpen
-                      ? 'İleri’ye bas; örnek gruplar adım adım eklenecek.'
-                      : 'Henüz seçenek yok. Yukarıdan grup ekle.'}
-                  </p>
-                </div>
-              ) : (
-                <div className="pv-groups admin-scroll" data-tour="pv-groups">
-                  {groups.map((g, gi) => (
-                    <section key={g.id} className="pv-group">
-                      <div className="pv-group__bar">
-                        <input
-                          className="pv-group__title"
-                          value={g.name}
-                          onChange={(e) => {
-                            const next = [...groups];
-                            next[gi] = { ...g, name: e.target.value };
-                            updateGroups(next);
-                          }}
-                          placeholder="Grup adı"
-                        />
-                        <select
-                          value={g.type}
-                          onChange={(e) => {
-                            const type = e.target.value as OptionGroupType;
-                            const next = [...groups];
-                            next[gi] = {
-                              ...g,
-                              type,
-                              pricing: type === 'single' ? 'replace' : 'add',
-                              required: type === 'single' ? true : g.required,
-                              maxTotalQty: type === 'multi' ? g.maxTotalQty : 0,
-                            };
-                            updateGroups(next);
-                          }}
+              <div className="pv-editor">
+                <aside className="pv-rail">
+                  <p className="pv-rail__label">Varyant grupları</p>
+                  <div className="pv-rail__list" data-tour="pv-groups">
+                    {groups.length === 0 ? (
+                      <p className="pv-rail__empty">Henüz grup yok</p>
+                    ) : (
+                      groups.map((g) => (
+                        <button
+                          key={g.id}
+                          type="button"
+                          className={`pv-group pv-rail__item${g.id === activeGroupId ? ' is-active' : ''}`}
+                          onClick={() => setActiveGroupId(g.id)}
                         >
-                          <option value="single">Tek seçim</option>
-                          <option value="multi">Çoklu + miktar</option>
-                          <option value="choice">Çoklu seçim</option>
-                        </select>
-                        <select
-                          value={g.pricing}
-                          onChange={(e) => {
-                            const next = [...groups];
-                            next[gi] = {
-                              ...g,
-                              pricing: e.target.value as 'replace' | 'add',
-                            };
-                            updateGroups(next);
-                          }}
-                        >
-                          <option value="replace">Fiyatı değiştir</option>
-                          <option value="add">Fiyata ekle</option>
-                        </select>
-                        {g.type === 'multi' ? (
-                          <div className="pv-max-group" title="Bu gruptaki toplam ekstra üst sınırı">
-                            <span className="pv-max-group__label">Maks</span>
-                            <label
-                              className={`pv-max-group__field${!(g.maxTotalQty > 0) ? ' is-empty' : ''}`}
-                            >
-                              <input
-                                type="number"
-                                min={0}
-                                max={99}
-                                value={g.maxTotalQty > 0 ? g.maxTotalQty : ''}
-                                aria-label="Maksimum ekstra adet"
-                                onChange={(e) => {
-                                  const raw = e.target.value.trim();
-                                  const v =
-                                    raw === ''
-                                      ? 0
-                                      : Math.max(0, Math.min(99, Math.floor(Number(raw) || 0)));
-                                  const next = [...groups];
-                                  next[gi] = { ...g, maxTotalQty: v };
-                                  updateGroups(next);
-                                }}
-                              />
-                              {!(g.maxTotalQty > 0) ? (
-                                <span className="pv-max-group__hint" aria-hidden>
-                                  <b>∞</b>
-                                  <i>sınırsız</i>
-                                </span>
-                              ) : null}
-                            </label>
-                          </div>
-                        ) : null}
-                        <label className="pv-check">
+                          <TypeIcon type={g.type} />
+                          <span>
+                            <strong>{g.name.trim() || 'Adsız grup'}</strong>
+                            <em>({typeLabel(g.type)})</em>
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="pv-rail__add" data-tour="pv-add-row">
+                    <button
+                      type="button"
+                      className="pv-btn pv-btn--sm"
+                      data-tour="pv-add-single"
+                      disabled={guideOpen}
+                      onClick={() => addGroup('single')}
+                    >
+                      <CircleDot className="w-3.5 h-3.5" />
+                      Tek seçim
+                    </button>
+                    <button
+                      type="button"
+                      className="pv-btn pv-btn--sm"
+                      data-tour="pv-add-multi"
+                      disabled={guideOpen}
+                      onClick={() => addGroup('multi')}
+                    >
+                      <ListChecks className="w-3.5 h-3.5" />
+                      Ekstra
+                    </button>
+                    <button
+                      type="button"
+                      className="pv-btn pv-btn--sm"
+                      data-tour="pv-add-choice"
+                      disabled={guideOpen}
+                      onClick={() => addGroup('choice')}
+                    >
+                      <TextCursorInput className="w-3.5 h-3.5" />
+                      İstek
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="pv-btn pv-btn--teal"
+                    data-tour="pv-rules"
+                    disabled={!activeGroup}
+                    onClick={() => setRulesOpen(true)}
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                    Kurallar
+                  </button>
+                </aside>
+
+                <main className="pv-canvas">
+                  {!activeGroup ? (
+                    <div className="pv-empty-state pv-empty-state--soft">
+                      <p>
+                        {guideOpen
+                          ? 'İleri’ye bas; örnek gruplar adım adım eklenecek.'
+                          : 'Soldan grup ekle veya bir grup seç.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <header className="pv-canvas__head">
+                        <div className="pv-canvas__title">
+                          <TypeIcon type={activeGroup.type} />
                           <input
-                            type="checkbox"
-                            checked={g.required}
-                            onChange={(e) => {
-                              const next = [...groups];
-                              next[gi] = { ...g, required: e.target.checked };
-                              updateGroups(next);
-                            }}
+                            value={activeGroup.name}
+                            onChange={(e) => patchActiveGroup({ name: e.target.value })}
+                            placeholder="Grup adı"
+                            disabled={guideOpen}
                           />
-                          Zorunlu
-                        </label>
+                        </div>
                         <button
                           type="button"
                           className="pv-icon-danger"
                           title="Grubu sil"
-                          onClick={() => updateGroups(groups.filter((_, i) => i !== gi))}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <div className="pv-options">
-                        {g.options.map((o, oi) => {
-                          const others = allOptionsFlat(groups, o.id);
-                          const showTypeMax =
-                            g.type === 'single' && groups.some((x) => x.type === 'multi');
-                          const namePlaceholder =
-                            g.type === 'choice' ? 'Örn. Maydanoz olmasın' : 'Seçenek adı';
-                          return (
-                            <div key={o.id} className="pv-option-card">
-                              <div
-                                className={`pv-option${showTypeMax ? ' pv-option--type-max' : ''}`}
-                              >
-                                <input
-                                  value={o.name}
-                                  placeholder={namePlaceholder}
-                                  onChange={(e) => {
-                                    const next = [...groups];
-                                    const opts = [...g.options];
-                                    opts[oi] = { ...o, name: e.target.value };
-                                    next[gi] = { ...g, options: opts };
-                                    updateGroups(next);
-                                  }}
-                                />
-                                <div className="pv-option__price">
-                                  <span>₺</span>
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    step="0.01"
-                                    value={o.price}
-                                    onChange={(e) => {
-                                      const next = [...groups];
-                                      const opts = [...g.options];
-                                      opts[oi] = { ...o, price: Number(e.target.value) || 0 };
-                                      next[gi] = { ...g, options: opts };
-                                      updateGroups(next);
-                                    }}
-                                  />
-                                </div>
-                                {showTypeMax ? (
-                                  <div
-                                    className="pv-max-group pv-max-group--opt"
-                                    title="Bu boy/tür seçilince ekstra üst sınırı"
-                                  >
-                                    <span className="pv-max-group__label">Ekstra</span>
-                                    <label
-                                      className={`pv-max-group__field${
-                                        !(o.limitsMultiMaxTotalQty > 0) ? ' is-empty' : ''
-                                      }`}
-                                    >
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        max={99}
-                                        value={
-                                          o.limitsMultiMaxTotalQty > 0
-                                            ? o.limitsMultiMaxTotalQty
-                                            : ''
-                                        }
-                                        aria-label={`${o.name || 'Seçenek'} ekstra maksimum`}
-                                        onChange={(e) => {
-                                          const raw = e.target.value.trim();
-                                          const v =
-                                            raw === ''
-                                              ? 0
-                                              : Math.max(
-                                                  0,
-                                                  Math.min(99, Math.floor(Number(raw) || 0))
-                                                );
-                                          const next = [...groups];
-                                          const opts = [...g.options];
-                                          opts[oi] = { ...o, limitsMultiMaxTotalQty: v };
-                                          next[gi] = { ...g, options: opts };
-                                          updateGroups(next);
-                                        }}
-                                      />
-                                      {!(o.limitsMultiMaxTotalQty > 0) ? (
-                                        <span className="pv-max-group__hint" aria-hidden>
-                                          <b>∞</b>
-                                        </span>
-                                      ) : null}
-                                    </label>
-                                  </div>
-                                ) : null}
-                                <label className="pv-check">
-                                  <input
-                                    type="checkbox"
-                                    checked={o.isActive}
-                                    onChange={(e) => {
-                                      const next = [...groups];
-                                      const opts = [...g.options];
-                                      opts[oi] = { ...o, isActive: e.target.checked };
-                                      next[gi] = { ...g, options: opts };
-                                      updateGroups(next);
-                                    }}
-                                  />
-                                  Aktif
-                                </label>
-                                <button
-                                  type="button"
-                                  className="pv-icon-danger"
-                                  onClick={() => {
-                                    const next = [...groups];
-                                    next[gi] = {
-                                      ...g,
-                                      options: g.options.filter((_, i) => i !== oi),
-                                    };
-                                    updateGroups(next);
-                                  }}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-
-                              {others.length > 0 && o.name.trim() ? (
-                                <div className="pv-exclude">
-                                  <p>
-                                    <strong>{o.name || 'Bu seçenek'}</strong> seçilince gizle
-                                  </p>
-                                  <div className="pv-exclude__chips">
-                                    {others.map((other) => {
-                                      const on = (o.excludesOptionIds || []).includes(other.id);
-                                      return (
-                                        <button
-                                          key={other.id}
-                                          type="button"
-                                          className={`pv-exclude__chip${on ? ' is-on' : ''}`}
-                                          onClick={() => {
-                                            const next = [...groups];
-                                            const opts = [...g.options];
-                                            opts[oi] = {
-                                              ...o,
-                                              excludesOptionIds: toggleExclude(o, other.id),
-                                            };
-                                            next[gi] = { ...g, options: opts };
-                                            updateGroups(next);
-                                          }}
-                                        >
-                                          {other.name}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                        <button
-                          type="button"
-                          className="pv-add-opt"
+                          disabled={guideOpen}
                           onClick={() => {
-                            const next = [...groups];
-                            next[gi] = {
-                              ...g,
-                              options: [
-                                ...g.options,
-                                emptyOption({
-                                  name: '',
-                                  price: g.pricing === 'replace' ? selected.price : 0,
-                                }),
-                              ],
-                            };
+                            const next = groups.filter((g) => g.id !== activeGroup.id);
                             updateGroups(next);
                           }}
                         >
-                          <Plus className="w-3.5 h-3.5" />
-                          Seçenek ekle
+                          <Trash2 className="w-4 h-4" />
                         </button>
+                      </header>
+
+                      <ul className="pv-opt-list">
+                        {activeGroup.options.map((o, oi) => (
+                          <li key={o.id} className="pv-opt-row">
+                            <input
+                              className="pv-opt-row__name"
+                              value={o.name}
+                              placeholder={
+                                activeGroup.type === 'choice'
+                                  ? 'Örn. Maydanoz olmasın'
+                                  : 'Seçenek adı'
+                              }
+                              disabled={guideOpen}
+                              onChange={(e) => patchActiveOption(oi, { name: e.target.value })}
+                            />
+                            <label className="pv-opt-row__price">
+                              <span>+</span>
+                              <input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                value={o.price}
+                                disabled={guideOpen}
+                                onChange={(e) =>
+                                  patchActiveOption(oi, { price: Number(e.target.value) || 0 })
+                                }
+                              />
+                              <em>₺</em>
+                            </label>
+                            <label className="pv-switch" title="Aktif">
+                              <input
+                                type="checkbox"
+                                checked={o.isActive}
+                                disabled={guideOpen}
+                                onChange={(e) =>
+                                  patchActiveOption(oi, { isActive: e.target.checked })
+                                }
+                              />
+                              <span />
+                            </label>
+                            <button
+                              type="button"
+                              className="pv-icon-danger"
+                              disabled={guideOpen}
+                              onClick={() => {
+                                patchActiveGroup({
+                                  options: activeGroup.options.filter((_, i) => i !== oi),
+                                });
+                              }}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <button
+                        type="button"
+                        className="pv-add-opt"
+                        disabled={guideOpen}
+                        onClick={() => {
+                          patchActiveGroup({
+                            options: [
+                              ...activeGroup.options,
+                              emptyOption({
+                                name: '',
+                                price:
+                                  activeGroup.pricing === 'replace' ? selected.price : 0,
+                              }),
+                            ],
+                          });
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Seçenek ekle
+                      </button>
+
+                      <div className="pv-canvas__foot">
+                        <button
+                          type="button"
+                          className="pv-btn pv-btn--teal"
+                          disabled={!activeGroup}
+                          onClick={() => setRulesOpen(true)}
+                        >
+                          <SlidersHorizontal className="w-4 h-4" />
+                          Kurallar
+                        </button>
+                        <p>
+                          Zorunluluk, fiyat modu, maks. adet ve “seçilince gizle” kuralları burada.
+                        </p>
                       </div>
-                    </section>
-                  ))}
+                    </>
+                  )}
+                </main>
+              </div>
+
+              {rulesOpen && activeGroup && activeGroupIndex >= 0 ? (
+                <div className="pv-rules" role="dialog" aria-modal="true" aria-label="Kurallar">
+                  <button
+                    type="button"
+                    className="pv-rules__scrim"
+                    aria-label="Kapat"
+                    onClick={() => setRulesOpen(false)}
+                  />
+                  <div className="pv-rules__panel" data-tour="pv-rules-panel">
+                    <header className="pv-rules__head">
+                      <div>
+                        <p>Kurallar</p>
+                        <strong>{activeGroup.name.trim() || 'Adsız grup'}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        className="pv-icon-btn"
+                        onClick={() => setRulesOpen(false)}
+                        aria-label="Kapat"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </header>
+
+                    <div className="pv-rules__body admin-scroll">
+                      <section className="pv-rules__section">
+                        <h3>Grup ayarları</h3>
+                        <label className="pv-field">
+                          <span>Tip</span>
+                          <select
+                            value={activeGroup.type}
+                            disabled={guideOpen}
+                            onChange={(e) => {
+                              const type = e.target.value as OptionGroupType;
+                              patchActiveGroup({
+                                type,
+                                pricing: type === 'single' ? 'replace' : 'add',
+                                required: type === 'single' ? true : activeGroup.required,
+                                maxTotalQty: type === 'multi' ? activeGroup.maxTotalQty : 0,
+                              });
+                            }}
+                          >
+                            <option value="single">Tek seçim</option>
+                            <option value="multi">Çoklu + miktar</option>
+                            <option value="choice">Çoklu seçim (istek)</option>
+                          </select>
+                        </label>
+                        <label className="pv-field">
+                          <span>Fiyat</span>
+                          <select
+                            value={activeGroup.pricing}
+                            disabled={guideOpen}
+                            onChange={(e) =>
+                              patchActiveGroup({
+                                pricing: e.target.value as 'replace' | 'add',
+                              })
+                            }
+                          >
+                            <option value="replace">Fiyatı değiştir</option>
+                            <option value="add">Fiyata ekle</option>
+                          </select>
+                        </label>
+                        {activeGroup.type === 'multi' ? (
+                          <label className="pv-field">
+                            <span>Maks. ekstra adet (0 = sınırsız)</span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={99}
+                              value={activeGroup.maxTotalQty > 0 ? activeGroup.maxTotalQty : ''}
+                              placeholder="∞"
+                              disabled={guideOpen}
+                              onChange={(e) => {
+                                const raw = e.target.value.trim();
+                                const v =
+                                  raw === ''
+                                    ? 0
+                                    : Math.max(0, Math.min(99, Math.floor(Number(raw) || 0)));
+                                patchActiveGroup({ maxTotalQty: v });
+                              }}
+                            />
+                          </label>
+                        ) : null}
+                        <label className="pv-check-row">
+                          <input
+                            type="checkbox"
+                            checked={activeGroup.required}
+                            disabled={guideOpen}
+                            onChange={(e) => patchActiveGroup({ required: e.target.checked })}
+                          />
+                          Zorunlu grup
+                        </label>
+                      </section>
+
+                      {activeGroup.type === 'single' && showMultiLimits ? (
+                        <section className="pv-rules__section">
+                          <h3>Boy’a göre ekstra limiti</h3>
+                          <p className="pv-rules__hint">
+                            Bu seçenek seçilince ekstra gruplarına uygulanan üst sınır.
+                          </p>
+                          {activeGroup.options.map((o, oi) =>
+                            o.name.trim() ? (
+                              <label key={o.id} className="pv-field pv-field--inline">
+                                <span>{o.name}</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={99}
+                                  value={
+                                    o.limitsMultiMaxTotalQty > 0
+                                      ? o.limitsMultiMaxTotalQty
+                                      : ''
+                                  }
+                                  placeholder="∞"
+                                  disabled={guideOpen}
+                                  onChange={(e) => {
+                                    const raw = e.target.value.trim();
+                                    const v =
+                                      raw === ''
+                                        ? 0
+                                        : Math.max(
+                                            0,
+                                            Math.min(99, Math.floor(Number(raw) || 0))
+                                          );
+                                    patchActiveOption(oi, { limitsMultiMaxTotalQty: v });
+                                  }}
+                                />
+                              </label>
+                            ) : null
+                          )}
+                        </section>
+                      ) : null}
+
+                      <section className="pv-rules__section">
+                        <h3>Seçilince gizle</h3>
+                        <p className="pv-rules__hint">
+                          Bir seçenek işaretlenince listeden gizlenecek diğer seçenekler.
+                        </p>
+                        {activeGroup.options.map((o, oi) => {
+                          const others = allOptionsFlat(groups, o.id);
+                          if (!o.name.trim() || !others.length) return null;
+                          return (
+                            <div key={o.id} className="pv-exclude-block">
+                              <p>
+                                <strong>{o.name}</strong> seçilince gizle
+                              </p>
+                              <div className="pv-exclude__chips">
+                                {others.map((other) => {
+                                  const on = (o.excludesOptionIds || []).includes(other.id);
+                                  return (
+                                    <button
+                                      key={other.id}
+                                      type="button"
+                                      className={`pv-exclude__chip${on ? ' is-on' : ''}`}
+                                      disabled={guideOpen}
+                                      onClick={() =>
+                                        patchActiveOption(oi, {
+                                          excludesOptionIds: toggleExclude(o, other.id),
+                                        })
+                                      }
+                                    >
+                                      {other.groupName !== (activeGroup.name || 'Grup')
+                                        ? `${other.groupName}: ${other.name}`
+                                        : other.name}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </section>
+                    </div>
+                  </div>
                 </div>
-              )}
+              ) : null}
             </>
           )}
-        </main>
-      </div>
+        </div>
+      )}
 
       <ProductVariantsGuideOverlay
         open={guideOpen}
