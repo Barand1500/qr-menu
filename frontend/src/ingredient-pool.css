@@ -425,6 +425,12 @@
   animation: ingredient-pool-toast-in 0.28s ease both;
 }
 
+.ingredient-pool-page__toast.is-warn {
+  color: #9a3412;
+  background: #fff7ed;
+  border-color: #fdba74;
+}
+
 @keyframes ingredient-pool-toast-in {
   from {
     opacity: 0;
@@ -631,6 +637,57 @@
   border: 1px solid transparent;
   animation: ingredient-pool-row-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
   transition: border-color 0.15s ease;
+}
+
+.ingredient-pool-list__item--multi {
+  align-items: flex-start;
+}
+
+.ingredient-pool-list__item--multi .ingredient-pool-list__name {
+  flex: 1 1 100%;
+}
+
+.ingredient-pool-list__chips {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.ingredient-pool-chip {
+  border: 1px solid var(--admin-card-border, #e7e5e4);
+  background: var(--admin-input-bg, #f5f5f4);
+  color: var(--admin-text-muted, #78716c);
+  border-radius: 999px;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.ingredient-pool-chip.is-on {
+  background: color-mix(in srgb, var(--admin-accent, #0ea5e9) 18%, #fff);
+  border-color: color-mix(in srgb, var(--admin-accent, #0ea5e9) 45%, transparent);
+  color: var(--admin-accent-text, var(--admin-text));
+}
+
+.ingredient-pool-groups__section {
+  margin: 0.65rem 0 0.25rem;
+  padding: 0 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-text-muted, #78716c);
+}
+
+.ingredient-pool-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--admin-text-muted, #78716c);
 }
 
 .ingredient-pool-list__item:hover {

@@ -3,6 +3,8 @@ import { Check, Search, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import {
   EMPTY_INGREDIENT_POOL,
+  itemGroupIds,
+  itemInGroup,
   parseIngredientsList,
   type IngredientPool,
 } from '@/lib/ingredientPool';
@@ -57,8 +59,13 @@ export default function IngredientPoolPicker({
   const visible = useMemo(() => {
     const q = query.trim().toLocaleLowerCase('tr-TR');
     return pool.items.filter((item) => {
-      if (groupFilter === 'none' && item.groupId) return false;
-      if (groupFilter !== 'all' && groupFilter !== 'none' && item.groupId !== groupFilter) {
+      const gids = itemGroupIds(item);
+      if (groupFilter === 'none' && gids.length > 0) return false;
+      if (
+        groupFilter !== 'all' &&
+        groupFilter !== 'none' &&
+        !itemInGroup(item, groupFilter)
+      ) {
         return false;
       }
       if (q && !item.name.toLocaleLowerCase('tr-TR').includes(q)) return false;
@@ -130,7 +137,11 @@ export default function IngredientPoolPicker({
           <ul className="ingredient-pool-picker__list">
             {visible.map((item) => {
               const on = selected.has(item.id);
-              const groupName = pool.groups.find((g) => g.id === item.groupId)?.name;
+              const gids = itemGroupIds(item);
+              const groupName = gids
+                .map((id) => pool.groups.find((g) => g.id === id)?.name)
+                .filter(Boolean)
+                .join(' · ');
               return (
                 <li key={item.id}>
                   <button

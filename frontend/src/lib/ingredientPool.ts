@@ -2,11 +2,16 @@ export type IngredientPoolGroup = {
   id: string;
   name: string;
   sortOrder: number;
+  /** Menü Gruplar sayfasından geldiyse sayısal id */
+  menuGroupId?: number | null;
 };
 
 export type IngredientPoolItem = {
   id: string;
-  groupId: string | null;
+  /** @deprecated groupIds kullan — geriye uyumluluk */
+  groupId?: string | null;
+  /** Malzeme birden fazla gruba ait olabilir */
+  groupIds: string[];
   name: string;
   sortOrder: number;
 };
@@ -24,6 +29,38 @@ export function newPoolGroupId() {
 
 export function newPoolItemId() {
   return `ii-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+export function menuGroupToPoolId(menuGroupId: number) {
+  return `mg-${menuGroupId}`;
+}
+
+export function parseMenuGroupPoolId(id: string): number | null {
+  const m = /^mg-(\d+)$/.exec(id);
+  return m ? Number(m[1]) : null;
+}
+
+export function nameKey(name: string) {
+  return name.trim().toLocaleLowerCase('tr-TR');
+}
+
+/** Item’ın grup üyeliklerini tek yerden oku (eski groupId dahil) */
+export function itemGroupIds(item: IngredientPoolItem): string[] {
+  if (Array.isArray(item.groupIds) && item.groupIds.length) {
+    return item.groupIds.filter(Boolean);
+  }
+  if (item.groupId) return [item.groupId];
+  return [];
+}
+
+export function itemInGroup(item: IngredientPoolItem, groupId: string) {
+  return itemGroupIds(item).includes(groupId);
+}
+
+export function findItemByName(items: IngredientPoolItem[], name: string) {
+  const key = nameKey(name);
+  if (!key) return null;
+  return items.find((i) => nameKey(i.name) === key) || null;
 }
 
 /** Mevcut içindekiler metnini virgülle parçala */
@@ -63,7 +100,9 @@ export function syncIngredientsFromPoolSelection(
   selectedNames: string[],
   allPoolNames: string[]
 ): string {
-  const poolKeys = new Set(allPoolNames.map((n) => n.trim().toLocaleLowerCase('tr-TR')).filter(Boolean));
+  const poolKeys = new Set(
+    allPoolNames.map((n) => n.trim().toLocaleLowerCase('tr-TR')).filter(Boolean)
+  );
   const manual = parseIngredientsList(current).filter(
     (n) => !poolKeys.has(n.toLocaleLowerCase('tr-TR'))
   );

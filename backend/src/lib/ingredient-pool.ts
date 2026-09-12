@@ -6,11 +6,14 @@ export type IngredientPoolGroup = {
   id: string;
   name: string;
   sortOrder: number;
+  menuGroupId?: number | null;
 };
 
 export type IngredientPoolItem = {
   id: string;
-  groupId: string | null;
+  /** legacy */
+  groupId?: string | null;
+  groupIds: string[];
   name: string;
   sortOrder: number;
 };
@@ -34,12 +37,29 @@ export function createPoolItemId() {
   return newId('ii');
 }
 
+function parseGroupIds(row: Record<string, unknown>, groupIds: Set<string>): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (raw: unknown) => {
+    if (typeof raw !== 'string') return;
+    const id = raw.trim();
+    if (!id || !groupIds.has(id) || seen.has(id)) return;
+    seen.add(id);
+    out.push(id);
+  };
+  if (Array.isArray(row.groupIds)) {
+    for (const g of row.groupIds) push(g);
+  }
+  if (!out.length) push(row.groupId);
+  return out;
+}
+
 export function normalizeIngredientPool(raw: unknown): IngredientPool {
   if (!raw || typeof raw !== 'object') return structuredClone(EMPTY_INGREDIENT_POOL);
   const o = raw as { groups?: unknown; items?: unknown };
 
   const groups: IngredientPoolGroup[] = [];
-  const groupIds = new Set<string>();
+  const knownGroupIds = new Set<string>();
   if (Array.isArray(o.groups)) {
     o.groups.forEach((g, i) => {
       if (!g || typeof g !== 'object') return;
@@ -47,15 +67,16 @@ export function normalizeIngredientPool(raw: unknown): IngredientPool {
       const name = typeof row.name === 'string' ? row.name.trim() : '';
       if (!name) return;
       const id =
-        typeof row.id === 'string' && row.id.trim()
-          ? row.id.trim()
-          : createPoolGroupId();
-      if (groupIds.has(id)) return;
-      groupIds.add(id);
+        typeof row.id === 'string' && row.id.trim() ? row.id.trim() : createPoolGroupId();
+      if (knownGroupIds.has(id)) return;
+      knownGroupIds.add(id);
+      const menuGroupIdRaw = Number(row.menuGroupId);
       groups.push({
         id,
         name: name.slice(0, 80),
         sortOrder: Number.isFinite(Number(row.sortOrder)) ? Number(row.sortOrder) : i,
+        menuGroupId:
+          Number.isFinite(menuGroupIdRaw) && menuGroupIdRaw > 0 ? menuGroupIdRaw : null,
       });
     });
   }
@@ -76,13 +97,11 @@ export function normalizeIngredientPool(raw: unknown): IngredientPool {
         typeof row.id === 'string' && row.id.trim() ? row.id.trim() : createPoolItemId();
       if (itemIds.has(id)) return;
       itemIds.add(id);
-      const groupId =
-        typeof row.groupId === 'string' && row.groupId.trim() && groupIds.has(row.groupId.trim())
-          ? row.groupId.trim()
-          : null;
+      const groupIds = parseGroupIds(row, knownGroupIds);
       items.push({
         id,
-        groupId,
+        groupIds,
+        groupId: groupIds[0] || null,
         name: name.slice(0, 80),
         sortOrder: Number.isFinite(Number(row.sortOrder)) ? Number(row.sortOrder) : i,
       });
