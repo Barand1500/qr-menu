@@ -65,6 +65,13 @@ function formatPhoneInput(raw: string) {
   return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6, 8)} ${d.slice(8)}`;
 }
 
+function formatShortList(items: string[], limit = 3) {
+  if (items.length === 0) return '—';
+  if (items.length <= limit) return items.join(', ');
+  const shown = items.slice(0, limit).join(', ');
+  return `${shown} +${items.length - limit} yemek daha`;
+}
+
 function ChipEditor({
   label,
   hint,
@@ -623,6 +630,20 @@ export default function MenuCustomerAuthModal({
               className="mc-auth__form mc-auth__form--profile"
               onSubmit={(e) => void saveProfile(e)}
             >
+              <button
+                type="button"
+                className="mc-wiz__perks-cta"
+                onClick={() => setProfilePane('perks')}
+              >
+                <span className="mc-wiz__perks-cta-glow" aria-hidden />
+                <Gift className="mc-wiz__perks-cta-icon" />
+                <span className="mc-wiz__perks-cta-text">
+                  <strong>Size özel indirimler</strong>
+                  <small>Puan, indirim ve borç</small>
+                </span>
+                {points > 0 ? <em>{points} puan</em> : <em>Bak</em>}
+              </button>
+
               <nav className="mc-wiz__steps" aria-label="Profil adımları">
                 {PROFILE_STEPS.map((step) => (
                   <button
@@ -920,67 +941,25 @@ export default function MenuCustomerAuthModal({
                       </li>
                       <li>
                         <span>Sevdiklerim</span>
-                        <strong>{liked.length ? liked.join(', ') : '—'}</strong>
+                        <strong>{formatShortList(liked)}</strong>
                       </li>
                       <li>
                         <span>Sevmediklerim</span>
-                        <strong>{disliked.length ? disliked.join(', ') : '—'}</strong>
+                        <strong>{formatShortList(disliked)}</strong>
                       </li>
                       <li>
                         <span>Menü filtresi</span>
                         <strong>{filterEnabled ? 'Açık' : 'Kapalı'}</strong>
                       </li>
                     </ul>
-
-                    <button
-                      type="button"
-                      className="mc-wiz__perks-link"
-                      onClick={() => setProfilePane('perks')}
-                    >
-                      <Gift className="w-4 h-4" />
-                      Size özel indirimler
-                      {points > 0 ? <em>{points} puan</em> : null}
-                    </button>
                   </section>
                 ) : null}
-
-                <div className="mc-wiz__nav">
-                  <button
-                    type="button"
-                    className="mc-wiz__back"
-                    disabled={profileStep === 1}
-                    onClick={() =>
-                      setProfileStep((s) => (s > 1 ? ((s - 1) as ProfileStep) : s))
-                    }
-                  >
-                    Geri
-                  </button>
-                  {profileStep < 4 ? (
-                    <button
-                      type="button"
-                      className="mc-wiz__next"
-                      onClick={() =>
-                        setProfileStep((s) => (s < 4 ? ((s + 1) as ProfileStep) : s))
-                      }
-                    >
-                      Devam et
-                    </button>
-                  ) : (
-                    <button type="submit" className="mc-wiz__next" disabled={busy}>
-                      {busy ? ui.saving : ui.save}
-                    </button>
-                  )}
-                </div>
               </div>
 
               <div className="mc-wiz__footer">
-                {profileStep !== 4 ? (
-                  <button
-                    type="button"
-                    className="mc-wiz__perks-text"
-                    onClick={() => setProfilePane('perks')}
-                  >
-                    Size özel indirimler
+                {profileStep === 4 ? (
+                  <button type="submit" className="mc-wiz__save" disabled={busy}>
+                    {busy ? ui.saving : ui.save}
                   </button>
                 ) : null}
                 <button
