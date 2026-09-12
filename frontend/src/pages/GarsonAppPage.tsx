@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Download, LogOut, Smartphone } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Camera, Download, Hash, LogOut, Smartphone } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import GarsonCallsPanel from '@/components/admin/GarsonCallsPanel';
+import CustomerUnlockModal from '@/components/admin/CustomerUnlockModal';
 import { Input } from '@/components/ui';
+import { adminPath } from '@/lib/adminPath';
 import { playAdminNotificationSound } from '@/lib/notificationSound';
 import {
   armGarsonInstallCapture,
@@ -19,9 +22,11 @@ import { formatTableServiceLabel } from '@/lib/tableContext';
 import type { GarsonCallRow } from '@/components/admin/GarsonCallsPanel';
 import '@/garson-panel.css';
 import '@/garson-app.css';
+import '@/menu-customer.css';
 
 export default function GarsonAppPage() {
   const { user, loading, login, logout } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
@@ -30,6 +35,8 @@ export default function GarsonAppPage() {
   const [installReady, setInstallReady] = useState(false);
   const [iosHint, setIosHint] = useState(false);
   const [notifState, setNotifState] = useState<string>('default');
+  const [unlockOpen, setUnlockOpen] = useState(false);
+  const [unlockMode, setUnlockMode] = useState<'menu' | 'code' | 'scan'>('menu');
   const lastUnread = useRef<number | null>(null);
   const knownIds = useRef<Set<number>>(new Set());
 
@@ -189,6 +196,28 @@ export default function GarsonAppPage() {
           </div>
         </div>
         <div className="garson-app__topbar-actions">
+          <button
+            type="button"
+            className="garson-app__chip is-accent"
+            onClick={() => {
+              setUnlockMode('menu');
+              setUnlockOpen(true);
+            }}
+          >
+            <Camera className="w-3.5 h-3.5" />
+            Kod oku
+          </button>
+          <button
+            type="button"
+            className="garson-app__chip"
+            onClick={() => {
+              setUnlockMode('code');
+              setUnlockOpen(true);
+            }}
+          >
+            <Hash className="w-3.5 h-3.5" />
+            Kod yaz
+          </button>
           {!isGarsonStandalone() && (installReady || isIosSafari()) ? (
             <button type="button" className="garson-app__chip" onClick={() => void onInstallClick()}>
               <Download className="w-3.5 h-3.5" />
@@ -224,6 +253,16 @@ export default function GarsonAppPage() {
       <div className="garson-app__body">
         <GarsonCallsPanel onCallsSnapshot={handleCallsSnapshot} />
       </div>
+
+      <CustomerUnlockModal
+        open={unlockOpen}
+        initialMode={unlockMode}
+        title="Müşteri kodunu oku"
+        onClose={() => setUnlockOpen(false)}
+        onUnlocked={(customerId) => {
+          navigate(`${adminPath('customers')}?open=${customerId}`);
+        }}
+      />
     </div>
   );
 }

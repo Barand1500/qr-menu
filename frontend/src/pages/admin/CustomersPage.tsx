@@ -6,6 +6,7 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Coins,
   Percent,
@@ -29,11 +30,20 @@ import {
   Package,
   Folders,
   Type,
+  Camera,
+  Hash,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PageHeader, Spinner } from '@/components/ui';
 import { gsap, prefersReducedMotion, useGSAP } from '@/lib/gsapSetup';
+import CustomerUnlockModal from '@/components/admin/CustomerUnlockModal';
+import {
+  isCustomerUnlocked,
+  markCustomerUnlocked,
+} from '@/lib/customerQrPreview';
+import { lookupCustomerByCodeOrQr } from '@/lib/customerUnlock';
 import '@/admin-customers.css';
+import '@/menu-customer.css';
 
 type CustomerDiscount = {
   type: 'percent' | 'amount';
@@ -290,6 +300,7 @@ function SearchableSelect({
 }
 
 export default function CustomersPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState<CustomerRow[]>([]);
   const [debtorCount, setDebtorCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -309,6 +320,9 @@ export default function CustomersPage() {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<'manage' | 'ledger'>('manage');
+  const [unlockOpen, setUnlockOpen] = useState(false);
+  const [unlockMode, setUnlockMode] = useState<'menu' | 'code' | 'scan'>('code');
+  const deepLinkDone = useRef(false);
 
   const [pointsDraft, setPointsDraft] = useState('');
   const [discountType, setDiscountType] = useState<DiscountType>('percent');
@@ -598,6 +612,55 @@ export default function CustomersPage() {
       setDetailLoading(false);
     }
   }
+
+  function requestOpenCustomer(id: number) {
+    if (isCustomerUnlocked(id)) {
+      void openCustomer(id);
+      return;
+    }
+    setUnlockMode('code');
+    setUnlockOpen(true);
+  }
+
+  function handleUnlocked(customerId: number) {
+    markCustomerUnlocked(customerId);
+    void openCustomer(customerId, { skipAnim: true });
+  }
+
+  useEffect(() => {
+    if (deepLinkDone.current) return;
+    const code = (searchParams.get('code') || '').replace(/\D/g, '');
+    const openId = Number(searchParams.get('open') || '');
+    if (!code && !(Number.isFinite(openId) && openId > 0)) return;
+    deepLinkDone.current = true;
+
+    void (async () => {
+      try {
+        if (code.length === 6) {
+          const res = await lookupCustomerByCodeOrQr({ code });
+          await openCustomer(res.customerId, { skipAnim: true });
+        } else if (Number.isFinite(openId) && openId > 0) {
+          if (!isCustomerUnlocked(openId)) markCustomerUnlocked(openId);
+          await openCustomer(openId, { skipAnim: true });
+        }
+      } catch (e) {
+        setToast(e instanceof Error ? e.message : 'Kod doğrulanamadı');
+        setUnlockMode('code');
+        setUnlockOpen(true);
+      } finally {
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete('code');
+            next.delete('open');
+            return next;
+          },
+          { replace: true }
+        );
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, setSearchParams]);
 
   useGSAP(
     () => {
@@ -1089,11 +1152,11 @@ export default function CustomersPage() {
                       className={`admin-customers__row${selectedId === c.id ? ' is-active' : ''}`}
                       role="button"
                       tabIndex={0}
-                      onClick={() => void openCustomer(c.id)}
+                      onClick={() => requestOpenCustomer(c.id)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          void openCustomer(c.id);
+                          requestOpenCustomer(c.id);
                         }
                       }}
                     >
@@ -1170,32 +1233,46 @@ export default function CustomersPage() {
           <div className="admin-customers__detail-shell" ref={detailShellRef}>
             {!selectedId ? (
               <div className="admin-customers__detail-empty" ref={emptyHintRef}>
-                <div className="admin-customers__empty-hint">
+                <div className="admin-customers__empty-hint admin-customers__empty-hint--unlock">
                   <div className="admin-customers__empty-visual" aria-hidden>
                     <span className="admin-customers__empty-ring" />
                     <span className="admin-customers__empty-icon">
-                      <UserRound className="w-7 h-7" />
+                      <Lock className="w-7 h-7" />
                     </span>
                   </div>
 
                   <div className="admin-customers__empty-copy">
-                    <h3>Müşteri seçin</h3>
+                    <h3>Kod ile aç</h3>
                     <p>
-                      Soldaki listeden birini seçin. Puan, indirim ve hesap burada
-                      açılır.
+                      Müşteri kartı için kişisel QR veya 6 haneli kod gerekli. Liste
+                      sadece özet gösterir.
                     </p>
                   </div>
 
-                  <div className="admin-customers__empty-ghosts" aria-hidden>
-                    <span className="admin-customers__empty-ghost" />
-                    <span className="admin-customers__empty-ghost" />
-                    <span className="admin-customers__empty-ghost" />
+                  <div className="admin-customers__unlock-actions">
+                    <button
+                      type="button"
+                      className="admin-customers__unlock-btn"
+                      onClick={() => {
+                        setUnlockMode('scan');
+                        setUnlockOpen(true);
+                      }}
+                    >
+                      <Camera className="w-4 h-4" />
+                      QR okut
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-customers__unlock-btn is-soft"
+                      onClick={() => {
+                        setUnlockMode('code');
+                        setUnlockOpen(true);
+                      }}
+                    >
+                      <Hash className="w-4 h-4" />
+                      Kod yaz
+                    </button>
                   </div>
-
-                  <p className="admin-customers__empty-cue">
-                    <span className="admin-customers__empty-cue-line" />
-                    Listeye bakın
-                  </p>
                 </div>
               </div>
             ) : detailLoading && !detail ? (
@@ -2035,6 +2112,14 @@ export default function CustomersPage() {
           </div>
         </div>
       ) : null}
+
+      <CustomerUnlockModal
+        open={unlockOpen}
+        initialMode={unlockMode}
+        title="Müşteri kodu gir"
+        onClose={() => setUnlockOpen(false)}
+        onUnlocked={handleUnlocked}
+      />
     </div>
   );
 }

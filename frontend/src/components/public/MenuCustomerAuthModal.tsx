@@ -26,11 +26,12 @@ import {
 import { customerProfileUi } from '@/lib/customerProfileUi';
 import {
   CUSTOMER_QR_TTL_MS,
-  makeCustomerQrPreviewPayload,
+  formatCustomerCodeDisplay,
   readCustomerPrivacy,
   writeCustomerPrivacy,
   type CustomerPrivacyFlags,
 } from '@/lib/customerQrPreview';
+import { issueCustomerQrChallenge } from '@/lib/customerUnlock';
 
 type Mode = 'login' | 'register' | 'profile';
 type ProfilePane = 'home' | 'perks';
@@ -186,8 +187,10 @@ export default function MenuCustomerAuthModal({
     showEmail: true,
   });
   const [qrPayload, setQrPayload] = useState('');
+  const [qrCode, setQrCode] = useState('');
   const [qrExpiresAt, setQrExpiresAt] = useState(0);
   const [qrNow, setQrNow] = useState(() => Date.now());
+  const [qrBusy, setQrBusy] = useState(false);
   const [perksOpen, setPerksOpen] = useState({
     points: true,
     discounts: false,
@@ -223,9 +226,21 @@ export default function MenuCustomerAuthModal({
     );
   }, [pointsEntries, pointsQuery]);
 
-  function rotateQr(customerId: number) {
-    setQrPayload(makeCustomerQrPreviewPayload(customerId));
-    setQrExpiresAt(Date.now() + CUSTOMER_QR_TTL_MS);
+  async function rotateQr() {
+    setQrBusy(true);
+    try {
+      const challenge = await issueCustomerQrChallenge();
+      setQrPayload(challenge.qrPayload);
+      setQrCode(challenge.code);
+      setQrExpiresAt(challenge.expiresAt);
+    } catch {
+      setQrPayload('');
+      setQrCode('');
+      setQrExpiresAt(0);
+      setError('Kişisel kod üretilemedi — tekrar dene');
+    } finally {
+      setQrBusy(false);
+    }
   }
 
   function patchPrivacy(patch: Partial<CustomerPrivacyFlags>) {
@@ -262,7 +277,7 @@ export default function MenuCustomerAuthModal({
       customer.drinksAlcohol === true ? 'yes' : customer.drinksAlcohol === false ? 'no' : 'unset'
     );
     setPrivacy(readCustomerPrivacy(customer.id));
-    rotateQr(customer.id);
+    void rotateQr();
   }, [open, customer?.id]);
 
   useEffect(() => {
@@ -270,10 +285,10 @@ export default function MenuCustomerAuthModal({
     const tick = window.setInterval(() => {
       const now = Date.now();
       setQrNow(now);
-      if (now >= qrExpiresAt) rotateQr(customer.id);
+      if (now >= qrExpiresAt && !qrBusy) void rotateQr();
     }, 500);
     return () => window.clearInterval(tick);
-  }, [open, mode, customer?.id, qrExpiresAt]);
+  }, [open, mode, customer?.id, qrExpiresAt, qrBusy]);
 
   useEffect(() => {
     if (!open || !customer?.id || !restaurantId) return;
@@ -448,7 +463,7 @@ export default function MenuCustomerAuthModal({
 
               {mode === 'register' ? (
                 <div className="mc-auth__field">
-                  <label htmlFor="mc-name">Ad soyad</label>
+                  <label htmlFor="mc-name">Ad Soyad</label>
                   <input
                     id="mc-name"
                     value={fullName}
@@ -679,7 +694,7 @@ export default function MenuCustomerAuthModal({
                           className={`mc-profile__vis${privacy.showName ? ' is-on' : ''}`}
                           onClick={() => patchPrivacy({ showName: !privacy.showName })}
                           title={privacy.showName ? 'Restoranlar görür' : 'Gizli'}
-                          aria-label={privacy.showName ? 'Ad soyad görünür' : 'Ad soyad gizli'}
+                          aria-label={privacy.showName ? 'Ad Soyad görünür' : 'Ad Soyad gizli'}
                         >
                           {privacy.showName ? (
                             <Eye className="w-4 h-4" />
@@ -756,12 +771,22 @@ export default function MenuCustomerAuthModal({
                             bgColor="#ffffff"
                             fgColor="#0f172a"
                           />
-                        ) : null}
+                        ) : (
+                          <span className="mc-profile__qr-loading">
+                            {qrBusy ? 'Üretiliyor…' : 'Kod yok'}
+                          </span>
+                        )}
                       </div>
                       <p className="mc-profile__qr-caption">Kişisel kodun</p>
                       <p className="mc-profile__qr-hint">
-                        Garson / kasa bu kodu okutunca müşteri kartın açılır
+                        Garson QR okutabilir veya aşağıdaki 6 haneyi yazabilir
                       </p>
+                      <div className="mc-profile__pin" aria-live="polite">
+                        <span className="mc-profile__pin-label">Kod</span>
+                        <strong className="mc-profile__pin-value">
+                          {qrCode ? formatCustomerCodeDisplay(qrCode) : '--- ---'}
+                        </strong>
+                      </div>
                       <div className="mc-profile__qr-meta">
                         <span>
                           {Math.max(0, Math.ceil((qrExpiresAt - qrNow) / 1000))} sn
@@ -769,7 +794,8 @@ export default function MenuCustomerAuthModal({
                         <button
                           type="button"
                           className="mc-profile__qr-refresh"
-                          onClick={() => customer && rotateQr(customer.id)}
+                          disabled={qrBusy}
+                          onClick={() => void rotateQr()}
                         >
                           <RefreshCw className="w-3.5 h-3.5" />
                           Yenile

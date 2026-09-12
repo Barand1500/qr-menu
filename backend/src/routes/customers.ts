@@ -16,6 +16,7 @@ import {
   serializeDiscountsJson,
   type CustomerDiscount,
 } from '../lib/customer-admin.js';
+import { lookupCustomerQrChallenge } from '../lib/customer-qr-challenge.js';
 
 const router = Router();
 router.use(authRequired);
@@ -152,6 +153,40 @@ router.get('/', async (req, res) => {
     data,
     debtorCount,
     pagination: { page, limit, total },
+  });
+});
+
+router.post('/lookup', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  if (restaurantId == null) return res.status(401).json({ message: 'Yetkisiz' });
+
+  const result = lookupCustomerQrChallenge({
+    code: req.body?.code,
+    qr: req.body?.qr || req.body?.payload,
+  });
+  if ('error' in result) {
+    return res.status(result.status).json({ message: result.error });
+  }
+
+  const row = await prisma.menuCustomer.findUnique({
+    where: { id: result.customerId },
+    select: {
+      id: true,
+      email: true,
+      phone: true,
+      fullName: true,
+      pointsJson: true,
+      discountsJson: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+  if (!row) return res.status(404).json({ message: 'Müşteri bulunamadı' });
+
+  const debtBalance = await getCustomerDebtBalance(restaurantId, row.id);
+  res.json({
+    customerId: row.id,
+    customer: serializeCustomerRow(row, restaurantId, debtBalance),
   });
 });
 

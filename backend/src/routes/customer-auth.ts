@@ -12,6 +12,7 @@ import {
   parsePointsJson,
   signCustomerToken,
 } from '../lib/customer-auth.js';
+import { issueCustomerQrChallenge } from '../lib/customer-qr-challenge.js';
 
 const router = Router();
 
@@ -189,6 +190,18 @@ router.put('/profile', customerAuthRequired, async (req, res) => {
   });
 
   res.json({ customer: customerPublic(row) });
+});
+
+router.post('/qr-challenge', customerAuthRequired, async (req, res) => {
+  const customerId = req.customer!.customerId;
+  const row = await prisma.menuCustomer.findUnique({
+    where: { id: customerId },
+    select: { id: true },
+  });
+  if (!row) return res.status(401).json({ message: 'Oturum geçersiz' });
+
+  const challenge = issueCustomerQrChallenge(customerId);
+  res.json(challenge);
 });
 
 export default router;

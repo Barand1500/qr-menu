@@ -270,3 +270,15 @@
     padding-top: max(0.85rem, env(safe-area-inset-top));
   }
 }
+
+.garson-app__chip.is-accent {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #fff;
+}
+
+.garson-app__topbar-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 62%;
+}

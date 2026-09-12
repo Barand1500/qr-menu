@@ -84,7 +84,7 @@ const TR: CustomerProfileUi = {
   points: 'Puan',
   personalFilter: 'Kişisel menü filtresi',
   personalFilterHint: 'Açıkken alerji, alkol ve sevmediklerin uygulanır',
-  fullName: 'Ad soyad',
+  fullName: 'Ad Soyad',
   alcohol: 'Alkol',
   alcoholHint: 'Restoranlarda alkol içeren ürünler için tercih',
   alcoholYes: 'Alkol tüketiyorum',
