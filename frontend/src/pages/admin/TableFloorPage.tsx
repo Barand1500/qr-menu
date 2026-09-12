@@ -471,8 +471,7 @@ export default function TableFloorPage() {
     let occupied = 0;
     for (const g of data?.groups || []) {
       for (const t of g.tables) {
-        // Uydu (birleşmiş) masalar ana birimde sayılır
-        if (t.occupied && t.status !== 'merged') occupied += 1;
+        if (t.occupied) occupied += 1;
       }
     }
     return occupied;
@@ -496,14 +495,13 @@ export default function TableFloorPage() {
     if (statusFilter !== 'occupied') return { pending, filled, merged };
     for (const g of data?.groups || []) {
       for (const table of g.tables) {
-        if (table.status === 'merged') continue; // uydu → büyük birimde
-        const isCombined = (table.mergedTables || []).length > 0;
-        if (isCombined) {
-          merged.push({ table, groupId: g.id, groupName: g.name });
-          continue;
-        }
-        if (!table.occupied) continue;
         const row = { table, groupId: g.id, groupName: g.name };
+        // Büyük birleşmiş kart — sadece ana masa
+        if ((table.mergedTables || []).length > 0) {
+          merged.push(row);
+        }
+        // Dolu / kod bekleyen: ana + katılan (uydu) hepsi
+        if (!table.occupied) continue;
         if (table.codeStatus === 'pending') pending.push(row);
         else filled.push(row);
       }
