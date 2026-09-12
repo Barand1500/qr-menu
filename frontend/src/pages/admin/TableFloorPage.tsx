@@ -18,6 +18,7 @@ import {
   HandHelping,
   Volume2,
   VolumeX,
+  ArrowRight,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -527,6 +528,18 @@ export default function TableFloorPage() {
   }, [selectedGroup, selectedCode]);
 
   const sourceGroupName = selectedGroup?.name || '';
+
+  const mergePrimaryTarget = useMemo(() => {
+    const code = selected?.mergePrimary;
+    if (!code || !data?.groups?.length) return null;
+    for (const g of data.groups) {
+      const table = g.tables.find((t) => t.code === code);
+      if (table) {
+        return { table, groupId: g.id, groupName: g.name };
+      }
+    }
+    return null;
+  }, [selected?.mergePrimary, data]);
 
   useEffect(() => {
     setFeePanelOpen(false);
@@ -1520,7 +1533,9 @@ export default function TableFloorPage() {
                   {selected.status === 'reserved'
                     ? 'Rezerve'
                     : selected.status === 'merged'
-                      ? `Birleşik → ${selected.mergePrimary}`
+                      ? mergePrimaryTarget
+                        ? `Birleşik · ${mergePrimaryTarget.table.name}`
+                        : 'Birleşik'
                       : selected.occupied
                         ? 'Dolu'
                         : 'Boş'}
@@ -1655,9 +1670,38 @@ export default function TableFloorPage() {
             ) : null}
 
             {selected.status === 'merged' ? (
-              <p className="table-floor__hint">
-                Bu masa {selected.mergePrimary} hesabına birleşik. Ana masadan yönetin.
-              </p>
+              <div className="table-floor__merge-callout">
+                <p className="table-floor__merge-callout-kicker">Birleşmiş masa</p>
+                <p className="table-floor__merge-callout-copy">
+                  <strong>{selected.name}</strong>
+                  {mergePrimaryTarget ? (
+                    <>
+                      , <strong>{mergePrimaryTarget.groupName}</strong> grubundaki{' '}
+                      <strong>{mergePrimaryTarget.table.name}</strong> masasına katıldı.
+                    </>
+                  ) : (
+                    <> ana masaya katıldı.</>
+                  )}{' '}
+                  Sipariş ve hesap ana masadan yönetilir.
+                </p>
+                {mergePrimaryTarget ? (
+                  <button
+                    type="button"
+                    className="table-floor__merge-callout-link"
+                    onClick={() =>
+                      handleTableClick(mergePrimaryTarget.table, mergePrimaryTarget.groupId)
+                    }
+                  >
+                    <span>
+                      {mergePrimaryTarget.groupName} · {mergePrimaryTarget.table.name}
+                    </span>
+                    <em>
+                      Ana masaya git
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </em>
+                  </button>
+                ) : null}
+              </div>
             ) : (
               <>
                 <div className="table-floor__stats">
