@@ -1,18 +1,19 @@
 /** Varyant sayfası düzeni — masa görünümü skin gibi localStorage */
 export const PV_LAYOUT_KEY = 'menu_qr_product_variants_layout';
 
-export const PV_LAYOUTS = ['gallery', 'wizard'] as const;
+export const PV_LAYOUTS = ['gallery', 'wizard', 'kanban'] as const;
 export type ProductVariantsLayout = (typeof PV_LAYOUTS)[number];
 
 export const PV_LAYOUT_LABELS: Record<ProductVariantsLayout, string> = {
   gallery: 'Galeri',
   wizard: 'Sihirbaz',
+  kanban: 'Kanban',
 };
 
 export function loadProductVariantsLayout(): ProductVariantsLayout {
   try {
     const raw = localStorage.getItem(PV_LAYOUT_KEY);
-    if (raw === 'wizard' || raw === 'gallery') return raw;
+    if (raw === 'wizard' || raw === 'gallery' || raw === 'kanban') return raw;
     const n = Number(raw);
     if (Number.isFinite(n) && PV_LAYOUTS[n]) return PV_LAYOUTS[n];
   } catch {

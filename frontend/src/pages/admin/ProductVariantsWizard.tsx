@@ -114,7 +114,6 @@ type Props = {
   onUpdateGroups: (next: ProductOptionGroup[]) => void;
   dirty: boolean;
   saving: boolean;
-  guideOpen: boolean;
   onSave: () => void;
 };
 
@@ -136,7 +135,6 @@ export default function ProductVariantsWizard({
   onUpdateGroups,
   dirty,
   saving,
-  guideOpen,
   onSave,
 }: Props) {
   const [step, setStep] = useState(1);
@@ -174,7 +172,6 @@ export default function ProductVariantsWizard({
   }
 
   function goNext() {
-    if (guideOpen) return;
     if (step === 1) {
       if (!selected) {
         alert('Önce bir ürün seç.');
@@ -252,7 +249,6 @@ export default function ProductVariantsWizard({
   }
 
   function goBack() {
-    if (guideOpen) return;
     if (step <= 1) return;
     if (step === 3 && activeGroup) {
       setDraftType(activeGroup.type);
@@ -357,7 +353,6 @@ export default function ProductVariantsWizard({
                         key={p.id}
                         type="button"
                         className={`pv-wiz__product${active ? ' is-active' : ''}`}
-                        disabled={guideOpen}
                         onClick={() => onSelectProduct(p)}
                       >
                         <div className="pv-wiz__product-media">
@@ -397,7 +392,6 @@ export default function ProductVariantsWizard({
                         key={g.id}
                         type="button"
                         className={`pv-wiz__chip${editingExistingId === g.id ? ' is-on' : ''}`}
-                        disabled={guideOpen}
                         onClick={() => pickExistingGroup(g)}
                       >
                         {g.name || 'Adsız'} · {typeLabel(g.type)}
@@ -406,7 +400,6 @@ export default function ProductVariantsWizard({
                     <button
                       type="button"
                       className={`pv-wiz__chip${editingExistingId == null ? ' is-on' : ''}`}
-                      disabled={guideOpen}
                       onClick={() => {
                         setEditingExistingId(null);
                         setDraftType('single');
@@ -425,7 +418,6 @@ export default function ProductVariantsWizard({
                     key={t.type}
                     type="button"
                     className={`pv-wiz__tile${draftType === t.type ? ' is-active' : ''}`}
-                    disabled={guideOpen}
                     onClick={() => setDraftType(t.type)}
                   >
                     <TypeIcon type={t.type} />
@@ -441,7 +433,6 @@ export default function ProductVariantsWizard({
                   value={draftName}
                   onChange={(e) => setDraftName(e.target.value)}
                   placeholder="Örn. Boyut, Ekstralar, İstekler"
-                  disabled={guideOpen}
                 />
               </label>
             </div>
@@ -462,17 +453,16 @@ export default function ProductVariantsWizard({
                       placeholder={
                         activeGroup.type === 'choice' ? 'Örn. Maydanoz olmasın' : 'Seçenek adı'
                       }
-                      disabled={guideOpen}
                       onChange={(e) => patchActiveOption(oi, { name: e.target.value })}
                     />
                     <label className="pv-opt-row__price">
                       <span>+</span>
                       <input
                         type="number"
+                        inputMode="decimal"
                         min={0}
                         step="0.01"
                         value={o.price}
-                        disabled={guideOpen}
                         onChange={(e) =>
                           patchActiveOption(oi, { price: Number(e.target.value) || 0 })
                         }
@@ -483,7 +473,6 @@ export default function ProductVariantsWizard({
                       <input
                         type="checkbox"
                         checked={o.isActive}
-                        disabled={guideOpen}
                         onChange={(e) => patchActiveOption(oi, { isActive: e.target.checked })}
                       />
                       <span />
@@ -491,7 +480,6 @@ export default function ProductVariantsWizard({
                     <button
                       type="button"
                       className="pv-icon-danger"
-                      disabled={guideOpen}
                       onClick={() =>
                         patchActiveGroup({
                           options: activeGroup.options.filter((_, i) => i !== oi),
@@ -506,7 +494,6 @@ export default function ProductVariantsWizard({
               <button
                 type="button"
                 className="pv-add-opt"
-                disabled={guideOpen}
                 onClick={() =>
                   patchActiveGroup({
                     options: [
@@ -534,7 +521,6 @@ export default function ProductVariantsWizard({
                 <span>Fiyat</span>
                 <select
                   value={activeGroup.pricing}
-                  disabled={guideOpen}
                   onChange={(e) =>
                     patchActiveGroup({ pricing: e.target.value as 'replace' | 'add' })
                   }
@@ -553,7 +539,6 @@ export default function ProductVariantsWizard({
                     max={99}
                     value={activeGroup.maxTotalQty > 0 ? activeGroup.maxTotalQty : ''}
                     placeholder="∞"
-                    disabled={guideOpen}
                     onChange={(e) => {
                       const raw = e.target.value.trim();
                       const v =
@@ -570,7 +555,6 @@ export default function ProductVariantsWizard({
                 <input
                   type="checkbox"
                   checked={activeGroup.required}
-                  disabled={guideOpen}
                   onChange={(e) => patchActiveGroup({ required: e.target.checked })}
                 />
                 Zorunlu grup
@@ -589,7 +573,6 @@ export default function ProductVariantsWizard({
                           max={99}
                           value={o.limitsMultiMaxTotalQty > 0 ? o.limitsMultiMaxTotalQty : ''}
                           placeholder="∞"
-                          disabled={guideOpen}
                           onChange={(e) => {
                             const raw = e.target.value.trim();
                             const v =
@@ -623,7 +606,6 @@ export default function ProductVariantsWizard({
                               key={other.id}
                               type="button"
                               className={`pv-exclude__chip${on ? ' is-on' : ''}`}
-                              disabled={guideOpen}
                               onClick={() =>
                                 patchActiveOption(oi, {
                                   excludesOptionIds: toggleExclude(o, other.id),
@@ -682,7 +664,6 @@ export default function ProductVariantsWizard({
               <button
                 type="button"
                 className="pv-btn"
-                disabled={guideOpen}
                 onClick={startAnotherGroup}
               >
                 <Plus className="w-4 h-4" />
@@ -696,7 +677,7 @@ export default function ProductVariantsWizard({
               <button
                 type="button"
                 className="pv-wiz__primary"
-                disabled={!dirty || saving || guideOpen || !selected}
+                disabled={!dirty || saving || !selected}
                 onClick={onSave}
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
@@ -706,14 +687,14 @@ export default function ProductVariantsWizard({
               <button
                 type="button"
                 className="pv-wiz__primary"
-                disabled={guideOpen || (step === 1 && !selected)}
+                disabled={(step === 1 && !selected)}
                 onClick={goNext}
               >
                 Devam
               </button>
             )}
             {step > 1 ? (
-              <button type="button" className="pv-wiz__back" disabled={guideOpen} onClick={goBack}>
+              <button type="button" className="pv-wiz__back" onClick={goBack}>
                 Geri
               </button>
             ) : null}
