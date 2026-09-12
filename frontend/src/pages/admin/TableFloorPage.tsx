@@ -301,7 +301,7 @@ export default function TableFloorPage() {
   const [groupId, setGroupId] = useState<string>('');
   const [floorSkin, setFloorSkin] = useState(readFloorSkin);
   const [soundOn, setSoundOn] = useState(readFloorSoundOn);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'occupied'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'occupied' | 'merged'>('all');
   const [occupiedOpen, setOccupiedOpen] = useState({ pending: true, filled: true });
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [selectedGroupSlug, setSelectedGroupSlug] = useState<string>('');
@@ -467,10 +467,21 @@ export default function TableFloorPage() {
     let occupied = 0;
     for (const g of data?.groups || []) {
       for (const t of g.tables) {
-        if (t.occupied) occupied += 1;
+        // Uydu (birleşmiş) masalar ana birimde sayılır
+        if (t.occupied && t.status !== 'merged') occupied += 1;
       }
     }
     return occupied;
+  }, [data]);
+
+  const mergedUnitsCount = useMemo(() => {
+    let n = 0;
+    for (const g of data?.groups || []) {
+      for (const t of g.tables) {
+        if ((t.mergedTables || []).length > 0) n += 1;
+      }
+    }
+    return n;
   }, [data]);
 
   type FloorDisplayRow = { table: FloorTable; groupId: string; groupName: string };
@@ -491,6 +502,7 @@ export default function TableFloorPage() {
     for (const g of data?.groups || []) {
       for (const table of g.tables) {
         if (!table.occupied) continue;
+        if (table.status === 'merged') continue; // uydu → büyük birimde
         const row = { table, groupId: g.id, groupName: g.name };
         if (table.codeStatus === 'pending') pending.push(row);
         else filled.push(row);
@@ -498,6 +510,25 @@ export default function TableFloorPage() {
     }
     return { pending, filled };
   }, [data, statusFilter]);
+
+  const mergedUnitRows = useMemo((): FloorDisplayRow[] => {
+    if (statusFilter !== 'merged') return [];
+    const rows: FloorDisplayRow[] = [];
+    for (const g of data?.groups || []) {
+      for (const table of g.tables) {
+        if ((table.mergedTables || []).length === 0) continue;
+        rows.push({ table, groupId: g.id, groupName: g.name });
+      }
+    }
+    return rows;
+  }, [data, statusFilter]);
+
+  function joinedTableNames(table: FloorTable, tableGroupId: string) {
+    const groupTables = data?.groups.find((g) => g.id === tableGroupId)?.tables || [];
+    return (table.mergedTables || []).map(
+      (code) => groupTables.find((t) => t.code === code)?.name || code
+    );
+  }
 
   const selectedGroup = useMemo(
     () => data?.groups.find((g) => g.id === (selectedGroupSlug || groupId)) || null,
@@ -1030,6 +1061,87 @@ export default function TableFloorPage() {
     setSearchParams(next, { replace: true });
   }
 
+  function renderMergedFloorUnit({ table, groupId: tableGroupId, groupName }: FloorDisplayRow) {
+    const menuUrl = `${origin}/menu?masa=${encodeURIComponent(table.code)}&grup=${tableGroupId}`;
+    const alerting = table.waiterAlertMs > 0;
+    const qrColor = resolveQrColor(table.colorId);
+    const isSource = selectedCode === table.code && selectedGroupSlug === tableGroupId;
+    const joined = joinedTableNames(table, tableGroupId);
+    const codeWaiting = table.occupied && table.codeStatus === 'pending';
+    const codeExpiredTable = table.occupied && table.codeStatus === 'expired';
+    const codeOccupied =
+      table.occupied &&
+      !codeWaiting &&
+      !codeExpiredTable &&
+      (table.codeStatus === 'verified' || table.codeStatus === 'empty' || !table.codeStatus);
+
+    return (
+      <button
+        key={`combined-${tableGroupId}-${table.code}`}
+        type="button"
+        className={`floor-table floor-table--combined${codeOccupied ? ' is-occupied' : ''}${
+          codeWaiting ? ' is-code-waiting' : ''
+        }${codeExpiredTable ? ' is-code-expired-table' : ''}${
+          alerting ? ' is-alerting' : ''
+        }${isSource ? ' is-selected' : ''}`}
+        onClick={() => handleTableClick(table, tableGroupId)}
+      >
+        <span className="floor-table__chair floor-table__chair--n" aria-hidden />
+        <span className="floor-table__chair floor-table__chair--ne" aria-hidden />
+        <span className="floor-table__chair floor-table__chair--nw" aria-hidden />
+        <span className="floor-table__chair floor-table__chair--e" aria-hidden />
+        <span className="floor-table__chair floor-table__chair--w" aria-hidden />
+        <span className="floor-table__chair floor-table__chair--s" aria-hidden />
+        <span className="floor-table__chair floor-table__chair--se" aria-hidden />
+        <span className="floor-table__chair floor-table__chair--sw" aria-hidden />
+        <span className="floor-table__top">
+          <span className="floor-table__qr" style={{ background: qrColor.bg }}>
+            <QRCodeSVG
+              value={menuUrl}
+              size={52}
+              level="M"
+              includeMargin={false}
+              fgColor={qrColor.fg}
+              bgColor={qrColor.bg}
+            />
+          </span>
+          {table.occupied ? (
+            <span className="floor-table__meta">
+              <Clock3 className="w-3 h-3" />
+              {formatDurationMinutes(table.openedAt, now)}
+            </span>
+          ) : null}
+        </span>
+        <span className="floor-table__caption">
+          <span className="floor-table__label">{table.name}</span>
+          <span className="floor-table__combined-tag">Birleşmiş masa</span>
+          {joined.length > 0 ? (
+            <span className="floor-table__combined-members">
+              {joined.join(', ')} katıldı
+            </span>
+          ) : null}
+          {statusFilter !== 'all' ? (
+            <span className="floor-table__link">{groupName}</span>
+          ) : null}
+          {table.codeStatus === 'pending' ? (
+            <span className="floor-table__code-badge is-pending">Kod bekliyor</span>
+          ) : null}
+          {table.codeStatus === 'verified' ? (
+            <span className="floor-table__code-badge is-ok">Kod OK</span>
+          ) : null}
+          {table.codeStatus === 'expired' ? (
+            <span className="floor-table__code-badge is-expired">Süre doldu</span>
+          ) : null}
+        </span>
+      </button>
+    );
+  }
+
+  function renderOccupiedOrMergedRow(row: FloorDisplayRow) {
+    if ((row.table.mergedTables || []).length > 0) return renderMergedFloorUnit(row);
+    return renderFloorTableRow(row);
+  }
+
   function renderFloorTableRow({ table, groupId: tableGroupId, groupName }: FloorDisplayRow) {
     const menuUrl = `${origin}/menu?masa=${encodeURIComponent(table.code)}&grup=${tableGroupId}`;
     const alerting = table.waiterAlertMs > 0;
@@ -1206,6 +1318,19 @@ export default function TableFloorPage() {
               Dolu masalar
               <em>{occupiedCount}</em>
             </button>
+            <button
+              type="button"
+              className={`table-floor__chip table-floor__chip--merged${
+                statusFilter === 'merged' ? ' is-active' : ''
+              }`}
+              onClick={() => {
+                setStatusFilter((prev) => (prev === 'merged' ? 'all' : 'merged'));
+                if (!pickMode) closeTableDrawer();
+              }}
+            >
+              Birleşmiş masalar
+              <em>{mergedUnitsCount}</em>
+            </button>
             <div className="table-floor__filters" role="tablist" aria-label="Masa grupları">
               {(data?.groups || []).map((g) => (
                 <button
@@ -1313,8 +1438,8 @@ export default function TableFloorPage() {
                     />
                   </button>
                   {occupiedOpen.pending ? (
-                    <div className="table-floor__grid">
-                      {occupiedSections.pending.map(renderFloorTableRow)}
+                    <div className="table-floor__grid table-floor__grid--units">
+                      {occupiedSections.pending.map(renderOccupiedOrMergedRow)}
                     </div>
                   ) : null}
                 </section>
@@ -1342,13 +1467,29 @@ export default function TableFloorPage() {
                 </button>
                 {occupiedOpen.filled ? (
                   occupiedSections.filled.length ? (
-                    <div className="table-floor__grid">
-                      {occupiedSections.filled.map(renderFloorTableRow)}
+                    <div className="table-floor__grid table-floor__grid--units">
+                      {occupiedSections.filled.map(renderOccupiedOrMergedRow)}
                     </div>
                   ) : (
                     <p className="table-floor__section-empty">Kod OK dolu masa yok.</p>
                   )
                 ) : null}
+              </section>
+            </div>
+          )
+        ) : statusFilter === 'merged' ? (
+          mergedUnitRows.length === 0 ? (
+            <div className="table-floor__empty">Birleşmiş masa yok.</div>
+          ) : (
+            <div className="table-floor__occupied-view">
+              <section className="table-floor__section table-floor__section--merged is-open">
+                <div className="table-floor__section-head table-floor__section-head--static">
+                  <h3>Birleşmiş masalar</h3>
+                  <em>{mergedUnitRows.length}</em>
+                </div>
+                <div className="table-floor__grid table-floor__grid--units">
+                  {mergedUnitRows.map(renderMergedFloorUnit)}
+                </div>
               </section>
             </div>
           )

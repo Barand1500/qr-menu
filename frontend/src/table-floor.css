@@ -670,9 +670,31 @@
   color: #fff7ed;
 }
 
+.table-floor__chip--merged.is-active {
+  background: #b45309;
+  color: #fffbeb;
+}
+
 .table-floor__occupied-view {
   display: grid;
   gap: 1.35rem;
+}
+
+.table-floor__grid--units {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2.75rem 2rem;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.table-floor__section--merged .table-floor__section-head {
+  border-bottom-color: color-mix(in srgb, #b45309 40%, transparent);
+  cursor: default;
+}
+
+.table-floor__section--merged .table-floor__section-head h3 {
+  color: #92400e;
 }
 
 .table-floor__section-head {
@@ -689,6 +711,10 @@
   cursor: pointer;
   color: inherit;
   font: inherit;
+}
+
+.table-floor__section-head--static {
+  cursor: default;
 }
 
 .table-floor__section.is-collapsed .table-floor__section-head {
@@ -1144,8 +1170,160 @@
 }
 
 .floor-table.is-occupied .floor-table__chair,
-.floor-table.is-merged .floor-table__chair {
+.floor-table.is-merged .floor-table__chair,
+.floor-table--combined .floor-table__chair {
   background: var(--tf-chair-busy);
+}
+
+.floor-table--combined {
+  width: 13.6rem;
+  height: 15.8rem;
+}
+
+@media (min-width: 768px) {
+  .floor-table--combined {
+    width: 15.2rem;
+    height: 17rem;
+  }
+}
+
+.floor-table--combined .floor-table__top {
+  left: 8%;
+  right: 8%;
+  height: 54%;
+  border-radius: 1.15rem;
+  background: var(
+    --tf-top-combined,
+    linear-gradient(155deg, #fbbf24 0%, #d97706 42%, #92400e 100%)
+  );
+  box-shadow: var(
+    --tf-top-combined-shadow,
+    inset 0 0 0 5px rgba(120, 53, 15, 0.28),
+    0 0 0 3px rgba(245, 158, 11, 0.28),
+    0 14px 30px rgba(146, 64, 14, 0.28)
+  );
+}
+
+.floor-table--combined.is-occupied .floor-table__top {
+  background: var(
+    --tf-top-combined,
+    linear-gradient(155deg, #fbbf24 0%, #d97706 42%, #92400e 100%)
+  );
+  box-shadow: var(
+    --tf-top-combined-shadow,
+    inset 0 0 0 5px rgba(120, 53, 15, 0.28),
+    0 0 0 3px rgba(245, 158, 11, 0.28),
+    0 14px 30px rgba(146, 64, 14, 0.28)
+  );
+}
+
+.floor-table--combined .floor-table__qr {
+  width: 3.35rem;
+  height: 3.35rem;
+}
+
+.floor-table--combined .floor-table__chair--s {
+  top: calc(54% + 0.1rem);
+}
+
+.floor-table--combined .floor-table__chair--e,
+.floor-table--combined .floor-table__chair--w {
+  top: 28%;
+}
+
+.floor-table--combined::after {
+  top: 50%;
+  left: 18%;
+  right: 18%;
+  height: 1rem;
+}
+
+.floor-table__chair--ne {
+  top: 0.35rem;
+  right: 12%;
+  left: auto;
+  transform: rotate(28deg);
+}
+
+.floor-table__chair--ne::before {
+  bottom: calc(100% - 0.12rem);
+}
+
+.floor-table__chair--ne::after {
+  top: 100%;
+  left: 0.18rem;
+}
+
+.floor-table__chair--nw {
+  top: 0.35rem;
+  left: 12%;
+  transform: rotate(-28deg);
+}
+
+.floor-table__chair--nw::before {
+  bottom: calc(100% - 0.12rem);
+}
+
+.floor-table__chair--nw::after {
+  top: 100%;
+  left: 0.18rem;
+}
+
+.floor-table__chair--se {
+  top: calc(54% + 0.15rem);
+  right: 12%;
+  left: auto;
+  transform: rotate(152deg);
+}
+
+.floor-table__chair--se::before {
+  bottom: calc(100% - 0.12rem);
+}
+
+.floor-table__chair--se::after {
+  top: 100%;
+  left: 0.18rem;
+}
+
+.floor-table__chair--sw {
+  top: calc(54% + 0.15rem);
+  left: 12%;
+  transform: rotate(-152deg);
+}
+
+.floor-table__chair--sw::before {
+  bottom: calc(100% - 0.12rem);
+}
+
+.floor-table__chair--sw::after {
+  top: 100%;
+  left: 0.18rem;
+}
+
+.floor-table__combined-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #92400e;
+  background: color-mix(in srgb, #fbbf24 28%, #fff);
+  border: 1px solid color-mix(in srgb, #d97706 35%, transparent);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  line-height: 1.2;
+}
+
+.floor-table__combined-members {
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--tf-muted, #78716c);
+  text-align: center;
+  max-width: 13rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .floor-table.is-code-waiting .floor-table__chair {
