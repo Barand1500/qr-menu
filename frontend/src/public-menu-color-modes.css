@@ -276,13 +276,99 @@
   border-top-color: rgba(243, 235, 228, 0.14);
 }
 
-.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-detail__back {
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-detail__back,
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night']
+  .sade-detail__top-actions
+  .public-menu-header__icon-btn {
   background: var(--sade-btn);
   color: var(--sade-btn-text);
 }
 
 .public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-detail__photo {
   background: #2a201c;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-detail__opts-col {
+  background: #241c18;
+  border-color: rgba(243, 235, 228, 0.12);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-opts {
+  border-top-color: rgba(243, 235, 228, 0.12);
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-opts__chip {
+  background: #322824;
+  border-color: rgba(243, 235, 228, 0.16);
+  color: #f3ebe4;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-opts__chip small {
+  color: #d4b5a8;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-opts__chip.is-on {
+  background: #f3ebe4;
+  border-color: #f3ebe4;
+  color: #1c1614;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-opts__chip.is-on small {
+  color: rgba(28, 22, 20, 0.72);
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-opts__chip:hover:not(.is-on) {
+  border-color: rgba(243, 235, 228, 0.32);
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-opts__multi-row {
+  background: #2f2622;
+  border-color: rgba(243, 235, 228, 0.12);
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-opts__multi-copy strong {
+  color: #f3ebe4;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-opts__multi-copy span {
+  color: #d4b5a8;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-opts__stepper {
+  background: #3a2e2a;
+  border-color: rgba(243, 235, 228, 0.16);
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-opts__stepper button,
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-opts__stepper em {
+  color: #f3ebe4;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night']
+  .sade-opts__stepper
+  button:hover:not(:disabled) {
+  background: rgba(243, 235, 228, 0.1);
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-opts__total {
+  background: rgba(243, 235, 228, 0.08);
+  border-color: rgba(243, 235, 228, 0.14);
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-opts__total.is-live {
+  background: rgba(196, 164, 148, 0.16);
+  border-color: rgba(212, 181, 168, 0.28);
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-opts__total strong {
+  color: #f8f1ea;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .sade-detail__add {
+  background: #f3ebe4;
+  color: #1c1614;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
 }
 
 /* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ CanlÃÂÃÂ± ÃÂ¢ÃÂÃÂ gÃÂÃÂ¼ndÃÂÃÂ¼z modu (varsayÃÂÃÂ±lan: gece) ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */

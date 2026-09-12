@@ -1,4 +1,4 @@
-/* Varyant & ekstra â galeri â tam ekran editÃ¶r */
+/* Varyant & ekstra Ã¢ÂÂ galeri Ã¢ÂÂ tam ekran editÃÂ¶r */
 
 .pv-page {
   --pv-ink: #1c1917;
@@ -228,7 +228,7 @@
   color: var(--pv-ink);
 }
 
-/* ââ Gallery ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Gallery Ã¢ÂÂÃ¢ÂÂ */
 .pv-gallery {
   flex: 1;
   display: flex;
@@ -432,7 +432,7 @@
   font-weight: 600;
 }
 
-/* ââ Editor ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Editor Ã¢ÂÂÃ¢ÂÂ */
 .pv-editor-shell {
   flex: 1;
   min-height: 0;
@@ -739,7 +739,7 @@
   max-width: 28rem;
 }
 
-/* ââ Rules drawer ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Rules drawer Ã¢ÂÂÃ¢ÂÂ */
 .pv-rules {
   position: fixed;
   inset: 0;
@@ -903,7 +903,7 @@
   background: #fff;
 }
 
-/* ââ Wizard layout ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Wizard layout Ã¢ÂÂÃ¢ÂÂ */
 .pv-wiz {
   --pv-wiz-accent: #ea580c;
   flex: 1;
@@ -1366,7 +1366,7 @@
   }
 }
 
-/*  Kanban layout  */
+/* ÂÂ Kanban layout ÂÂ */
 .pv-kb {
   --pv-kb-amber: #f59e0b;
   --pv-kb-amber-soft: #fffbeb;
@@ -1399,6 +1399,10 @@
   z-index: 5;
 }
 
+.pv-kb__bar.is-picker-open {
+  z-index: 20;
+}
+
 .pv-kb__actions {
   display: flex;
   align-items: center;
@@ -1421,24 +1425,32 @@
 }
 
 .pv-kb__pickers {
+  position: relative;
   display: flex;
   align-items: stretch;
   min-width: min(420px, 100%);
   border: 1px solid var(--pv-line);
   border-radius: 0.75rem;
   background: #fff;
-  overflow: hidden;
+  /* overflow:hidden + autofocus scrolls the group select out of view */
+  overflow: visible;
+}
+
+.pv-kb__pickers.is-open {
+  z-index: 20;
 }
 
 .pv-kb__group-select {
   flex: 0 1 42%;
-  min-width: 0;
+  min-width: 7.5rem;
   display: flex;
   border-right: 1px solid var(--pv-line);
+  border-radius: 0.75rem 0 0 0.75rem;
 }
 
 .pv-kb__group-select select {
   width: 100%;
+  min-width: 0;
   border: 0;
   background: transparent;
   padding: 0.55rem 0.75rem;
@@ -1447,6 +1459,7 @@
   color: var(--pv-ink);
   cursor: pointer;
   outline: none;
+  border-radius: 0.75rem 0 0 0.75rem;
 }
 
 .pv-kb__sr {
@@ -1465,6 +1478,7 @@
   position: relative;
   flex: 1 1 58%;
   min-width: 0;
+  border-radius: 0 0.75rem 0.75rem 0;
 }
 
 .pv-kb__picker-btn {
@@ -1475,7 +1489,7 @@
   width: 100%;
   border: 0;
   background: transparent;
-  border-radius: 0;
+  border-radius: 0 0.75rem 0.75rem 0;
   padding: 0.55rem 0.75rem;
   font-size: 0.9rem;
   font-weight: 700;
@@ -1495,12 +1509,13 @@
   top: calc(100% + 0.35rem);
   right: 0;
   left: 0;
+  min-width: 220px;
   background: #fff;
   border: 1px solid var(--pv-line);
   border-radius: 0.85rem;
   box-shadow: 0 16px 40px rgba(28, 25, 23, 0.12);
   overflow: hidden;
-  z-index: 8;
+  z-index: 30;
 }
 
 .pv-kb__picker-search {
@@ -1556,7 +1571,7 @@
   inset: 0;
   border: 0;
   background: transparent;
-  z-index: 4;
+  z-index: 10;
   cursor: default;
 }
 

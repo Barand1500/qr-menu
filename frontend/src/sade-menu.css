@@ -611,6 +611,22 @@
   gap: 0.45rem;
 }
 
+/* Header ikonu burada beyaz; sade detay krem zemin — geri butonu gibi görünür yap */
+.sade-detail__top-actions .public-menu-header__icon-btn {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 9999px;
+  background: var(--sade-btn, #edd9d3);
+  color: var(--menu-text, #3d2c29);
+  border: none;
+  box-shadow: none;
+}
+
+.sade-detail__top-actions .public-menu-header__icon-btn:hover {
+  filter: brightness(0.96);
+  background: var(--sade-btn, #edd9d3);
+}
+
 .sade-detail__back {
   display: grid;
   place-items: center;
@@ -628,6 +644,15 @@
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+}
+
+.sade-detail__intro,
+.sade-detail__facts,
+.sade-detail__opts-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
 }
 
 .sade-detail__group {
@@ -687,6 +712,11 @@
   box-shadow: 0 10px 24px rgba(61, 44, 41, 0.18);
 }
 
+.sade-detail__opts-col .sade-detail__add {
+  max-width: none;
+  margin-top: 0.15rem;
+}
+
 .sade-detail__add:hover {
   filter: brightness(1.06);
 }
@@ -699,7 +729,7 @@
 .sade-opts {
   margin-top: 0.35rem;
   padding: 1rem 0 0.25rem;
-  border-top: 1px solid rgba(61, 44, 41, 0.12);
+  border-top: 1px solid color-mix(in srgb, var(--menu-text, #3d2c29) 12%, transparent);
   display: flex;
   flex-direction: column;
   gap: 0.95rem;
@@ -774,7 +804,7 @@
   min-height: 2.45rem;
   padding: 0.45rem 0.85rem;
   border-radius: 999px;
-  border: 1.5px solid rgba(61, 44, 41, 0.14);
+  border: 1.5px solid color-mix(in srgb, var(--menu-text, #3d2c29) 14%, transparent);
   background: color-mix(in srgb, var(--sade-btn, #edd9d3) 55%, #fff);
   color: var(--menu-text);
   font-size: 0.9rem;
@@ -800,7 +830,7 @@
 }
 
 .sade-opts__chip:hover:not(.is-on) {
-  border-color: rgba(61, 44, 41, 0.28);
+  border-color: color-mix(in srgb, var(--menu-text, #3d2c29) 28%, transparent);
 }
 
 .sade-opts__multi {
@@ -821,7 +851,7 @@
   padding: 0.55rem 0.7rem;
   border-radius: 0.95rem;
   background: color-mix(in srgb, var(--sade-btn, #edd9d3) 40%, #fff);
-  border: 1px solid rgba(61, 44, 41, 0.1);
+  border: 1px solid color-mix(in srgb, var(--menu-text, #3d2c29) 10%, transparent);
 }
 
 .sade-opts__multi-copy {
@@ -849,8 +879,8 @@
   flex-shrink: 0;
   padding: 0.15rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(61, 44, 41, 0.1);
+  background: color-mix(in srgb, #fff 70%, var(--sade-btn, #edd9d3));
+  border: 1px solid color-mix(in srgb, var(--menu-text, #3d2c29) 12%, transparent);
 }
 
 .sade-opts__stepper button {
@@ -872,7 +902,7 @@
 }
 
 .sade-opts__stepper button:hover:not(:disabled) {
-  background: rgba(61, 44, 41, 0.08);
+  background: color-mix(in srgb, var(--menu-text, #3d2c29) 8%, transparent);
 }
 
 .sade-opts__stepper em {
@@ -893,8 +923,8 @@
   margin-top: 0.15rem;
   padding: 0.85rem 1rem;
   border-radius: 1rem;
-  background: rgba(61, 44, 41, 0.06);
-  border: 1px solid rgba(61, 44, 41, 0.1);
+  background: color-mix(in srgb, var(--menu-text, #3d2c29) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--menu-text, #3d2c29) 10%, transparent);
 }
 
 .sade-opts__total span {
@@ -914,12 +944,18 @@
 
 .sade-opts__total.is-live {
   background: color-mix(in srgb, var(--sade-btn, #edd9d3) 70%, #fff);
-  border-color: rgba(61, 44, 41, 0.16);
+  border-color: color-mix(in srgb, var(--menu-text, #3d2c29) 16%, transparent);
 }
 
 @media (min-width: 1024px) {
   .sade-opts {
-    max-width: 32rem;
+    max-width: none;
+  }
+
+  .sade-detail__opts-col .sade-opts {
+    margin-top: 0;
+    padding: 0;
+    border-top: none;
   }
 
   .sade-opts__chip {
@@ -1089,16 +1125,54 @@
 
 @media (min-width: 1024px) {
   .sade-detail {
-    padding: 1.5rem clamp(2rem, 6vw, 4rem) 3rem;
+    padding: 1.5rem clamp(2rem, 5vw, 3.5rem) 3rem;
   }
 
   .sade-detail__main {
     max-width: 44rem;
-    margin-left: clamp(1rem, 8vw, 6rem);
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .sade-detail__main--gallery {
     max-width: min(58rem, 100%);
+  }
+
+  .sade-detail__main--opts {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 22rem);
+    gap: 1.5rem 2.25rem;
+    align-items: start;
+    max-width: min(68rem, 100%);
+  }
+
+  .sade-detail__main--opts.sade-detail__main--gallery {
+    max-width: min(72rem, 100%);
+    grid-template-columns: minmax(0, 1.2fr) minmax(20rem, 24rem);
+  }
+
+  .sade-detail__intro {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .sade-detail__opts-col {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    position: sticky;
+    top: 1.15rem;
+    padding: 1.15rem 1.2rem 1.25rem;
+    border-radius: 1.25rem;
+    background: color-mix(in srgb, var(--sade-btn, #edd9d3) 42%, #fff);
+    border: 1px solid color-mix(in srgb, var(--menu-text, #3d2c29) 10%, transparent);
+    box-shadow: 0 12px 36px rgba(61, 44, 41, 0.06);
+    max-height: calc(100dvh - 2.3rem);
+    overflow: auto;
+  }
+
+  .sade-detail__facts {
+    grid-column: 1;
+    grid-row: 2;
   }
 
   .sade-detail__gallery-mobile {
@@ -1114,7 +1188,11 @@
 
   .sade-detail__gallery-desktop--single {
     display: block;
-    max-width: 28rem;
+    max-width: none;
+  }
+
+  .sade-detail__main--opts .sade-detail__gallery-desktop--single {
+    max-width: none;
   }
 
   .sade-detail__gallery-desktop:not(.sade-detail__gallery-desktop--single)
@@ -1134,6 +1212,10 @@
   .sade-detail__photo {
     max-width: none;
     max-height: 18rem;
+  }
+
+  .sade-detail__main--opts .sade-detail__photo {
+    max-height: 20rem;
   }
 
   .sade-detail__title {

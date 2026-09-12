@@ -137,73 +137,95 @@ export default function SadeProductPage({
         </div>
       </div>
 
-      <main className={`sade-detail__main${multi ? ' sade-detail__main--gallery' : ''}`}>
-        <p className="sade-detail__group sade-detail__reveal">{product.group.name}</p>
-        <h1 className="sade-detail__title sade-detail__reveal">{product.name}</h1>
-        <p className="sade-detail__price sade-detail__reveal">
-          {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
-          {optionGroups.length > 0 ? (
-            <span className="sade-detail__price-hint">seçime göre</span>
-          ) : null}
-        </p>
+      <main
+        className={[
+          'sade-detail__main',
+          multi ? 'sade-detail__main--gallery' : '',
+          optionGroups.length > 0 ? 'sade-detail__main--opts' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <div className="sade-detail__intro">
+          <p className="sade-detail__group sade-detail__reveal">{product.group.name}</p>
+          <h1 className="sade-detail__title sade-detail__reveal">{product.name}</h1>
+          <p className="sade-detail__price sade-detail__reveal">
+            {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
+            {optionGroups.length > 0 ? (
+              <span className="sade-detail__price-hint">seçime göre</span>
+            ) : null}
+          </p>
 
-        {galleryImages.length > 0 ? (
-          <div className="sade-detail__gallery sade-detail__reveal">
-            <div className="sade-detail__gallery-mobile">
-              <div className="sade-detail__photo">
-                <img src={imageUrl(activeImg)} alt="" key={activeImg} />
+          {galleryImages.length > 0 ? (
+            <div className="sade-detail__gallery sade-detail__reveal">
+              <div className="sade-detail__gallery-mobile">
+                <div className="sade-detail__photo">
+                  <img src={imageUrl(activeImg)} alt="" key={activeImg} />
+                </div>
+                {multi ? (
+                  <div className="sade-detail__thumbs" role="tablist" aria-label="Görseller">
+                    {galleryImages.map((src, i) => (
+                      <button
+                        key={`${src}-${i}`}
+                        type="button"
+                        role="tab"
+                        aria-selected={i === activeIdx}
+                        className={`sade-detail__thumb${i === activeIdx ? ' is-active' : ''}`}
+                        onClick={() => setActiveIdx(i)}
+                      >
+                        <img src={imageUrl(src)} alt="" />
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
+
               {multi ? (
-                <div className="sade-detail__thumbs" role="tablist" aria-label="Görseller">
+                <div className="sade-detail__gallery-desktop" aria-label="Görseller">
                   {galleryImages.map((src, i) => (
-                    <button
-                      key={`${src}-${i}`}
-                      type="button"
-                      role="tab"
-                      aria-selected={i === activeIdx}
-                      className={`sade-detail__thumb${i === activeIdx ? ' is-active' : ''}`}
-                      onClick={() => setActiveIdx(i)}
-                    >
+                    <div key={`${src}-${i}`} className="sade-detail__photo sade-detail__photo--tile">
                       <img src={imageUrl(src)} alt="" />
-                    </button>
+                    </div>
                   ))}
                 </div>
-              ) : null}
-            </div>
-
-            {multi ? (
-              <div className="sade-detail__gallery-desktop" aria-label="Görseller">
-                {galleryImages.map((src, i) => (
-                  <div key={`${src}-${i}`} className="sade-detail__photo sade-detail__photo--tile">
-                    <img src={imageUrl(src)} alt="" />
+              ) : (
+                <div className="sade-detail__gallery-desktop sade-detail__gallery-desktop--single">
+                  <div className="sade-detail__photo">
+                    <img src={imageUrl(galleryImages[0])} alt="" />
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="sade-detail__gallery-desktop sade-detail__gallery-desktop--single">
-                <div className="sade-detail__photo">
-                  <img src={imageUrl(galleryImages[0])} alt="" />
                 </div>
-              </div>
-            )}
-          </div>
-        ) : null}
+              )}
+            </div>
+          ) : null}
 
-        {product.description ? (
-          <p className="sade-detail__text sade-detail__reveal">{product.description}</p>
-        ) : null}
+          {product.description ? (
+            <p className="sade-detail__text sade-detail__reveal">{product.description}</p>
+          ) : null}
+        </div>
 
         {optionGroups.length > 0 ? (
-          <SadeProductOptions
-            key={product.id}
-            groups={optionGroups}
-            basePrice={product.price}
-            currency={product.currency}
-            onChange={onOptionsChange}
-          />
-        ) : null}
-
-        {showCart ? (
+          <aside className="sade-detail__opts-col sade-detail__reveal">
+            <SadeProductOptions
+              key={product.id}
+              groups={optionGroups}
+              basePrice={product.price}
+              currency={product.currency}
+              onChange={onOptionsChange}
+            />
+            {showCart ? (
+              <button
+                ref={addBtnRef}
+                type="button"
+                className="sade-detail__add"
+                onClick={onAdd}
+              >
+                <Plus className="w-4 h-4" strokeWidth={2.5} />
+                Sepete ekle ·{' '}
+                {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
+              </button>
+            ) : null}
+          </aside>
+        ) : showCart ? (
           <button
             ref={addBtnRef}
             type="button"
@@ -211,52 +233,56 @@ export default function SadeProductPage({
             onClick={onAdd}
           >
             <Plus className="w-4 h-4" strokeWidth={2.5} />
-            Sepete ekle · {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
+            Sepete ekle · {formatMoney(product.price, product.currency)}
           </button>
         ) : null}
 
-        {product.ingredients ? (
-          <section className="sade-detail__block sade-detail__reveal">
-            <h2>İçindekiler</h2>
-            <p>{product.ingredients}</p>
-          </section>
-        ) : null}
+        <div className="sade-detail__facts">
+          {product.ingredients ? (
+            <section className="sade-detail__block sade-detail__reveal">
+              <h2>İçindekiler</h2>
+              <p>{product.ingredients}</p>
+            </section>
+          ) : null}
 
-        {product.allergens ? (
-          <section className="sade-detail__block sade-detail__reveal">
-            <h2>Alerjenler</h2>
-            <p>{product.allergens}</p>
-          </section>
-        ) : null}
+          {product.allergens ? (
+            <section className="sade-detail__block sade-detail__reveal">
+              <h2>Alerjenler</h2>
+              <p>{product.allergens}</p>
+            </section>
+          ) : null}
 
-        {(product.prepTimeMinutes || product.calories) && (
-          <p className="sade-detail__meta sade-detail__reveal">
-            {product.prepTimeMinutes != null && product.prepTimeMinutes > 0
-              ? `${product.prepTimeMinutes} dk`
-              : null}
-            {product.prepTimeMinutes && product.calories ? ' · ' : null}
-            {product.calories != null && product.calories > 0 ? `${product.calories} kcal` : null}
-          </p>
-        )}
+          {(product.prepTimeMinutes || product.calories) && (
+            <p className="sade-detail__meta sade-detail__reveal">
+              {product.prepTimeMinutes != null && product.prepTimeMinutes > 0
+                ? `${product.prepTimeMinutes} dk`
+                : null}
+              {product.prepTimeMinutes && product.calories ? ' · ' : null}
+              {product.calories != null && product.calories > 0
+                ? `${product.calories} kcal`
+                : null}
+            </p>
+          )}
 
-        {related.length > 0 && (
-          <section className="sade-detail__related sade-detail__reveal">
-            <h2>Benzer</h2>
-            <ul>
-              {related.slice(0, 6).map((item) => (
-                <li key={item.id}>
-                  <Link to={menuProductPath(item.id)} className="sade-detail__related-row">
-                    <span>{item.name}</span>
-                    <span>{formatMoney(item.price, item.currency)}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <Link to={menuGroupPath(product.group.id)} className="sade-detail__more">
-              Tüm {product.group.name}
-            </Link>
-          </section>
-        )}
+          {related.length > 0 && (
+            <section className="sade-detail__related sade-detail__reveal">
+              <h2>Benzer</h2>
+              <ul>
+                {related.slice(0, 6).map((item) => (
+                  <li key={item.id}>
+                    <Link to={menuProductPath(item.id)} className="sade-detail__related-row">
+                      <span>{item.name}</span>
+                      <span>{formatMoney(item.price, item.currency)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <Link to={menuGroupPath(product.group.id)} className="sade-detail__more">
+                Tüm {product.group.name}
+              </Link>
+            </section>
+          )}
+        </div>
       </main>
     </div>
   );

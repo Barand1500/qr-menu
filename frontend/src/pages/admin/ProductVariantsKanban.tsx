@@ -71,6 +71,10 @@ function toggleExclude(opt: ProductOption, targetId: string): string[] {
   return [...set];
 }
 
+function productGroupName(p: KanbanProduct) {
+  return (p.groupName || '').trim() || 'Diğer';
+}
+
 export default function ProductVariantsKanban({
   products,
   selected,
@@ -96,17 +100,14 @@ export default function ProductVariantsKanban({
 
   const menuGroupNames = useMemo(() => {
     const set = new Set<string>();
-    for (const p of products) {
-      const n = (p.groupName || '').trim();
-      if (n) set.add(n);
-    }
+    for (const p of products) set.add(productGroupName(p));
     return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
   }, [products]);
 
   const filteredProducts = useMemo(() => {
     const q = productQuery.trim().toLowerCase();
     return products.filter((p) => {
-      const gName = (p.groupName || '').trim() || 'Grup yok';
+      const gName = productGroupName(p);
       if (groupFilter !== 'all' && gName !== groupFilter) return false;
       if (!q) return true;
       return (
@@ -198,7 +199,7 @@ export default function ProductVariantsKanban({
 
   return (
     <div className={`pv-kb${dirty ? ' is-dirty' : ''}`}>
-      <div className="pv-kb__bar">
+      <div className={`pv-kb__bar${pickerOpen ? ' is-picker-open' : ''}`}>
         <div className="pv-kb__actions">
           <button
             type="button"
@@ -248,13 +249,14 @@ export default function ProductVariantsKanban({
           ) : null}
         </div>
 
-        <div className="pv-kb__pickers">
+        <div className={`pv-kb__pickers${pickerOpen ? ' is-open' : ''}`}>
           <label className="pv-kb__group-select">
             <span className="pv-kb__sr">Grup</span>
             <select
               value={groupFilter}
               onChange={(e) => {
                 setGroupFilter(e.target.value);
+                setProductQuery('');
                 setPickerOpen(false);
               }}
               aria-label="Grup seç"
@@ -278,7 +280,7 @@ export default function ProductVariantsKanban({
               <ChevronDown className="w-4 h-4" />
             </button>
             {pickerOpen ? (
-              <div className="pv-kb__picker-menu">
+              <div className="pv-kb__picker-menu" role="listbox">
                 <div className="pv-kb__picker-search">
                   <Search className="w-4 h-4" />
                   <input
@@ -304,7 +306,7 @@ export default function ProductVariantsKanban({
                         }}
                       >
                         <strong>{p.name}</strong>
-                        <em>{p.groupName || 'Grup yok'}</em>
+                        <em>{productGroupName(p)}</em>
                       </button>
                     ))
                   )}
