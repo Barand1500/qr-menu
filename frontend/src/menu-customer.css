@@ -659,3 +659,345 @@
   background: #38bdf8;
   color: #0c4a6e;
 }
+
+/* ── Profil redesign ── */
+.mc-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.mc-profile__perks-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: none;
+  border-radius: 1.1rem;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 55%, #0369a1 100%);
+  color: #f8fafc;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22);
+  cursor: pointer;
+  text-align: left;
+}
+
+.mc-profile__perks-btn span {
+  flex: 1;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.mc-profile__perks-btn em {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 750;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.mc-profile__stage {
+  display: grid;
+  justify-items: center;
+}
+
+.mc-profile__qr-card {
+  position: relative;
+  width: min(100%, 22rem);
+  padding: 1.1rem 1.1rem 1.25rem;
+  border-radius: 1.35rem;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+  text-align: center;
+}
+
+.mc-profile__qr-frame {
+  display: grid;
+  place-items: center;
+  margin: 0 auto 0.75rem;
+  padding: 0.75rem;
+  width: fit-content;
+  border-radius: 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.mc-profile__qr-caption {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 850;
+  color: #0f172a;
+}
+
+.mc-profile__qr-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.mc-profile__qr-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.mc-profile__qr-meta > span {
+  font-size: 0.78rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #0369a1;
+}
+
+.mc-profile__qr-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 750;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.mc-profile__qr-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #38bdf8, #0284c7);
+  transition: width 0.4s linear;
+}
+
+.mc-profile__tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  padding: 0.3rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+}
+
+.mc-profile__tabs button {
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.55rem 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 750;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.mc-profile__tabs button.is-active {
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.mc-profile__col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.mc-profile__panel {
+  padding: 0.95rem;
+  border-radius: 1.15rem;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+}
+
+.mc-profile__panel-head {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  margin-bottom: 0.85rem;
+  color: #0284c7;
+}
+
+.mc-profile__panel-head h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.mc-profile__panel-head p {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.mc-profile__field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.mc-profile__field-row label {
+  margin: 0;
+}
+
+.mc-profile__field-row small {
+  margin-left: 0.25rem;
+  color: #94a3b8;
+  font-weight: 650;
+}
+
+.mc-profile__eye {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 750;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.mc-profile__eye.is-on {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+.mc-perks {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.mc-perks__card {
+  padding: 1rem;
+  border-radius: 1.15rem;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+}
+
+.mc-perks__card header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 850;
+  color: #0f172a;
+}
+
+.mc-perks__card header p {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.mc-perks__empty {
+  margin: 0.85rem 0 0;
+  font-size: 0.84rem;
+  color: #94a3b8;
+}
+
+.mc-perks__list {
+  list-style: none;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.mc-perks__list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.9rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.mc-perks__list strong {
+  display: block;
+  font-size: 0.88rem;
+  color: #0f172a;
+}
+
+.mc-perks__list em {
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 750;
+  color: #0284c7;
+}
+
+.mc-perks__list b {
+  font-size: 1.05rem;
+  font-weight: 850;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 899px) {
+  .mc-profile__stage.is-mobile-away,
+  .mc-profile__col.is-mobile-away {
+    display: none;
+  }
+}
+
+@media (min-width: 900px) {
+  .mc-auth--profile .mc-auth__body {
+    max-width: 72rem;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .mc-profile {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem) minmax(0, 1.1fr);
+    grid-template-areas:
+      'perks perks perks'
+      'info stage prefs';
+    gap: 1.15rem 1.35rem;
+    align-items: start;
+  }
+
+  .mc-profile__perks-btn {
+    grid-area: perks;
+    max-width: 28rem;
+    justify-self: center;
+  }
+
+  .mc-profile__stage {
+    grid-area: stage;
+  }
+
+  .mc-profile__col--info {
+    grid-area: info;
+  }
+
+  .mc-profile__col--prefs {
+    grid-area: prefs;
+    max-height: min(68vh, 42rem);
+    overflow: auto;
+    padding-right: 0.2rem;
+  }
+
+  .mc-profile__tabs {
+    display: none;
+  }
+
+  .mc-auth__form--profile .mc-auth__footer {
+    grid-column: 1 / -1;
+  }
+}
+
