@@ -301,8 +301,12 @@ export default function TableFloorPage() {
   const [groupId, setGroupId] = useState<string>('');
   const [floorSkin, setFloorSkin] = useState(readFloorSkin);
   const [soundOn, setSoundOn] = useState(readFloorSoundOn);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'occupied' | 'merged'>('all');
-  const [occupiedOpen, setOccupiedOpen] = useState({ pending: true, filled: true });
+  const [statusFilter, setStatusFilter] = useState<'all' | 'occupied'>('all');
+  const [occupiedOpen, setOccupiedOpen] = useState({
+    pending: true,
+    filled: true,
+    merged: true,
+  });
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [selectedGroupSlug, setSelectedGroupSlug] = useState<string>('');
   const [now, setNow] = useState(() => Date.now());
@@ -474,16 +478,6 @@ export default function TableFloorPage() {
     return occupied;
   }, [data]);
 
-  const mergedUnitsCount = useMemo(() => {
-    let n = 0;
-    for (const g of data?.groups || []) {
-      for (const t of g.tables) {
-        if ((t.mergedTables || []).length > 0) n += 1;
-      }
-    }
-    return n;
-  }, [data]);
-
   type FloorDisplayRow = { table: FloorTable; groupId: string; groupName: string };
 
   const displayTables = useMemo((): FloorDisplayRow[] => {
@@ -498,29 +492,23 @@ export default function TableFloorPage() {
   const occupiedSections = useMemo(() => {
     const pending: FloorDisplayRow[] = [];
     const filled: FloorDisplayRow[] = [];
-    if (statusFilter !== 'occupied') return { pending, filled };
+    const merged: FloorDisplayRow[] = [];
+    if (statusFilter !== 'occupied') return { pending, filled, merged };
     for (const g of data?.groups || []) {
       for (const table of g.tables) {
-        if (!table.occupied) continue;
         if (table.status === 'merged') continue; // uydu → büyük birimde
+        const isCombined = (table.mergedTables || []).length > 0;
+        if (isCombined) {
+          merged.push({ table, groupId: g.id, groupName: g.name });
+          continue;
+        }
+        if (!table.occupied) continue;
         const row = { table, groupId: g.id, groupName: g.name };
         if (table.codeStatus === 'pending') pending.push(row);
         else filled.push(row);
       }
     }
-    return { pending, filled };
-  }, [data, statusFilter]);
-
-  const mergedUnitRows = useMemo((): FloorDisplayRow[] => {
-    if (statusFilter !== 'merged') return [];
-    const rows: FloorDisplayRow[] = [];
-    for (const g of data?.groups || []) {
-      for (const table of g.tables) {
-        if ((table.mergedTables || []).length === 0) continue;
-        rows.push({ table, groupId: g.id, groupName: g.name });
-      }
-    }
-    return rows;
+    return { pending, filled, merged };
   }, [data, statusFilter]);
 
   function joinedTableNames(table: FloorTable, tableGroupId: string) {
@@ -1137,11 +1125,6 @@ export default function TableFloorPage() {
     );
   }
 
-  function renderOccupiedOrMergedRow(row: FloorDisplayRow) {
-    if ((row.table.mergedTables || []).length > 0) return renderMergedFloorUnit(row);
-    return renderFloorTableRow(row);
-  }
-
   function renderFloorTableRow({ table, groupId: tableGroupId, groupName }: FloorDisplayRow) {
     const menuUrl = `${origin}/menu?masa=${encodeURIComponent(table.code)}&grup=${tableGroupId}`;
     const alerting = table.waiterAlertMs > 0;
@@ -1318,19 +1301,6 @@ export default function TableFloorPage() {
               Dolu masalar
               <em>{occupiedCount}</em>
             </button>
-            <button
-              type="button"
-              className={`table-floor__chip table-floor__chip--merged${
-                statusFilter === 'merged' ? ' is-active' : ''
-              }`}
-              onClick={() => {
-                setStatusFilter((prev) => (prev === 'merged' ? 'all' : 'merged'));
-                if (!pickMode) closeTableDrawer();
-              }}
-            >
-              Birleşmiş masalar
-              <em>{mergedUnitsCount}</em>
-            </button>
             <div className="table-floor__filters" role="tablist" aria-label="Masa grupları">
               {(data?.groups || []).map((g) => (
                 <button
@@ -1439,7 +1409,7 @@ export default function TableFloorPage() {
                   </button>
                   {occupiedOpen.pending ? (
                     <div className="table-floor__grid table-floor__grid--units">
-                      {occupiedSections.pending.map(renderOccupiedOrMergedRow)}
+                      {occupiedSections.pending.map(renderFloorTableRow)}
                     </div>
                   ) : null}
                 </section>
@@ -1468,29 +1438,42 @@ export default function TableFloorPage() {
                 {occupiedOpen.filled ? (
                   occupiedSections.filled.length ? (
                     <div className="table-floor__grid table-floor__grid--units">
-                      {occupiedSections.filled.map(renderOccupiedOrMergedRow)}
+                      {occupiedSections.filled.map(renderFloorTableRow)}
                     </div>
                   ) : (
                     <p className="table-floor__section-empty">Kod OK dolu masa yok.</p>
                   )
                 ) : null}
               </section>
-            </div>
-          )
-        ) : statusFilter === 'merged' ? (
-          mergedUnitRows.length === 0 ? (
-            <div className="table-floor__empty">Birleşmiş masa yok.</div>
-          ) : (
-            <div className="table-floor__occupied-view">
-              <section className="table-floor__section table-floor__section--merged is-open">
-                <div className="table-floor__section-head table-floor__section-head--static">
-                  <h3>Birleşmiş masalar</h3>
-                  <em>{mergedUnitRows.length}</em>
-                </div>
-                <div className="table-floor__grid table-floor__grid--units">
-                  {mergedUnitRows.map(renderMergedFloorUnit)}
-                </div>
-              </section>
+              {occupiedSections.merged.length > 0 ? (
+                <section
+                  className={`table-floor__section table-floor__section--merged${
+                    occupiedOpen.merged ? ' is-open' : ' is-collapsed'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    className="table-floor__section-head"
+                    aria-expanded={occupiedOpen.merged}
+                    onClick={() =>
+                      setOccupiedOpen((prev) => ({ ...prev, merged: !prev.merged }))
+                    }
+                  >
+                    <h3>Birleşmiş masalar</h3>
+                    <em>{occupiedSections.merged.length}</em>
+                    <ChevronDown
+                      className="table-floor__section-chevron"
+                      strokeWidth={2.4}
+                      aria-hidden
+                    />
+                  </button>
+                  {occupiedOpen.merged ? (
+                    <div className="table-floor__grid table-floor__grid--units">
+                      {occupiedSections.merged.map(renderMergedFloorUnit)}
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
             </div>
           )
         ) : !displayTables.length ? (

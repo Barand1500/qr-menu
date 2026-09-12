@@ -670,11 +670,6 @@
   color: #fff7ed;
 }
 
-.table-floor__chip--merged.is-active {
-  background: #b45309;
-  color: #fffbeb;
-}
-
 .table-floor__occupied-view {
   display: grid;
   gap: 1.35rem;
@@ -711,10 +706,6 @@
   cursor: pointer;
   color: inherit;
   font: inherit;
-}
-
-.table-floor__section-head--static {
-  cursor: default;
 }
 
 .table-floor__section.is-collapsed .table-floor__section-head {
