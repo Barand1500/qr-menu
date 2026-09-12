@@ -1865,7 +1865,7 @@ body {
     radial-gradient(ellipse 60% 40% at -10% 20%, rgba(99, 102, 241, 0.12), transparent 45%),
     var(--menu-bg);
   color: var(--menu-text);
-  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   position: relative;
   isolation: isolate;
 }
@@ -2955,7 +2955,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 .public-mobile-nav__inner {
   position: relative;
-  height: 88px;
+  height: 72px;
   pointer-events: auto;
 }
 
@@ -2965,7 +2965,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   width: 100%;
   height: 100%;
   color: var(--menu-navy);
-  filter: drop-shadow(0 -6px 20px rgba(26, 39, 68, 0.22));
+  filter: drop-shadow(0 -4px 14px rgba(26, 39, 68, 0.16));
 }
 
 .public-mobile-nav__actions {
@@ -2974,40 +2974,42 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 1.15rem 0.5rem;
+  padding: 0 0.85rem 0.3rem;
   pointer-events: none;
 }
 
 .public-mobile-nav__side {
   display: flex;
   align-items: center;
-  gap: 0.05rem;
+  gap: 0.1rem;
   pointer-events: auto;
   z-index: 1;
 }
 
 .public-mobile-nav__side--left {
   margin-inline-end: auto;
-  padding-inline-end: 3.25rem;
+  padding-inline-end: 2.75rem;
 }
 
 .public-mobile-nav__side--right {
   margin-inline-start: auto;
-  padding-inline-start: 3.25rem;
+  padding-inline-start: 2.75rem;
 }
 
 .public-mobile-nav__side-btn {
-  width: 2.65rem;
-  height: 2.65rem;
+  width: 2.35rem;
+  height: 2.35rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.75);
-  transition: color 0.2s, transform 0.2s;
+  color: rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  transition: color 0.2s, transform 0.2s, background 0.2s;
 }
 
 .public-mobile-nav__side-btn.is-active {
   color: #fff;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .public-mobile-nav__side-btn:active {
@@ -3017,17 +3019,17 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 .public-mobile-nav__fab {
   position: absolute;
   left: 50%;
-  top: -4px;
+  top: 2px;
   transform: translateX(-50%);
-  width: 3.75rem;
-  height: 3.75rem;
+  width: 3.15rem;
+  height: 3.15rem;
   border-radius: 9999px;
   background: linear-gradient(145deg, var(--menu-accent) 0%, var(--menu-accent-dark) 100%);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(14, 165, 233, 0.45);
+  box-shadow: 0 6px 18px rgba(14, 165, 233, 0.38);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
@@ -12215,7 +12217,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   position: fixed;
   z-index: 45;
   inset-inline-start: 0.85rem;
-  bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;

@@ -1197,6 +1197,14 @@
   color: var(--menu-text);
 }
 
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night']
+  .siparis-detail__top-actions
+  .public-menu-header__icon-btn {
+  background: #2a1c18;
+  color: #f8efe8;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
 .public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-cats__icon--star {
   background: rgba(248, 113, 113, 0.12);
   color: #f87171;

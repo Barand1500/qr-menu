@@ -43,12 +43,12 @@ export default function PublicMobileNav({
       <div className="public-mobile-nav__inner">
         <svg
           className="public-mobile-nav__shape"
-          viewBox="0 0 400 88"
+          viewBox="0 0 400 72"
           preserveAspectRatio="none"
           aria-hidden="true"
         >
           <path
-            d="M0 24 C0 10.745 10.745 0 24 0 H148 C168 0 178 28 200 28 C222 28 232 0 252 0 H376 C389.255 0 400 10.745 400 24 V88 H0 Z"
+            d="M0 16 C0 7.163 7.163 0 16 0 H154 C170 0 178 20 200 20 C222 20 230 0 246 0 H384 C392.837 0 400 7.163 400 16 V72 H0 Z"
             fill="currentColor"
           />
         </svg>
@@ -61,7 +61,7 @@ export default function PublicMobileNav({
               className={`public-mobile-nav__side-btn ${tab === 'home' ? 'is-active' : ''}`}
               aria-label="Anasayfa"
             >
-              <Home className="w-6 h-6" strokeWidth={1.75} />
+              <Home className="w-5 h-5" strokeWidth={1.85} />
             </button>
             {showColor ? (
               <button
@@ -72,9 +72,9 @@ export default function PublicMobileNav({
                 title={isNight ? 'Gündüz moduna geç' : 'Gece moduna geç'}
               >
                 {isNight ? (
-                  <Sun className="w-5 h-5" strokeWidth={1.75} />
+                  <Sun className="w-[1.15rem] h-[1.15rem]" strokeWidth={1.85} />
                 ) : (
-                  <Moon className="w-5 h-5" strokeWidth={1.75} />
+                  <Moon className="w-[1.15rem] h-[1.15rem]" strokeWidth={1.85} />
                 )}
               </button>
             ) : null}
@@ -89,7 +89,7 @@ export default function PublicMobileNav({
                 aria-label={profileActive ? 'Profil' : 'Giriş / Kayıt'}
                 title={profileActive ? 'Profil' : 'Giriş / Kayıt'}
               >
-                <UserRound className="w-5 h-5" strokeWidth={1.75} />
+                <UserRound className="w-[1.15rem] h-[1.15rem]" strokeWidth={1.85} />
               </button>
             ) : null}
             <button
@@ -98,7 +98,7 @@ export default function PublicMobileNav({
               className="public-mobile-nav__side-btn"
               aria-label="Menü"
             >
-              <Menu className="w-6 h-6" strokeWidth={1.75} />
+              <Menu className="w-5 h-5" strokeWidth={1.85} />
             </button>
           </div>
         </div>
@@ -111,7 +111,7 @@ export default function PublicMobileNav({
             className="public-mobile-nav__fab siparis-nav-cart"
             aria-label="Sepet"
           >
-            <ShoppingBag className="w-6 h-6" strokeWidth={2.25} />
+            <ShoppingBag className="w-5 h-5" strokeWidth={2.15} />
             {cartCount > 0 ? (
               <span className="siparis-nav-cart__badge">
                 {cartCount > 99 ? '99+' : cartCount}
@@ -125,7 +125,7 @@ export default function PublicMobileNav({
             className="public-mobile-nav__fab"
             aria-label="Ara"
           >
-            <Search className="w-6 h-6" strokeWidth={2.25} />
+            <Search className="w-5 h-5" strokeWidth={2.15} />
           </button>
         )}
       </div>
