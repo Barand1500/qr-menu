@@ -1,4 +1,4 @@
-/* Menü müşteri — mobil alttan sheet, PC tam ekran profil */
+/* MenÃ¼ mÃ¼Återi â mobil alttan sheet, PC tam ekran profil */
 
 .mc-auth {
   position: fixed;
@@ -652,7 +652,7 @@
   color: #fff;
 }
 
-/* Gece modu — okunabilir kontrast */
+/* Gece modu â okunabilir kontrast */
 .public-menu-page[data-color-mode='night'] .public-profile-banner {
   background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(249, 115, 22, 0.1));
   border-color: rgba(125, 211, 252, 0.28);
@@ -673,7 +673,7 @@
   color: #0c4a6e;
 }
 
-/* ── Profil wizard (4 tıklanabilir adım) ── */
+/* ââ Profil wizard (4 tÄ±klanabilir adÄ±m) ââ */
 .mc-auth--profile .mc-auth__panel {
   background:
     radial-gradient(90% 60% at 50% 0%, rgba(125, 155, 120, 0.14), transparent 55%),
@@ -1304,7 +1304,7 @@
 
 
 
-/* �� Unlock modal + profil pin �� */
+/* ¦¦ Unlock modal + profil pin ¦¦ */
 .mc-profile__pin {
   display: grid;
   gap: 0.25rem;
@@ -1349,6 +1349,7 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  animation: mc-auth-fade 0.2s ease;
 }
 
 @media (min-width: 640px) {
@@ -1362,25 +1363,38 @@
   position: absolute;
   inset: 0;
   border: none;
-  background: rgba(15, 23, 42, 0.5);
-  backdrop-filter: blur(6px);
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(10px);
 }
 
 .mc-unlock__panel {
   position: relative;
-  width: min(100%, 26rem);
+  width: min(100%, 24.5rem);
   max-height: min(92vh, 640px);
   overflow: auto;
-  border-radius: 1.5rem 1.5rem 0 0;
-  background: #fff;
-  padding: 1.15rem 1.15rem 1.35rem;
-  box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.18);
+  border-radius: 1.65rem 1.65rem 0 0;
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(125, 155, 120, 0.14), transparent 55%),
+    #fff;
+  padding: 1.25rem 1.2rem 1.45rem;
+  box-shadow: 0 -18px 48px rgba(15, 23, 42, 0.22);
 }
 
 @media (min-width: 640px) {
   .mc-unlock__panel {
-    border-radius: 1.35rem;
+    border-radius: 1.5rem;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
   }
+}
+
+.mc-unlock__accent {
+  position: absolute;
+  top: 0;
+  left: 1.4rem;
+  right: 1.4rem;
+  height: 3px;
+  border-radius: 0 0 999px 999px;
+  background: linear-gradient(90deg, #5f7d5c, #a8c2a4);
 }
 
 .mc-unlock__head {
@@ -1391,107 +1405,204 @@
   margin-bottom: 1rem;
 }
 
+.mc-unlock__brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.mc-unlock__brand-icon {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 0.85rem;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: #e8f0e6;
+  color: #3f5d3c;
+}
+
 .mc-unlock__eyebrow {
   margin: 0;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #7d9b78;
 }
 
 .mc-unlock__head h3 {
-  margin: 0.2rem 0 0;
-  font-size: 1.15rem;
+  margin: 0.15rem 0 0;
+  font-size: 1.12rem;
   font-weight: 850;
   color: #0f172a;
+  letter-spacing: -0.02em;
 }
 
 .mc-unlock__close {
   border: none;
-  background: #f1f5f9;
-  border-radius: 0.75rem;
-  width: 2.25rem;
-  height: 2.25rem;
+  background: #f1f5f1;
+  border-radius: 0.8rem;
+  width: 2.15rem;
+  height: 2.15rem;
   display: grid;
   place-items: center;
   color: #64748b;
   cursor: pointer;
 }
 
+.mc-unlock__tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem;
+  padding: 0.28rem;
+  margin-bottom: 1rem;
+  border-radius: 999px;
+  background: #eef2ee;
+}
+
+.mc-unlock__tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.58rem 0.5rem;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.mc-unlock__tabs button.is-active {
+  background: #fff;
+  color: #1e293b;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
 .mc-unlock__error {
   margin-bottom: 0.85rem;
   padding: 0.7rem 0.85rem;
-  border-radius: 0.85rem;
+  border-radius: 0.9rem;
   background: #fff1f2;
+  border: 1px solid #fecdd3;
   color: #be123c;
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   font-weight: 700;
+}
+
+.mc-unlock__lead {
+  margin: 0 0 0.15rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: #64748b;
 }
 
 .mc-unlock__actions {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.7rem;
 }
 
-.mc-unlock__big {
+.mc-unlock__choice {
   display: flex;
   align-items: center;
   gap: 0.85rem;
   width: 100%;
   text-align: left;
-  border: none;
-  border-radius: 1.1rem;
-  padding: 1rem;
-  background: linear-gradient(120deg, #1f2a24, #3f5d3c 55%, #7d9b78);
-  color: #fff;
+  border: 1px solid #dce5da;
+  border-radius: 1.15rem;
+  padding: 0.95rem 1rem;
+  background: #fff;
   cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.mc-unlock__big.is-soft {
-  background: #f4f7f3;
-  color: #1e293b;
-  border: 1px solid #d5ddd2;
+.mc-unlock__choice:hover {
+  border-color: #7d9b78;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(63, 93, 60, 0.1);
 }
 
-.mc-unlock__big strong {
+.mc-unlock__choice.is-alt {
+  background: #f7faf6;
+}
+
+.mc-unlock__choice-icon {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 0.9rem;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: linear-gradient(145deg, #3f5d3c, #7d9b78);
+  color: #fff;
+}
+
+.mc-unlock__choice.is-alt .mc-unlock__choice-icon {
+  background: #e8f0e6;
+  color: #3f5d3c;
+}
+
+.mc-unlock__choice-copy strong {
   display: block;
   font-size: 0.95rem;
   font-weight: 850;
+  color: #0f172a;
 }
 
-.mc-unlock__big small {
+.mc-unlock__choice-copy small {
   display: block;
   margin-top: 0.15rem;
-  font-size: 0.75rem;
-  opacity: 0.85;
+  font-size: 0.76rem;
+  color: #64748b;
 }
 
 .mc-unlock__form {
   display: grid;
-  gap: 0.55rem;
+  gap: 1rem;
 }
 
-.mc-unlock__form label {
-  font-size: 0.75rem;
-  font-weight: 750;
-  color: #64748b;
-}
-
-.mc-unlock__form input {
-  border: 1px solid #d5ddd2;
-  border-radius: 0.95rem;
-  padding: 0.95rem 1rem;
-  font-size: 1.45rem;
-  font-weight: 850;
-  letter-spacing: 0.22em;
+.mc-unlock__hint {
+  margin: 0;
   text-align: center;
+  font-size: 0.84rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.mc-unlock__otp {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.mc-unlock__otp-cell {
+  width: 100%;
+  aspect-ratio: 0.85;
+  border: 1.5px solid #d5ddd2;
+  border-radius: 0.85rem;
+  background: #fbfcfb;
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 850;
+  color: #0f172a;
   font-variant-numeric: tabular-nums;
   outline: none;
+  caret-color: #5f7d5c;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 
-.mc-unlock__form input:focus {
+.mc-unlock__otp-cell.is-filled {
+  border-color: #a8c2a4;
+  background: #f0f5ef;
+}
+
+.mc-unlock__otp-cell:focus {
   border-color: #7d9b78;
+  background: #fff;
   box-shadow: 0 0 0 3px rgba(125, 155, 120, 0.2);
 }
 
@@ -1502,33 +1613,24 @@
   gap: 0.45rem;
   border: none;
   border-radius: 999px;
-  padding: 0.9rem 1rem;
-  background: #7d9b78;
+  padding: 0.95rem 1rem;
+  background: linear-gradient(135deg, #3f5d3c, #7d9b78);
   color: #fff;
+  font-size: 0.95rem;
   font-weight: 800;
   cursor: pointer;
+  box-shadow: 0 12px 24px rgba(63, 93, 60, 0.22);
 }
 
 .mc-unlock__submit:disabled {
-  opacity: 0.65;
+  opacity: 0.45;
   cursor: not-allowed;
-}
-
-.mc-unlock__link {
-  border: none;
-  background: none;
-  color: #5f7d5c;
-  font-size: 0.84rem;
-  font-weight: 750;
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-  cursor: pointer;
-  padding: 0.35rem;
+  box-shadow: none;
 }
 
 .mc-unlock__scan {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.85rem;
   justify-items: center;
   text-align: center;
 }
@@ -1537,10 +1639,11 @@
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  max-height: 280px;
-  border-radius: 1.15rem;
+  max-height: 300px;
+  border-radius: 1.25rem;
   overflow: hidden;
   background: #0f172a;
+  border: 1px solid #d5ddd2;
 }
 
 .mc-unlock__video-wrap video {
@@ -1551,10 +1654,10 @@
 
 .mc-unlock__frame {
   position: absolute;
-  inset: 18%;
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  border-radius: 1rem;
-  box-shadow: 0 0 0 999px rgba(15, 23, 42, 0.35);
+  inset: 16%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 1.1rem;
+  box-shadow: 0 0 0 999px rgba(15, 23, 42, 0.4);
   pointer-events: none;
 }
 
