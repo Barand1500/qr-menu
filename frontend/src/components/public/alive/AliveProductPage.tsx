@@ -137,84 +137,106 @@ export default function AliveProductPage({
         </div>
       </div>
 
-      <main className="alive-detail__main">
-        <p className="alive-detail__group alive-detail__reveal">{product.group.name}</p>
-        <h1 className="alive-detail__title alive-detail__reveal">{product.name}</h1>
-        <p className="alive-detail__price alive-detail__reveal">
-          {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
-          {optionGroups.length > 0 ? (
-            <span className="alive-detail__price-hint">seçime göre</span>
-          ) : null}
-        </p>
+      <main
+        className={[
+          'alive-detail__main',
+          multi ? 'alive-detail__main--gallery' : '',
+          optionGroups.length > 0 ? 'alive-detail__main--opts' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <div className="alive-detail__intro">
+          <p className="alive-detail__group alive-detail__reveal">{product.group.name}</p>
+          <h1 className="alive-detail__title alive-detail__reveal">{product.name}</h1>
+          <p className="alive-detail__price alive-detail__reveal">
+            {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
+            {optionGroups.length > 0 ? (
+              <span className="alive-detail__price-hint">seçime göre</span>
+            ) : null}
+          </p>
 
-        {(product.isRecommended ||
-          (product.calories != null && product.calories > 0) ||
-          (product.prepTimeMinutes != null && product.prepTimeMinutes > 0)) && (
-          <div className="alive-detail__chips alive-detail__reveal">
-            {product.isRecommended ? (
-              <span>
-                <Star className="w-3.5 h-3.5" fill="currentColor" /> Önerilen
-              </span>
-            ) : null}
-            {product.calories != null && product.calories > 0 ? (
-              <span>
-                <Flame className="w-3.5 h-3.5" /> {product.calories} kcal
-              </span>
-            ) : null}
-            {product.prepTimeMinutes != null && product.prepTimeMinutes > 0 ? (
-              <span>{product.prepTimeMinutes} dk</span>
-            ) : null}
-          </div>
-        )}
-
-        {galleryImages.length > 0 ? (
-          <div className="alive-detail__gallery alive-detail__reveal">
-            <div className="alive-detail__hero-media">
-              <img src={imageUrl(activeImg)} alt="" key={activeImg} />
+          {(product.isRecommended ||
+            (product.calories != null && product.calories > 0) ||
+            (product.prepTimeMinutes != null && product.prepTimeMinutes > 0)) && (
+            <div className="alive-detail__chips alive-detail__reveal">
+              {product.isRecommended ? (
+                <span>
+                  <Star className="w-3.5 h-3.5" fill="currentColor" /> Önerilen
+                </span>
+              ) : null}
+              {product.calories != null && product.calories > 0 ? (
+                <span>
+                  <Flame className="w-3.5 h-3.5" /> {product.calories} kcal
+                </span>
+              ) : null}
+              {product.prepTimeMinutes != null && product.prepTimeMinutes > 0 ? (
+                <span>{product.prepTimeMinutes} dk</span>
+              ) : null}
             </div>
-            {multi ? (
-              <div className="alive-detail__thumbs" role="tablist" aria-label="Görseller">
-                {galleryImages.map((src, i) => (
-                  <button
-                    key={`${src}-${i}`}
-                    type="button"
-                    role="tab"
-                    aria-selected={i === activeIdx}
-                    className={`alive-detail__thumb${i === activeIdx ? ' is-active' : ''}`}
-                    onClick={() => setActiveIdx(i)}
-                  >
-                    <img src={imageUrl(src)} alt="" />
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            {multi ? (
-              <div className="alive-detail__gallery-desktop">
-                {galleryImages.map((src, i) => (
-                  <div key={`${src}-${i}`} className="alive-detail__tile">
-                    <img src={imageUrl(src)} alt="" />
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+          )}
 
-        {product.description ? (
-          <p className="alive-detail__text alive-detail__reveal">{product.description}</p>
-        ) : null}
+          {galleryImages.length > 0 ? (
+            <div className="alive-detail__gallery alive-detail__reveal">
+              <div className="alive-detail__hero-media">
+                <img src={imageUrl(activeImg)} alt="" key={activeImg} />
+              </div>
+              {multi ? (
+                <div className="alive-detail__thumbs" role="tablist" aria-label="Görseller">
+                  {galleryImages.map((src, i) => (
+                    <button
+                      key={`${src}-${i}`}
+                      type="button"
+                      role="tab"
+                      aria-selected={i === activeIdx}
+                      className={`alive-detail__thumb${i === activeIdx ? ' is-active' : ''}`}
+                      onClick={() => setActiveIdx(i)}
+                    >
+                      <img src={imageUrl(src)} alt="" />
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {multi ? (
+                <div className="alive-detail__gallery-desktop">
+                  {galleryImages.map((src, i) => (
+                    <div key={`${src}-${i}`} className="alive-detail__tile">
+                      <img src={imageUrl(src)} alt="" />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {product.description ? (
+            <p className="alive-detail__text alive-detail__reveal">{product.description}</p>
+          ) : null}
+        </div>
 
         {optionGroups.length > 0 ? (
-          <AliveProductOptions
-            key={product.id}
-            groups={optionGroups}
-            basePrice={product.price}
-            currency={product.currency}
-            onChange={onOptionsChange}
-          />
-        ) : null}
-
-        {showCart ? (
+          <aside className="alive-detail__opts-col alive-detail__reveal">
+            <AliveProductOptions
+              key={product.id}
+              groups={optionGroups}
+              basePrice={product.price}
+              currency={product.currency}
+              onChange={onOptionsChange}
+            />
+            {showCart ? (
+              <button
+                ref={addBtnRef}
+                type="button"
+                className="alive-detail__add"
+                onClick={onAdd}
+              >
+                <Plus className="w-4 h-4" strokeWidth={2.5} />
+                Sepete ekle ·{' '}
+                {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
+              </button>
+            ) : null}
+          </aside>
+        ) : showCart ? (
           <button
             ref={addBtnRef}
             type="button"
@@ -222,42 +244,47 @@ export default function AliveProductPage({
             onClick={onAdd}
           >
             <Plus className="w-4 h-4" strokeWidth={2.5} />
-            Sepete ekle ·{' '}
-            {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
+            Sepete ekle · {formatMoney(product.price, product.currency)}
           </button>
         ) : null}
 
-        {product.ingredients ? (
-          <section className="alive-detail__block alive-detail__reveal">
-            <h2>İçindekiler</h2>
-            <p>{product.ingredients}</p>
-          </section>
-        ) : null}
+        <div className="alive-detail__facts">
+          {product.ingredients ? (
+            <section className="alive-detail__block alive-detail__reveal">
+              <h2>İçindekiler</h2>
+              <p>{product.ingredients}</p>
+            </section>
+          ) : null}
 
-        {product.allergens ? (
-          <section className="alive-detail__block alive-detail__reveal">
-            <h2>Alerjenler</h2>
-            <p>{product.allergens}</p>
-          </section>
-        ) : null}
+          {product.allergens ? (
+            <section className="alive-detail__block alive-detail__reveal">
+              <h2>Alerjenler</h2>
+              <p>{product.allergens}</p>
+            </section>
+          ) : null}
 
-        {related.length > 0 ? (
-          <section className="alive-detail__related alive-detail__reveal">
-            <h2>Benzer</h2>
-            <div className="alive-detail__related-track">
-              {related.slice(0, 8).map((item) => (
-                <Link key={item.id} to={menuProductPath(item.id)} className="alive-detail__related-card">
-                  {item.imageUrl ? <img src={imageUrl(item.imageUrl)} alt="" /> : null}
-                  <strong>{item.name}</strong>
-                  <span>{formatMoney(item.price, item.currency)}</span>
-                </Link>
-              ))}
-            </div>
-            <Link to={menuGroupPath(product.group.id)} className="alive-detail__more">
-              Tüm {product.group.name}
-            </Link>
-          </section>
-        ) : null}
+          {related.length > 0 ? (
+            <section className="alive-detail__related alive-detail__reveal">
+              <h2>Benzer</h2>
+              <div className="alive-detail__related-track">
+                {related.slice(0, 8).map((item) => (
+                  <Link
+                    key={item.id}
+                    to={menuProductPath(item.id)}
+                    className="alive-detail__related-card"
+                  >
+                    {item.imageUrl ? <img src={imageUrl(item.imageUrl)} alt="" /> : null}
+                    <strong>{item.name}</strong>
+                    <span>{formatMoney(item.price, item.currency)}</span>
+                  </Link>
+                ))}
+              </div>
+              <Link to={menuGroupPath(product.group.id)} className="alive-detail__more">
+                Tüm {product.group.name}
+              </Link>
+            </section>
+          ) : null}
+        </div>
       </main>
     </div>
   );
