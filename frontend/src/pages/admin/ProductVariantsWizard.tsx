@@ -114,7 +114,7 @@ type Props = {
   onUpdateGroups: (next: ProductOptionGroup[]) => void;
   dirty: boolean;
   saving: boolean;
-  onSave: () => void;
+  onSave: () => Promise<boolean>;
 };
 
 export default function ProductVariantsWizard({
@@ -263,6 +263,16 @@ export default function ProductVariantsWizard({
     setDraftName('');
     setEditingExistingId(null);
     setStep(2);
+  }
+
+  async function handleWizardSave() {
+    const ok = await onSave();
+    if (!ok) return;
+    // Kayıttan sonra ürün seçimine dön — yeni ürün kurmaya hazır
+    setStep(1);
+    setDraftType('single');
+    setDraftName('');
+    setEditingExistingId(null);
   }
 
   function pickExistingGroup(g: ProductOptionGroup) {
@@ -678,7 +688,7 @@ export default function ProductVariantsWizard({
                 type="button"
                 className="pv-wiz__primary"
                 disabled={!dirty || saving || !selected}
-                onClick={onSave}
+                onClick={() => void handleWizardSave()}
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 Kaydet

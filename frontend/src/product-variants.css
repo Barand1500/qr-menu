@@ -1,4 +1,4 @@
-/* Varyant & ekstra — galeri → tam ekran editör */
+/* Varyant & ekstra â galeri â tam ekran editÃ¶r */
 
 .pv-page {
   --pv-ink: #1c1917;
@@ -228,7 +228,7 @@
   color: var(--pv-ink);
 }
 
-/* —— Gallery —— */
+/* ââ Gallery ââ */
 .pv-gallery {
   flex: 1;
   display: flex;
@@ -432,7 +432,7 @@
   font-weight: 600;
 }
 
-/* —— Editor —— */
+/* ââ Editor ââ */
 .pv-editor-shell {
   flex: 1;
   min-height: 0;
@@ -739,7 +739,7 @@
   max-width: 28rem;
 }
 
-/* —— Rules drawer —— */
+/* ââ Rules drawer ââ */
 .pv-rules {
   position: fixed;
   inset: 0;
@@ -903,7 +903,7 @@
   background: #fff;
 }
 
-/* —— Wizard layout —— */
+/* ââ Wizard layout ââ */
 .pv-wiz {
   --pv-wiz-accent: #ea580c;
   flex: 1;
@@ -1366,7 +1366,7 @@
   }
 }
 
-/* �� Kanban layout �� */
+/*  Kanban layout  */
 .pv-kb {
   --pv-kb-amber: #f59e0b;
   --pv-kb-amber-soft: #fffbeb;
@@ -1420,9 +1420,51 @@
   cursor: pointer;
 }
 
+.pv-kb__pickers {
+  display: flex;
+  align-items: stretch;
+  min-width: min(420px, 100%);
+  border: 1px solid var(--pv-line);
+  border-radius: 0.75rem;
+  background: #fff;
+  overflow: hidden;
+}
+
+.pv-kb__group-select {
+  flex: 0 1 42%;
+  min-width: 0;
+  display: flex;
+  border-right: 1px solid var(--pv-line);
+}
+
+.pv-kb__group-select select {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--pv-ink);
+  cursor: pointer;
+  outline: none;
+}
+
+.pv-kb__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .pv-kb__picker {
   position: relative;
-  min-width: min(280px, 100%);
+  flex: 1 1 58%;
+  min-width: 0;
 }
 
 .pv-kb__picker-btn {
@@ -1431,13 +1473,21 @@
   justify-content: space-between;
   gap: 0.75rem;
   width: 100%;
-  border: 1px solid var(--pv-line);
-  background: #fff;
-  border-radius: 0.75rem;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
   padding: 0.55rem 0.75rem;
   font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
+}
+
+.pv-kb__picker-empty {
+  margin: 0;
+  padding: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--pv-muted);
+  text-align: center;
 }
 
 .pv-kb__picker-menu {

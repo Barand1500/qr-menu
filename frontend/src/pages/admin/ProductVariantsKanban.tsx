@@ -88,20 +88,32 @@ export default function ProductVariantsKanban({
   pasteBusy,
 }: Props) {
   const [productQuery, setProductQuery] = useState('');
+  const [groupFilter, setGroupFilter] = useState('all');
   const [pickerOpen, setPickerOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
 
+  const menuGroupNames = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of products) {
+      const n = (p.groupName || '').trim();
+      if (n) set.add(n);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
     const q = productQuery.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        (p.groupName || '').toLowerCase().includes(q)
-    );
-  }, [products, productQuery]);
+    return products.filter((p) => {
+      const gName = (p.groupName || '').trim() || 'Grup yok';
+      if (groupFilter !== 'all' && gName !== groupFilter) return false;
+      if (!q) return true;
+      return (
+        p.name.toLowerCase().includes(q) || gName.toLowerCase().includes(q)
+      );
+    });
+  }, [products, productQuery, groupFilter]);
 
   const byType = useMemo(() => {
     const map: Record<OptionGroupType, ProductOptionGroup[]> = {
@@ -236,45 +248,70 @@ export default function ProductVariantsKanban({
           ) : null}
         </div>
 
-        <div className="pv-kb__picker">
-          <button
-            type="button"
-            className="pv-kb__picker-btn"
-            onClick={() => setPickerOpen((v) => !v)}
-          >
-            <span>{selected?.name || 'Ürün seç'}</span>
-            <ChevronDown className="w-4 h-4" />
-          </button>
-          {pickerOpen ? (
-            <div className="pv-kb__picker-menu">
-              <div className="pv-kb__picker-search">
-                <Search className="w-4 h-4" />
-                <input
-                  value={productQuery}
-                  onChange={(e) => setProductQuery(e.target.value)}
-                  placeholder="Search…"
-                  autoFocus
-                />
+        <div className="pv-kb__pickers">
+          <label className="pv-kb__group-select">
+            <span className="pv-kb__sr">Grup</span>
+            <select
+              value={groupFilter}
+              onChange={(e) => {
+                setGroupFilter(e.target.value);
+                setPickerOpen(false);
+              }}
+              aria-label="Grup seç"
+            >
+              <option value="all">Tüm gruplar</option>
+              {menuGroupNames.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="pv-kb__picker">
+            <button
+              type="button"
+              className="pv-kb__picker-btn"
+              onClick={() => setPickerOpen((v) => !v)}
+            >
+              <span>{selected?.name || 'Ürün seç'}</span>
+              <ChevronDown className="w-4 h-4" />
+            </button>
+            {pickerOpen ? (
+              <div className="pv-kb__picker-menu">
+                <div className="pv-kb__picker-search">
+                  <Search className="w-4 h-4" />
+                  <input
+                    value={productQuery}
+                    onChange={(e) => setProductQuery(e.target.value)}
+                    placeholder="Ürün ara…"
+                    autoFocus
+                  />
+                </div>
+                <div className="pv-kb__picker-list admin-scroll">
+                  {filteredProducts.length === 0 ? (
+                    <p className="pv-kb__picker-empty">Bu grupta ürün yok</p>
+                  ) : (
+                    filteredProducts.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`pv-kb__picker-item${p.id === selectedId ? ' is-active' : ''}`}
+                        onClick={() => {
+                          onSelectProduct(p);
+                          setPickerOpen(false);
+                          setExpandedId(null);
+                        }}
+                      >
+                        <strong>{p.name}</strong>
+                        <em>{p.groupName || 'Grup yok'}</em>
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
-              <div className="pv-kb__picker-list admin-scroll">
-                {filteredProducts.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    className={`pv-kb__picker-item${p.id === selectedId ? ' is-active' : ''}`}
-                    onClick={() => {
-                      onSelectProduct(p);
-                      setPickerOpen(false);
-                      setExpandedId(null);
-                    }}
-                  >
-                    <strong>{p.name}</strong>
-                    <em>{p.groupName || 'Grup yok'}</em>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       </div>
 

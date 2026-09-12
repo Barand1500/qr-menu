@@ -297,8 +297,8 @@ export default function ProductVariantsPage() {
     setGroups([]);
   }
 
-  async function handleSave() {
-    if (!selected) return;
+  async function handleSave(): Promise<boolean> {
+    if (!selected) return false;
     const cleaned = groups
       .map((g, gi) => ({
         ...g,
@@ -318,7 +318,7 @@ export default function ProductVariantsPage() {
     for (const g of groups) {
       if (g.name.trim() && !g.options.some((o) => o.name.trim())) {
         alert(`"${g.name}" grubunda en az bir seçenek olmalı`);
-        return;
+        return false;
       }
     }
 
@@ -342,8 +342,10 @@ export default function ProductVariantsPage() {
       setGroups(normalizeLoadedGroups(updated.optionGroups) || cleaned);
       setDirty(false);
       setMessage('Seçenekler kaydedildi');
+      return true;
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Kaydedilemedi');
+      return false;
     } finally {
       setSaving(false);
     }
@@ -578,7 +580,7 @@ export default function ProductVariantsPage() {
           onUpdateGroups={updateGroups}
           dirty={dirty}
           saving={saving}
-          onSave={() => void handleSave()}
+          onSave={() => handleSave()}
         />
       ) : layout === 'kanban' ? (
         <ProductVariantsKanban
