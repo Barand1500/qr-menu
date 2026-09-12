@@ -8,12 +8,14 @@ import {
   KeyRound,
   LogOut,
   RefreshCw,
+  Search,
   Sparkles,
   ThumbsDown,
   UserRound,
   Wine,
   X,
   ArrowLeft,
+  ChevronDown,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
@@ -174,6 +176,12 @@ export default function MenuCustomerAuthModal({
   const [qrPayload, setQrPayload] = useState('');
   const [qrExpiresAt, setQrExpiresAt] = useState(0);
   const [qrNow, setQrNow] = useState(() => Date.now());
+  const [perksOpen, setPerksOpen] = useState({
+    points: true,
+    discounts: false,
+    debt: false,
+  });
+  const [pointsQuery, setPointsQuery] = useState('');
 
   const points = restaurantPoints(restaurantId);
   const firstName = (customer?.fullName || profileName || '').trim().split(/\s+/)[0] || 'Misafir';
@@ -191,6 +199,17 @@ export default function MenuCustomerAuthModal({
       }))
       .sort((a, b) => Number(b.isCurrent) - Number(a.isCurrent) || b.points - a.points);
   }, [customer?.pointsByRestaurant, restaurantId, restaurantName]);
+
+  const filteredPointsEntries = useMemo(() => {
+    const q = pointsQuery.trim().toLocaleLowerCase('tr-TR');
+    if (!q) return pointsEntries;
+    return pointsEntries.filter(
+      (row) =>
+        row.label.toLocaleLowerCase('tr-TR').includes(q) ||
+        String(row.points).includes(q) ||
+        row.id.includes(q)
+    );
+  }, [pointsEntries, pointsQuery]);
 
   function rotateQr(customerId: number) {
     setQrPayload(makeCustomerQrPreviewPayload(customerId));
@@ -499,42 +518,99 @@ export default function MenuCustomerAuthModal({
             </form>
           ) : profilePane === 'perks' ? (
             <div className="mc-perks">
-              <section className="mc-perks__card">
-                <header>
-                  <h3>Puanlar</h3>
-                  <p>Tüm restoranlardaki puanların</p>
-                </header>
-                {pointsEntries.length === 0 ? (
-                  <p className="mc-perks__empty">Henüz puan yok.</p>
-                ) : (
-                  <ul className="mc-perks__list">
-                    {pointsEntries.map((row) => (
-                      <li key={row.id}>
-                        <div>
-                          <strong>{row.label}</strong>
-                          {row.isCurrent ? <em>Şu an</em> : null}
-                        </div>
-                        <b>{row.points}</b>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+              <section
+                className={`mc-perks__acc${perksOpen.points ? ' is-open' : ''}`}
+              >
+                <button
+                  type="button"
+                  className="mc-perks__acc-head"
+                  aria-expanded={perksOpen.points}
+                  onClick={() =>
+                    setPerksOpen((prev) => ({ ...prev, points: !prev.points }))
+                  }
+                >
+                  <div>
+                    <h3>Puanlar</h3>
+                    <p>Tüm restoranlardaki puanların</p>
+                  </div>
+                  <em>{pointsEntries.length}</em>
+                  <ChevronDown className="mc-perks__chevron" strokeWidth={2.4} />
+                </button>
+                {perksOpen.points ? (
+                  <div className="mc-perks__acc-body">
+                    <label className="mc-perks__search">
+                      <Search className="w-4 h-4" />
+                      <input
+                        value={pointsQuery}
+                        onChange={(e) => setPointsQuery(e.target.value)}
+                        placeholder="Restoran ara…"
+                      />
+                    </label>
+                    {filteredPointsEntries.length === 0 ? (
+                      <p className="mc-perks__empty">
+                        {pointsEntries.length === 0 ? 'Henüz puan yok.' : 'Sonuç bulunamadı.'}
+                      </p>
+                    ) : (
+                      <ul className="mc-perks__list">
+                        {filteredPointsEntries.map((row) => (
+                          <li key={row.id}>
+                            <div>
+                              <strong>{row.label}</strong>
+                              {row.isCurrent ? <em>Şu an</em> : null}
+                            </div>
+                            <b>{row.points}</b>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ) : null}
               </section>
 
-              <section className="mc-perks__card">
-                <header>
-                  <h3>Özel indirimler</h3>
-                  <p>Sana tanımlanan indirimler burada görünecek</p>
-                </header>
-                <p className="mc-perks__empty">Şimdilik özel indirim yok.</p>
+              <section
+                className={`mc-perks__acc${perksOpen.discounts ? ' is-open' : ''}`}
+              >
+                <button
+                  type="button"
+                  className="mc-perks__acc-head"
+                  aria-expanded={perksOpen.discounts}
+                  onClick={() =>
+                    setPerksOpen((prev) => ({ ...prev, discounts: !prev.discounts }))
+                  }
+                >
+                  <div>
+                    <h3>Özel indirimler</h3>
+                    <p>Sana tanımlanan indirimler</p>
+                  </div>
+                  <ChevronDown className="mc-perks__chevron" strokeWidth={2.4} />
+                </button>
+                {perksOpen.discounts ? (
+                  <div className="mc-perks__acc-body">
+                    <p className="mc-perks__empty">Şimdilik özel indirim yok.</p>
+                  </div>
+                ) : null}
               </section>
 
-              <section className="mc-perks__card">
-                <header>
-                  <h3>Borç / bakiye</h3>
-                  <p>Restoran hesapları burada toplanacak</p>
-                </header>
-                <p className="mc-perks__empty">Görüntülenecek borç yok.</p>
+              <section className={`mc-perks__acc${perksOpen.debt ? ' is-open' : ''}`}>
+                <button
+                  type="button"
+                  className="mc-perks__acc-head"
+                  aria-expanded={perksOpen.debt}
+                  onClick={() =>
+                    setPerksOpen((prev) => ({ ...prev, debt: !prev.debt }))
+                  }
+                >
+                  <div>
+                    <h3>Borç / bakiye</h3>
+                    <p>Restoran hesapları</p>
+                  </div>
+                  <ChevronDown className="mc-perks__chevron" strokeWidth={2.4} />
+                </button>
+                {perksOpen.debt ? (
+                  <div className="mc-perks__acc-body">
+                    <p className="mc-perks__empty">Görüntülenecek borç yok.</p>
+                  </div>
+                ) : null}
               </section>
             </div>
           ) : (
@@ -591,6 +667,25 @@ export default function MenuCustomerAuthModal({
                       }}
                     />
                   </div>
+
+                  <div className="mc-profile__tastes">
+                    <ChipEditor
+                      label={ui.likedFoods}
+                      hint={ui.likedHint}
+                      values={liked}
+                      onChange={setLiked}
+                      placeholder={ui.likedPlaceholder}
+                      tone="like"
+                    />
+                    <ChipEditor
+                      label={ui.dislikedFoods}
+                      hint={ui.dislikedHint}
+                      values={disliked}
+                      onChange={setDisliked}
+                      placeholder={ui.dislikedPlaceholder}
+                      tone="dislike"
+                    />
+                  </div>
                 </div>
 
                 <nav className="mc-profile__tabs" aria-label="Profil bölümleri">
@@ -636,12 +731,16 @@ export default function MenuCustomerAuthModal({
                         <label htmlFor="mc-pname">{ui.fullName}</label>
                         <button
                           type="button"
-                          className={`mc-profile__eye${privacy.showName ? ' is-on' : ''}`}
+                          className={`mc-profile__vis${privacy.showName ? ' is-on' : ''}`}
                           onClick={() => patchPrivacy({ showName: !privacy.showName })}
                           title={privacy.showName ? 'Restoranlar görür' : 'Gizli'}
+                          aria-label={privacy.showName ? 'Ad soyad görünür' : 'Ad soyad gizli'}
                         >
-                          {privacy.showName ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                          {privacy.showName ? 'Görünür' : 'Gizli'}
+                          {privacy.showName ? (
+                            <Eye className="w-4 h-4" />
+                          ) : (
+                            <EyeOff className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                       <input
@@ -657,11 +756,16 @@ export default function MenuCustomerAuthModal({
                         <label>Telefon</label>
                         <button
                           type="button"
-                          className={`mc-profile__eye${privacy.showPhone ? ' is-on' : ''}`}
+                          className={`mc-profile__vis${privacy.showPhone ? ' is-on' : ''}`}
                           onClick={() => patchPrivacy({ showPhone: !privacy.showPhone })}
+                          title={privacy.showPhone ? 'Restoranlar görür' : 'Gizli'}
+                          aria-label={privacy.showPhone ? 'Telefon görünür' : 'Telefon gizli'}
                         >
-                          {privacy.showPhone ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                          {privacy.showPhone ? 'Görünür' : 'Gizli'}
+                          {privacy.showPhone ? (
+                            <Eye className="w-4 h-4" />
+                          ) : (
+                            <EyeOff className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                       <input
@@ -672,14 +776,21 @@ export default function MenuCustomerAuthModal({
 
                     <div className="mc-auth__field">
                       <div className="mc-profile__field-row">
-                        <label>E-posta <small>(opsiyonel)</small></label>
+                        <label>
+                          E-posta <small>(opsiyonel)</small>
+                        </label>
                         <button
                           type="button"
-                          className={`mc-profile__eye${privacy.showEmail ? ' is-on' : ''}`}
+                          className={`mc-profile__vis${privacy.showEmail ? ' is-on' : ''}`}
                           onClick={() => patchPrivacy({ showEmail: !privacy.showEmail })}
+                          title={privacy.showEmail ? 'Restoranlar görür' : 'Gizli'}
+                          aria-label={privacy.showEmail ? 'E-posta görünür' : 'E-posta gizli'}
                         >
-                          {privacy.showEmail ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                          {privacy.showEmail ? 'Görünür' : 'Gizli'}
+                          {privacy.showEmail ? (
+                            <Eye className="w-4 h-4" />
+                          ) : (
+                            <EyeOff className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                       <input value={customer?.email || '—'} readOnly />
@@ -791,23 +902,6 @@ export default function MenuCustomerAuthModal({
                       })}
                     </div>
                   </section>
-
-                  <ChipEditor
-                    label={ui.likedFoods}
-                    hint={ui.likedHint}
-                    values={liked}
-                    onChange={setLiked}
-                    placeholder={ui.likedPlaceholder}
-                    tone="like"
-                  />
-                  <ChipEditor
-                    label={ui.dislikedFoods}
-                    hint={ui.dislikedHint}
-                    values={disliked}
-                    onChange={setDisliked}
-                    placeholder={ui.dislikedPlaceholder}
-                    tone="dislike"
-                  />
                 </div>
               </div>
 
