@@ -11,8 +11,6 @@ import {
   Search,
   Sparkles,
   ThumbsDown,
-  UserRound,
-  Wine,
   X,
   ArrowLeft,
   ChevronDown,
@@ -36,9 +34,16 @@ import {
 
 type Mode = 'login' | 'register' | 'profile';
 type ProfilePane = 'home' | 'perks';
-type MobileTab = 'qr' | 'info' | 'prefs';
+type ProfileStep = 1 | 2 | 3 | 4;
 type LoginType = 'email' | 'phone';
 type AlcoholPref = 'yes' | 'no' | 'unset';
+
+const PROFILE_STEPS: { id: ProfileStep; label: string }[] = [
+  { id: 1, label: 'Kimlik' },
+  { id: 2, label: 'QR' },
+  { id: 3, label: 'Tercihler' },
+  { id: 4, label: 'Özet' },
+];
 
 type Props = {
   open: boolean;
@@ -167,7 +172,7 @@ export default function MenuCustomerAuthModal({
   const [alcohol, setAlcohol] = useState<AlcoholPref>('unset');
   const [profileName, setProfileName] = useState('');
   const [profilePane, setProfilePane] = useState<ProfilePane>('home');
-  const [mobileTab, setMobileTab] = useState<MobileTab>('qr');
+  const [profileStep, setProfileStep] = useState<ProfileStep>(1);
   const [privacy, setPrivacy] = useState<CustomerPrivacyFlags>({
     showName: true,
     showPhone: true,
@@ -231,7 +236,7 @@ export default function MenuCustomerAuthModal({
     setPassword('');
     setSavedFlash(false);
     setProfilePane('home');
-    setMobileTab('qr');
+    setProfileStep(1);
     if (customer) setMode('profile');
     else {
       setMode('login');
@@ -614,112 +619,31 @@ export default function MenuCustomerAuthModal({
               </section>
             </div>
           ) : (
-            <form className="mc-auth__form mc-auth__form--profile" onSubmit={(e) => void saveProfile(e)}>
-              <div className="mc-profile">
-                <button
-                  type="button"
-                  className="mc-profile__perks-btn"
-                  onClick={() => setProfilePane('perks')}
-                >
-                  <Gift className="w-4 h-4" />
-                  <span>Size özel indirimler</span>
-                  <em>{points > 0 ? `${points} puan` : 'Puan & borç'}</em>
-                </button>
-
-                <div className={`mc-profile__stage${mobileTab !== 'qr' ? ' is-mobile-away' : ''}`}>
-                  <div className="mc-profile__qr-card">
-                    <div className="mc-profile__qr-frame">
-                      {qrPayload ? (
-                        <QRCodeSVG
-                          value={qrPayload}
-                          size={168}
-                          level="M"
-                          includeMargin={false}
-                          bgColor="#ffffff"
-                          fgColor="#0f172a"
-                        />
-                      ) : null}
-                    </div>
-                    <p className="mc-profile__qr-caption">Kişisel kodun</p>
-                    <p className="mc-profile__qr-hint">
-                      Garson / kasa bu kodu okutunca müşteri kartın açılır
-                    </p>
-                    <div className="mc-profile__qr-meta">
-                      <span>
-                        {Math.max(0, Math.ceil((qrExpiresAt - qrNow) / 1000))} sn
-                      </span>
-                      <button
-                        type="button"
-                        className="mc-profile__qr-refresh"
-                        onClick={() => customer && rotateQr(customer.id)}
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        Yenile
-                      </button>
-                    </div>
-                    <div
-                      className="mc-profile__qr-bar"
-                      style={{
-                        width: `${Math.max(
-                          0,
-                          Math.min(100, ((qrExpiresAt - qrNow) / CUSTOMER_QR_TTL_MS) * 100)
-                        )}%`,
-                      }}
-                    />
-                  </div>
-
-                  <div className="mc-profile__tastes">
-                    <ChipEditor
-                      label={ui.likedFoods}
-                      hint={ui.likedHint}
-                      values={liked}
-                      onChange={setLiked}
-                      placeholder={ui.likedPlaceholder}
-                      tone="like"
-                    />
-                    <ChipEditor
-                      label={ui.dislikedFoods}
-                      hint={ui.dislikedHint}
-                      values={disliked}
-                      onChange={setDisliked}
-                      placeholder={ui.dislikedPlaceholder}
-                      tone="dislike"
-                    />
-                  </div>
-                </div>
-
-                <nav className="mc-profile__tabs" aria-label="Profil bölümleri">
+            <form
+              className="mc-auth__form mc-auth__form--profile"
+              onSubmit={(e) => void saveProfile(e)}
+            >
+              <nav className="mc-wiz__steps" aria-label="Profil adımları">
+                {PROFILE_STEPS.map((step) => (
                   <button
+                    key={step.id}
                     type="button"
-                    className={mobileTab === 'qr' ? 'is-active' : ''}
-                    onClick={() => setMobileTab('qr')}
+                    className={`mc-wiz__step${profileStep === step.id ? ' is-active' : ''}`}
+                    onClick={() => setProfileStep(step.id)}
+                    aria-current={profileStep === step.id ? 'step' : undefined}
                   >
-                    QR
+                    <span className="mc-wiz__num">
+                      {String(step.id).padStart(2, '0')}
+                    </span>
+                    <span className="mc-wiz__label">{step.label}</span>
                   </button>
-                  <button
-                    type="button"
-                    className={mobileTab === 'info' ? 'is-active' : ''}
-                    onClick={() => setMobileTab('info')}
-                  >
-                    Bilgi
-                  </button>
-                  <button
-                    type="button"
-                    className={mobileTab === 'prefs' ? 'is-active' : ''}
-                    onClick={() => setMobileTab('prefs')}
-                  >
-                    Tercihler
-                  </button>
-                </nav>
+                ))}
+              </nav>
 
-                <div
-                  className={`mc-profile__col mc-profile__col--info${
-                    mobileTab === 'info' ? ' is-mobile-on' : ' is-mobile-away'
-                  }`}
-                >
-                  <section className="mc-profile__panel">
-                    <header className="mc-profile__panel-head">
-                      <UserRound className="w-4 h-4" />
+              <div className="mc-wiz__card">
+                {profileStep === 1 ? (
+                  <section className="mc-wiz__panel">
+                    <header className="mc-wiz__panel-head">
                       <div>
                         <h3>İletişim</h3>
                         <p>Restoranların görebileceği bilgileri seç</p>
@@ -796,119 +720,269 @@ export default function MenuCustomerAuthModal({
                       <input value={customer?.email || '—'} readOnly />
                     </div>
                   </section>
-                </div>
+                ) : null}
 
-                <div
-                  className={`mc-profile__col mc-profile__col--prefs${
-                    mobileTab === 'prefs' ? ' is-mobile-on' : ' is-mobile-away'
-                  }`}
-                >
-                  <label className="mc-auth__switch">
-                    <span>
-                      <strong>{ui.personalFilter}</strong>
-                      <small>{ui.personalFilterHint}</small>
-                    </span>
+                {profileStep === 2 ? (
+                  <section className="mc-wiz__panel mc-wiz__panel--qr">
+                    <div className="mc-profile__qr-card">
+                      <div className="mc-profile__qr-frame">
+                        {qrPayload ? (
+                          <QRCodeSVG
+                            value={qrPayload}
+                            size={168}
+                            level="M"
+                            includeMargin={false}
+                            bgColor="#ffffff"
+                            fgColor="#0f172a"
+                          />
+                        ) : null}
+                      </div>
+                      <p className="mc-profile__qr-caption">Kişisel kodun</p>
+                      <p className="mc-profile__qr-hint">
+                        Garson / kasa bu kodu okutunca müşteri kartın açılır
+                      </p>
+                      <div className="mc-profile__qr-meta">
+                        <span>
+                          {Math.max(0, Math.ceil((qrExpiresAt - qrNow) / 1000))} sn
+                        </span>
+                        <button
+                          type="button"
+                          className="mc-profile__qr-refresh"
+                          onClick={() => customer && rotateQr(customer.id)}
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          Yenile
+                        </button>
+                      </div>
+                      <div
+                        className="mc-profile__qr-bar"
+                        style={{
+                          width: `${Math.max(
+                            0,
+                            Math.min(100, ((qrExpiresAt - qrNow) / CUSTOMER_QR_TTL_MS) * 100)
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </section>
+                ) : null}
+
+                {profileStep === 3 ? (
+                  <section className="mc-wiz__panel">
+                    <header className="mc-wiz__panel-head mc-wiz__panel-head--row">
+                      <div>
+                        <h3>Kişiselleştirme filtreleri</h3>
+                        <p>{ui.personalFilterHint}</p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={filterEnabled}
+                        className={`mc-auth__switch-ui${filterEnabled ? ' is-on' : ''}`}
+                        onClick={() => setFilterEnabled(!filterEnabled)}
+                      >
+                        <i />
+                      </button>
+                    </header>
+
+                    <div className="mc-wiz__group">
+                      <p className="mc-wiz__group-label">{ui.alcohol}</p>
+                      <div className="mc-auth__alcohol">
+                        <button
+                          type="button"
+                          className={alcohol === 'yes' ? 'is-active' : ''}
+                          onClick={() => setAlcohol('yes')}
+                        >
+                          {ui.alcoholYes}
+                        </button>
+                        <button
+                          type="button"
+                          className={alcohol === 'no' ? 'is-active is-no' : ''}
+                          onClick={() => setAlcohol('no')}
+                        >
+                          {ui.alcoholNo}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mc-wiz__group">
+                      <p className="mc-wiz__group-label">{ui.allergies}</p>
+                      <div className="mc-auth__chips">
+                        {ALLERGEN_CATALOG.map((a) => {
+                          const on = allergens.includes(a.id);
+                          return (
+                            <button
+                              key={a.id}
+                              type="button"
+                              className={`mc-auth__chip${on ? ' is-on' : ''}`}
+                              onClick={() =>
+                                setAllergens((prev) =>
+                                  on ? prev.filter((x) => x !== a.id) : [...prev, a.id]
+                                )
+                              }
+                            >
+                              {allergenLabel(a.id, lang)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="mc-wiz__group">
+                      <p className="mc-wiz__group-label">{ui.diet}</p>
+                      <div className="mc-auth__chips">
+                        {DIET_CATALOG.map((d) => {
+                          const on = diets.includes(d.id);
+                          return (
+                            <button
+                              key={d.id}
+                              type="button"
+                              className={`mc-auth__chip${on ? ' is-on' : ''}`}
+                              onClick={() =>
+                                setDiets((prev) =>
+                                  on ? prev.filter((x) => x !== d.id) : [...prev, d.id]
+                                )
+                              }
+                            >
+                              {dietLabel(d.id, lang)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="mc-profile__tastes">
+                      <ChipEditor
+                        label={ui.likedFoods}
+                        hint={ui.likedHint}
+                        values={liked}
+                        onChange={setLiked}
+                        placeholder={ui.likedPlaceholder}
+                        tone="like"
+                      />
+                      <ChipEditor
+                        label={ui.dislikedFoods}
+                        hint={ui.dislikedHint}
+                        values={disliked}
+                        onChange={setDisliked}
+                        placeholder={ui.dislikedPlaceholder}
+                        tone="dislike"
+                      />
+                    </div>
+                  </section>
+                ) : null}
+
+                {profileStep === 4 ? (
+                  <section className="mc-wiz__panel">
+                    <header className="mc-wiz__panel-head">
+                      <div>
+                        <h3>Özet</h3>
+                        <p>Bilgilerini kontrol et, sonra kaydet</p>
+                      </div>
+                    </header>
+
+                    <ul className="mc-wiz__summary">
+                      <li>
+                        <span>Ad</span>
+                        <strong>{profileName || '—'}</strong>
+                      </li>
+                      <li>
+                        <span>Telefon</span>
+                        <strong>
+                          {customer?.phone ? formatPhoneInput(customer.phone) : '—'}
+                        </strong>
+                      </li>
+                      <li>
+                        <span>Alkol</span>
+                        <strong>
+                          {alcohol === 'yes'
+                            ? ui.alcoholYes
+                            : alcohol === 'no'
+                              ? ui.alcoholNo
+                              : 'Belirtilmedi'}
+                        </strong>
+                      </li>
+                      <li>
+                        <span>Alerji</span>
+                        <strong>
+                          {allergens.length
+                            ? allergens.map((id) => allergenLabel(id, lang)).join(', ')
+                            : 'Yok'}
+                        </strong>
+                      </li>
+                      <li>
+                        <span>Diyet</span>
+                        <strong>
+                          {diets.length
+                            ? diets.map((id) => dietLabel(id, lang)).join(', ')
+                            : 'Yok'}
+                        </strong>
+                      </li>
+                      <li>
+                        <span>Sevdiklerim</span>
+                        <strong>{liked.length ? liked.join(', ') : '—'}</strong>
+                      </li>
+                      <li>
+                        <span>Sevmediklerim</span>
+                        <strong>{disliked.length ? disliked.join(', ') : '—'}</strong>
+                      </li>
+                      <li>
+                        <span>Menü filtresi</span>
+                        <strong>{filterEnabled ? 'Açık' : 'Kapalı'}</strong>
+                      </li>
+                    </ul>
+
                     <button
                       type="button"
-                      role="switch"
-                      aria-checked={filterEnabled}
-                      className={`mc-auth__switch-ui${filterEnabled ? ' is-on' : ''}`}
-                      onClick={() => setFilterEnabled(!filterEnabled)}
+                      className="mc-wiz__perks-link"
+                      onClick={() => setProfilePane('perks')}
                     >
-                      <i />
+                      <Gift className="w-4 h-4" />
+                      Size özel indirimler
+                      {points > 0 ? <em>{points} puan</em> : null}
                     </button>
-                  </label>
-
-                  <section className="mc-auth__block">
-                    <div className="mc-auth__block-head">
-                      <Wine className="w-4 h-4" />
-                      <div>
-                        <h3>{ui.alcohol}</h3>
-                        <p>{ui.alcoholHint}</p>
-                      </div>
-                    </div>
-                    <div className="mc-auth__alcohol">
-                      <button
-                        type="button"
-                        className={alcohol === 'yes' ? 'is-active' : ''}
-                        onClick={() => setAlcohol('yes')}
-                      >
-                        {ui.alcoholYes}
-                      </button>
-                      <button
-                        type="button"
-                        className={alcohol === 'no' ? 'is-active is-no' : ''}
-                        onClick={() => setAlcohol('no')}
-                      >
-                        {ui.alcoholNo}
-                      </button>
-                    </div>
                   </section>
+                ) : null}
 
-                  <section className="mc-auth__block">
-                    <div className="mc-auth__block-head">
-                      <Sparkles className="w-4 h-4" />
-                      <div>
-                        <h3>{ui.allergies}</h3>
-                        <p>{ui.allergiesHint}</p>
-                      </div>
-                    </div>
-                    <div className="mc-auth__chips">
-                      {ALLERGEN_CATALOG.map((a) => {
-                        const on = allergens.includes(a.id);
-                        return (
-                          <button
-                            key={a.id}
-                            type="button"
-                            className={`mc-auth__chip${on ? ' is-on' : ''}`}
-                            onClick={() =>
-                              setAllergens((prev) =>
-                                on ? prev.filter((x) => x !== a.id) : [...prev, a.id]
-                              )
-                            }
-                          >
-                            {allergenLabel(a.id, lang)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-
-                  <section className="mc-auth__block">
-                    <div className="mc-auth__block-head">
-                      <Sparkles className="w-4 h-4" />
-                      <div>
-                        <h3>{ui.diet}</h3>
-                        <p>{ui.dietHint}</p>
-                      </div>
-                    </div>
-                    <div className="mc-auth__chips">
-                      {DIET_CATALOG.map((d) => {
-                        const on = diets.includes(d.id);
-                        return (
-                          <button
-                            key={d.id}
-                            type="button"
-                            className={`mc-auth__chip${on ? ' is-on' : ''}`}
-                            onClick={() =>
-                              setDiets((prev) =>
-                                on ? prev.filter((x) => x !== d.id) : [...prev, d.id]
-                              )
-                            }
-                          >
-                            {dietLabel(d.id, lang)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
+                <div className="mc-wiz__nav">
+                  <button
+                    type="button"
+                    className="mc-wiz__back"
+                    disabled={profileStep === 1}
+                    onClick={() =>
+                      setProfileStep((s) => (s > 1 ? ((s - 1) as ProfileStep) : s))
+                    }
+                  >
+                    Geri
+                  </button>
+                  {profileStep < 4 ? (
+                    <button
+                      type="button"
+                      className="mc-wiz__next"
+                      onClick={() =>
+                        setProfileStep((s) => (s < 4 ? ((s + 1) as ProfileStep) : s))
+                      }
+                    >
+                      Devam et
+                    </button>
+                  ) : (
+                    <button type="submit" className="mc-wiz__next" disabled={busy}>
+                      {busy ? ui.saving : ui.save}
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <div className="mc-auth__footer">
-                <button type="submit" className="mc-auth__primary" disabled={busy}>
-                  {busy ? ui.saving : ui.save}
-                </button>
+              <div className="mc-wiz__footer">
+                {profileStep !== 4 ? (
+                  <button
+                    type="button"
+                    className="mc-wiz__perks-text"
+                    onClick={() => setProfilePane('perks')}
+                  >
+                    Size özel indirimler
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="mc-auth__ghost"
