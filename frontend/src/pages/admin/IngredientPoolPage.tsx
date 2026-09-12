@@ -111,9 +111,16 @@ export default function IngredientPoolPage() {
   );
 
   const filteredItems = useMemo(() => {
-    if (activeGroupId === 'all') return pool.items;
-    if (activeGroupId === 'none') return pool.items.filter((i) => itemGroupIds(i).length === 0);
-    return pool.items.filter((i) => itemInGroup(i, activeGroupId));
+    let list =
+      activeGroupId === 'all'
+        ? pool.items
+        : activeGroupId === 'none'
+          ? pool.items.filter((i) => itemGroupIds(i).length === 0)
+          : pool.items.filter((i) => itemInGroup(i, activeGroupId));
+    // Son eklenen üstte
+    return [...list].sort(
+      (a, b) => b.sortOrder - a.sortOrder || b.name.localeCompare(a.name, 'tr')
+    );
   }, [pool.items, activeGroupId]);
 
   const targetGroupId =
@@ -291,8 +298,7 @@ export default function IngredientPoolPage() {
 
       <PageHeader title="İçerik havuzu" />
       <p className="ingredient-pool-page__lead">
-        Solda menü grupların + özel grupların var. Aynı malzemeyi birden fazla gruba ekleyebilirsin;
-        gruba tekrar eklersen “Zaten ekli” uyarısı çıkar.
+        Malzemeleri gruplara ekle. Aynı isim aynı gruba tekrar eklenmez.
       </p>
 
       {message ? (
@@ -424,16 +430,8 @@ export default function IngredientPoolPage() {
             </div>
 
             {activeGroupName ? (
-              <p className="ingredient-pool-hint">
-                Bu gruba eklenenler listeleniyor. Aynı isim zaten varsa uyarı alırsın; başka
-                gruptaysa buraya da bağlanır.
-              </p>
-            ) : (
-              <p className="ingredient-pool-hint">
-                Grupsuz eklemek için buradan ekle. Bir gruba bağlamak için soldan grubu seçip
-                ekle veya satırdaki grup chip’lerine bas.
-              </p>
-            )}
+              <p className="ingredient-pool-hint">Bu gruba ait malzemeler</p>
+            ) : null}
 
             {filteredItems.length === 0 ? (
               <div className="ingredient-pool-empty">

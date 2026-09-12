@@ -19,7 +19,6 @@ import {
   EmptyState,
   Input,
   PageHeader,
-  Select,
   Spinner,
 } from '@/components/ui';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
@@ -39,7 +38,7 @@ import {
 import {
   AdminFilterBar,
   FilterChipGroup,
-  FilterFieldLabel,
+  FilterCombobox,
   FilterSection,
 } from '@/components/AdminFilterBar';
 
@@ -747,13 +746,14 @@ export default function ProductsPage() {
           recordLabel={`${products.length} kayıt`}
           onClear={clearFilters}
         >
-          <FilterSection className="min-w-[200px]">
-            <FilterFieldLabel>Grup</FilterFieldLabel>
-            <Select
-              label="Tüm gruplar"
+          <FilterSection className="min-w-[240px]">
+            <FilterCombobox
+              label="Grup"
               value={groupFilter}
               options={groupFilterOptions}
-              onChange={(e) => setGroupFilter(e.target.value)}
+              onChange={setGroupFilter}
+              allLabel="Tüm gruplar"
+              searchPlaceholder="Grup ara…"
             />
           </FilterSection>
           <FilterSection>
