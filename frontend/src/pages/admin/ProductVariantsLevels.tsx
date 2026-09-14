@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Check,
+  ChevronLeft,
   ChevronRight,
   Loader2,
   Plus,
@@ -52,33 +53,32 @@ type Props = {
 
 const STEPS: {
   key: LevelKey;
-  num: string;
   title: string;
   hint: string;
   mode: string;
 }[] = [
   {
     key: 'level1',
-    num: '01',
     title: '1. Seviye',
     hint: 'Tek seçim — örn. açık / kapalı çay',
     mode: 'Tek seçim',
   },
   {
     key: 'level2',
-    num: '02',
     title: '2. Seviye',
     hint: 'Tek seçim — örn. şekerli / şekersiz',
     mode: 'Tek seçim',
   },
   {
     key: 'options',
-    num: '03',
     title: 'Seçenekler',
     hint: 'Çoklu seçim — ekstra ne istenirse',
     mode: 'Çoklu seçim',
   },
 ];
+
+const PRODUCTS_PER_PAGE = 6;
+const CATS_PER_PAGE = 8;
 
 function partitionGroups(groups: ProductOptionGroup[]) {
   const singles = groups
@@ -199,12 +199,52 @@ export default function ProductVariantsLevels({
   onSave,
 }: Props) {
   const [active, setActive] = useState<LevelKey>('level1');
+  const [productPage, setProductPage] = useState(0);
+  const [catPage, setCatPage] = useState(0);
 
   const parts = useMemo(() => partitionGroups(groups), [groups]);
+
+  const catItems = useMemo(() => {
+    const total = categories.reduce((n, c) => n + c.count, 0);
+    return [
+      { id: 'all' as const, name: 'Hepsi', count: total },
+      ...categories.map((c) => ({ id: c.name, name: c.name, count: c.count })),
+    ];
+  }, [categories]);
+
+  const catPageCount = Math.max(1, Math.ceil(catItems.length / CATS_PER_PAGE));
+  const safeCatPage = Math.min(catPage, catPageCount - 1);
+  const pagedCats = catItems.slice(
+    safeCatPage * CATS_PER_PAGE,
+    safeCatPage * CATS_PER_PAGE + CATS_PER_PAGE
+  );
+
+  const productPageCount = Math.max(1, Math.ceil(filtered.length / PRODUCTS_PER_PAGE));
+  const safeProductPage = Math.min(productPage, productPageCount - 1);
+  const pagedProducts = filtered.slice(
+    safeProductPage * PRODUCTS_PER_PAGE,
+    safeProductPage * PRODUCTS_PER_PAGE + PRODUCTS_PER_PAGE
+  );
 
   useEffect(() => {
     if (!selectedId) setActive('level1');
   }, [selectedId]);
+
+  useEffect(() => {
+    setProductPage(0);
+  }, [category, query]);
+
+  useEffect(() => {
+    setCatPage(0);
+  }, [categories.length]);
+
+  useEffect(() => {
+    if (productPage > productPageCount - 1) setProductPage(Math.max(0, productPageCount - 1));
+  }, [productPage, productPageCount]);
+
+  useEffect(() => {
+    if (catPage > catPageCount - 1) setCatPage(Math.max(0, catPageCount - 1));
+  }, [catPage, catPageCount]);
 
   function ensureLevel1(): ProductOptionGroup {
     if (parts.level1) return parts.level1;
@@ -365,26 +405,41 @@ export default function ProductVariantsLevels({
               />
             </label>
             <nav className="pv-levels__cats" aria-label="Gruplar">
-              <button
-                type="button"
-                className={category === 'all' ? 'is-active' : ''}
-                onClick={() => onCategory('all')}
-              >
-                <span>Hepsi</span>
-                <em>{categories.reduce((n, c) => n + c.count, 0)}</em>
-              </button>
-              {categories.map((c) => (
+              {pagedCats.map((c) => (
                 <button
-                  key={c.name}
+                  key={c.id}
                   type="button"
-                  className={category === c.name ? 'is-active' : ''}
-                  onClick={() => onCategory(c.name)}
+                  className={category === c.id ? 'is-active' : ''}
+                  onClick={() => onCategory(c.id)}
                 >
                   <span>{c.name}</span>
                   <em>{c.count}</em>
                 </button>
               ))}
             </nav>
+            {catPageCount > 1 ? (
+              <div className="pv-levels__pager">
+                <button
+                  type="button"
+                  disabled={safeCatPage <= 0}
+                  onClick={() => setCatPage((p) => Math.max(0, p - 1))}
+                  aria-label="Önceki gruplar"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span>
+                  {safeCatPage + 1} / {catPageCount}
+                </span>
+                <button
+                  type="button"
+                  disabled={safeCatPage >= catPageCount - 1}
+                  onClick={() => setCatPage((p) => Math.min(catPageCount - 1, p + 1))}
+                  aria-label="Sonraki gruplar"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            ) : null}
           </aside>
 
           <section className="pv-levels__main">
@@ -396,36 +451,63 @@ export default function ProductVariantsLevels({
             ) : filtered.length === 0 ? (
               <div className="pv-levels__empty">Ürün bulunamadı.</div>
             ) : (
-              <ul className="pv-levels__products">
-                {filtered.map((p) => (
-                  <li key={p.id}>
+              <>
+                <ul className="pv-levels__products">
+                  {pagedProducts.map((p) => (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        className="pv-levels__product"
+                        onClick={() => onSelectProduct(p)}
+                      >
+                        <span className="pv-levels__product-media">
+                          {p.imageUrl ? (
+                            <img src={imageUrl(p.imageUrl)} alt="" />
+                          ) : (
+                            <MenuMediaPlaceholder />
+                          )}
+                        </span>
+                        <span className="pv-levels__product-meta">
+                          <strong>{p.name}</strong>
+                          <small>| {p.groupName || 'Grup yok'}</small>
+                        </span>
+                        <span className="pv-levels__product-price">
+                          {formatMoney(p.price)}
+                        </span>
+                        <span className="pv-levels__product-go">
+                          Devam
+                          <ChevronRight className="w-4 h-4" />
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {productPageCount > 1 ? (
+                  <div className="pv-levels__pager pv-levels__pager--main">
                     <button
                       type="button"
-                      className="pv-levels__product"
-                      onClick={() => onSelectProduct(p)}
+                      disabled={safeProductPage <= 0}
+                      onClick={() => setProductPage((p) => Math.max(0, p - 1))}
+                      aria-label="Önceki ürünler"
                     >
-                      <span className="pv-levels__product-media">
-                        {p.imageUrl ? (
-                          <img src={imageUrl(p.imageUrl)} alt="" />
-                        ) : (
-                          <MenuMediaPlaceholder />
-                        )}
-                      </span>
-                      <span className="pv-levels__product-meta">
-                        <strong>{p.name}</strong>
-                        <small>| {p.groupName || 'Grup yok'}</small>
-                      </span>
-                      <span className="pv-levels__product-price">
-                        {formatMoney(p.price)}
-                      </span>
-                      <span className="pv-levels__product-go">
-                        Devam
-                        <ChevronRight className="w-4 h-4" />
-                      </span>
+                      <ChevronLeft className="w-4 h-4" />
                     </button>
-                  </li>
-                ))}
-              </ul>
+                    <span>
+                      {safeProductPage + 1} / {productPageCount}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={safeProductPage >= productPageCount - 1}
+                      onClick={() =>
+                        setProductPage((p) => Math.min(productPageCount - 1, p + 1))
+                      }
+                      aria-label="Sonraki ürünler"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : null}
+              </>
             )}
           </section>
         </div>
@@ -462,7 +544,6 @@ export default function ProductVariantsLevels({
               className={`pv-levels__tab${active === s.key ? ' is-active' : ''}`}
               onClick={() => setActive(s.key)}
             >
-              <span className="pv-levels__tab-num">{s.num}</span>
               <span className="pv-levels__tab-title">{s.title}</span>
               <em>{counts[s.key]}</em>
             </button>
@@ -473,9 +554,7 @@ export default function ProductVariantsLevels({
           <section className="pv-levels__board">
             <header className="pv-levels__board-head">
               <div>
-                <h3>
-                  {stepMeta.num} {stepMeta.title}
-                </h3>
+                <h3>{stepMeta.title}</h3>
                 <p>{stepMeta.hint}</p>
               </div>
               <span className="pv-levels__mode">{stepMeta.mode}</span>
