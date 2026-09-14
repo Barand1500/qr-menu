@@ -9,6 +9,7 @@ import {
   Tags,
   RotateCcw,
   Clock,
+  Trash2,
 } from 'lucide-react';
 import { api, formatMoney, formatPrice, imageUrl } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
@@ -724,6 +725,20 @@ export default function ProductsPage() {
     }
   }
 
+  async function handleDelete(product: Product) {
+    if (!window.confirm(`“${product.name}” ürününü silmek istiyor musunuz? Bu işlem geri alınamaz.`)) {
+      return;
+    }
+    const prev = products;
+    setProducts((list) => list.filter((p) => p.id !== product.id));
+    try {
+      await api(`/api/admin/products/${product.id}`, { method: 'DELETE' });
+    } catch (err) {
+      setProducts(prev);
+      window.alert(err instanceof Error ? err.message : 'Ürün silinemedi.');
+    }
+  }
+
   function clearFilters() {
     setSearch('');
     setGroupFilter('');
@@ -960,6 +975,13 @@ export default function ProductsPage() {
                           ) : (
                             <Eye className="w-4 h-4" />
                           )}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(product)}
+                          className="p-2 rounded-xl transition hover:bg-red-500/10 text-red-500"
+                          title="Sil"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>

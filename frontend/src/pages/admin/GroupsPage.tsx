@@ -9,6 +9,7 @@ import {
   X,
   Package,
   CornerDownRight,
+  Trash2,
 } from 'lucide-react';
 import {
   DndContext,
@@ -100,6 +101,7 @@ function SortableRow({
   selectedForSub,
   onEdit,
   onToggle,
+  onDelete,
   onPickParent,
   onShowProducts,
 }: {
@@ -110,6 +112,7 @@ function SortableRow({
   selectedForSub: number | null;
   onEdit: (g: Group) => void;
   onToggle: (g: Group) => void;
+  onDelete: (g: Group) => void;
   onPickParent: (g: Group) => void;
   onShowProducts: (g: Group) => void;
 }) {
@@ -240,7 +243,7 @@ function SortableRow({
       <td className="py-3.5 px-4">
         <Badge active={group.isActive} />
       </td>
-      <td className="py-3.5 px-4 w-[100px]" onDoubleClick={(e) => e.stopPropagation()}>
+      <td className="py-3.5 px-4 w-[132px]" onDoubleClick={(e) => e.stopPropagation()}>
         {!pickMode && (
           <div className="flex gap-1">
             <button
@@ -267,6 +270,16 @@ function SortableRow({
               title={group.isActive ? 'Pasifleştir' : 'Aktifleştir'}
             >
               {group.isActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(group);
+              }}
+              className="p-2 rounded-xl transition hover:bg-red-500/10 text-red-500"
+              title="Sil"
+            >
+              <Trash2 className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -476,6 +489,20 @@ export default function GroupsPage() {
     }
   }
 
+  async function handleDelete(group: Group) {
+    if (!window.confirm(`“${group.name}” grubunu silmek istiyor musunuz? Bu işlem geri alınamaz.`)) {
+      return;
+    }
+    const prev = allGroups;
+    setAllGroups((list) => list.filter((g) => g.id !== group.id));
+    try {
+      await api(`/api/admin/groups/${group.id}`, { method: 'DELETE' });
+    } catch (err) {
+      setAllGroups(prev);
+      window.alert(err instanceof Error ? err.message : 'Grup silinemedi.');
+    }
+  }
+
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -629,7 +656,7 @@ export default function GroupsPage() {
                   <th className="py-3.5 px-4 font-semibold hidden sm:table-cell">Sıra</th>
                   <th className="py-3.5 px-4 font-semibold hidden lg:table-cell">Ürün</th>
                   <th className="py-3.5 px-4 font-semibold">Durum</th>
-                  <th className="py-3.5 px-4 font-semibold w-[100px]">İşlem</th>
+                  <th className="py-3.5 px-4 font-semibold w-[132px]">İşlem</th>
                 </tr>
               </thead>
               <SortableContext
@@ -654,6 +681,7 @@ export default function GroupsPage() {
                         selectedForSub={pickParent?.id ?? null}
                         onEdit={openEdit}
                         onToggle={handleToggle}
+                        onDelete={handleDelete}
                         onPickParent={handlePickParent}
                         onShowProducts={setProductsModalGroup}
                       />
