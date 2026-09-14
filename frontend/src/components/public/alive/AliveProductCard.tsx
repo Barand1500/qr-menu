@@ -13,14 +13,18 @@ export type AliveProductCardItem = {
   imageUrl?: string | null;
   calories?: number | null;
   isRecommended?: boolean;
+  soldOut?: boolean;
 };
 
 export default function AliveProductCard({ product }: { product: AliveProductCardItem }) {
   const kcal = product.calories != null && product.calories > 0 ? product.calories : null;
 
   return (
-    <article className="alive-card">
+    <article className="alive-card" data-sold-out={product.soldOut ? 'true' : undefined}>
       <Link to={menuProductPath(product.id)} className="alive-card__media">
+        {product.soldOut ? (
+          <span className="menu-soldout-tag menu-soldout-tag--float">Bugün bitti</span>
+        ) : null}
         {product.imageUrl ? (
           <img src={imageUrl(product.imageUrl)} alt="" />
         ) : (

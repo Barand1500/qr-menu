@@ -10,6 +10,8 @@ export type ProductOption = {
   excludesOptionIds: string[];
   /** Tek seçim boy/tür: seçilince ekstra gruplarına uygulanan maks (0 = özel yok) */
   limitsMultiMaxTotalQty: number;
+  /** Varyant stoğu: null = sınırsız (S), 0 = tükendi */
+  stockQty?: number | null;
 };
 
 export type ProductOptionGroup = {
@@ -54,6 +56,7 @@ export function emptyOption(partial?: Partial<ProductOption>): ProductOption {
     sortOrder: 0,
     excludesOptionIds: [],
     limitsMultiMaxTotalQty: 0,
+    stockQty: null,
     ...partial,
   };
 }

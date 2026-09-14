@@ -9,8 +9,6 @@ import {
   Tags,
   RotateCcw,
   Clock,
-  Check,
-  X,
 } from 'lucide-react';
 import { api, formatMoney, formatPrice, imageUrl } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
@@ -33,6 +31,8 @@ import ProductModal, {
 import BulkPriceModal, {
   type BulkPriceApplyResult,
 } from '@/components/BulkPriceModal';
+import ProductStockModal, { stockLabel } from '@/components/ProductStockModal';
+import type { ProductOptionGroup } from '@/lib/productOptions';
 import {
   defaultPrefCatalog,
   fetchPrefCatalog,
@@ -83,6 +83,7 @@ interface Product {
   stockResetHour?: number | null;
   stockResetMinute?: number | null;
   stockResetTo?: number | null;
+  optionGroups?: ProductOptionGroup[];
   isValid: boolean;
   translations: {
     languageId: number;
@@ -184,245 +185,52 @@ type StatusFilter = 'all' | 'active' | 'passive';
 /** Yarın tekrar aç: true yap */
 const BULK_PRICE_UI_ENABLED = true;
 
-function formatStockDisplay(stockQty: number | null | undefined) {
-  return stockQty == null ? 'S' : String(stockQty);
-}
-
 function ProductStockCell({
   product,
-  onUpdated,
+  onOpen,
 }: {
   product: Product;
-  onUpdated: (next: Product) => void;
+  onOpen: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(formatStockDisplay(product.stockQty));
-  const [saving, setSaving] = useState(false);
-  const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [resetHour, setResetHour] = useState(
-    product.stockResetHour != null ? String(product.stockResetHour).padStart(2, '0') : ''
-  );
-  const [resetMinute, setResetMinute] = useState(
-    String(product.stockResetMinute ?? 0).padStart(2, '0')
-  );
-  const [resetTo, setResetTo] = useState(formatStockDisplay(product.stockResetTo));
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!editing) setDraft(formatStockDisplay(product.stockQty));
-  }, [product.stockQty, editing]);
-
-  useEffect(() => {
-    if (editing) inputRef.current?.select();
-  }, [editing]);
-
-  async function saveQty(raw: string) {
-    const t = raw.trim();
-    if (!t || /^s$/i.test(t)) {
-      return patchStock({ stockQty: null });
-    }
-    if (!/^\d+$/.test(t)) {
-      setDraft(formatStockDisplay(product.stockQty));
-      setEditing(false);
-      return;
-    }
-    return patchStock({ stockQty: Number(t) });
-  }
-
-  async function patchStock(body: Record<string, unknown>) {
-    setSaving(true);
-    try {
-      const updated = await api<Product>(`/api/admin/products/${product.id}/stock`, {
-        method: 'PATCH',
-        body: JSON.stringify(body),
-      });
-      onUpdated(updated);
-      setEditing(false);
-      setScheduleOpen(false);
-    } catch {
-      setDraft(formatStockDisplay(product.stockQty));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function saveSchedule() {
-    if (!resetHour.trim()) {
-      await patchStock({
-        stockResetHour: null,
-        stockResetMinute: null,
-        stockResetTo: null,
-      });
-      return;
-    }
-    const h = Number(resetHour);
-    const m = Number(resetMinute || '0');
-    if (!Number.isInteger(h) || h < 0 || h > 23 || !Number.isInteger(m) || m < 0 || m > 59) {
-      return;
-    }
-    const toRaw = resetTo.trim();
-    const stockResetTo =
-      !toRaw || /^s$/i.test(toRaw) ? null : /^\d+$/.test(toRaw) ? Number(toRaw) : null;
-    await patchStock({
-      stockResetHour: h,
-      stockResetMinute: m,
-      stockResetTo,
-    });
-  }
-
   const soldOut = product.stockQty === 0;
   const hasSchedule = product.stockResetHour != null;
+  const variantSoldOut = (product.optionGroups || []).some((g) =>
+    g.options.some((o) => o.stockQty === 0)
+  );
 
   return (
-    <div
-      className="relative flex items-center gap-1"
+    <button
+      type="button"
+      title="Stok yönetimi (S = sınırsız)"
       onDoubleClick={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen();
+      }}
+      className="flex items-center gap-1.5 rounded-xl px-2 py-1 transition hover:bg-[var(--admin-accent-soft)]"
     >
-      {editing ? (
-        <input
-          ref={inputRef}
-          value={draft}
-          disabled={saving}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v === '' || /^s$/i.test(v) || /^\d*$/.test(v)) setDraft(v.toUpperCase());
-          }}
-          onBlur={() => void saveQty(draft)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              void saveQty(draft);
-            }
-            if (e.key === 'Escape') {
-              setDraft(formatStockDisplay(product.stockQty));
-              setEditing(false);
-            }
-          }}
-          className="w-14 rounded-lg px-2 py-1 text-center text-sm font-semibold outline-none"
-          style={{
-            background: 'var(--admin-input-bg)',
-            border: '1px solid var(--admin-accent)',
-            color: 'var(--admin-text)',
-          }}
-          aria-label="Stok"
-        />
-      ) : (
-        <button
-          type="button"
-          title="Stok düzenle (S = sınırsız)"
-          onClick={() => setEditing(true)}
-          className="min-w-[2.25rem] rounded-lg px-2 py-1 text-sm font-bold tabular-nums transition hover:bg-[var(--admin-accent-soft)]"
-          style={{
-            color: soldOut ? '#dc2626' : 'var(--admin-text)',
-            background: soldOut ? 'rgba(220,38,38,0.08)' : 'transparent',
-          }}
-        >
-          {formatStockDisplay(product.stockQty)}
-        </button>
-      )}
-
-      <button
-        type="button"
-        title={
-          hasSchedule
-            ? `Günlük reset: ${String(product.stockResetHour).padStart(2, '0')}:${String(product.stockResetMinute ?? 0).padStart(2, '0')}`
-            : 'Günlük stok sıfırlama saati'
-        }
-        onClick={() => {
-          setResetHour(
-            product.stockResetHour != null
-              ? String(product.stockResetHour).padStart(2, '0')
-              : ''
-          );
-          setResetMinute(String(product.stockResetMinute ?? 0).padStart(2, '0'));
-          setResetTo(formatStockDisplay(product.stockResetTo));
-          setScheduleOpen((o) => !o);
-        }}
-        className={`p-1.5 rounded-lg transition ${
-          hasSchedule
-            ? 'text-[var(--admin-accent)] bg-[var(--admin-accent-soft)]'
-            : 'admin-text-muted hover:bg-[var(--admin-accent-soft)] hover:text-[var(--admin-accent)]'
-        }`}
+      <span
+        className="min-w-[1.75rem] text-sm font-bold tabular-nums"
+        style={{ color: soldOut ? '#dc2626' : 'var(--admin-text)' }}
       >
-        <Clock className="w-3.5 h-3.5" />
-      </button>
-
-      {scheduleOpen ? (
-        <div
-          className="absolute left-0 top-full z-20 mt-1 w-56 rounded-xl border p-3 shadow-lg"
-          style={{
-            background: 'var(--admin-card-bg)',
-            borderColor: 'var(--admin-card-border)',
-          }}
+        {stockLabel(product.stockQty)}
+      </span>
+      {variantSoldOut ? (
+        <span
+          className="px-1.5 py-0.5 rounded-md text-[10px] font-bold"
+          style={{ background: 'rgba(220,38,38,0.1)', color: '#dc2626' }}
         >
-          <p className="text-xs font-semibold mb-2" style={{ color: 'var(--admin-text)' }}>
-            Günlük otomatik reset
-          </p>
-          <div className="flex items-center gap-1.5 mb-2">
-            <input
-              value={resetHour}
-              onChange={(e) => setResetHour(e.target.value.replace(/\D/g, '').slice(0, 2))}
-              placeholder="SS"
-              className="w-12 rounded-lg px-2 py-1.5 text-center text-sm"
-              style={{
-                background: 'var(--admin-input-bg)',
-                border: '1px solid var(--admin-card-border)',
-                color: 'var(--admin-text)',
-              }}
-            />
-            <span className="admin-text-muted">:</span>
-            <input
-              value={resetMinute}
-              onChange={(e) => setResetMinute(e.target.value.replace(/\D/g, '').slice(0, 2))}
-              placeholder="DD"
-              className="w-12 rounded-lg px-2 py-1.5 text-center text-sm"
-              style={{
-                background: 'var(--admin-input-bg)',
-                border: '1px solid var(--admin-card-border)',
-                color: 'var(--admin-text)',
-              }}
-            />
-          </div>
-          <label className="block text-[11px] admin-text-muted mb-1">Reset sonrası stok</label>
-          <input
-            value={resetTo}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === '' || /^s$/i.test(v) || /^\d*$/.test(v)) setResetTo(v.toUpperCase());
-            }}
-            placeholder="S veya sayı"
-            className="w-full rounded-lg px-2 py-1.5 text-sm mb-2"
-            style={{
-              background: 'var(--admin-input-bg)',
-              border: '1px solid var(--admin-card-border)',
-              color: 'var(--admin-text)',
-            }}
-          />
-          <p className="text-[10px] admin-text-muted mb-2 leading-snug">
-            Saati boş bırakıp kaydedersen reset kapanır.
-          </p>
-          <div className="flex gap-1 justify-end">
-            <button
-              type="button"
-              className="p-1.5 rounded-lg admin-text-muted hover:bg-[var(--admin-input-bg)]"
-              onClick={() => setScheduleOpen(false)}
-              disabled={saving}
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              className="p-1.5 rounded-lg text-[var(--admin-accent)] hover:bg-[var(--admin-accent-soft)]"
-              onClick={() => void saveSchedule()}
-              disabled={saving}
-            >
-              <Check className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
+          varyant
+        </span>
       ) : null}
-    </div>
+      <Clock
+        className="w-3.5 h-3.5"
+        style={{
+          color: hasSchedule ? 'var(--admin-accent)' : 'var(--admin-text-muted)',
+          opacity: hasSchedule ? 1 : 0.55,
+        }}
+      />
+    </button>
   );
 }
 
@@ -490,6 +298,7 @@ export default function ProductsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editing, setEditing] = useState<Product | null>(null);
+  const [stockProduct, setStockProduct] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductFormState>(emptyForm());
   const [productImages, setProductImages] = useState<string[]>([]);
   const [pendingFiles, setPendingFiles] = useState<{ id: string; file: File; url: string }[]>([]);
@@ -1124,11 +933,7 @@ export default function ProductsPage() {
                     <td className="py-3.5 px-4">
                       <ProductStockCell
                         product={product}
-                        onUpdated={(next) =>
-                          setProducts((prev) =>
-                            prev.map((p) => (p.id === next.id ? { ...p, ...next } : p))
-                          )
-                        }
+                        onOpen={() => setStockProduct(product)}
                       />
                     </td>
                     <td className="py-3.5 px-4" onDoubleClick={(e) => e.stopPropagation()}>
@@ -1193,6 +998,18 @@ export default function ProductsPage() {
         onClose={() => setBulkOpen(false)}
         onApplied={handleBulkApplied}
       />
+
+      {stockProduct ? (
+        <ProductStockModal
+          product={stockProduct}
+          onClose={() => setStockProduct(null)}
+          onSaved={(updated) =>
+            setProducts((prev) =>
+              prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
+            )
+          }
+        />
+      ) : null}
 
       {bulkRestoreOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">

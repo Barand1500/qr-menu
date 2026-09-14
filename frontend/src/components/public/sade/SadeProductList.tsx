@@ -11,6 +11,7 @@ export type SadeListProduct = {
   price: number;
   currency?: { code?: string; symbol?: string } | null;
   imageUrl?: string | null;
+  soldOut?: boolean;
 };
 
 export type SadeSubgroup = {
@@ -43,9 +44,16 @@ function ProductRows({ products }: { products: SadeListProduct[] }) {
   return (
     <ul className="sade-list__items">
       {products.map((p) => (
-        <li key={p.id}>
+        <li key={p.id} data-sold-out={p.soldOut ? 'true' : undefined}>
           <Link to={menuProductPath(p.id)} className="sade-list__row">
-            <span className="sade-list__name">{p.name}</span>
+            <span className="sade-list__name">
+              {p.name}
+              {p.soldOut ? (
+                <span className="menu-soldout-tag" style={{ marginLeft: '0.4rem' }}>
+                  Bugün bitti
+                </span>
+              ) : null}
+            </span>
             <span className="sade-list__dots" aria-hidden />
             <span className="sade-list__price">{formatMoney(p.price, p.currency)}</span>
           </Link>

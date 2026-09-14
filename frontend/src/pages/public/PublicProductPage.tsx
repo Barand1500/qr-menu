@@ -359,6 +359,11 @@ function PublicProductPageInner() {
 
         <div className="public-product-hero__bottom">
           <span className="public-product-hero__chip">{product.group.name}</span>
+          {product.soldOut ? (
+            <span className="menu-soldout-tag" style={{ alignSelf: 'flex-start' }}>
+              Bugün bitti
+            </span>
+          ) : null}
           <h1 className="public-product-hero__title">{product.name}</h1>
           <p className="public-product-hero__price">{formatMoney(product.price, product.currency)}</p>
         </div>

@@ -11,6 +11,7 @@ export type LuxuryListProduct = {
   price: number;
   currency?: { code?: string; symbol?: string } | null;
   imageUrl?: string | null;
+  soldOut?: boolean;
 };
 
 export type LuxurySubgroup = {
@@ -24,7 +25,12 @@ function ProductRows({ products }: { products: LuxuryListProduct[] }) {
   return (
     <>
       {products.map((p) => (
-        <Link key={p.id} to={menuProductPath(p.id)} className="luxury-product-row">
+        <Link
+          key={p.id}
+          to={menuProductPath(p.id)}
+          className="luxury-product-row"
+          data-sold-out={p.soldOut ? 'true' : undefined}
+        >
           <div className="luxury-product-row__media">
             {p.imageUrl ? (
               <img src={imageUrl(p.imageUrl)} alt="" />
@@ -33,7 +39,12 @@ function ProductRows({ products }: { products: LuxuryListProduct[] }) {
             )}
           </div>
           <div className="luxury-product-row__body">
-            <h3>{p.name}</h3>
+            <h3>
+              {p.name}
+              {p.soldOut ? (
+                <span className="menu-soldout-tag ml-2">Bugün bitti</span>
+              ) : null}
+            </h3>
             {p.description ? <p>{p.description}</p> : null}
             <span className="luxury-product-row__price">
               {formatMoney(p.price, p.currency)}

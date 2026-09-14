@@ -650,7 +650,7 @@ router.patch('/orders/item', async (req, res) => {
   if (action === 'copy') {
     const src = orders[idx];
     const stockCheck = await consumeStockForItems(restaurantId!, [
-      { productId: src.productId, qty: src.qty },
+      { productId: src.productId, qty: src.qty, selections: src.selections },
     ]);
     if (!stockCheck.ok) {
       return res.status(409).json({ message: stockCheck.message, code: 'OUT_OF_STOCK' });
@@ -665,7 +665,7 @@ router.patch('/orders/item', async (req, res) => {
     const removed = orders[idx];
     orders.splice(idx, 1);
     await restoreStockForItems(restaurantId!, [
-      { productId: removed.productId, qty: removed.qty },
+      { productId: removed.productId, qty: removed.qty, selections: removed.selections },
     ]);
   } else if (action === 'bump') {
     const rawDelta = Number(patch?.qty) || 1;
@@ -674,14 +674,22 @@ router.patch('/orders/item', async (req, res) => {
     const actualDelta = nextQty - curQty;
     if (actualDelta > 0) {
       const stockCheck = await consumeStockForItems(restaurantId!, [
-        { productId: orders[idx].productId, qty: actualDelta },
+        {
+          productId: orders[idx].productId,
+          qty: actualDelta,
+          selections: orders[idx].selections,
+        },
       ]);
       if (!stockCheck.ok) {
         return res.status(409).json({ message: stockCheck.message, code: 'OUT_OF_STOCK' });
       }
     } else if (actualDelta < 0) {
       await restoreStockForItems(restaurantId!, [
-        { productId: orders[idx].productId, qty: Math.abs(actualDelta) },
+        {
+          productId: orders[idx].productId,
+          qty: Math.abs(actualDelta),
+          selections: orders[idx].selections,
+        },
       ]);
     }
     orders[idx] = {
@@ -697,14 +705,14 @@ router.patch('/orders/item', async (req, res) => {
       const diff = nextQty - cur.qty;
       if (diff > 0) {
         const stockCheck = await consumeStockForItems(restaurantId!, [
-          { productId: cur.productId, qty: diff },
+          { productId: cur.productId, qty: diff, selections: cur.selections },
         ]);
         if (!stockCheck.ok) {
           return res.status(409).json({ message: stockCheck.message, code: 'OUT_OF_STOCK' });
         }
       } else if (diff < 0) {
         await restoreStockForItems(restaurantId!, [
-          { productId: cur.productId, qty: Math.abs(diff) },
+          { productId: cur.productId, qty: Math.abs(diff), selections: cur.selections },
         ]);
       }
     }
@@ -1018,7 +1026,11 @@ router.post('/orders', async (req, res) => {
 
   const stockCheck = await consumeStockForItems(
     restaurantId!,
-    lineItems.map((i) => ({ productId: i.productId, qty: i.qty }))
+    lineItems.map((i) => ({
+      productId: i.productId,
+      qty: i.qty,
+      selections: i.selections,
+    }))
   );
   if (!stockCheck.ok) {
     return res.status(409).json({ message: stockCheck.message, code: 'OUT_OF_STOCK' });

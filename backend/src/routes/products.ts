@@ -42,6 +42,7 @@ import {
 import {
   parseStockQtyInput,
   parseStockResetPatch,
+  setOptionStocks,
 } from '../lib/product-stock.js';
 
 const router = Router();
@@ -653,14 +654,37 @@ router.patch('/:id/stock', async (req, res) => {
   if (!reset.ok) return res.status(400).json({ message: reset.message });
   Object.assign(data, reset.data);
 
-  if (!Object.keys(data).length) {
+  const rawOptionStocks = (req.body as Record<string, unknown>).optionStocks;
+  let optionStocks: { optionId: string; stockQty: number | null }[] | null = null;
+  if (rawOptionStocks !== undefined) {
+    if (!Array.isArray(rawOptionStocks)) {
+      return res.status(400).json({ message: 'Geçersiz varyant stoğu' });
+    }
+    optionStocks = [];
+    for (const row of rawOptionStocks) {
+      const entry = row as { optionId?: unknown; stockQty?: unknown };
+      const optionId = String(entry.optionId || '').trim();
+      if (!optionId) continue;
+      const parsed = parseStockQtyInput(entry.stockQty);
+      if (!parsed.ok) return res.status(400).json({ message: parsed.message });
+      optionStocks.push({ optionId, stockQty: parsed.value });
+    }
+  }
+
+  if (!Object.keys(data).length && !optionStocks) {
     return res.status(400).json({ message: 'Güncellenecek stok alanı yok' });
   }
 
+  if (Object.keys(data).length) {
+    await prisma.product.update({ where: { id }, data });
+  }
+  if (optionStocks?.length) {
+    await setOptionStocks(restaurantId!, id, optionStocks);
+  }
+
   const [product, languages] = await Promise.all([
-    prisma.product.update({
+    prisma.product.findFirstOrThrow({
       where: { id },
-      data,
       include: { group: true, currency: true },
     }),
     getLanguages(),

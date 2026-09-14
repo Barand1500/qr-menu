@@ -139,6 +139,8 @@ export default function SadeProductOptions({
                         role="radio"
                         aria-checked={on}
                         className={`sade-opts__chip${on ? ' is-on' : ''}`}
+                        data-sold-out={o.stockQty === 0 ? 'true' : undefined}
+                        disabled={o.stockQty === 0}
                         onClick={() => {
                           patch({
                             ...selections,
@@ -146,7 +148,7 @@ export default function SadeProductOptions({
                           });
                         }}
                       >
-                        <span>{o.name}</span>
+                        <span>{o.name}{o.stockQty === 0 ? ' · bitti' : ''}</span>
                         {priceText ? <small>{priceText}</small> : null}
                       </button>
                     );
@@ -176,6 +178,8 @@ export default function SadeProductOptions({
                         type="button"
                         aria-pressed={on}
                         className={`sade-opts__chip${on ? ' is-on' : ''}`}
+                        data-sold-out={o.stockQty === 0 ? 'true' : undefined}
+                        disabled={o.stockQty === 0}
                         onClick={() => {
                           const nextPicks = on
                             ? picks.filter((x) => x.optionId !== o.id)
@@ -186,7 +190,7 @@ export default function SadeProductOptions({
                           patch(next);
                         }}
                       >
-                        <span>{o.name}</span>
+                        <span>{o.name}{o.stockQty === 0 ? ' · bitti' : ''}</span>
                         {priceText ? <small>{priceText}</small> : null}
                       </button>
                     );
@@ -220,9 +224,9 @@ export default function SadeProductOptions({
                   const q = cur?.qty || 0;
                   const priceText = optionPriceLabel(g, o.price, currency);
                   return (
-                    <li key={o.id} className="sade-opts__multi-row">
+                    <li key={o.id} className="sade-opts__multi-row" data-sold-out={o.stockQty === 0 ? 'true' : undefined}>
                       <div className="sade-opts__multi-copy">
-                        <strong>{o.name}</strong>
+                        <strong>{o.name}{o.stockQty === 0 ? ' · bitti' : ''}</strong>
                         {priceText ? <span>{priceText}</span> : null}
                       </div>
                       <div className="sade-opts__stepper">
@@ -250,7 +254,7 @@ export default function SadeProductOptions({
                         <button
                           type="button"
                           aria-label={`${o.name} artır`}
-                          disabled={maxQty > 0 && groupQty >= maxQty}
+                          disabled={o.stockQty === 0 || (maxQty > 0 && groupQty >= maxQty)}
                           onClick={() => {
                             if (maxQty > 0 && groupQty >= maxQty) return;
                             const next = { ...selections };

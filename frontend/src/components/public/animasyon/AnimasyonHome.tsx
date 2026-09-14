@@ -33,6 +33,7 @@ type ListProduct = {
   imageUrl?: string | null;
   calories?: number | null;
   isRecommended?: boolean;
+  soldOut?: boolean;
   allergens?: string | null;
 };
 
@@ -391,6 +392,7 @@ export default function AnimasyonHome({
                     key={p.id}
                     type="button"
                     className={`anim-rail__card${i === index ? ' is-active' : ' is-side'}`}
+                    data-sold-out={p.soldOut ? 'true' : undefined}
                     onClick={() => {
                       if (i === index) openDetail(p);
                       else go(i);
@@ -399,6 +401,11 @@ export default function AnimasyonHome({
                     aria-current={i === index ? 'true' : undefined}
                   >
                     <div className="anim-rail__media">
+                      {p.soldOut ? (
+                        <span className="menu-soldout-tag menu-soldout-tag--float">
+                          Bugün bitti
+                        </span>
+                      ) : null}
                       {p.imageUrl ? (
                         <img src={imageUrl(p.imageUrl)} alt="" draggable={false} />
                       ) : (

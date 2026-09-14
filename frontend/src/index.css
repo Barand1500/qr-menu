@@ -7,6 +7,7 @@
 @import "./animasyon-menu.css";
 @import "./menu-customer.css";
 @import "./menu-games.css";
+@import "./menu-sold-out.css";
 
 @theme {
   --font-sans: "Inter", system-ui, sans-serif;

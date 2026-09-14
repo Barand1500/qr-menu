@@ -48,6 +48,7 @@ type ListProduct = {
   price: number;
   currency?: { code?: string; symbol?: string } | null;
   imageUrl?: string | null;
+  soldOut?: boolean;
 };
 
 type DetailProduct = ListProduct & {
@@ -518,10 +519,16 @@ export default function LinearHome({
                   key={p.id}
                   type="button"
                   className={`linear-item${i % 2 === 1 ? ' linear-item--shift' : ''}`}
+                  data-sold-out={p.soldOut ? 'true' : undefined}
                   onClick={() => openDetail(p, i)}
                   disabled={Boolean(detail)}
                 >
                   <div className="linear-item__plate">
+                    {p.soldOut ? (
+                      <span className="menu-soldout-tag menu-soldout-tag--float">
+                        Bugün bitti
+                      </span>
+                    ) : null}
                     {p.imageUrl ? (
                       <img src={imageUrl(p.imageUrl)} alt="" draggable={false} />
                     ) : (

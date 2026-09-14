@@ -16,6 +16,8 @@ export type ProductOption = {
    * 0 = bu tür özel sınır koymaz (grubun kendi maxTotalQty’si kullanılır).
    */
   limitsMultiMaxTotalQty: number;
+  /** Varyant stoğu: null = sınırsız (S), 0 = tükendi, >0 = kalan adet */
+  stockQty: number | null;
 };
 
 export type ProductOptionGroup = {
@@ -71,6 +73,12 @@ export function normalizeOptionGroups(raw: unknown): ProductOptionGroup[] {
           const limRaw = Number(o.limitsMultiMaxTotalQty);
           const limitsMultiMaxTotalQty =
             Number.isFinite(limRaw) && limRaw > 0 ? Math.min(99, Math.floor(limRaw)) : 0;
+          const stockRaw = o.stockQty;
+          const stockNum = Number(stockRaw);
+          const stockQty =
+            stockRaw == null || stockRaw === '' || !Number.isFinite(stockNum) || stockNum < 0
+              ? null
+              : Math.min(999_999, Math.floor(stockNum));
           return {
             id: String(o.id || newId('opt')).slice(0, 64),
             name,
@@ -79,6 +87,7 @@ export function normalizeOptionGroups(raw: unknown): ProductOptionGroup[] {
             sortOrder: Number.isFinite(Number(o.sortOrder)) ? Number(o.sortOrder) : oi,
             excludesOptionIds,
             limitsMultiMaxTotalQty,
+            stockQty,
           } satisfies ProductOption;
         })
         .filter(Boolean) as ProductOption[];
@@ -251,6 +260,9 @@ export function validateSelections(
         ok: false,
         message: `"${p.option.name}" şu anki seçimlerle birlikte kullanılamaz`,
       };
+    }
+    if (p.option.stockQty === 0) {
+      return { ok: false, message: `"${p.option.name}" bugün tükendi` };
     }
   }
 
