@@ -8,6 +8,7 @@ type Product = {
   currency?: { code?: string; symbol?: string } | null;
   imageUrl?: string | null;
   calories?: number | null;
+  soldOut?: boolean;
 };
 
 export default function SiparisProductList({
@@ -34,6 +35,7 @@ export default function SiparisProductList({
               imageUrl: p.imageUrl,
               calories: p.calories ?? null,
               description: p.description,
+              soldOut: Boolean(p.soldOut),
             }}
           />
         ))}

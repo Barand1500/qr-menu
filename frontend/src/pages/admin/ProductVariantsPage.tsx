@@ -325,7 +325,8 @@ export default function ProductVariantsPage() {
       .filter((g) => g.name && g.options.length > 0);
 
     for (const g of groups) {
-      if (g.name.trim() && !g.options.some((o) => o.name.trim())) {
+      // Seçenek satırı var ama hiçbiri isimlenmemiş → kullanıcı yarıda bırakmış
+      if (g.name.trim() && g.options.length > 0 && !g.options.some((o) => o.name.trim())) {
         alert(`"${g.name}" grubunda en az bir seçenek olmalı`);
         return false;
       }
@@ -471,17 +472,8 @@ export default function ProductVariantsPage() {
 
   const showMultiLimits = groups.some((g) => g.type === 'multi');
 
-  const pageModeClass =
-    layout === 'gallery'
-      ? view === 'editor'
-        ? ' is-editor'
-        : ' is-gallery'
-      : layout === 'levels'
-        ? ' is-levels'
-        : ' is-kanban';
-
   return (
-    <div className={`pv-page pv-page--${layout}${pageModeClass}`}>
+    <div className={`pv-page pv-page--${layout}`}>
       <header className="pv-top">
         {layout === 'gallery' && view === 'editor' ? (
           <button type="button" className="pv-back" onClick={backToGallery}>
@@ -786,17 +778,6 @@ export default function ProductVariantsPage() {
                     İstek
                   </button>
                 </div>
-
-                <button
-                  type="button"
-                  className="pv-btn pv-btn--teal"
-                  data-tour="pv-rules"
-                  disabled={!activeGroup}
-                  onClick={() => setRulesOpen(true)}
-                >
-                  <SlidersHorizontal className="w-4 h-4" />
-                  Kurallar
-                </button>
               </aside>
 
               <main className="pv-canvas">
@@ -915,11 +896,12 @@ export default function ProductVariantsPage() {
                       <button
                         type="button"
                         className="pv-btn pv-btn--teal"
+                        data-tour="pv-rules"
                         disabled={!activeGroup}
                         onClick={() => setRulesOpen(true)}
                       >
                         <SlidersHorizontal className="w-4 h-4" />
-                        Kurallar
+                        {(activeGroup.name.trim() || 'Grup') + ' kuralları'}
                       </button>
                       <p>
                         Zorunluluk, fiyat modu, maks. adet ve “seçilince gizle” kuralları burada.
@@ -930,7 +912,12 @@ export default function ProductVariantsPage() {
               </main>
 
               {rulesOpen && activeGroup && activeGroupIndex >= 0 ? (
-                <div className="pv-rules" role="dialog" aria-modal="true" aria-label="Kurallar">
+                <div
+                  className="pv-rules"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={`${activeGroup.name.trim() || 'Grup'} kuralları`}
+                >
                   <button
                     type="button"
                     className="pv-rules__scrim"
@@ -941,7 +928,9 @@ export default function ProductVariantsPage() {
                     <header className="pv-rules__head">
                       <div>
                         <p>Kurallar</p>
-                        <strong>{activeGroup.name.trim() || 'Adsız grup'}</strong>
+                        <strong>
+                          {(activeGroup.name.trim() || 'Adsız grup') + ' kuralları'}
+                        </strong>
                       </div>
                       <button
                         type="button"

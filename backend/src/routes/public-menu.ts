@@ -48,6 +48,7 @@ import {
   openOrGetSession,
   type FloorOrderItem,
 } from '../lib/table-floor.js';
+import { consumeStockForItems, isSoldOut } from '../lib/product-stock.js';
 import { parseProductImages } from '../lib/product-images.js';
 import { parseAllergenTags } from '../lib/diet-allergens.js';
 import {
@@ -105,6 +106,11 @@ function campaignMeta(campaign: CampaignCtx | null) {
     slug: campaign.slug,
     itemCount: campaign.productIds.length,
   };
+}
+
+function stockPublicFields(p: { stockQty?: number | null }) {
+  const stockQty = p.stockQty ?? null;
+  return { stockQty, soldOut: isSoldOut(stockQty) };
 }
 
 async function trackView(
@@ -448,6 +454,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
       siparisVariants: siparisCfg.variantsEnabled,
     },
     optionGroups: activeOptionGroups(product.optionGroups),
+    ...stockPublicFields(product),
   });
 });
 
@@ -776,6 +783,7 @@ router.get('/:slug/assistant-suggest', async (req, res) => {
         groupId: p.groupId,
         groupName: getGroupName(p.group.i18n, activeLang),
         score,
+        ...stockPublicFields(p),
       };
     })
     .sort((a, b) => b.score - a.score)
@@ -856,6 +864,7 @@ router.get('/:slug/groups/:groupId/products', async (req, res) => {
       isDiabetic: p.isDiabetic,
       groupId: p.groupId,
       sortOrder: campaign?.itemByProductId.get(p.id)?.sortOrder ?? p.sortOrder,
+      ...stockPublicFields(p),
     };
   }
 
@@ -954,6 +963,7 @@ router.get('/:slug/popular-products', async (req, res) => {
       isDiabetic: p.isDiabetic,
       groupId: p.groupId,
       groupName: getGroupName(p.group.i18n, activeLang),
+      ...stockPublicFields(p),
     };
   });
 
@@ -1018,6 +1028,7 @@ router.get('/:slug/search', async (req, res) => {
         isDiabetic: p.isDiabetic,
         groupName: getGroupName(p.group.i18n, activeLang),
         groupId: p.groupId,
+        ...stockPublicFields(p),
       };
     })
   );
@@ -1110,6 +1121,7 @@ router.post('/:slug/table-request', async (req, res) => {
     note?: string;
     order?: {
       items?: {
+        productId?: number;
         name?: string;
         qty?: number;
         price?: number;
@@ -1156,10 +1168,16 @@ router.post('/:slug/table-request', async (req, res) => {
 
   const noteText = typeof note === 'string' ? note.trim().slice(0, 500) : '';
   let orderJson: string | null = null;
+  let floorLines: FloorOrderItem[] = [];
+  let stockItems: { productId: number | null; qty: number }[] = [];
   if (order && Array.isArray(order.items) && order.items.length > 0) {
     const items = order.items
       .slice(0, 40)
       .map((i) => ({
+        productId:
+          i.productId != null && Number.isFinite(Number(i.productId))
+            ? Number(i.productId)
+            : null,
         name: String(i.name || '').trim().slice(0, 120),
         qty: Math.min(99, Math.max(1, Number(i.qty) || 1)),
         price: Number(i.price) || 0,
@@ -1168,6 +1186,7 @@ router.post('/:slug/table-request', async (req, res) => {
       }))
       .filter((i) => i.name);
     if (items.length > 0) {
+      stockItems = items.map((i) => ({ productId: i.productId, qty: i.qty }));
       orderJson = JSON.stringify({
         items,
         totalPrice: Number(order.totalPrice) || items.reduce((s, i) => s + i.price * i.qty, 0),
@@ -1178,6 +1197,16 @@ router.post('/:slug/table-request', async (req, res) => {
         currency: order.currency ?? null,
         note: noteText || null,
       });
+      const now = new Date().toISOString();
+      floorLines = items.map((i) => ({
+        id: `cust-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        productId: i.productId,
+        name: i.name,
+        qty: i.qty,
+        price: i.price,
+        createdAt: now,
+        source: 'customer' as const,
+      }));
     }
   }
 
@@ -1205,6 +1234,13 @@ router.post('/:slug/table-request', async (req, res) => {
     });
   }
 
+  if (stockItems.length) {
+    const stockCheck = await consumeStockForItems(restaurant.id, stockItems);
+    if (!stockCheck.ok) {
+      return res.status(409).json({ message: stockCheck.message, code: 'OUT_OF_STOCK' });
+    }
+  }
+
   const row = await prisma.tableServiceRequest.create({
     data: {
       restaurantId: restaurant.id,
@@ -1220,22 +1256,7 @@ router.post('/:slug/table-request', async (req, res) => {
   if (masa !== 'admin') {
     try {
       const session = await openOrGetSession(restaurant.id, masa, grup, 'qr');
-      if (orderJson) {
-        const parsed = JSON.parse(orderJson) as {
-          items?: { name?: string; qty?: number; price?: number }[];
-        };
-        const lines: FloorOrderItem[] = (parsed.items || [])
-          .filter((i) => i.name)
-          .map((i) => ({
-            id: `cust-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            name: String(i.name).slice(0, 120),
-            qty: Math.min(99, Math.max(1, Number(i.qty) || 1)),
-            price: Number(i.price) || 0,
-            createdAt: new Date().toISOString(),
-            source: 'customer' as const,
-          }));
-        if (lines.length) await appendOrdersToSession(session.id, lines);
-      }
+      if (floorLines.length) await appendOrdersToSession(session.id, floorLines);
     } catch {
       /* floor sync best-effort */
     }

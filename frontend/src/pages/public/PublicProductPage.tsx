@@ -67,6 +67,8 @@ interface ProductDetail {
     siparisVariants?: boolean;
   };
   optionGroups?: ProductOptionGroup[];
+  soldOut?: boolean;
+  stockQty?: number | null;
   group: { id: number; name: string };
   restaurant: { name: string; slug: string; logoUrl?: string | null };
 }

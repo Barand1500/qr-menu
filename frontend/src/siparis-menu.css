@@ -700,6 +700,39 @@
   transform: scale(0.94);
 }
 
+.siparis-card.is-sold-out {
+  opacity: 0.55;
+  filter: grayscale(0.35);
+}
+
+.siparis-card.is-sold-out .siparis-card__media {
+  position: relative;
+}
+
+.siparis-card__sold-out {
+  position: absolute;
+  left: 0.5rem;
+  bottom: 0.5rem;
+  z-index: 1;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.78);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.siparis-detail__sold-out {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border-radius: 0.9rem;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-weight: 700;
+  text-align: center;
+}
+
 /* ── Cart in header (PC only) + bottom nav (mobile) ── */
 /* icon-btn display:flex Tailwind hidden’ı eziyordu */
 .siparis-header-cart:not(.siparis-header-cart--always) {

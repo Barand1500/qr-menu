@@ -1802,10 +1802,6 @@
     padding: 1rem 1rem 1.75rem;
   }
 
-  .pv-levels__products {
-    grid-template-columns: 1fr;
-  }
-
   .pv-levels__opt,
   .pv-levels__opt-head {
     grid-template-columns: 1fr auto;

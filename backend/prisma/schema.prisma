@@ -139,6 +139,16 @@ model Product {
   dietTags        Json     @default("[]") @map("diyet_etiketleri")
   sortOrder       Int      @default(0) @map("sira")
   isActive        Boolean  @default(true) @map("aktif")
+  /// null = sınırsız (UI: S), 0 = tükendi, >0 = kalan adet
+  stockQty        Int?     @map("stok_adet")
+  /// Günlük otomatik reset saati (0–23); null = kapalı
+  stockResetHour  Int?     @map("stok_reset_saat")
+  /// Günlük otomatik reset dakikası (0–59)
+  stockResetMinute Int?    @default(0) @map("stok_reset_dk")
+  /// Reset sonrası hedef adet; null = sınırsız (S)
+  stockResetTo    Int?     @map("stok_reset_hedef")
+  /// Son başarılı günlük reset (aynı gün tekrar etmesin)
+  stockResetLastAt DateTime? @map("stok_reset_son")
   i18n            Json     @default("{}") @map("ceviriler")
   /// Seçenek grupları: tek seçim / miktarlı ekstra (masa siparişi fiyat takibi)
   optionGroups    Json     @default("[]") @map("secenek_gruplari")

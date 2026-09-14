@@ -18,14 +18,12 @@ import {
   type ProductOptionGroup,
 } from '@/lib/productOptions';
 
-export type LevelsProduct = {
+type LevelsProduct = {
   id: number;
   name: string;
   groupName: string;
   price: number;
-  isActive?: boolean;
   imageUrl?: string | null;
-  optionSummary?: { groupCount: number; optionCount: number };
 };
 
 type Category = { name: string; count: number };
@@ -98,19 +96,32 @@ function partitionGroups(groups: ProductOptionGroup[]) {
 }
 
 function rebuildGroups(
-  level1: ProductOptionGroup,
-  level2: ProductOptionGroup,
+  level1: ProductOptionGroup | null,
+  level2: ProductOptionGroup | null,
   extras: ProductOptionGroup[],
   leftoverSingles: ProductOptionGroup[] = []
 ) {
-  return [level1, level2, ...leftoverSingles, ...extras].map((g, i) => ({
-    ...g,
-    sortOrder: i,
-  }));
+  return [level1, level2, ...leftoverSingles, ...extras]
+    .filter((g): g is ProductOptionGroup => g != null)
+    .map((g, i) => ({
+      ...g,
+      sortOrder: i,
+    }));
 }
 
 function countNamed(opts: ProductOption[] | undefined) {
   return (opts || []).filter((o) => o.name.trim()).length;
+}
+
+/** Boş hayalet grubu state'e yazma — seçenek veya başlık yoksa at */
+function keepGroup(
+  g: ProductOptionGroup | null | undefined,
+  existed: boolean
+): ProductOptionGroup | null {
+  if (!g) return null;
+  if (existed) return g;
+  if (g.options.length > 0 || g.name.trim()) return g;
+  return null;
 }
 
 function OptionRows({
@@ -268,38 +279,53 @@ export default function ProductVariantsLevels({
     });
   }
 
-  function ensureExtras(): ProductOptionGroup[] {
-    if (parts.extras.length) return parts.extras;
-    return [
-      emptyGroup({
-        type: 'multi',
-        name: 'Seçenekler',
-        pricing: 'add',
-        required: false,
-        options: [],
-      }),
-    ];
+  function ensurePrimaryExtra(): ProductOptionGroup {
+    if (parts.extras[0]) return parts.extras[0];
+    return emptyGroup({
+      type: 'multi',
+      name: 'Seçenekler',
+      pricing: 'add',
+      required: false,
+      options: [],
+    });
   }
 
   function commit(
-    nextL1: ProductOptionGroup,
-    nextL2: ProductOptionGroup,
+    nextL1: ProductOptionGroup | null,
+    nextL2: ProductOptionGroup | null,
     nextExtras: ProductOptionGroup[]
   ) {
-    onUpdateGroups(rebuildGroups(nextL1, nextL2, nextExtras, parts.leftoverSingles));
+    onUpdateGroups(
+      rebuildGroups(
+        keepGroup(nextL1, !!parts.level1),
+        keepGroup(nextL2, !!parts.level2),
+        nextExtras
+          .map((g, i) => keepGroup(g, !!parts.extras[i]))
+          .filter((g): g is ProductOptionGroup => g != null),
+        parts.leftoverSingles
+      )
+    );
   }
 
   function patchLevel1(patch: Partial<ProductOptionGroup>) {
-    commit({ ...ensureLevel1(), ...patch }, ensureLevel2(), ensureExtras());
+    commit({ ...ensureLevel1(), ...patch }, parts.level2, parts.extras);
   }
 
   function patchLevel2(patch: Partial<ProductOptionGroup>) {
-    commit(ensureLevel1(), { ...ensureLevel2(), ...patch }, ensureExtras());
+    commit(parts.level1, { ...ensureLevel2(), ...patch }, parts.extras);
   }
 
   function patchExtra(gi: number, patch: Partial<ProductOptionGroup>) {
-    const extras = ensureExtras().map((g, i) => (i === gi ? { ...g, ...patch } : g));
-    commit(ensureLevel1(), ensureLevel2(), extras);
+    if (parts.extras.length) {
+      commit(
+        parts.level1,
+        parts.level2,
+        parts.extras.map((g, i) => (i === gi ? { ...g, ...patch } : g))
+      );
+      return;
+    }
+    if (gi !== 0) return;
+    commit(parts.level1, parts.level2, [{ ...ensurePrimaryExtra(), ...patch }]);
   }
 
   function patchOption(
@@ -322,8 +348,8 @@ export default function ProductVariantsLevels({
       });
       return;
     }
-    const extras = ensureExtras();
-    const g = extras[extraGi];
+    const base = parts.extras.length ? parts.extras : [ensurePrimaryExtra()];
+    const g = base[extraGi];
     if (!g) return;
     patchExtra(extraGi, {
       options: g.options.map((o, i) => (i === oi ? { ...o, ...patch } : o)),
@@ -343,45 +369,53 @@ export default function ProductVariantsLevels({
       setActive('level2');
       return;
     }
-    const extras = ensureExtras();
-    const g = extras[extraGi] || extras[0];
-    patchExtra(extraGi, { options: [...g.options, emptyOption({ name: '' })] });
+    const base = parts.extras.length ? parts.extras : [ensurePrimaryExtra()];
+    const idx = base[extraGi] ? extraGi : 0;
+    const g = base[idx];
+    patchExtra(idx, { options: [...g.options, emptyOption({ name: '' })] });
     setActive('options');
   }
 
   function removeOption(which: 'level1' | 'level2' | 'extra', oi: number, extraGi = 0) {
     if (which === 'level1') {
-      patchLevel1({ options: ensureLevel1().options.filter((_, i) => i !== oi) });
+      const nextOpts = ensureLevel1().options.filter((_, i) => i !== oi);
+      if (!nextOpts.length && parts.level1) {
+        // Son seçenek silindi — grubu state'ten kaldır (kayıt engeli olmasın)
+        commit(null, parts.level2, parts.extras);
+        return;
+      }
+      patchLevel1({ options: nextOpts });
       return;
     }
     if (which === 'level2') {
-      patchLevel2({ options: ensureLevel2().options.filter((_, i) => i !== oi) });
+      const nextOpts = ensureLevel2().options.filter((_, i) => i !== oi);
+      if (!nextOpts.length && parts.level2) {
+        commit(parts.level1, null, parts.extras);
+        return;
+      }
+      patchLevel2({ options: nextOpts });
       return;
     }
-    const g = ensureExtras()[extraGi];
+    const base = parts.extras.length ? parts.extras : [];
+    const g = base[extraGi];
     if (!g) return;
-    patchExtra(extraGi, { options: g.options.filter((_, i) => i !== oi) });
+    const nextOpts = g.options.filter((_, i) => i !== oi);
+    if (!nextOpts.length) {
+      const extras = base.filter((_, i) => i !== extraGi);
+      commit(parts.level1, parts.level2, extras);
+      return;
+    }
+    patchExtra(extraGi, { options: nextOpts });
   }
 
   const level1 = parts.level1;
   const level2 = parts.level2;
-  const extras = parts.extras.length
-    ? parts.extras
-    : [
-        emptyGroup({
-          type: 'multi',
-          name: 'Seçenekler',
-          pricing: 'add',
-          required: false,
-          options: [],
-        }),
-      ];
-  const primaryExtra = extras[0];
+  const primaryExtra = parts.extras[0] || null;
 
   const counts: Record<LevelKey, number> = {
     level1: countNamed(level1?.options),
     level2: countNamed(level2?.options),
-    options: extras.reduce((n, g) => n + countNamed(g.options), 0),
+    options: parts.extras.reduce((n, g) => n + countNamed(g.options), 0),
   };
 
   const stepMeta = STEPS.find((s) => s.key === active)!;
@@ -516,7 +550,7 @@ export default function ProductVariantsLevels({
   }
 
   return (
-    <div className="pv-levels is-editing">
+      <div className="pv-levels">
       <div className="pv-levels__editor">
         <header className="pv-levels__hero">
           <span className="pv-levels__hero-media">
@@ -565,7 +599,7 @@ export default function ProductVariantsLevels({
                 <label className="pv-levels__field">
                   <span>Başlık</span>
                   <input
-                    value={level1?.name || '1. Seviye'}
+                    value={level1?.name ?? ''}
                     onChange={(e) => patchLevel1({ name: e.target.value })}
                     placeholder="1. Seviye"
                   />
@@ -593,7 +627,7 @@ export default function ProductVariantsLevels({
                 <label className="pv-levels__field">
                   <span>Başlık</span>
                   <input
-                    value={level2?.name || '2. Seviye'}
+                    value={level2?.name ?? ''}
                     onChange={(e) => patchLevel2({ name: e.target.value })}
                     placeholder="2. Seviye"
                   />
@@ -621,7 +655,7 @@ export default function ProductVariantsLevels({
                 <label className="pv-levels__field">
                   <span>Başlık</span>
                   <input
-                    value={primaryExtra?.name || 'Seçenekler'}
+                    value={primaryExtra?.name ?? ''}
                     onChange={(e) => patchExtra(0, { name: e.target.value })}
                     placeholder="Seçenekler"
                   />
@@ -683,7 +717,7 @@ export default function ProductVariantsLevels({
                             className={active === key && i === 0 ? 'is-on' : undefined}
                           >
                             {o.name}
-                            {o.price ? ` · ${o.price}` : ''}
+                            {o.price ? ` · ${formatMoney(o.price)}` : ''}
                           </em>
                         ))}
                       </div>

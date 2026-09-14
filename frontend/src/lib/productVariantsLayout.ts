@@ -4,12 +4,6 @@ export const PV_LAYOUT_KEY = 'menu_qr_product_variants_layout';
 export const PV_LAYOUTS = ['gallery', 'levels', 'kanban'] as const;
 export type ProductVariantsLayout = (typeof PV_LAYOUTS)[number];
 
-export const PV_LAYOUT_LABELS: Record<ProductVariantsLayout, string> = {
-  gallery: 'Galeri',
-  levels: 'Seviyeli',
-  kanban: 'Kanban',
-};
-
 export function loadProductVariantsLayout(): ProductVariantsLayout {
   try {
     const raw = localStorage.getItem(PV_LAYOUT_KEY);

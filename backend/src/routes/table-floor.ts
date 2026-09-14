@@ -26,6 +26,7 @@ import {
   type OptionSelectionInput,
 } from '../lib/product-options.js';
 import type { Prisma } from '@prisma/client';
+import { consumeStockForItems, restoreStockForItems } from '../lib/product-stock.js';
 import {
   codeExpiryDate,
   generateUniqueAccessCode,
@@ -648,6 +649,12 @@ router.patch('/orders/item', async (req, res) => {
 
   if (action === 'copy') {
     const src = orders[idx];
+    const stockCheck = await consumeStockForItems(restaurantId!, [
+      { productId: src.productId, qty: src.qty },
+    ]);
+    if (!stockCheck.ok) {
+      return res.status(409).json({ message: stockCheck.message, code: 'OUT_OF_STOCK' });
+    }
     orders.push({
       ...src,
       id: `adm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -655,17 +662,52 @@ router.patch('/orders/item', async (req, res) => {
       source: 'admin',
     });
   } else if (action === 'remove') {
+    const removed = orders[idx];
     orders.splice(idx, 1);
+    await restoreStockForItems(restaurantId!, [
+      { productId: removed.productId, qty: removed.qty },
+    ]);
   } else if (action === 'bump') {
-    const delta = Number(patch?.qty) || 1;
+    const rawDelta = Number(patch?.qty) || 1;
+    const curQty = orders[idx].qty;
+    const nextQty = Math.min(99, Math.max(1, curQty + rawDelta));
+    const actualDelta = nextQty - curQty;
+    if (actualDelta > 0) {
+      const stockCheck = await consumeStockForItems(restaurantId!, [
+        { productId: orders[idx].productId, qty: actualDelta },
+      ]);
+      if (!stockCheck.ok) {
+        return res.status(409).json({ message: stockCheck.message, code: 'OUT_OF_STOCK' });
+      }
+    } else if (actualDelta < 0) {
+      await restoreStockForItems(restaurantId!, [
+        { productId: orders[idx].productId, qty: Math.abs(actualDelta) },
+      ]);
+    }
     orders[idx] = {
       ...orders[idx],
-      qty: Math.min(99, Math.max(1, orders[idx].qty + delta)),
+      qty: nextQty,
     };
   } else {
     const cur = orders[idx];
     const nextQty =
       patch?.qty != null ? Math.min(99, Math.max(1, Number(patch.qty) || 1)) : cur.qty;
+
+    if (nextQty !== cur.qty) {
+      const diff = nextQty - cur.qty;
+      if (diff > 0) {
+        const stockCheck = await consumeStockForItems(restaurantId!, [
+          { productId: cur.productId, qty: diff },
+        ]);
+        if (!stockCheck.ok) {
+          return res.status(409).json({ message: stockCheck.message, code: 'OUT_OF_STOCK' });
+        }
+      } else if (diff < 0) {
+        await restoreStockForItems(restaurantId!, [
+          { productId: cur.productId, qty: Math.abs(diff) },
+        ]);
+      }
+    }
 
     const freeNote =
       patch?.freeNote !== undefined
@@ -973,6 +1015,14 @@ router.post('/orders', async (req, res) => {
   }
 
   if (!lineItems.length) return res.status(400).json({ message: 'Geçerli ürün yok' });
+
+  const stockCheck = await consumeStockForItems(
+    restaurantId!,
+    lineItems.map((i) => ({ productId: i.productId, qty: i.qty }))
+  );
+  if (!stockCheck.ok) {
+    return res.status(409).json({ message: stockCheck.message, code: 'OUT_OF_STOCK' });
+  }
 
   const updated = await appendOrdersToSession(session.id, lineItems);
   const orders = parseOrdersJson(updated?.ordersJson);

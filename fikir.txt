@@ -1,0 +1,80 @@
+═══════════════════════════════════════════════════════════
+  MENU-QR — FİKİR DEFTERİ
+  Admin panel & müşteri menüsü için geliştirme önerileri
+  Hepsi birbirinden farklı, uygulanabilir ve ürün odaklı
+═══════════════════════════════════════════════════════════
+
+
+───────────────────────────────────────────────────────────
+  A) ADMİN PANEL
+───────────────────────────────────────────────────────────
+
+1) Akıllı stok / “bugün bitti” paneli
+   Mutfak tek tıkla ürünü “tükendi” yapar; menüde grileşir
+   veya gizlenir. Gün sonu otomatik sıfırlama seçeneği.
+   Amaç: garson/QR üzerinden sürekli “yok” demeyi bitirmek.
+
+2) Saat dilimli menü (brunch / öğle / akşam)
+   Grup veya ürünlere görünürlük penceresi tanımla
+   (ör. 10:00–14:00 brunch). Menü saate göre kendini düzenler.
+   Amaç: tek menüde üç hizmet dilimini yönetmek.
+
+8) “Sessiz saat” modu
+   Belirli saatlerde bildirim sesi / garson çağrısı kapanır
+   veya titreşime düşer (otel lounge, fine dining).
+   Amaç: ambiyansı bozmayan operasyon.
+
+9) Ürün klonlama + “varyant şablonu kütüphanesi”
+   “Çay seti”, “Burger build” gibi hazır seviye şablonlarını
+   kaydet; yeni ürüne tek tıkla uygula.
+   Amaç: seviyeli kurulumu her seferinde sıfırdan kurmamak.
+
+10) Lisans / şube çoklu görünüm (hafif)
+    Ana hesap altında şube seçici; ürünler ortak, fiyat ve
+    stok şubeye özel. Küçük zincirler için ilk adım.
+    Amaç: tek panelden birden fazla nokta.
+
+11) Değişiklik günlüğü (kim / ne / ne zaman)
+    Fiyat, stok, tema, masa kodu değişikliklerini kısa
+    timeline’da göster. Geri alma şart değil; şeffaflık şart.
+    Amaç: “kim değiştirdi?” kavgasını bitirmek.
+
+12) Menü sağlık kontrolü
+    Fotoğrafsız ürün, fiyatsız seçenek, boş grup, kırık
+    görsel — tek “kontrol et” butonu + düzeltmeye atla.
+    Amaç: yayına çıkmadan önce kalite kapısı.
+
+
+───────────────────────────────────────────────────────────
+  B) MÜŞTERİ MENÜSÜ
+───────────────────────────────────────────────────────────
+
+1) “Bugün mutfakta” şeridi
+   Şefin seçtiği 3–5 ürün üstte canlı şerit; stok bitince
+   otomatik düşer. Menüyü gazete manşeti gibi hissettirir.
+   Amaç: kaydırmadan keşif.
+
+3) Masa arkadaşlarıyla paylaşılan sepet (sipariş teması)
+   Aynı masa koduyla girenler ortak sepet görür; kim ne
+   ekledi hafif avatar ile. Çift hesap / karışıklık azalır.
+   Amaç: “sen ne söyledin?”yi bitirmek.
+
+5) “Benzerini bul” kaydırması
+   Ürün detayında yatay “bunu sevenler şunu da baktı”
+   (aynı grup + benzer fiyat bandı). Ağır AI şart değil.
+   Amaç: tek üründe takılı kalmayı kırmak.
+
+6) Bekleme oyunu → ödül kuponu
+   Sipariş / hesap beklerken kısa oyun; skor eşiğinde
+   “tatlıda %10” gibi tek kullanımlık kod.
+   Amaç: beklemeyi deneyime çevirmek.
+
+10) Akıllı “az kaldı” hissi (stok yokken)
+    Tükenen ürünü silmek yerine “bugün bitti — yarın tekrar”
+    + benzer alternatif öner. Hayal kırıklığını yumuşatır.
+    Amaç: hayır’ı da deneyim yapmak.
+
+11) Hesap bölüştürme önizlemesi
+    Sepette “2 kişi / 3 kişi” ile kabaca kişi başı;
+    garsona gerçek split değil, misafire netlik.
+    Amaç: “ne kadar düşer?” kaygısını azaltmak.

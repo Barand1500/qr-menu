@@ -39,6 +39,7 @@ type GroupProduct = {
   currency?: { code?: string; symbol?: string } | null;
   imageUrl?: string | null;
   calories?: number | null;
+  soldOut?: boolean;
 };
 
 export default function SiparisHome({
@@ -118,6 +119,7 @@ export default function SiparisHome({
           currency: p.currency,
           imageUrl: p.imageUrl,
           calories: p.calories ?? null,
+          soldOut: Boolean(p.soldOut),
         }))
       : (groupProducts || []).map((p) => ({
           productId: p.id,
@@ -127,6 +129,7 @@ export default function SiparisHome({
           imageUrl: p.imageUrl,
           calories: p.calories ?? null,
           description: p.description,
+          soldOut: Boolean(p.soldOut),
         }));
 
   const sectionTitle =

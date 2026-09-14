@@ -38,6 +38,8 @@ type ProductDetail = {
     siparisVariants?: boolean;
   };
   optionGroups?: ProductOptionGroup[];
+  soldOut?: boolean;
+  stockQty?: number | null;
 };
 
 type RelatedProduct = {
@@ -76,6 +78,7 @@ export default function SiparisProductPage({
   const variantsOn = product.menuFeatures?.siparisVariants !== false;
   const cartEnabled = product.menuFeatures?.siparisCart !== false;
   const showCart = cartEnabled && cartCtxOn;
+  const soldOut = Boolean(product.soldOut);
   const optionGroups = variantsOn ? product.optionGroups || [] : [];
 
   const [unitPrice, setUnitPrice] = useState(product.price);
@@ -95,6 +98,7 @@ export default function SiparisProductPage({
   }, [product.id, product.price]);
 
   function add() {
+    if (soldOut) return;
     const name = optionLabel ? `${product.name} (${optionLabel})` : product.name;
     addItem(
       {
@@ -212,20 +216,26 @@ export default function SiparisProductPage({
 
           {showCart ? (
             <div className="siparis-detail__actions">
-              <button ref={addBtnRef} type="button" className="siparis-detail__add" onClick={add}>
-                <Plus className="w-5 h-5" />
-                {en ? 'Add to cart' : 'Sepete ekle'}
-                {optionGroups.length > 0
-                  ? ` · ${formatMoney(unitPrice, product.currency)}`
-                  : ''}
-              </button>
-              <button
-                type="button"
-                className="siparis-detail__add siparis-detail__add--ghost"
-                onClick={addAndOpen}
-              >
-                {en ? 'Add & view cart' : 'Ekle ve sepete git'}
-              </button>
+              {soldOut ? (
+                <p className="siparis-detail__sold-out">{en ? 'Sold out today' : 'Bugün bitti'}</p>
+              ) : (
+                <>
+                  <button ref={addBtnRef} type="button" className="siparis-detail__add" onClick={add}>
+                    <Plus className="w-5 h-5" />
+                    {en ? 'Add to cart' : 'Sepete ekle'}
+                    {optionGroups.length > 0
+                      ? ` · ${formatMoney(unitPrice, product.currency)}`
+                      : ''}
+                  </button>
+                  <button
+                    type="button"
+                    className="siparis-detail__add siparis-detail__add--ghost"
+                    onClick={addAndOpen}
+                  >
+                    {en ? 'Add & view cart' : 'Ekle ve sepete git'}
+                  </button>
+                </>
+              )}
             </div>
           ) : null}
 

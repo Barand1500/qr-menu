@@ -19,6 +19,8 @@ export interface PopularProduct {
   isVegetarian?: boolean;
   isGlutenFree?: boolean;
   isDiabetic?: boolean;
+  stockQty?: number | null;
+  soldOut?: boolean;
 }
 
 interface PopularSearchProductsProps {

@@ -39,6 +39,10 @@ import {
   type BulkPriceSnapshot,
   type BulkSnapshotItem,
 } from '../lib/bulk-price.js';
+import {
+  parseStockQtyInput,
+  parseStockResetPatch,
+} from '../lib/product-stock.js';
 
 const router = Router();
 router.use(authRequired);
@@ -623,6 +627,47 @@ router.patch('/:id/toggle', async (req, res) => {
   res.json(await mapProduct(product, restaurantId!, languages));
 });
 
+/** Hızlı stok / günlük reset ayarı (ürünler tablosu) */
+router.patch('/:id/stock', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const id = Number(req.params.id);
+  const existing = await prisma.product.findFirst({
+    where: { id, restaurantId: restaurantId! },
+  });
+  if (!existing) return res.status(404).json({ message: 'Ürün bulunamadı' });
+
+  const data: {
+    stockQty?: number | null;
+    stockResetHour?: number | null;
+    stockResetMinute?: number | null;
+    stockResetTo?: number | null;
+  } = {};
+
+  if ('stockQty' in req.body) {
+    const parsed = parseStockQtyInput(req.body.stockQty);
+    if (!parsed.ok) return res.status(400).json({ message: parsed.message });
+    data.stockQty = parsed.value;
+  }
+
+  const reset = parseStockResetPatch(req.body as Record<string, unknown>);
+  if (!reset.ok) return res.status(400).json({ message: reset.message });
+  Object.assign(data, reset.data);
+
+  if (!Object.keys(data).length) {
+    return res.status(400).json({ message: 'Güncellenecek stok alanı yok' });
+  }
+
+  const [product, languages] = await Promise.all([
+    prisma.product.update({
+      where: { id },
+      data,
+      include: { group: true, currency: true },
+    }),
+    getLanguages(),
+  ]);
+  res.json(await mapProduct(product, restaurantId!, languages));
+});
+
 router.put('/reorder/bulk', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   const { items } = req.body as { items: { id: number; sortOrder: number }[] };
@@ -757,6 +802,10 @@ async function mapProduct(
     dietTags?: unknown;
     sortOrder: number;
     isActive: boolean;
+    stockQty?: number | null;
+    stockResetHour?: number | null;
+    stockResetMinute?: number | null;
+    stockResetTo?: number | null;
     i18n: unknown;
     optionGroups?: unknown;
     group: { i18n: unknown };
@@ -811,6 +860,10 @@ async function mapProduct(
     images,
     sortOrder: product.sortOrder,
     isActive: product.isActive,
+    stockQty: product.stockQty ?? null,
+    stockResetHour: product.stockResetHour ?? null,
+    stockResetMinute: product.stockResetMinute ?? 0,
+    stockResetTo: product.stockResetTo ?? null,
     isValid: validation.valid,
     validationIssues: validation.issues,
     translations: toProductTranslations(product.i18n, languages),

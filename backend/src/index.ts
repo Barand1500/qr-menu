@@ -2,12 +2,15 @@ import 'dotenv/config';
 import { createApp } from './app.js';
 import { config } from './config.js';
 import { ensureDefaultCurrency } from './lib/currencies.js';
+import { startStockResetScheduler } from './lib/product-stock.js';
 
 const app = createApp();
 
 ensureDefaultCurrency().catch((err) => {
   console.warn('[backend] Varsayılan para birimi (TRY) oluşturulamadı:', err);
 });
+
+startStockResetScheduler();
 
 const server = app.listen(config.port, () => {
   console.log(`Menu QR: http://localhost:${config.port}`);

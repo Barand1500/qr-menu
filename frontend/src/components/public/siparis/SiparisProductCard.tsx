@@ -11,6 +11,7 @@ import type { SiparisAddPayload } from '@/lib/siparisCart';
 
 export type SiparisProductCardItem = SiparisAddPayload & {
   description?: string | null;
+  soldOut?: boolean;
 };
 
 export default function SiparisProductCard({
@@ -23,11 +24,12 @@ export default function SiparisProductCard({
   const { addItem, enabled } = useSiparisCart();
   const mediaRef = useRef<HTMLAnchorElement>(null);
   const addBtnRef = useRef<HTMLButtonElement>(null);
+  const soldOut = Boolean(product.soldOut);
 
   function onAdd(e: MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (!enabled) return;
+    if (!enabled || soldOut) return;
     addItem(
       {
         productId: product.productId,
@@ -42,7 +44,11 @@ export default function SiparisProductCard({
   }
 
   return (
-    <article className={`siparis-card${compact ? ' siparis-card--compact' : ''}`}>
+    <article
+      className={`siparis-card${compact ? ' siparis-card--compact' : ''}${
+        soldOut ? ' is-sold-out' : ''
+      }`}
+    >
       <Link
         ref={mediaRef}
         to={menuProductPath(product.productId)}
@@ -53,6 +59,7 @@ export default function SiparisProductCard({
         ) : (
           <MenuMediaPlaceholder kind="product" size="lg" label={product.name} />
         )}
+        {soldOut ? <span className="siparis-card__sold-out">Bugün bitti</span> : null}
       </Link>
       <div className="siparis-card__body">
         <Link to={menuProductPath(product.productId)} className="siparis-card__name">
@@ -67,7 +74,7 @@ export default function SiparisProductCard({
           <span className="siparis-card__price">
             {formatMoney(product.price, product.currency)}
           </span>
-          {enabled ? (
+          {enabled && !soldOut ? (
             <button
               ref={addBtnRef}
               type="button"

@@ -136,6 +136,8 @@ interface ProductData {
     isVegetarian?: boolean;
     isGlutenFree?: boolean;
     isDiabetic?: boolean;
+    stockQty?: number | null;
+    soldOut?: boolean;
   }[];
   children?: {
     id: number;

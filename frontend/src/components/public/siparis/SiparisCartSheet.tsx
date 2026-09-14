@@ -67,6 +67,7 @@ export default function SiparisCartSheet({ lang }: { lang: string }) {
           items.length > 0
             ? {
                 items: items.map((i) => ({
+                  productId: i.productId,
                   name: i.name,
                   qty: i.qty,
                   price: i.price,
