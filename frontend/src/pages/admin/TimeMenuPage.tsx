@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Plus, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
 import { Button, PageHeader, Spinner } from '@/components/ui';
+import { TimePicker } from '@/components/TimePicker';
 import {
   compactRules,
   createCustomSlot,
@@ -102,7 +103,7 @@ export default function TimeMenuPage() {
   const [toastKind, setToastKind] = useState<'ok' | 'warn'>('ok');
   const [page, setPage] = useState(0);
 
-  const PAGE_SIZE = 12;
+  const PAGE_SIZE = 6;
 
   const showToast = useCallback((text: string, kind: 'ok' | 'warn' = 'ok') => {
     setToastKind(kind);
@@ -419,26 +420,18 @@ export default function TimeMenuPage() {
                     </label>
                   </div>
                   <div className="time-menu-slot-edit__times">
-                    <div className="time-menu-field">
-                      <label htmlFor="tm-start">Başlangıç</label>
-                      <input
-                        id="tm-start"
-                        type="time"
-                        value={currentSlot.start}
-                        onChange={(e) =>
-                          updateSlot({ start: e.target.value || currentSlot.start })
-                        }
-                      />
-                    </div>
-                    <div className="time-menu-field">
-                      <label htmlFor="tm-end">Bitiş</label>
-                      <input
-                        id="tm-end"
-                        type="time"
-                        value={currentSlot.end}
-                        onChange={(e) => updateSlot({ end: e.target.value || currentSlot.end })}
-                      />
-                    </div>
+                    <TimePicker
+                      id="tm-start"
+                      label="Başlangıç"
+                      value={currentSlot.start}
+                      onChange={(start) => updateSlot({ start })}
+                    />
+                    <TimePicker
+                      id="tm-end"
+                      label="Bitiş"
+                      value={currentSlot.end}
+                      onChange={(end) => updateSlot({ end })}
+                    />
                     {!['morning', 'lunch', 'dinner'].includes(currentSlot.id) ? (
                       <button
                         type="button"
