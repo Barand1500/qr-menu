@@ -38,6 +38,12 @@ import {
 import { isTableServiceEnabled, MENU_TABLE_SERVICE_KEY } from '../lib/table-service.js';
 import { isMenuGamesEnabled, MENU_GAMES_CONFIG_KEY, MENU_GAMES_KEY, parseMenuGamesConfig, publicMenuGamesPayload } from '../lib/menu-games.js';
 import {
+  TIME_MENU_KEY,
+  buildTimeMenuRuntime,
+  patchProductForSlot,
+  type TimeMenuRuntime,
+} from '../lib/time-menu.js';
+import {
   isCodeVerified,
   loadTableSessionCodeConfig,
   resolveCodeGateStatus,
@@ -111,6 +117,13 @@ function campaignMeta(campaign: CampaignCtx | null) {
 function stockPublicFields(p: { stockQty?: number | null }) {
   const stockQty = p.stockQty ?? null;
   return { stockQty, soldOut: isSoldOut(stockQty) };
+}
+
+async function getTimeMenuRuntime(restaurantId: number): Promise<TimeMenuRuntime> {
+  const row = await prisma.setting.findFirst({
+    where: { restaurantId, key: TIME_MENU_KEY },
+  });
+  return buildTimeMenuRuntime(row?.value);
 }
 
 async function trackView(
@@ -332,6 +345,12 @@ router.get('/:slug/products/:productId', async (req, res) => {
   });
   if (!product) return res.status(404).json({ message: 'Ürün bulunamadı' });
 
+  const timeMenu = await getTimeMenuRuntime(restaurant.id);
+  if (timeMenu.config.enabled && timeMenu.slot) {
+    const rule = timeMenu.rules.get(product.id);
+    if (rule?.hidden) return res.status(404).json({ message: 'Ürün bulunamadı' });
+  }
+
   await trackView(restaurant.id, 'product', productId, sessionId, req, activeLang);
 
   const features = Array.isArray(product.features)
@@ -353,6 +372,13 @@ router.get('/:slug/products/:productId', async (req, res) => {
     campaign,
     mapCurrency
   );
+  const timePatch = timeMenu.config.enabled
+    ? patchProductForSlot(
+        product.id,
+        { isRecommended: product.isRecommended, price: priced.price },
+        timeMenu.rules.get(product.id)
+      )
+    : null;
   const themes = await getRestaurantThemes(restaurant.id);
   const prefCatalog = await loadPrefCatalog(restaurant.id);
   const [tableServiceSetting, gamesConfigSetting, gamesLegacySetting, animasyonConfigSetting, sadeConfigSetting, aliveConfigSetting, luxuryConfigSetting, linearConfigSetting, siparisConfigSetting] =
@@ -418,13 +444,13 @@ router.get('/:slug/products/:productId', async (req, res) => {
     isVegetarian: product.isVegetarian,
     isGlutenFree: product.isGlutenFree,
     isDiabetic: product.isDiabetic,
-    price: priced.price,
+    price: timePatch?.price ?? priced.price,
     currency: priced.currency,
     imageUrl: images[0] ?? null,
     images,
     prepTimeMinutes: product.prepTimeMinutes,
     calories: product.calories,
-    isRecommended: product.isRecommended,
+    isRecommended: timePatch?.isRecommended ?? product.isRecommended,
     features: features.length > 0 ? features : legacyFeatures,
     campaign: campaignMeta(campaign),
     theme: themes.menu,
@@ -844,6 +870,8 @@ router.get('/:slug/groups/:groupId/products', async (req, res) => {
     orderBy: { sortOrder: 'asc' },
   });
 
+  const timeMenu = await getTimeMenuRuntime(restaurant.id);
+
   await trackView(restaurant.id, 'group', groupId, sessionId, req, activeLang);
 
   function mapProduct(p: (typeof allProducts)[number]) {
@@ -857,15 +885,22 @@ router.get('/:slug/groups/:groupId/products', async (req, res) => {
       campaign,
       mapCurrency
     );
+    const patch = timeMenu.config.enabled
+      ? patchProductForSlot(
+          p.id,
+          { isRecommended: p.isRecommended, price: priced.price },
+          timeMenu.rules.get(p.id)
+        )
+      : null;
     return {
       id: p.id,
       name: getProductField(p.i18n, activeLang, 'name'),
       description: getProductField(p.i18n, activeLang, 'description'),
-      price: priced.price,
+      price: patch?.price ?? priced.price,
       currency: priced.currency,
       imageUrl: images[0] ?? null,
       calories: p.calories ?? null,
-      isRecommended: p.isRecommended,
+      isRecommended: patch?.isRecommended ?? p.isRecommended,
       allergens: getProductField(p.i18n, activeLang, 'allergens'),
       allergenTags: parseAllergenTags(p.allergenTags),
       isVegan: p.isVegan,
@@ -875,11 +910,14 @@ router.get('/:slug/groups/:groupId/products', async (req, res) => {
       groupId: p.groupId,
       sortOrder: campaign?.itemByProductId.get(p.id)?.sortOrder ?? p.sortOrder,
       ...stockPublicFields(p),
+      _hidden: patch?.hidden === true,
     };
   }
 
   const mappedAll = allProducts
     .map(mapProduct)
+    .filter((p) => !p._hidden)
+    .map(({ _hidden: _, ...rest }) => rest)
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
   const strip = <T extends { sortOrder: number }>(rows: T[]) =>
@@ -935,47 +973,77 @@ router.get('/:slug/popular-products', async (req, res) => {
 
   const campaignFilter = campaign ? { id: { in: campaign.productIds } } : {};
 
-  /** Sadece admin “Önerilen ürün” işaretli ürünler — görüntüleme/rastgele yok */
+  const timeMenu = await getTimeMenuRuntime(restaurant.id);
+  const featuredIds = timeMenu.config.enabled && timeMenu.slot
+    ? [...timeMenu.rules.entries()]
+        .filter(([, r]) => r.featured && !r.hidden)
+        .map(([id]) => id)
+    : [];
+  const hiddenIds =
+    timeMenu.config.enabled && timeMenu.slot
+      ? [...timeMenu.rules.entries()].filter(([, r]) => r.hidden).map(([id]) => id)
+      : [];
+
+  /** Önerilen + dilimde öne çıkanlar; gizli olanlar hariç */
   const products = await prisma.product.findMany({
     where: {
       restaurantId: restaurant.id,
       isActive: true,
-      isRecommended: true,
       ...campaignFilter,
+      AND: [
+        {
+          OR: [
+            { isRecommended: true },
+            ...(featuredIds.length ? [{ id: { in: featuredIds } }] : []),
+          ],
+        },
+        ...(hiddenIds.length ? [{ id: { notIn: hiddenIds } }] : []),
+      ],
     },
     include: { group: true, currency: true },
     orderBy: { sortOrder: 'asc' },
-    take: limit,
+    take: limit * 2,
   });
 
-  const items = products.map((p) => {
-    const priced = applyCampaignPrice(
-      p.id,
-      {
-        price: Number(p.price),
-        currency: mapCurrency(p.currency),
-      },
-      campaign,
-      mapCurrency
-    );
-    return {
-      id: p.id,
-      name: getProductField(p.i18n, activeLang, 'name'),
-      price: priced.price,
-      currency: priced.currency,
-      imageUrl: parseProductImages(p)[0] ?? null,
-      calories: p.calories ?? null,
-      allergens: getProductField(p.i18n, activeLang, 'allergens'),
-      allergenTags: parseAllergenTags(p.allergenTags),
-      isVegan: p.isVegan,
-      isVegetarian: p.isVegetarian,
-      isGlutenFree: p.isGlutenFree,
-      isDiabetic: p.isDiabetic,
-      groupId: p.groupId,
-      groupName: getGroupName(p.group.i18n, activeLang),
-      ...stockPublicFields(p),
-    };
-  });
+  const items = products
+    .map((p) => {
+      const priced = applyCampaignPrice(
+        p.id,
+        {
+          price: Number(p.price),
+          currency: mapCurrency(p.currency),
+        },
+        campaign,
+        mapCurrency
+      );
+      const patch = timeMenu.config.enabled
+        ? patchProductForSlot(
+            p.id,
+            { isRecommended: p.isRecommended, price: priced.price },
+            timeMenu.rules.get(p.id)
+          )
+        : null;
+      if (patch?.hidden) return null;
+      return {
+        id: p.id,
+        name: getProductField(p.i18n, activeLang, 'name'),
+        price: patch?.price ?? priced.price,
+        currency: priced.currency,
+        imageUrl: parseProductImages(p)[0] ?? null,
+        calories: p.calories ?? null,
+        allergens: getProductField(p.i18n, activeLang, 'allergens'),
+        allergenTags: parseAllergenTags(p.allergenTags),
+        isVegan: p.isVegan,
+        isVegetarian: p.isVegetarian,
+        isGlutenFree: p.isGlutenFree,
+        isDiabetic: p.isDiabetic,
+        groupId: p.groupId,
+        groupName: getGroupName(p.group.i18n, activeLang),
+        ...stockPublicFields(p),
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x != null)
+    .slice(0, limit);
 
   res.json(items);
 });
@@ -1009,8 +1077,14 @@ router.get('/:slug/search', async (req, res) => {
     take: 100,
   });
 
+  const timeMenu = await getTimeMenuRuntime(restaurant.id);
+
   const filtered = products
     .filter((p) => textMatchesI18n(p.i18n, activeLang, ['name'], q))
+    .filter((p) => {
+      if (!timeMenu.config.enabled || !timeMenu.slot) return true;
+      return timeMenu.rules.get(p.id)?.hidden !== true;
+    })
     .slice(0, 20);
 
   res.json(
@@ -1024,10 +1098,17 @@ router.get('/:slug/search', async (req, res) => {
         campaign,
         mapCurrency
       );
+      const patch = timeMenu.config.enabled
+        ? patchProductForSlot(
+            p.id,
+            { isRecommended: p.isRecommended, price: priced.price },
+            timeMenu.rules.get(p.id)
+          )
+        : null;
       return {
         id: p.id,
         name: getProductField(p.i18n, activeLang, 'name'),
-        price: priced.price,
+        price: patch?.price ?? priced.price,
         currency: priced.currency,
         imageUrl: parseProductImages(p)[0] ?? null,
         allergens: getProductField(p.i18n, activeLang, 'allergens'),

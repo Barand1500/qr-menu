@@ -47,6 +47,12 @@ import {
   type GeoLockConfig,
 } from '../lib/geo-lock.js';
 import { isMaintenanceEnabled, setMaintenanceEnabled } from '../lib/maintenance.js';
+import {
+  TIME_MENU_KEY,
+  parseTimeMenuConfig,
+  serializeTimeMenuConfig,
+  type TimeMenuConfig,
+} from '../lib/time-menu.js';
 import { ABOUT_PAGE_KEY, parseAboutPage, serializeAboutPage } from '../lib/about-page.js';
 import type { AboutPageConfig } from '../lib/about-page.js';
 import {
@@ -702,6 +708,48 @@ router.put('/maintenance', async (req, res) => {
   const enabled = Boolean((req.body as { enabled?: boolean }).enabled);
   await setMaintenanceEnabled(restaurantId!, enabled);
   res.json({ enabled });
+});
+
+router.get('/time-menu', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const row = await prisma.setting.findFirst({
+    where: { restaurantId: restaurantId!, key: TIME_MENU_KEY },
+  });
+  res.json({ ok: true, config: parseTimeMenuConfig(row?.value ?? null) });
+});
+
+router.put('/time-menu', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const body = (req.body ?? {}) as Partial<TimeMenuConfig>;
+  const current = parseTimeMenuConfig(
+    (
+      await prisma.setting.findFirst({
+        where: { restaurantId: restaurantId!, key: TIME_MENU_KEY },
+      })
+    )?.value ?? null
+  );
+  const next: TimeMenuConfig = {
+    enabled: typeof body.enabled === 'boolean' ? body.enabled : current.enabled,
+    timezone:
+      typeof body.timezone === 'string' && body.timezone.trim()
+        ? body.timezone.trim()
+        : current.timezone,
+    slots: Array.isArray(body.slots) ? body.slots : current.slots,
+    rules: Array.isArray(body.rules) ? body.rules : current.rules,
+  };
+  const normalized = parseTimeMenuConfig(JSON.stringify(next));
+  await prisma.setting.upsert({
+    where: {
+      restaurantId_key: { restaurantId: restaurantId!, key: TIME_MENU_KEY },
+    },
+    update: { value: serializeTimeMenuConfig(normalized) },
+    create: {
+      restaurantId: restaurantId!,
+      key: TIME_MENU_KEY,
+      value: serializeTimeMenuConfig(normalized),
+    },
+  });
+  res.json({ ok: true, config: normalized });
 });
 
 router.get('/admin-path', async (req, res) => {

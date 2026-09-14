@@ -33,6 +33,7 @@ import BulkPriceModal, {
   type BulkPriceApplyResult,
 } from '@/components/BulkPriceModal';
 import ProductStockModal, { stockLabel } from '@/components/ProductStockModal';
+import ScheduleMenuModal from '@/components/ScheduleMenuModal';
 import type { ProductOptionGroup } from '@/lib/productOptions';
 import {
   defaultPrefCatalog,
@@ -306,6 +307,7 @@ export default function ProductsPage() {
   const [prefCatalog, setPrefCatalog] = useState<PrefCatalog>(() => defaultPrefCatalog());
 
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [bulkRestoreOpen, setBulkRestoreOpen] = useState(false);
   const [bulkRestoring, setBulkRestoring] = useState(false);
   const [bulkToast, setBulkToast] = useState<string | null>(null);
@@ -822,10 +824,19 @@ export default function ProductsPage() {
                 )}
               </div>
             )}
-            <Button onClick={() => openCreate()}>
-              <Plus className="w-4 h-4" />
-              Yeni Ürün Ekle
-            </Button>
+            <div className="flex flex-col items-stretch self-center min-w-0">
+              <Button onClick={() => openCreate()} className="w-full">
+                <Plus className="w-4 h-4" />
+                Yeni Ürün Ekle
+              </Button>
+              <button
+                type="button"
+                onClick={() => setScheduleOpen(true)}
+                className="mt-0.5 w-full text-center text-[11px] leading-tight admin-text-muted hover:text-[var(--admin-accent)] transition px-0.5"
+              >
+                Saatlik menü
+              </button>
+            </div>
           </div>
         }
       />
@@ -1032,6 +1043,12 @@ export default function ProductsPage() {
           }
         />
       ) : null}
+
+      <ScheduleMenuModal
+        open={scheduleOpen}
+        groups={groups}
+        onClose={() => setScheduleOpen(false)}
+      />
 
       {bulkRestoreOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
