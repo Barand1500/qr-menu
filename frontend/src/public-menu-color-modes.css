@@ -107,15 +107,47 @@
   background: #0f172a;
 }
 
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .public-search-overlay__head {
+  background: #0f172a;
+  border-bottom-color: rgba(148, 163, 184, 0.12);
+}
+
 .public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .public-search-input {
   background: #1e293b;
   border-color: rgba(148, 163, 184, 0.2);
   color: #f1f5f9;
 }
 
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .public-search-input::placeholder {
+  color: #94a3b8;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .public-popular-search__head,
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .public-search-results .public-popular-search__head,
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .public-search-empty {
+  color: #e2e8f0;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .public-popular-search__icon {
+  color: #fb923c;
+}
+
 .public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .public-popular-search__item {
   background: #1e293b;
   border-color: rgba(56, 189, 248, 0.15);
+  box-shadow: none;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .public-popular-search__name {
+  color: #f8fafc;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .public-popular-search__group {
+  color: #94a3b8;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .public-popular-search__price {
+  color: #7dd3fc;
 }
 
 /* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Sade gece ÃÂ¢ÃÂÃÂ ÃÂÃÂ¼rÃÂÃÂ¼n detay ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
