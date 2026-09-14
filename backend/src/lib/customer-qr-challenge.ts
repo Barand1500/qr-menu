@@ -1,8 +1,8 @@
 /** Müşteri kişisel QR + 6 haneli kod — kısa ömürlü challenge (bellek içi) */
 
-export const CUSTOMER_QR_TTL_MS = 45_000;
+const CUSTOMER_QR_TTL_MS = 45_000;
 
-export type CustomerQrChallenge = {
+type CustomerQrChallenge = {
   customerId: number;
   code: string;
   token: string;
@@ -47,7 +47,7 @@ function uniqueCode(now = Date.now()): string {
   return `${Date.now()}`.slice(-6);
 }
 
-export function buildCustomerQrPayload(challenge: CustomerQrChallenge) {
+function buildCustomerQrPayload(challenge: CustomerQrChallenge) {
   return `mqr-c1.${challenge.customerId}.${challenge.token}.${challenge.expiresAt}`;
 }
 
@@ -106,7 +106,6 @@ export function lookupCustomerQrChallenge(input: {
   }
 
   if (qrRaw) {
-    // Saf 6 hane QR alanına yapıştırılmış olabilir
     const asCode = qrRaw.replace(/\D/g, '');
     if (asCode.length === 6 && !qrRaw.includes('.')) {
       return lookupCustomerQrChallenge({ code: asCode });

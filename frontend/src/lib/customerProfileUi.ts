@@ -10,19 +10,13 @@ export type CustomerProfileUi = {
   login: string;
   register: string;
   close: string;
-  account: string;
-  points: string;
-  personalFilter: string;
   personalFilterHint: string;
   fullName: string;
   alcohol: string;
-  alcoholHint: string;
   alcoholYes: string;
   alcoholNo: string;
   allergies: string;
-  allergiesHint: string;
   diet: string;
-  dietHint: string;
   likedFoods: string;
   likedHint: string;
   dislikedFoods: string;
@@ -45,19 +39,13 @@ const EN: CustomerProfileUi = {
   login: 'Sign in',
   register: 'Sign up',
   close: 'Close',
-  account: 'Account',
-  points: 'Points',
-  personalFilter: 'Personal menu filter',
   personalFilterHint: 'When on, allergies, alcohol and disliked items apply',
   fullName: 'Full name',
   alcohol: 'Alcohol',
-  alcoholHint: 'Preference for products that contain alcohol',
   alcoholYes: 'I drink alcohol',
   alcoholNo: 'I don’t drink alcohol',
   allergies: 'Allergies',
-  allergiesHint: 'Selected items are hidden from the menu',
   diet: 'Diet / preferences',
-  dietHint: 'Matching products are highlighted',
   likedFoods: 'Foods I like',
   likedHint: 'Type a name or category (e.g. pizza, dessert)',
   dislikedFoods: 'Foods I dislike',
@@ -80,19 +68,13 @@ const TR: CustomerProfileUi = {
   login: 'Giriş yap',
   register: 'Kayıt ol',
   close: 'Kapat',
-  account: 'Hesap',
-  points: 'Puan',
-  personalFilter: 'Kişisel menü filtresi',
   personalFilterHint: 'Açıkken alerji, alkol ve sevmediklerin uygulanır',
   fullName: 'Ad Soyad',
   alcohol: 'Alkol',
-  alcoholHint: 'Restoranlarda alkol içeren ürünler için tercih',
   alcoholYes: 'Alkol tüketiyorum',
   alcoholNo: 'Alkol tüketmiyorum',
   allergies: 'Alerjiler',
-  allergiesHint: 'Seçtiklerin menüden gizlenir',
   diet: 'Diyet / tercih',
-  dietHint: 'Uygun ürünler öne çıkar',
   likedFoods: 'Sevdiğim yemekler',
   likedHint: 'İsim veya kategori yaz (ör. pizza, tatlı)',
   dislikedFoods: 'Sevmediğim yemekler',
@@ -120,7 +102,6 @@ const MAP: Record<string, CustomerProfileUi> = {
     dislikedFoods: 'Nicht mag ich',
     likedHint: 'Name oder Kategorie (z. B. Pizza)',
     dislikedHint: 'Groß/Klein egal; wird ausgeblendet wenn der Name passt',
-    personalFilter: 'Persönlicher Menüfilter',
     personalFilterHint: 'Bei Aktivierung gelten Allergien, Alkohol und Abneigungen',
     allergies: 'Allergien',
     diet: 'Diät / Vorlieben',
@@ -137,7 +118,6 @@ const MAP: Record<string, CustomerProfileUi> = {
     myProfile: 'Мой профиль',
     likedFoods: 'Любимые блюда',
     dislikedFoods: 'Нелюбимые блюда',
-    personalFilter: 'Личный фильтр меню',
     allergies: 'Аллергии',
     diet: 'Диета / предпочтения',
     save: 'Сохранить',
@@ -153,7 +133,6 @@ const MAP: Record<string, CustomerProfileUi> = {
     myProfile: 'Mon profil',
     likedFoods: 'Plats que j’aime',
     dislikedFoods: 'Plats que je n’aime pas',
-    personalFilter: 'Filtre de menu personnel',
     allergies: 'Allergies',
     diet: 'Régime / préférences',
     save: 'Enregistrer',
@@ -169,7 +148,6 @@ const MAP: Record<string, CustomerProfileUi> = {
     myProfile: 'Mi perfil',
     likedFoods: 'Comidas que me gustan',
     dislikedFoods: 'Comidas que no me gustan',
-    personalFilter: 'Filtro personal del menú',
     allergies: 'Alergias',
     diet: 'Dieta / preferencias',
     save: 'Guardar',
@@ -185,7 +163,6 @@ const MAP: Record<string, CustomerProfileUi> = {
     myProfile: 'ملفي',
     likedFoods: 'أطعمة أحبها',
     dislikedFoods: 'أطعمة لا أحبها',
-    personalFilter: 'فلتر القائمة الشخصي',
     allergies: 'الحساسية',
     diet: 'نظام غذائي / تفضيلات',
     save: 'حفظ',
@@ -201,7 +178,6 @@ const MAP: Record<string, CustomerProfileUi> = {
     myProfile: 'Il mio profilo',
     likedFoods: 'Piatti che mi piacciono',
     dislikedFoods: 'Piatti che non mi piacciono',
-    personalFilter: 'Filtro menu personale',
     allergies: 'Allergie',
     diet: 'Dieta / preferenze',
     save: 'Salva',
@@ -217,7 +193,6 @@ const MAP: Record<string, CustomerProfileUi> = {
     myProfile: 'Profilim',
     likedFoods: 'Sevdiyim yeməklər',
     dislikedFoods: 'Sevmədiyim yeməklər',
-    personalFilter: 'Şəxsi menyu filtri',
     allergies: 'Allergiyalar',
     diet: 'Diet / üstünlük',
     save: 'Saxla',
@@ -230,22 +205,34 @@ const MAP: Record<string, CustomerProfileUi> = {
     closeFilter: 'Filter uit',
     openFilter: 'Filter aan',
     profile: 'Profiel',
+    myProfile: 'Mijn profiel',
     likedFoods: 'Gerechten die ik leuk vind',
     dislikedFoods: 'Gerechten die ik niet leuk vind',
+    allergies: 'Allergieën',
+    diet: 'Dieet / voorkeur',
+    save: 'Opslaan',
+    logout: 'Uitloggen',
   },
   pt: {
     ...EN,
     helloFiltered: (name) => `Olá ${name}, filtrámos o menu para si.`,
-    helloFilterOff: (name) => `Olá ${name} — filtro pessoal desligado.`,
+    helloFilterOff: (name) => `Olá ${name} — o filtro pessoal está desligado.`,
     closeFilter: 'Desligar filtro',
     openFilter: 'Ligar filtro',
     profile: 'Perfil',
+    myProfile: 'O meu perfil',
     likedFoods: 'Comidas de que gosto',
     dislikedFoods: 'Comidas de que não gosto',
+    allergies: 'Alergias',
+    diet: 'Dieta / preferência',
+    save: 'Guardar',
+    logout: 'Terminar sessão',
   },
 };
 
 export function customerProfileUi(lang: string): CustomerProfileUi {
-  const code = (lang || 'tr').split('-')[0].toLowerCase();
-  return MAP[code] || EN;
+  const key = String(lang || 'tr')
+    .toLowerCase()
+    .slice(0, 2);
+  return MAP[key] || EN;
 }

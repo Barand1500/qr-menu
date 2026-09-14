@@ -1,7 +1,8 @@
 /** Müşteri QR / kod — frontend yardımcıları */
 
 export const CUSTOMER_QR_TTL_MS = 45_000;
-export const CUSTOMER_UNLOCK_WINDOW_MS = 5 * 60_000;
+
+const UNLOCK_WINDOW_MS = 5 * 60_000;
 
 export type CustomerPrivacyFlags = {
   showName: boolean;
@@ -37,7 +38,7 @@ export function writeCustomerPrivacy(customerId: number, flags: CustomerPrivacyF
 
 type UnlockSession = { customerId: number; until: number };
 
-export function markCustomerUnlocked(customerId: number, windowMs = CUSTOMER_UNLOCK_WINDOW_MS) {
+export function markCustomerUnlocked(customerId: number, windowMs = UNLOCK_WINDOW_MS) {
   const payload: UnlockSession = { customerId, until: Date.now() + windowMs };
   try {
     sessionStorage.setItem(UNLOCK_KEY, JSON.stringify(payload));
@@ -47,7 +48,7 @@ export function markCustomerUnlocked(customerId: number, windowMs = CUSTOMER_UNL
   return payload;
 }
 
-export function readCustomerUnlock(): UnlockSession | null {
+function readCustomerUnlock(): UnlockSession | null {
   try {
     const raw = sessionStorage.getItem(UNLOCK_KEY);
     if (!raw) return null;
@@ -65,14 +66,6 @@ export function readCustomerUnlock(): UnlockSession | null {
 export function isCustomerUnlocked(customerId: number) {
   const s = readCustomerUnlock();
   return Boolean(s && s.customerId === customerId);
-}
-
-export function clearCustomerUnlock() {
-  try {
-    sessionStorage.removeItem(UNLOCK_KEY);
-  } catch {
-    /* ignore */
-  }
 }
 
 export function formatCustomerCodeDisplay(code: string) {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, KeyRound, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check, MapPinned, Expand } from 'lucide-react';
+import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, KeyRound, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check, MapPinned, Expand, Save } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
@@ -119,6 +119,8 @@ export default function SettingsPage() {
   const assistantEnabled = isEnabled('menu-assistant');
   const [searchParams, setSearchParams] = useSearchParams();
   const fileRef = useRef<HTMLInputElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const saveBtnRef = useRef<HTMLSpanElement>(null);
   const [data, setData] = useState<SettingsData | null>(null);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,6 +163,33 @@ export default function SettingsPage() {
   const customIconInputRef = useRef<HTMLInputElement>(null);
   const pendingCustomIconIdRef = useRef<string | null>(null);
   const [uploadingIconFor, setUploadingIconFor] = useState<string | null>(null);
+  const [settingsDirty, setSettingsDirty] = useState(false);
+  const [saveInView, setSaveInView] = useState(true);
+
+  useEffect(() => {
+    const root = pageRef.current;
+    if (!root) return;
+    const markDirty = () => setSettingsDirty(true);
+    root.addEventListener('input', markDirty, true);
+    root.addEventListener('change', markDirty, true);
+    return () => {
+      root.removeEventListener('input', markDirty, true);
+      root.removeEventListener('change', markDirty, true);
+    };
+  }, [data]);
+
+  useEffect(() => {
+    const el = saveBtnRef.current;
+    if (!el || !data) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        setSaveInView(Boolean(entry?.isIntersecting && entry.intersectionRatio >= 0.35));
+      },
+      { threshold: [0, 0.35, 1], rootMargin: '-4px 0px 0px 0px' }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [data]);
 
   useEffect(() => {
     Promise.all([
@@ -425,6 +454,7 @@ export default function SettingsPage() {
         setLogoFile(null);
       }
       await refreshUser();
+      setSettingsDirty(false);
       alert('Ayarlar kaydedildi');
     } finally {
       setSaving(false);
@@ -435,6 +465,7 @@ export default function SettingsPage() {
     if (!data) return;
     const lang = data.languages.find((l) => l.id === id);
     if (!lang || lang.code === 'tr') return;
+    setSettingsDirty(true);
     setData({
       ...data,
       languages: data.languages.map((l) =>
@@ -444,6 +475,7 @@ export default function SettingsPage() {
   }
 
   function toggleCurrency(id: number) {
+    setSettingsDirty(true);
     setCurrencies((prev) => {
       const target = prev.find((c) => c.id === id);
       if (!target || target.code === 'TRY') return prev;
@@ -584,14 +616,17 @@ export default function SettingsPage() {
   const filledSocialCount = socialLinks.filter((s) => s.value.trim()).length;
 
   function updateSocial(id: string, patch: Partial<SocialLinkConfig>) {
+    setSettingsDirty(true);
     setSocialLinks((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   }
 
   function addCustomSocial() {
+    setSettingsDirty(true);
     setSocialLinks((prev) => [...prev, newCustomSocialLink()]);
   }
 
   function removeCustomSocial(id: string) {
+    setSettingsDirty(true);
     setSocialLinks((prev) => prev.filter((s) => s.id !== id));
     if (iconPickerFor === id) {
       setIconPickerFor(null);
@@ -636,13 +671,15 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-5 w-full">
+    <div className="space-y-5 w-full" ref={pageRef}>
       <PageHeader
         title="Ayarlar"
         actions={
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Kaydediliyor...' : 'Kaydet'}
-          </Button>
+          <span ref={saveBtnRef} className="inline-flex">
+            <Button onClick={() => void handleSave()} disabled={saving}>
+              {saving ? 'Kaydediliyor...' : 'Kaydet'}
+            </Button>
+          </span>
         }
       />
 
@@ -1345,7 +1382,10 @@ export default function SettingsPage() {
             className="settings-feature-toggle geo-lock-admin__toggle"
             role="switch"
             aria-checked={geoLock.enabled}
-            onClick={() => setGeoLock((g) => ({ ...g, enabled: !g.enabled }))}
+            onClick={() => {
+              setSettingsDirty(true);
+              setGeoLock((g) => ({ ...g, enabled: !g.enabled }));
+            }}
           >
             <span className="settings-feature-toggle__label">
               <MapPinned className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
@@ -1356,7 +1396,13 @@ export default function SettingsPage() {
             </span>
           </button>
           {geoLock.enabled ? (
-            <GeoLockMapEditor value={geoLock} onChange={setGeoLock} />
+            <GeoLockMapEditor
+              value={geoLock}
+              onChange={(next) => {
+                setSettingsDirty(true);
+                setGeoLock(next);
+              }}
+            />
           ) : (
             <p className="geo-lock-admin__hint">
               Kilidi açınca bölge arayıp haritada restoran konumunu ve yarıçapı ayarlayabilirsiniz.
@@ -1465,6 +1511,29 @@ export default function SettingsPage() {
           setAboutPage((p) => ({ ...p, coverUrl }));
         }}
       />
+
+      {createPortal(
+        <div
+          className={`settings-save-fab${settingsDirty && !saveInView ? ' is-visible' : ''}`}
+          aria-hidden={!(settingsDirty && !saveInView)}
+        >
+          <button
+            type="button"
+            className="settings-save-fab__btn"
+            disabled={saving || !(settingsDirty && !saveInView)}
+            tabIndex={settingsDirty && !saveInView ? 0 : -1}
+            onClick={() => void handleSave()}
+          >
+            <span className="settings-save-fab__pulse" aria-hidden />
+            <Save className="w-4 h-4" />
+            <span className="settings-save-fab__copy">
+              <strong>{saving ? 'Kaydediliyor…' : 'Kaydet'}</strong>
+              <small>Buradan kaydedebilirsiniz</small>
+            </span>
+          </button>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

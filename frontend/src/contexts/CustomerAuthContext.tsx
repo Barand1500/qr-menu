@@ -230,7 +230,3 @@ export function useCustomerAuth() {
   if (!ctx) throw new Error('useCustomerAuth must be used within CustomerAuthProvider');
   return ctx;
 }
-
-export function useCustomerAuthOptional() {
-  return useContext(CustomerAuthContext);
-}

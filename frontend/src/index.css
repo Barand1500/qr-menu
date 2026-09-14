@@ -1129,6 +1129,115 @@ body {
   line-height: 1.35;
 }
 
+.settings-save-fab {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1.15rem, env(safe-area-inset-bottom));
+  z-index: 70;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(18px) scale(0.82);
+  transition:
+    opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.settings-save-fab.is-visible {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  animation: settings-save-fab-breathe 2.6s ease-in-out infinite;
+}
+
+.settings-save-fab__btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  overflow: hidden;
+  border: none;
+  border-radius: 1.15rem;
+  padding: 0.85rem 1.05rem 0.85rem 0.95rem;
+  background: linear-gradient(
+    135deg,
+    var(--admin-accent) 0%,
+    color-mix(in srgb, var(--admin-accent) 72%, #0f172a) 100%
+  );
+  color: var(--admin-btn-primary-text, #fff);
+  box-shadow:
+    0 14px 32px color-mix(in srgb, var(--admin-accent) 38%, transparent),
+    0 2px 0 color-mix(in srgb, #fff 18%, transparent) inset;
+  cursor: pointer;
+  text-align: left;
+}
+
+.settings-save-fab__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.settings-save-fab__pulse {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 25%,
+    color-mix(in srgb, #fff 28%, transparent) 48%,
+    transparent 70%
+  );
+  transform: translateX(-130%);
+  animation: settings-save-fab-shine 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.settings-save-fab__copy {
+  display: grid;
+  gap: 0.08rem;
+  position: relative;
+}
+
+.settings-save-fab__copy strong {
+  font-size: 0.92rem;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+.settings-save-fab__copy small {
+  font-size: 0.7rem;
+  font-weight: 650;
+  opacity: 0.88;
+}
+
+@keyframes settings-save-fab-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.035);
+  }
+}
+
+@keyframes settings-save-fab-shine {
+  0%,
+  40% {
+    transform: translateX(-130%);
+  }
+  70%,
+  100% {
+    transform: translateX(130%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-save-fab,
+  .settings-save-fab.is-visible,
+  .settings-save-fab__pulse {
+    animation: none;
+    transition: opacity 0.2s ease;
+  }
+}
+
 .admin-page-transition {
   min-height: 100%;
 }
