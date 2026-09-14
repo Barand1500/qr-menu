@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, ChevronRight, Loader2, Plus, Search, Trash2 } from 'lucide-react';
-import { imageUrl } from '@/lib/api';
+import {
+  Check,
+  ChevronRight,
+  Layers,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+} from 'lucide-react';
+import { formatMoney, imageUrl } from '@/lib/api';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import {
   emptyGroup,
@@ -42,6 +51,36 @@ type Props = {
   onSave: () => Promise<boolean>;
 };
 
+const STEPS: {
+  key: LevelKey;
+  num: string;
+  title: string;
+  hint: string;
+  mode: string;
+}[] = [
+  {
+    key: 'level1',
+    num: '01',
+    title: '1. Seviye',
+    hint: 'Tek seçim — örn. açık / kapalı çay',
+    mode: 'Tek seçim',
+  },
+  {
+    key: 'level2',
+    num: '02',
+    title: '2. Seviye',
+    hint: 'Tek seçim — örn. şekerli / şekersiz',
+    mode: 'Tek seçim',
+  },
+  {
+    key: 'options',
+    num: '03',
+    title: 'Seçenekler',
+    hint: 'Çoklu seçim — ekstra ne istenirse',
+    mode: 'Çoklu seçim',
+  },
+];
+
 function partitionGroups(groups: ProductOptionGroup[]) {
   const singles = groups
     .filter((g) => g.type === 'single')
@@ -71,6 +110,77 @@ function rebuildGroups(
   }));
 }
 
+function countNamed(opts: ProductOption[] | undefined) {
+  return (opts || []).filter((o) => o.name.trim()).length;
+}
+
+function OptionRows({
+  options,
+  namePlaceholder,
+  pricing,
+  onPatch,
+  onRemove,
+}: {
+  options: ProductOption[];
+  namePlaceholder: string;
+  pricing: 'replace' | 'add';
+  onPatch: (oi: number, patch: Partial<ProductOption>) => void;
+  onRemove: (oi: number) => void;
+}) {
+  if (!options.length) {
+    return (
+      <div className="pv-levels__opt-empty">
+        Henüz seçenek yok. Aşağıdan ekleyebilirsin.
+      </div>
+    );
+  }
+
+  return (
+    <div className="pv-levels__opts">
+      <div className="pv-levels__opt-head" aria-hidden>
+        <span>Ad</span>
+        <span>Fiyat</span>
+        <span />
+      </div>
+      {options.map((o, oi) => (
+        <div key={o.id} className="pv-levels__opt">
+          <input
+            value={o.name}
+            onChange={(e) => onPatch(oi, { name: e.target.value })}
+            placeholder={namePlaceholder}
+          />
+          <label
+            className="pv-levels__price"
+            title={pricing === 'replace' ? 'Fiyatı değiştir' : 'Fiyata ekle'}
+          >
+            {pricing === 'replace' ? (
+              <RefreshCw className="w-3 h-3 pv-money__mode" aria-hidden />
+            ) : (
+              <Plus className="w-3.5 h-3.5 pv-money__mode" aria-hidden />
+            )}
+            <input
+              type="number"
+              step="0.01"
+              value={o.price}
+              onChange={(e) => onPatch(oi, { price: Number(e.target.value) || 0 })}
+              aria-label="Fiyat"
+            />
+            <em>₺</em>
+          </label>
+          <button
+            type="button"
+            className="pv-levels__opt-del"
+            onClick={() => onRemove(oi)}
+            aria-label="Sil"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ProductVariantsLevels({
   filtered,
   loading,
@@ -89,23 +199,13 @@ export default function ProductVariantsLevels({
   saving,
   onSave,
 }: Props) {
-  const [open, setOpen] = useState<Record<LevelKey, boolean>>({
-    level1: true,
-    level2: false,
-    options: false,
-  });
+  const [active, setActive] = useState<LevelKey>('level1');
 
   const parts = useMemo(() => partitionGroups(groups), [groups]);
 
   useEffect(() => {
-    if (!selectedId) {
-      setOpen({ level1: true, level2: false, options: false });
-    }
+    if (!selectedId) setActive('level1');
   }, [selectedId]);
-
-  function toggle(key: LevelKey) {
-    setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
 
   function ensureLevel1(): ProductOptionGroup {
     if (parts.level1) return parts.level1;
@@ -147,19 +247,15 @@ export default function ProductVariantsLevels({
     nextL2: ProductOptionGroup,
     nextExtras: ProductOptionGroup[]
   ) {
-    onUpdateGroups(
-      rebuildGroups(nextL1, nextL2, nextExtras, parts.leftoverSingles)
-    );
+    onUpdateGroups(rebuildGroups(nextL1, nextL2, nextExtras, parts.leftoverSingles));
   }
 
   function patchLevel1(patch: Partial<ProductOptionGroup>) {
-    const l1 = { ...ensureLevel1(), ...patch };
-    commit(l1, ensureLevel2(), ensureExtras());
+    commit({ ...ensureLevel1(), ...patch }, ensureLevel2(), ensureExtras());
   }
 
   function patchLevel2(patch: Partial<ProductOptionGroup>) {
-    const l2 = { ...ensureLevel2(), ...patch };
-    commit(ensureLevel1(), l2, ensureExtras());
+    commit(ensureLevel1(), { ...ensureLevel2(), ...patch }, ensureExtras());
   }
 
   function patchExtra(gi: number, patch: Partial<ProductOptionGroup>) {
@@ -175,55 +271,55 @@ export default function ProductVariantsLevels({
   ) {
     if (which === 'level1') {
       const g = ensureLevel1();
-      const options = g.options.map((o, i) => (i === oi ? { ...o, ...patch } : o));
-      patchLevel1({ options });
+      patchLevel1({
+        options: g.options.map((o, i) => (i === oi ? { ...o, ...patch } : o)),
+      });
       return;
     }
     if (which === 'level2') {
       const g = ensureLevel2();
-      const options = g.options.map((o, i) => (i === oi ? { ...o, ...patch } : o));
-      patchLevel2({ options });
+      patchLevel2({
+        options: g.options.map((o, i) => (i === oi ? { ...o, ...patch } : o)),
+      });
       return;
     }
     const extras = ensureExtras();
     const g = extras[extraGi];
     if (!g) return;
-    const options = g.options.map((o, i) => (i === oi ? { ...o, ...patch } : o));
-    patchExtra(extraGi, { options });
+    patchExtra(extraGi, {
+      options: g.options.map((o, i) => (i === oi ? { ...o, ...patch } : o)),
+    });
   }
 
   function addOption(which: 'level1' | 'level2' | 'extra', extraGi = 0) {
     if (which === 'level1') {
       const g = ensureLevel1();
       patchLevel1({ options: [...g.options, emptyOption({ name: '' })] });
-      setOpen((p) => ({ ...p, level1: true }));
+      setActive('level1');
       return;
     }
     if (which === 'level2') {
       const g = ensureLevel2();
       patchLevel2({ options: [...g.options, emptyOption({ name: '' })] });
-      setOpen((p) => ({ ...p, level2: true }));
+      setActive('level2');
       return;
     }
     const extras = ensureExtras();
     const g = extras[extraGi] || extras[0];
     patchExtra(extraGi, { options: [...g.options, emptyOption({ name: '' })] });
-    setOpen((p) => ({ ...p, options: true }));
+    setActive('options');
   }
 
   function removeOption(which: 'level1' | 'level2' | 'extra', oi: number, extraGi = 0) {
     if (which === 'level1') {
-      const g = ensureLevel1();
-      patchLevel1({ options: g.options.filter((_, i) => i !== oi) });
+      patchLevel1({ options: ensureLevel1().options.filter((_, i) => i !== oi) });
       return;
     }
     if (which === 'level2') {
-      const g = ensureLevel2();
-      patchLevel2({ options: g.options.filter((_, i) => i !== oi) });
+      patchLevel2({ options: ensureLevel2().options.filter((_, i) => i !== oi) });
       return;
     }
-    const extras = ensureExtras();
-    const g = extras[extraGi];
+    const g = ensureExtras()[extraGi];
     if (!g) return;
     patchExtra(extraGi, { options: g.options.filter((_, i) => i !== oi) });
   }
@@ -243,15 +339,26 @@ export default function ProductVariantsLevels({
       ];
   const primaryExtra = extras[0];
 
+  const counts: Record<LevelKey, number> = {
+    level1: countNamed(level1?.options),
+    level2: countNamed(level2?.options),
+    options: extras.reduce((n, g) => n + countNamed(g.options), 0),
+  };
+
+  const stepMeta = STEPS.find((s) => s.key === active)!;
+
   if (!selected) {
     return (
       <div className="pv-levels">
         <div className="pv-levels__pick">
           <header className="pv-levels__pick-head">
+            <div className="pv-levels__pick-icon" aria-hidden>
+              <Layers className="w-5 h-5" />
+            </div>
             <div>
-              <p className="pv-levels__eyebrow">Adım 1</p>
+              <p className="pv-levels__eyebrow">Seviyeli kurulum</p>
               <h2>Ürün seç</h2>
-              <p>Önce grubu / ürünü seç, sonra seviyeleri doldur.</p>
+              <p>Grubu filtrele, ürünü seç; 1. seviye → 2. seviye → ekstralar.</p>
             </div>
           </header>
 
@@ -330,229 +437,193 @@ export default function ProductVariantsLevels({
   }
 
   return (
-    <div className="pv-levels">
+    <div className="pv-levels is-editing">
       <div className="pv-levels__editor">
-        <header className="pv-levels__product-bar">
-          <span className="pv-levels__product-media is-sm">
+        <header className="pv-levels__hero">
+          <span className="pv-levels__hero-media">
             {selected.imageUrl ? (
               <img src={imageUrl(selected.imageUrl)} alt="" />
             ) : (
               <MenuMediaPlaceholder />
             )}
           </span>
-          <div className="min-w-0 flex-1">
-            <p className="pv-levels__eyebrow">Seviyeli kurulum</p>
-            <strong>{selected.name}</strong>
-            <small>{selected.groupName || 'Grup yok'}</small>
+          <div className="pv-levels__hero-copy">
+            <p className="pv-levels__eyebrow">Düzenleniyor</p>
+            <div className="pv-levels__hero-title">
+              <h2>{selected.name}</h2>
+              <span className="pv-levels__hero-price">{formatMoney(selected.price)}</span>
+            </div>
+            <p>{selected.groupName || 'Grup yok'}</p>
           </div>
           <button type="button" className="pv-levels__change" onClick={onClearProduct}>
             Ürünü değiştir
           </button>
         </header>
 
-        <p className="pv-levels__guide">
-          Örnek: <b>1. Seviye</b> açık/kapalı çay → <b>2. Seviye</b> şekerli/şekersiz →{' '}
-          <b>Seçenekler</b> ekstralar (çoklu seçim).
-        </p>
-
-        <section className={`pv-levels__panel${open.level1 ? ' is-open' : ''}`}>
-          <button
-            type="button"
-            className="pv-levels__panel-head"
-            aria-expanded={open.level1}
-            onClick={() => toggle('level1')}
-          >
-            <ChevronRight className="pv-levels__fold" />
-            <div>
-              <strong>1. Seviye</strong>
-              <span>Tek seçim — örn. açık çay / kapalı çay</span>
-            </div>
-            <em>{level1?.options.filter((o) => o.name.trim()).length || 0}</em>
-          </button>
-          {open.level1 ? (
-            <div className="pv-levels__panel-body">
-              <label className="pv-levels__field">
-                <span>Başlık</span>
-                <input
-                  value={level1?.name || '1. Seviye'}
-                  onChange={(e) => patchLevel1({ name: e.target.value })}
-                  placeholder="1. Seviye"
-                />
-              </label>
-              <div className="pv-levels__opts">
-                {(level1?.options || []).map((o, oi) => (
-                  <div key={o.id} className="pv-levels__opt">
-                    <input
-                      value={o.name}
-                      onChange={(e) => patchOption('level1', oi, { name: e.target.value })}
-                      placeholder="Seçenek adı"
-                    />
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={o.price}
-                      onChange={(e) =>
-                        patchOption('level1', oi, { price: Number(e.target.value) || 0 })
-                      }
-                      aria-label="Fiyat"
-                    />
-                    <button
-                      type="button"
-                      className="pv-levels__opt-del"
-                      onClick={() => removeOption('level1', oi)}
-                      aria-label="Sil"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+        <nav className="pv-levels__steps" aria-label="Seviyeler">
+          {STEPS.map((s) => {
+            const filled = counts[s.key] > 0;
+            return (
               <button
+                key={s.key}
                 type="button"
-                className="pv-levels__add"
-                onClick={() => addOption('level1')}
+                className={`pv-levels__step${active === s.key ? ' is-active' : ''}${
+                  filled ? ' is-filled' : ''
+                }`}
+                onClick={() => setActive(s.key)}
               >
-                <Plus className="w-4 h-4" />
-                Seçenek ekle
+                <span className="pv-levels__step-num">{s.num}</span>
+                <span className="pv-levels__step-text">
+                  <strong>{s.title}</strong>
+                  <small>{s.mode}</small>
+                </span>
+                <em>{counts[s.key]}</em>
               </button>
-            </div>
-          ) : null}
-        </section>
+            );
+          })}
+        </nav>
 
-        <section className={`pv-levels__panel${open.level2 ? ' is-open' : ''}`}>
-          <button
-            type="button"
-            className="pv-levels__panel-head"
-            aria-expanded={open.level2}
-            onClick={() => toggle('level2')}
-          >
-            <ChevronRight className="pv-levels__fold" />
-            <div>
-              <strong>2. Seviye</strong>
-              <span>Tek seçim — örn. şekerli / şekersiz</span>
-            </div>
-            <em>{level2?.options.filter((o) => o.name.trim()).length || 0}</em>
-          </button>
-          {open.level2 ? (
-            <div className="pv-levels__panel-body">
-              <label className="pv-levels__field">
-                <span>Başlık</span>
-                <input
-                  value={level2?.name || '2. Seviye'}
-                  onChange={(e) => patchLevel2({ name: e.target.value })}
-                  placeholder="2. Seviye"
-                />
-              </label>
-              <div className="pv-levels__opts">
-                {(level2?.options || []).map((o, oi) => (
-                  <div key={o.id} className="pv-levels__opt">
-                    <input
-                      value={o.name}
-                      onChange={(e) => patchOption('level2', oi, { name: e.target.value })}
-                      placeholder="Seçenek adı"
-                    />
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={o.price}
-                      onChange={(e) =>
-                        patchOption('level2', oi, { price: Number(e.target.value) || 0 })
-                      }
-                      aria-label="Fiyat"
-                    />
-                    <button
-                      type="button"
-                      className="pv-levels__opt-del"
-                      onClick={() => removeOption('level2', oi)}
-                      aria-label="Sil"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
+        <div className="pv-levels__workspace">
+          <section className="pv-levels__board">
+            <header className="pv-levels__board-head">
+              <div>
+                <h3>{stepMeta.title}</h3>
+                <p>{stepMeta.hint}</p>
               </div>
-              <button
-                type="button"
-                className="pv-levels__add"
-                onClick={() => addOption('level2')}
-              >
-                <Plus className="w-4 h-4" />
-                Seçenek ekle
-              </button>
-            </div>
-          ) : null}
-        </section>
+              <span className="pv-levels__mode">{stepMeta.mode}</span>
+            </header>
 
-        <section className={`pv-levels__panel${open.options ? ' is-open' : ''}`}>
-          <button
-            type="button"
-            className="pv-levels__panel-head"
-            aria-expanded={open.options}
-            onClick={() => toggle('options')}
-          >
-            <ChevronRight className="pv-levels__fold" />
-            <div>
-              <strong>Seçenekler</strong>
-              <span>Çoklu seçim — ekstra ne istenirse</span>
-            </div>
-            <em>
-              {extras.reduce((n, g) => n + g.options.filter((o) => o.name.trim()).length, 0)}
-            </em>
-          </button>
-          {open.options ? (
-            <div className="pv-levels__panel-body">
-              <label className="pv-levels__field">
-                <span>Başlık</span>
-                <input
-                  value={primaryExtra?.name || 'Seçenekler'}
-                  onChange={(e) => patchExtra(0, { name: e.target.value })}
-                  placeholder="Seçenekler"
+            {active === 'level1' ? (
+              <>
+                <label className="pv-levels__field">
+                  <span>Başlık</span>
+                  <input
+                    value={level1?.name || '1. Seviye'}
+                    onChange={(e) => patchLevel1({ name: e.target.value })}
+                    placeholder="1. Seviye"
+                  />
+                </label>
+                <OptionRows
+                  options={level1?.options || []}
+                  namePlaceholder="Örn. Açık çay"
+                  pricing={level1?.pricing === 'add' ? 'add' : 'replace'}
+                  onPatch={(oi, patch) => patchOption('level1', oi, patch)}
+                  onRemove={(oi) => removeOption('level1', oi)}
                 />
-              </label>
-              <div className="pv-levels__opts">
-                {(primaryExtra?.options || []).map((o, oi) => (
-                  <div key={o.id} className="pv-levels__opt">
-                    <input
-                      value={o.name}
-                      onChange={(e) => patchOption('extra', oi, { name: e.target.value }, 0)}
-                      placeholder="Ekstra adı"
-                    />
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={o.price}
-                      onChange={(e) =>
-                        patchOption(
-                          'extra',
-                          oi,
-                          { price: Number(e.target.value) || 0 },
-                          0
-                        )
-                      }
-                      aria-label="Fiyat"
-                    />
-                    <button
-                      type="button"
-                      className="pv-levels__opt-del"
-                      onClick={() => removeOption('extra', oi, 0)}
-                      aria-label="Sil"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                <button
+                  type="button"
+                  className="pv-levels__add"
+                  onClick={() => addOption('level1')}
+                >
+                  <Plus className="w-4 h-4" />
+                  Seçenek ekle
+                </button>
+              </>
+            ) : null}
+
+            {active === 'level2' ? (
+              <>
+                <label className="pv-levels__field">
+                  <span>Başlık</span>
+                  <input
+                    value={level2?.name || '2. Seviye'}
+                    onChange={(e) => patchLevel2({ name: e.target.value })}
+                    placeholder="2. Seviye"
+                  />
+                </label>
+                <OptionRows
+                  options={level2?.options || []}
+                  namePlaceholder="Örn. Şekerli"
+                  pricing={level2?.pricing === 'add' ? 'add' : 'replace'}
+                  onPatch={(oi, patch) => patchOption('level2', oi, patch)}
+                  onRemove={(oi) => removeOption('level2', oi)}
+                />
+                <button
+                  type="button"
+                  className="pv-levels__add"
+                  onClick={() => addOption('level2')}
+                >
+                  <Plus className="w-4 h-4" />
+                  Seçenek ekle
+                </button>
+              </>
+            ) : null}
+
+            {active === 'options' ? (
+              <>
+                <label className="pv-levels__field">
+                  <span>Başlık</span>
+                  <input
+                    value={primaryExtra?.name || 'Seçenekler'}
+                    onChange={(e) => patchExtra(0, { name: e.target.value })}
+                    placeholder="Seçenekler"
+                  />
+                </label>
+                <OptionRows
+                  options={primaryExtra?.options || []}
+                  namePlaceholder="Örn. Ekstra peynir"
+                  pricing={primaryExtra?.pricing === 'replace' ? 'replace' : 'add'}
+                  onPatch={(oi, patch) => patchOption('extra', oi, patch, 0)}
+                  onRemove={(oi) => removeOption('extra', oi, 0)}
+                />
+                <button
+                  type="button"
+                  className="pv-levels__add"
+                  onClick={() => addOption('extra', 0)}
+                >
+                  <Plus className="w-4 h-4" />
+                  Ekstra ekle
+                </button>
+              </>
+            ) : null}
+          </section>
+
+          <aside className="pv-levels__preview" aria-label="Önizleme">
+            <p className="pv-levels__preview-label">Müşteri görünümü</p>
+            <div className="pv-levels__preview-card">
+              <strong>{selected.name}</strong>
+              <small>
+                {selected.groupName || 'Grup yok'} · {formatMoney(selected.price)}
+              </small>
+
+              {(
+                [
+                  { key: 'level1' as const, g: level1, fallback: '1. Seviye' },
+                  { key: 'level2' as const, g: level2, fallback: '2. Seviye' },
+                  {
+                    key: 'options' as const,
+                    g: primaryExtra,
+                    fallback: 'Seçenekler',
+                  },
+                ] as const
+              ).map(({ key, g, fallback }) => {
+                const named = (g?.options || []).filter((o) => o.name.trim());
+                return (
+                  <div
+                    key={key}
+                    className={`pv-levels__preview-block${
+                      active === key ? ' is-focus' : ''
+                    }`}
+                  >
+                    <span>{g?.name?.trim() || fallback}</span>
+                    {named.length ? (
+                      <div className="pv-levels__preview-chips">
+                        {named.map((o) => (
+                          <em key={o.id}>
+                            {o.name}
+                            {o.price ? ` · ${o.price}` : ''}
+                          </em>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="pv-levels__preview-empty">Henüz seçenek yok</p>
+                    )}
                   </div>
-                ))}
-              </div>
-              <button
-                type="button"
-                className="pv-levels__add"
-                onClick={() => addOption('extra', 0)}
-              >
-                <Plus className="w-4 h-4" />
-                Ekstra ekle
-              </button>
+                );
+              })}
             </div>
-          ) : null}
-        </section>
+          </aside>
+        </div>
 
         <div className="pv-levels__footer">
           <button
@@ -564,6 +635,7 @@ export default function ProductVariantsLevels({
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             {saving ? 'Kaydediliyor…' : 'Kaydet'}
           </button>
+          {dirty ? <span className="pv-levels__dirty">Kaydedilmemiş değişiklik var</span> : null}
         </div>
       </div>
     </div>

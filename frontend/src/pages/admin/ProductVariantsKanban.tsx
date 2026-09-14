@@ -7,10 +7,12 @@ import {
   GripVertical,
   Loader2,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
   X,
 } from 'lucide-react';
+import { formatMoney } from '@/lib/api';
 import {
   emptyGroup,
   emptyOption,
@@ -276,7 +278,12 @@ export default function ProductVariantsKanban({
               className="pv-kb__picker-btn"
               onClick={() => setPickerOpen((v) => !v)}
             >
-              <span>{selected?.name || 'Ürün seç'}</span>
+              <span>
+                {selected?.name || 'Ürün seç'}
+                {selected ? (
+                  <em className="pv-kb__picker-price">{formatMoney(selected.price)}</em>
+                ) : null}
+              </span>
               <ChevronDown className="w-4 h-4" />
             </button>
             {pickerOpen ? (
@@ -394,8 +401,19 @@ export default function ProductVariantsKanban({
                                       patchOption(g.id, oi, { name: e.target.value })
                                     }
                                   />
-                                  <label className="pv-money">
-                                    <span>+</span>
+                                  <label
+                                    className="pv-money"
+                                    title={
+                                      g.pricing === 'replace'
+                                        ? 'Fiyatı değiştir'
+                                        : 'Fiyata ekle'
+                                    }
+                                  >
+                                    {g.pricing === 'replace' ? (
+                                      <RefreshCw className="w-3 h-3 pv-money__mode" aria-hidden />
+                                    ) : (
+                                      <Plus className="w-3.5 h-3.5 pv-money__mode" aria-hidden />
+                                    )}
                                     <input
                                       type="number"
                                       inputMode="decimal"

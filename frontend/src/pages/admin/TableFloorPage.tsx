@@ -316,6 +316,7 @@ export default function TableFloorPage() {
   const soundOnRef = useRef(soundOn);
   soundOnRef.current = soundOn;
   const [busy, setBusy] = useState(false);
+  const [codeTtlMenuOpen, setCodeTtlMenuOpen] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
   const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
   const [cart, setCart] = useState<Record<number, CartLine>>({});
@@ -399,8 +400,13 @@ export default function TableFloorPage() {
   function closeTableDrawer() {
     setSelectedCode(null);
     setSelectedGroupSlug('');
+    setCodeTtlMenuOpen(false);
     clearTableFocusParams();
   }
+
+  useEffect(() => {
+    setCodeTtlMenuOpen(false);
+  }, [selectedCode, selectedGroupSlug]);
 
   /** Bildirim / deep-link: paneli bir kez aç, URL'den masa-grup'u sil (poll her seferinde yeniden açmasın) */
   useEffect(() => {
@@ -681,6 +687,27 @@ export default function TableFloorPage() {
       await load(true);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Kod onaylanamadı');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function adjustCodeTtl(table: FloorTable, deltaMinutes: number) {
+    if (!activeGroup || busy) return;
+    setBusy(true);
+    try {
+      await api('/api/admin/table-floor/adjust-code-ttl', {
+        method: 'POST',
+        body: JSON.stringify({
+          tableNumber: table.code,
+          groupSlug: selectedGroupSlug || activeGroup.id,
+          sessionId: table.sessionId,
+          deltaMinutes,
+        }),
+      });
+      await load(true);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Süre güncellenemedi');
     } finally {
       setBusy(false);
     }
@@ -1895,18 +1922,51 @@ export default function TableFloorPage() {
                           (() => {
                             const cd = formatCodeCountdown(selected.codeExpiresAt, now);
                             return (
-                              <div
-                                className={`table-floor__access-code-countdown${
-                                  cd.expired ? ' is-expired' : cd.urgent ? ' is-urgent' : ''
-                                }`}
-                                title={
-                                  cd.expired
-                                    ? 'Kod süresi doldu (menüdeki misafir atılmaz)'
-                                    : 'Koda kalan süre'
-                                }
-                              >
-                                <Timer className="w-3.5 h-3.5" />
-                                {cd.expired ? '00:00' : cd.label}
+                              <div className="table-floor__access-code-ttl">
+                                {codeTtlMenuOpen ? (
+                                  <div
+                                    className="table-floor__access-code-ttl-menu"
+                                    role="group"
+                                    aria-label="Kod süresini ayarla"
+                                  >
+                                    {(
+                                      [
+                                        { d: 10, label: '+10dk' },
+                                        { d: 30, label: '+30dk' },
+                                        { d: -10, label: '−10dk' },
+                                        { d: -30, label: '−30dk' },
+                                      ] as const
+                                    ).map((b) => (
+                                      <button
+                                        key={b.d}
+                                        type="button"
+                                        disabled={busy}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          void adjustCodeTtl(selected, b.d);
+                                        }}
+                                      >
+                                        {b.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  className={`table-floor__access-code-countdown${
+                                    cd.expired ? ' is-expired' : cd.urgent ? ' is-urgent' : ''
+                                  }${codeTtlMenuOpen ? ' is-open' : ''}`}
+                                  title={
+                                    cd.expired
+                                      ? 'Kod süresi doldu — tıkla süre ekle'
+                                      : 'Koda kalan süre — tıkla ayarla'
+                                  }
+                                  aria-expanded={codeTtlMenuOpen}
+                                  onClick={() => setCodeTtlMenuOpen((v) => !v)}
+                                >
+                                  <Timer className="w-3.5 h-3.5" />
+                                  {cd.expired ? '00:00' : cd.label}
+                                </button>
                               </div>
                             );
                           })()

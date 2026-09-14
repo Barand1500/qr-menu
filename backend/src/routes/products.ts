@@ -55,12 +55,51 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
+/** Grup içi sırayı 1..n yapar (silinen ürünlerden kalan boşlukları kapatır). */
+async function compactProductSortOrders(groupId: number) {
+  const products = await prisma.product.findMany({
+    where: { groupId },
+    orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+    select: { id: true, sortOrder: true },
+  });
+  const needsFix = products.some((p, i) => p.sortOrder !== i + 1);
+  if (!needsFix) return false;
+
+  await prisma.$transaction(
+    products.map((p, i) =>
+      prisma.product.update({
+        where: { id: p.id },
+        data: { sortOrder: i + 1 },
+      })
+    )
+  );
+  return true;
+}
+
+async function compactRestaurantProductSortOrders(restaurantId: number) {
+  const rows = await prisma.product.findMany({
+    where: { restaurantId },
+    select: { groupId: true },
+    distinct: ['groupId'],
+  });
+  for (const row of rows) {
+    await compactProductSortOrders(row.groupId);
+  }
+}
+
 router.get('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   const { search, groupId, active, page = '1', limit = '10' } = req.query;
   const pageNum = Math.max(1, parseInt(String(page), 10));
   const limitNum = Math.min(500, Math.max(1, parseInt(String(limit), 10)));
   const skip = (pageNum - 1) * limitNum;
+
+  // Boşluklu sıraları (örn. tek ürün ama sıra=4) otomatik düzelt
+  if (groupId) {
+    await compactProductSortOrders(Number(groupId));
+  } else {
+    await compactRestaurantProductSortOrders(restaurantId!);
+  }
 
   const where: Record<string, unknown> = { restaurantId };
   if (groupId) where.groupId = Number(groupId);
@@ -435,7 +474,13 @@ router.post('/', async (req, res) => {
     include: { group: true, currency: true },
   });
 
-  res.status(201).json(await mapProduct(product, restaurantId!, languages));
+  await compactProductSortOrders(Number(groupId));
+  const refreshed = await prisma.product.findFirst({
+    where: { id: product.id },
+    include: { group: true, currency: true },
+  });
+
+  res.status(201).json(await mapProduct(refreshed || product, restaurantId!, languages));
 });
 
 router.put('/:id', async (req, res) => {
@@ -546,7 +591,19 @@ router.put('/:id', async (req, res) => {
     include: { group: true, currency: true },
   });
 
-  res.json(await mapProduct(product, restaurantId!, languages));
+  if (groupChanged) {
+    await compactProductSortOrders(existing.groupId);
+    await compactProductSortOrders(nextGroupId);
+  } else {
+    await compactProductSortOrders(product.groupId);
+  }
+
+  const refreshed = await prisma.product.findFirst({
+    where: { id: product.id },
+    include: { group: true, currency: true },
+  });
+
+  res.json(await mapProduct(refreshed || product, restaurantId!, languages));
 });
 
 router.patch('/:id/toggle', async (req, res) => {
@@ -672,7 +729,9 @@ router.delete('/:id', async (req, res) => {
   const existing = await prisma.product.findFirst({ where: { id, restaurantId: restaurantId! } });
   if (!existing) return res.status(404).json({ message: 'Ürün bulunamadı' });
 
+  const groupId = existing.groupId;
   await prisma.product.delete({ where: { id } });
+  await compactProductSortOrders(groupId);
   res.json({ ok: true });
 });
 

@@ -6,6 +6,7 @@ import {
   Layers3,
   Loader2,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
   ListChecks,
@@ -19,7 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { api, imageUrl } from '@/lib/api';
+import { api, formatMoney, imageUrl } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import {
@@ -526,11 +527,14 @@ export default function ProductVariantsPage() {
               {PV_LAYOUTS.indexOf(layout) + 1}/{PV_LAYOUTS.length}
             </span>
           </div>
-          <strong>
-            {layout === 'gallery' && view === 'editor' && selected
-              ? selected.name || `Ürün #${selected.id}`
-              : 'Varyant & ekstra yönetimi'}
-          </strong>
+          {layout === 'gallery' && view === 'editor' && selected ? (
+            <div className="pv-brand__product">
+              <strong>{selected.name || `Ürün #${selected.id}`}</strong>
+              <span className="pv-brand__price">{formatMoney(selected.price)}</span>
+            </div>
+          ) : (
+            <strong>Varyant & ekstra yönetimi</strong>
+          )}
         </div>
         <div className="pv-top-actions">
           {message ? (
@@ -837,8 +841,19 @@ export default function ProductVariantsPage() {
                             }
                             onChange={(e) => patchActiveOption(oi, { name: e.target.value })}
                           />
-                          <label className="pv-opt-row__price">
-                            <span>+</span>
+                          <label
+                            className="pv-opt-row__price"
+                            title={
+                              activeGroup.pricing === 'replace'
+                                ? 'Fiyatı değiştir'
+                                : 'Fiyata ekle'
+                            }
+                          >
+                            {activeGroup.pricing === 'replace' ? (
+                              <RefreshCw className="w-3 h-3 pv-money__mode" aria-hidden />
+                            ) : (
+                              <Plus className="w-3.5 h-3.5 pv-money__mode" aria-hidden />
+                            )}
                             <input
                               type="number"
                               inputMode="decimal"

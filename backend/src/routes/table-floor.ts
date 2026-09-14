@@ -390,6 +390,67 @@ router.post('/approve-code', async (req, res) => {
   }
 });
 
+/** Kod kalan süresine dakika ekle / çıkar (+10, +30, -10, -30) */
+router.post('/adjust-code-ttl', async (req, res) => {
+  try {
+    const restaurantId = await getRestaurantId(req);
+    const { tableNumber, groupSlug, sessionId, deltaMinutes } = req.body as {
+      tableNumber?: string;
+      groupSlug?: string;
+      sessionId?: number | string | null;
+      deltaMinutes?: number;
+    };
+
+    const delta = Math.trunc(Number(deltaMinutes));
+    if (![10, 30, -10, -30].includes(delta)) {
+      return res.status(400).json({ message: 'Geçersiz süre (+10 / +30 / -10 / -30)' });
+    }
+
+    const sid = sessionId != null && sessionId !== '' ? Number(sessionId) : NaN;
+    let session =
+      Number.isFinite(sid) && sid > 0
+        ? await prisma.tableFloorSession.findFirst({
+            where: {
+              id: sid,
+              restaurantId: restaurantId!,
+              status: { in: [...ACTIVE_STATUSES] },
+            },
+          })
+        : null;
+
+    if (!session) {
+      const masa = String(tableNumber || '').trim();
+      if (!masa) return res.status(400).json({ message: 'Masa gerekli' });
+      session = await findActiveSession(
+        restaurantId!,
+        masa,
+        groupSlug ? String(groupSlug).trim() : null
+      );
+    }
+
+    if (!session) {
+      return res.status(404).json({ message: 'Aktif masa oturumu yok' });
+    }
+    if (!session.accessCode) {
+      return res.status(400).json({ message: 'Bu masada erişim kodu yok' });
+    }
+
+    const nowMs = Date.now();
+    const current = session.codeExpiresAt?.getTime() ?? nowMs;
+    const base = current > nowMs ? current : nowMs;
+    const nextMs = Math.max(nowMs, base + delta * 60_000);
+    const updated = await prisma.tableFloorSession.update({
+      where: { id: session.id },
+      data: { codeExpiresAt: new Date(nextMs) },
+    });
+
+    res.json({ ok: true, session: serializeSession(updated) });
+  } catch (err) {
+    console.error('adjust-code-ttl', err);
+    res.status(500).json({ message: 'Süre güncellenemedi' });
+  }
+});
+
 router.post('/close', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   const { tableNumber, groupSlug, sessionId, paid } = req.body as {
