@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Check,
   ChevronRight,
-  Layers,
   Loader2,
   Plus,
   RefreshCw,
@@ -349,35 +348,30 @@ export default function ProductVariantsLevels({
 
   if (!selected) {
     return (
-      <div className="pv-levels">
-        <div className="pv-levels__pick">
-          <header className="pv-levels__pick-head">
-            <div className="pv-levels__pick-icon" aria-hidden>
-              <Layers className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="pv-levels__eyebrow">Seviyeli kurulum</p>
-              <h2>Ürün seç</h2>
-              <p>Grubu filtrele, ürünü seç; 1. seviye → 2. seviye → ekstralar.</p>
-            </div>
-          </header>
+      <div className="pv-levels is-picking">
+        <header className="pv-levels__pick-head">
+          <p className="pv-levels__eyebrow">Seviyeli kurulum</p>
+          <h2>Ürün seç</h2>
+        </header>
 
-          <div className="pv-levels__filters">
+        <div className="pv-levels__split">
+          <aside className="pv-levels__side">
             <label className="pv-levels__search">
               <Search className="w-4 h-4" />
               <input
                 value={query}
                 onChange={(e) => onQuery(e.target.value)}
-                placeholder="Ürün veya grup ara…"
+                placeholder="Ürün ara…"
               />
             </label>
-            <div className="pv-levels__cats" role="tablist">
+            <nav className="pv-levels__cats" aria-label="Gruplar">
               <button
                 type="button"
                 className={category === 'all' ? 'is-active' : ''}
                 onClick={() => onCategory('all')}
               >
-                Hepsi
+                <span>Hepsi</span>
+                <em>{categories.reduce((n, c) => n + c.count, 0)}</em>
               </button>
               {categories.map((c) => (
                 <button
@@ -386,51 +380,54 @@ export default function ProductVariantsLevels({
                   className={category === c.name ? 'is-active' : ''}
                   onClick={() => onCategory(c.name)}
                 >
-                  {c.name}
+                  <span>{c.name}</span>
                   <em>{c.count}</em>
                 </button>
               ))}
-            </div>
-          </div>
+            </nav>
+          </aside>
 
-          {loading ? (
-            <div className="pv-levels__empty">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Yükleniyor…
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="pv-levels__empty">Ürün bulunamadı.</div>
-          ) : (
-            <ul className="pv-levels__products">
-              {filtered.map((p) => (
-                <li key={p.id}>
-                  <button
-                    type="button"
-                    className="pv-levels__product"
-                    onClick={() => onSelectProduct(p)}
-                  >
-                    <span className="pv-levels__product-media">
-                      {p.imageUrl ? (
-                        <img src={imageUrl(p.imageUrl)} alt="" />
-                      ) : (
-                        <MenuMediaPlaceholder />
-                      )}
-                    </span>
-                    <span className="pv-levels__product-meta">
-                      <strong>{p.name}</strong>
-                      <small>{p.groupName || 'Grup yok'}</small>
-                    </span>
-                    <em>
-                      {p.optionSummary?.optionCount
-                        ? `${p.optionSummary.optionCount} seçenek`
-                        : 'Boş'}
-                    </em>
-                    <ChevronRight className="w-4 h-4 pv-levels__chev" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <section className="pv-levels__main">
+            {loading ? (
+              <div className="pv-levels__empty">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Yükleniyor…
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="pv-levels__empty">Ürün bulunamadı.</div>
+            ) : (
+              <ul className="pv-levels__products">
+                {filtered.map((p) => (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      className="pv-levels__product"
+                      onClick={() => onSelectProduct(p)}
+                    >
+                      <span className="pv-levels__product-media">
+                        {p.imageUrl ? (
+                          <img src={imageUrl(p.imageUrl)} alt="" />
+                        ) : (
+                          <MenuMediaPlaceholder />
+                        )}
+                      </span>
+                      <span className="pv-levels__product-meta">
+                        <strong>{p.name}</strong>
+                        <small>| {p.groupName || 'Grup yok'}</small>
+                      </span>
+                      <span className="pv-levels__product-price">
+                        {formatMoney(p.price)}
+                      </span>
+                      <span className="pv-levels__product-go">
+                        Devam
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
       </div>
     );
@@ -448,46 +445,37 @@ export default function ProductVariantsLevels({
             )}
           </span>
           <div className="pv-levels__hero-copy">
-            <p className="pv-levels__eyebrow">Düzenleniyor</p>
-            <div className="pv-levels__hero-title">
-              <h2>{selected.name}</h2>
-              <span className="pv-levels__hero-price">{formatMoney(selected.price)}</span>
-            </div>
-            <p>{selected.groupName || 'Grup yok'}</p>
+            <h2>{selected.name}</h2>
+            <p>Grup: {selected.groupName || 'Grup yok'}</p>
+            <strong className="pv-levels__hero-price">{formatMoney(selected.price)}</strong>
           </div>
           <button type="button" className="pv-levels__change" onClick={onClearProduct}>
             Ürünü değiştir
           </button>
         </header>
 
-        <nav className="pv-levels__steps" aria-label="Seviyeler">
-          {STEPS.map((s) => {
-            const filled = counts[s.key] > 0;
-            return (
-              <button
-                key={s.key}
-                type="button"
-                className={`pv-levels__step${active === s.key ? ' is-active' : ''}${
-                  filled ? ' is-filled' : ''
-                }`}
-                onClick={() => setActive(s.key)}
-              >
-                <span className="pv-levels__step-num">{s.num}</span>
-                <span className="pv-levels__step-text">
-                  <strong>{s.title}</strong>
-                  <small>{s.mode}</small>
-                </span>
-                <em>{counts[s.key]}</em>
-              </button>
-            );
-          })}
+        <nav className="pv-levels__tabs" aria-label="Seviyeler">
+          {STEPS.map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              className={`pv-levels__tab${active === s.key ? ' is-active' : ''}`}
+              onClick={() => setActive(s.key)}
+            >
+              <span className="pv-levels__tab-num">{s.num}</span>
+              <span className="pv-levels__tab-title">{s.title}</span>
+              <em>{counts[s.key]}</em>
+            </button>
+          ))}
         </nav>
 
         <div className="pv-levels__workspace">
           <section className="pv-levels__board">
             <header className="pv-levels__board-head">
               <div>
-                <h3>{stepMeta.title}</h3>
+                <h3>
+                  {stepMeta.num} {stepMeta.title}
+                </h3>
                 <p>{stepMeta.hint}</p>
               </div>
               <span className="pv-levels__mode">{stepMeta.mode}</span>
@@ -516,7 +504,7 @@ export default function ProductVariantsLevels({
                   onClick={() => addOption('level1')}
                 >
                   <Plus className="w-4 h-4" />
-                  Seçenek ekle
+                  Ekle
                 </button>
               </>
             ) : null}
@@ -544,7 +532,7 @@ export default function ProductVariantsLevels({
                   onClick={() => addOption('level2')}
                 >
                   <Plus className="w-4 h-4" />
-                  Seçenek ekle
+                  Ekle
                 </button>
               </>
             ) : null}
@@ -572,19 +560,21 @@ export default function ProductVariantsLevels({
                   onClick={() => addOption('extra', 0)}
                 >
                   <Plus className="w-4 h-4" />
-                  Ekstra ekle
+                  Ekle
                 </button>
               </>
             ) : null}
           </section>
 
           <aside className="pv-levels__preview" aria-label="Önizleme">
-            <p className="pv-levels__preview-label">Müşteri görünümü</p>
             <div className="pv-levels__preview-card">
-              <strong>{selected.name}</strong>
-              <small>
-                {selected.groupName || 'Grup yok'} · {formatMoney(selected.price)}
-              </small>
+              <header className="pv-levels__preview-head">
+                <p>Müşteri görünümü</p>
+                <strong>{selected.name}</strong>
+                <small>
+                  {selected.groupName || 'Grup yok'} · {formatMoney(selected.price)}
+                </small>
+              </header>
 
               {(
                 [
@@ -608,8 +598,11 @@ export default function ProductVariantsLevels({
                     <span>{g?.name?.trim() || fallback}</span>
                     {named.length ? (
                       <div className="pv-levels__preview-chips">
-                        {named.map((o) => (
-                          <em key={o.id}>
+                        {named.map((o, i) => (
+                          <em
+                            key={o.id}
+                            className={active === key && i === 0 ? 'is-on' : undefined}
+                          >
                             {o.name}
                             {o.price ? ` · ${o.price}` : ''}
                           </em>
