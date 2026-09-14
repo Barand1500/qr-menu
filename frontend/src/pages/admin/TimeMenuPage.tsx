@@ -100,6 +100,9 @@ export default function TimeMenuPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [toastKind, setToastKind] = useState<'ok' | 'warn'>('ok');
+  const [page, setPage] = useState(0);
+
+  const PAGE_SIZE = 12;
 
   const showToast = useCallback((text: string, kind: 'ok' | 'warn' = 'ok') => {
     setToastKind(kind);
@@ -156,6 +159,17 @@ export default function TimeMenuPage() {
     const gid = Number(groupFilter);
     return products.filter((p) => p.groupId === gid);
   }, [products, groupFilter]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pagedProducts = useMemo(() => {
+    const start = safePage * PAGE_SIZE;
+    return filteredProducts.slice(start, start + PAGE_SIZE);
+  }, [filteredProducts, safePage]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [groupFilter, slotId]);
 
   const groupOptions = useMemo(
     () =>
@@ -286,10 +300,6 @@ export default function TimeMenuPage() {
           </Button>
         }
       />
-      <p className="time-menu-page__lead">
-        Sabah / öğle / akşam dilimlerinde ürünleri gizle, öne çıkar veya özel fiyat ver. Kural
-        yoksa ürün her zaman görünür.
-      </p>
 
       {message ? (
         <div
@@ -468,53 +478,79 @@ export default function TimeMenuPage() {
               {filteredProducts.length === 0 ? (
                 <p className="time-menu-empty">Bu grupta ürün yok</p>
               ) : (
-                <ul className="time-menu-list">
-                  {filteredProducts.map((p) => {
-                    const d = drafts[p.id] || emptyDraft();
-                    return (
-                      <li
-                        key={p.id}
-                        className={`time-menu-row${d.hidden ? ' is-hidden' : ''}`}
+                <>
+                  <ul className="time-menu-list">
+                    {pagedProducts.map((p) => {
+                      const d = drafts[p.id] || emptyDraft();
+                      return (
+                        <li
+                          key={p.id}
+                          className={`time-menu-row${d.hidden ? ' is-hidden' : ''}`}
+                        >
+                          <div>
+                            <p className="time-menu-row__name">{p.name}</p>
+                            <p className="time-menu-row__meta">
+                              {p.groupName} · normal {p.price.toFixed(2)}
+                            </p>
+                          </div>
+                          <div className="time-menu-row__actions">
+                            <button
+                              type="button"
+                              className={`time-menu-chip is-danger${d.hidden ? ' is-on' : ''}`}
+                              onClick={() => setDraft(p.id, { hidden: !d.hidden })}
+                            >
+                              Gizle
+                            </button>
+                            <button
+                              type="button"
+                              className={`time-menu-chip is-gold${d.featured ? ' is-on' : ''}`}
+                              onClick={() =>
+                                setDraft(p.id, {
+                                  featured: !d.featured,
+                                  hidden: d.featured ? d.hidden : false,
+                                })
+                              }
+                            >
+                              Öne çıkan
+                            </button>
+                            <input
+                              className="time-menu-price"
+                              inputMode="decimal"
+                              placeholder="Fiyat"
+                              title="Bu dilimde özel fiyat (boş = normal)"
+                              value={d.priceText}
+                              onChange={(e) => setDraft(p.id, { priceText: e.target.value })}
+                            />
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {pageCount > 1 ? (
+                    <div className="time-menu-pager">
+                      <button
+                        type="button"
+                        disabled={safePage <= 0}
+                        onClick={() => setPage((p) => Math.max(0, p - 1))}
                       >
-                        <div>
-                          <p className="time-menu-row__name">{p.name}</p>
-                          <p className="time-menu-row__meta">
-                            {p.groupName} · normal {p.price.toFixed(2)}
-                          </p>
-                        </div>
-                        <div className="time-menu-row__actions">
-                          <button
-                            type="button"
-                            className={`time-menu-chip is-danger${d.hidden ? ' is-on' : ''}`}
-                            onClick={() => setDraft(p.id, { hidden: !d.hidden })}
-                          >
-                            Gizle
-                          </button>
-                          <button
-                            type="button"
-                            className={`time-menu-chip is-gold${d.featured ? ' is-on' : ''}`}
-                            onClick={() =>
-                              setDraft(p.id, {
-                                featured: !d.featured,
-                                hidden: d.featured ? d.hidden : false,
-                              })
-                            }
-                          >
-                            Öne çıkan
-                          </button>
-                          <input
-                            className="time-menu-price"
-                            inputMode="decimal"
-                            placeholder="Fiyat"
-                            title="Bu dilimde özel fiyat (boş = normal)"
-                            value={d.priceText}
-                            onChange={(e) => setDraft(p.id, { priceText: e.target.value })}
-                          />
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                        Önceki
+                      </button>
+                      <span>
+                        {safePage + 1} / {pageCount}
+                        <em>
+                          · {filteredProducts.length} ürün
+                        </em>
+                      </span>
+                      <button
+                        type="button"
+                        disabled={safePage >= pageCount - 1}
+                        onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                      >
+                        Sonraki
+                      </button>
+                    </div>
+                  ) : null}
+                </>
               )}
             </section>
           </div>

@@ -628,9 +628,34 @@ router.get('/:slug', async (req, res) => {
 
   await trackView(restaurant.id, 'menu', restaurant.id, sessionId, req, activeLang);
 
+  const timeMenu = await getTimeMenuRuntime(restaurant.id);
+  const hiddenProductIds =
+    timeMenu.config.enabled && timeMenu.slot
+      ? new Set(
+          [...timeMenu.rules.entries()]
+            .filter(([, r]) => r.hidden)
+            .map(([id]) => id)
+        )
+      : null;
+
+  /** Dilimde gizli ürünler düşülünce grup başına kalan aktif ürün sayısı */
+  let visibleCountByGroup = new Map<number, number>();
+  if (hiddenProductIds) {
+    const activeProducts = await prisma.product.findMany({
+      where: { restaurantId: restaurant.id, isActive: true },
+      select: { id: true, groupId: true },
+    });
+    visibleCountByGroup = new Map();
+    for (const p of activeProducts) {
+      if (hiddenProductIds.has(p.id)) continue;
+      visibleCountByGroup.set(p.groupId, (visibleCountByGroup.get(p.groupId) || 0) + 1);
+    }
+  }
+
   const campaignCounts = new Map<number, number>();
   if (campaign) {
     for (const item of campaign.itemByProductId.values()) {
+      if (hiddenProductIds?.has(item.productId)) continue;
       campaignCounts.set(item.groupId, (campaignCounts.get(item.groupId) || 0) + 1);
     }
   }
@@ -638,7 +663,11 @@ router.get('/:slug', async (req, res) => {
   const mappedGroups = groups
     .map((g) => {
       const children = g.children
-        .filter((c) => !campaign || (campaignCounts.get(c.id) || 0) > 0)
+        .filter((c) => {
+          if (campaign && (campaignCounts.get(c.id) || 0) === 0) return false;
+          if (hiddenProductIds && (visibleCountByGroup.get(c.id) || 0) === 0) return false;
+          return true;
+        })
         .map((c) => ({
           id: c.id,
           name: getGroupName(c.i18n, activeLang),
@@ -646,11 +675,19 @@ router.get('/:slug', async (req, res) => {
           sortOrder: c.sortOrder,
         }));
 
-      const productCount = campaign
+      let productCount = campaign
         ? campaignCounts.get(g.id) || 0
         : g._count.products;
 
+      if (hiddenProductIds && !campaign) {
+        productCount = visibleCountByGroup.get(g.id) || 0;
+      }
+
       if (campaign && productCount === 0 && children.length === 0) {
+        return null;
+      }
+
+      if (hiddenProductIds && productCount === 0 && children.length === 0) {
         return null;
       }
 
@@ -668,6 +705,7 @@ router.get('/:slug', async (req, res) => {
   const stories = storyShowcase
     .filter((s) => s.imageUrl && s.productId && s.product)
     .filter((s) => !campaign || campaign.itemByProductId.has(s.productId!))
+    .filter((s) => !hiddenProductIds || !hiddenProductIds.has(s.productId!))
     .map((s) => ({
       id: s.id,
       name: s.name,
@@ -974,36 +1012,40 @@ router.get('/:slug/popular-products', async (req, res) => {
   const campaignFilter = campaign ? { id: { in: campaign.productIds } } : {};
 
   const timeMenu = await getTimeMenuRuntime(restaurant.id);
-  const featuredIds = timeMenu.config.enabled && timeMenu.slot
+  const slotActive = Boolean(timeMenu.config.enabled && timeMenu.slot);
+  const featuredIds = slotActive
     ? [...timeMenu.rules.entries()]
         .filter(([, r]) => r.featured && !r.hidden)
         .map(([id]) => id)
     : [];
-  const hiddenIds =
-    timeMenu.config.enabled && timeMenu.slot
-      ? [...timeMenu.rules.entries()].filter(([, r]) => r.hidden).map(([id]) => id)
-      : [];
+  const hiddenIds = slotActive
+    ? [...timeMenu.rules.entries()].filter(([, r]) => r.hidden).map(([id]) => id)
+    : [];
 
-  /** Önerilen + dilimde öne çıkanlar; gizli olanlar hariç */
+  /**
+   * Saatlik menü açıksa önerilenler = sadece dilimde “öne çıkan” seçilenler.
+   * Kapalıysa klasik isRecommended.
+   */
   const products = await prisma.product.findMany({
     where: {
       restaurantId: restaurant.id,
       isActive: true,
       ...campaignFilter,
-      AND: [
-        {
-          OR: [
-            { isRecommended: true },
-            ...(featuredIds.length ? [{ id: { in: featuredIds } }] : []),
-          ],
-        },
-        ...(hiddenIds.length ? [{ id: { notIn: hiddenIds } }] : []),
-      ],
+      ...(slotActive
+        ? {
+            id: { in: featuredIds.length ? featuredIds : [-1] },
+            ...(hiddenIds.length ? { NOT: { id: { in: hiddenIds } } } : {}),
+          }
+        : {
+            isRecommended: true,
+          }),
     },
     include: { group: true, currency: true },
     orderBy: { sortOrder: 'asc' },
-    take: limit * 2,
+    take: Math.max(limit * 2, featuredIds.length || limit),
   });
+
+  const featuredOrder = new Map(featuredIds.map((id, i) => [id, i]));
 
   const items = products
     .map((p) => {
@@ -1040,9 +1082,14 @@ router.get('/:slug/popular-products', async (req, res) => {
         groupId: p.groupId,
         groupName: getGroupName(p.group.i18n, activeLang),
         ...stockPublicFields(p),
+        _featOrder: featuredOrder.has(p.id)
+          ? featuredOrder.get(p.id)!
+          : 10_000 + p.sortOrder,
       };
     })
     .filter((x): x is NonNullable<typeof x> => x != null)
+    .sort((a, b) => a._featOrder - b._featOrder)
+    .map(({ _featOrder: _, ...rest }) => rest)
     .slice(0, limit);
 
   res.json(items);

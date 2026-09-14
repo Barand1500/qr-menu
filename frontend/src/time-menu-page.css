@@ -24,14 +24,6 @@
   color: var(--admin-accent, #0284c7);
 }
 
-.time-menu-page__lead {
-  margin: -0.35rem 0 1.1rem;
-  font-size: 0.9rem;
-  color: var(--admin-text-muted, #64748b);
-  line-height: 1.45;
-  max-width: 40rem;
-}
-
 .time-menu-page__toast {
   margin-bottom: 0.85rem;
   padding: 0.65rem 0.9rem;
@@ -445,6 +437,44 @@
   padding: 2rem 1rem;
   text-align: center;
   font-size: 0.9rem;
+  color: var(--admin-text-muted, #64748b);
+}
+
+.time-menu-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--admin-card-border, rgba(15, 23, 42, 0.08));
+}
+
+.time-menu-pager button {
+  border: 1px solid var(--admin-card-border, rgba(15, 23, 42, 0.12));
+  background: var(--admin-card, #fff);
+  color: var(--admin-text, #0f172a);
+  border-radius: 0.7rem;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.time-menu-pager button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.time-menu-pager span {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--admin-text, #0f172a);
+}
+
+.time-menu-pager em {
+  font-style: normal;
+  font-weight: 600;
   color: var(--admin-text-muted, #64748b);
 }
 
