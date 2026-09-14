@@ -510,11 +510,21 @@ router.get('/:slug', async (req, res) => {
       orderBy: { sortOrder: 'asc' },
     }),
     prisma.showcaseImage.findMany({
-      where: { restaurantId: restaurant.id, isActive: true, displayType: 'banner' },
+      where: {
+        restaurantId: restaurant.id,
+        isActive: true,
+        isDeleted: false,
+        displayType: 'banner',
+      },
       orderBy: { sortOrder: 'asc' },
     }),
     prisma.showcaseImage.findMany({
-      where: { restaurantId: restaurant.id, isActive: true, displayType: 'story' },
+      where: {
+        restaurantId: restaurant.id,
+        isActive: true,
+        isDeleted: false,
+        displayType: 'story',
+      },
       include: {
         product: { select: { id: true, groupId: true, i18n: true } },
       },

@@ -31,8 +31,13 @@ const upload = multer({ storage, limits: { fileSize: 8 * 1024 * 1024 } });
 router.get('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   const type = req.query.type as string | undefined;
-  const where: { restaurantId: number; displayType?: 'banner' | 'story' } = {
+  const where: {
+    restaurantId: number;
+    isDeleted: boolean;
+    displayType?: 'banner' | 'story';
+  } = {
     restaurantId: restaurantId!,
+    isDeleted: false,
   };
   if (type === 'banner' || type === 'story') {
     where.displayType = type;
@@ -58,7 +63,7 @@ router.post('/', async (req, res) => {
 
   const [maxOrder, languages] = await Promise.all([
     prisma.showcaseImage.aggregate({
-      where: { restaurantId: restaurantId!, displayType: itemType },
+      where: { restaurantId: restaurantId!, displayType: itemType, isDeleted: false },
       _max: { sortOrder: true },
     }),
     getLanguages(),
@@ -87,7 +92,7 @@ router.put('/:id', async (req, res) => {
     req.body;
 
   const existing = await prisma.showcaseImage.findFirst({
-    where: { id, restaurantId: restaurantId! },
+    where: { id, restaurantId: restaurantId!, isDeleted: false },
   });
   if (!existing) return res.status(404).json({ message: 'Kayıt bulunamadı' });
 
@@ -122,7 +127,7 @@ router.patch('/:id/toggle', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   const id = Number(req.params.id);
   const existing = await prisma.showcaseImage.findFirst({
-    where: { id, restaurantId: restaurantId! },
+    where: { id, restaurantId: restaurantId!, isDeleted: false },
   });
   if (!existing) return res.status(404).json({ message: 'Kayıt bulunamadı' });
 
@@ -141,7 +146,7 @@ router.post('/:id/image', upload.single('image'), async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   const id = Number(req.params.id);
   const existing = await prisma.showcaseImage.findFirst({
-    where: { id, restaurantId: restaurantId! },
+    where: { id, restaurantId: restaurantId!, isDeleted: false },
   });
   if (!existing) return res.status(404).json({ message: 'Kayıt bulunamadı' });
   if (!req.file) return res.status(400).json({ message: 'Görsel gerekli' });
@@ -164,7 +169,7 @@ router.put('/reorder/bulk', async (req, res) => {
 
   for (const item of items || []) {
     await prisma.showcaseImage.updateMany({
-      where: { id: item.id, restaurantId: restaurantId! },
+      where: { id: item.id, restaurantId: restaurantId!, isDeleted: false },
       data: { sortOrder: item.sortOrder },
     });
   }
@@ -176,11 +181,15 @@ router.delete('/:id', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   const id = Number(req.params.id);
   const existing = await prisma.showcaseImage.findFirst({
-    where: { id, restaurantId: restaurantId! },
+    where: { id, restaurantId: restaurantId!, isDeleted: false },
   });
   if (!existing) return res.status(404).json({ message: 'Kayıt bulunamadı' });
 
-  await prisma.showcaseImage.delete({ where: { id } });
+  // Soft delete — satır DB'de kalır, listelerden çıkar
+  await prisma.showcaseImage.update({
+    where: { id },
+    data: { isDeleted: true, isActive: false },
+  });
   res.json({ ok: true });
 });
 

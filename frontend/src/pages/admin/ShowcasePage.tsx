@@ -310,13 +310,15 @@ export default function ShowcasePage() {
     }
   }
 
-  async function deleteStory(id: number) {
-    if (!window.confirm('Bu hikayeyi silmek istediğinize emin misiniz?')) return;
+  async function deleteItem(id: number) {
+    if (!window.confirm('Bu kaydı listeden kaldırmak istediğinize emin misiniz?')) return;
+    const snapshot = items;
+    setItems((prev) => prev.filter((i) => i.id !== id));
     try {
       await api(`/api/admin/showcase/${id}`, { method: 'DELETE' });
-      await load();
     } catch {
-      window.alert('Hikaye silinemedi. Lütfen tekrar deneyin.');
+      setItems(snapshot);
+      window.alert('Silinemedi. Lütfen tekrar deneyin.');
     }
   }
 
@@ -459,6 +461,15 @@ export default function ShowcasePage() {
                                 <Eye className="w-4 h-4" />
                               )}
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteItem(item.id)}
+                              className="p-2 rounded-xl text-red-500 hover:bg-red-50"
+                              title="Sil"
+                              aria-label="Sil"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -563,7 +574,7 @@ export default function ShowcasePage() {
                         <button
                           type="button"
                           className="admin-stories-card__btn admin-stories-card__btn--danger"
-                          onClick={() => deleteStory(story.id)}
+                          onClick={() => deleteItem(story.id)}
                           title="Sil"
                           aria-label="Sil"
                         >

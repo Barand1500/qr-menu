@@ -31,6 +31,7 @@
   --menu-accent: #c4a494;
   --menu-accent-dark: #d4b5a8;
   --menu-card: #2a201c;
+  --menu-card-bg: #2a201c;
   --menu-text: #f3ebe4;
   --menu-text-muted: #b9a79c;
   --sade-btn: #3a2e2a;
@@ -371,8 +372,79 @@
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
 }
 
-/* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ CanlÃÂÃÂ± ÃÂ¢ÃÂÃÂ gÃÂÃÂ¼ndÃÂÃÂ¼z modu (varsayÃÂÃÂ±lan: gece) ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
-/* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ CanlÃÂÃÂ± ÃÂ¢ÃÂÃÂ gece modu (varsayÃÂÃÂ±lan: gÃÂÃÂ¼ndÃÂÃÂ¼z yeÃÂÃÂil) ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
+/* Hakkımızda — gece modu kontrast */
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .about-page {
+  background: #2a201c;
+  border-color: rgba(243, 235, 228, 0.12);
+  color: #f3ebe4;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .about-page__body h2,
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .about-page__editorial-copy h2 {
+  color: #f8f1ea;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .about-page__body p,
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .about-page__editorial-copy p {
+  color: #cbb7ab;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .about-page__highlights li {
+  background: rgba(196, 164, 148, 0.16);
+  border-color: rgba(212, 181, 168, 0.28);
+  color: #f3ebe4;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .about-page__editorial-copy {
+  background: #2a201c;
+}
+
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .about-page__cover,
+.public-menu-page[data-theme-menu='sade'][data-color-mode='night'] .about-page__editorial-media {
+  background: #1c1614;
+}
+
+/* Sepet — tüm temalar gece modu */
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__panel {
+  background: #1c1614;
+  color: #f3ebe4;
+}
+
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__eyebrow,
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__empty,
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__line-price,
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__note,
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__totals span,
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__hint {
+  color: #b9a79c;
+}
+
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__head h2,
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__name,
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__totals strong,
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__close {
+  color: #f8f1ea;
+}
+
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__close,
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__qty,
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__totals > div,
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__thumb {
+  background: #2a201c;
+}
+
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__note textarea {
+  background: #14100e;
+  color: #f3ebe4;
+  border-color: rgba(243, 235, 228, 0.14);
+}
+
+.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__note textarea::placeholder {
+  color: #8a766c;
+}
+
+/* —— Canlı —— */
 .public-menu-page[data-theme-menu='alive'][data-color-mode='night'] {
   --menu-bg: #101a14;
   --menu-navy: #1a2e20;
@@ -381,6 +453,7 @@
   --menu-accent-dark: #9fc293;
   --menu-warm: #e8d48a;
   --menu-card: #1a2820;
+  --menu-card-bg: #1a2820;
   --menu-text: #f2f7f0;
   --menu-text-muted: #b4c7b8;
   --alive-forest: #4a7d58;
@@ -396,6 +469,48 @@
 
 .public-menu-page[data-theme-menu='alive'][data-color-mode='night'] .public-menu-header {
   background: linear-gradient(135deg, #0c1410 0%, #1a2e20 60%, #243f2c 100%);
+}
+
+.public-menu-page[data-theme-menu='alive'][data-color-mode='night'] .public-side-menu {
+  background: linear-gradient(180deg, #0c1410 0%, #101a14 100%);
+  color: #f2f7f0;
+}
+
+.public-menu-page[data-theme-menu='alive'][data-color-mode='night'] .public-side-menu__link {
+  color: rgba(242, 247, 240, 0.82);
+}
+
+.public-menu-page[data-theme-menu='alive'][data-color-mode='night'] .public-side-menu__link.is-active {
+  color: #ecfdf5;
+  background: rgba(134, 239, 172, 0.14);
+  box-shadow: inset 3px 0 0 #86efac;
+}
+
+.public-menu-page[data-theme-menu='alive'][data-color-mode='night'] .about-page {
+  background: #1a2820;
+  border-color: rgba(184, 212, 173, 0.16);
+  color: #f2f7f0;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+
+.public-menu-page[data-theme-menu='alive'][data-color-mode='night'] .about-page__body h2,
+.public-menu-page[data-theme-menu='alive'][data-color-mode='night'] .about-page__editorial-copy h2 {
+  color: #f2f7f0;
+}
+
+.public-menu-page[data-theme-menu='alive'][data-color-mode='night'] .about-page__body p,
+.public-menu-page[data-theme-menu='alive'][data-color-mode='night'] .about-page__editorial-copy p {
+  color: #b4c7b8;
+}
+
+.public-menu-page[data-theme-menu='alive'][data-color-mode='night'] .about-page__highlights li {
+  background: rgba(184, 212, 173, 0.14);
+  border-color: rgba(184, 212, 173, 0.28);
+  color: #f2f7f0;
+}
+
+.public-menu-page[data-theme-menu='alive'][data-color-mode='night'] .about-page__editorial-copy {
+  background: #1a2820;
 }
 
 .public-menu-page[data-theme-menu='alive'][data-color-mode='night'] .public-mobile-nav__shape {
@@ -630,6 +745,7 @@
   --menu-accent-dark: #8b6f32;
   --menu-warm: #c9a962;
   --menu-card: #ffffff;
+  --menu-card-bg: #ffffff;
   --menu-text: #2c2824;
   --menu-text-muted: #6b6560;
   background:
@@ -1162,6 +1278,7 @@
   --menu-accent: #f87171;
   --menu-accent-dark: #ef4444;
   --menu-card: #2a1c18;
+  --menu-card-bg: #2a1c18;
   --menu-text: #f8efe8;
   --menu-text-muted: #c4a99a;
   --siparis-red: #f87171;
@@ -1217,7 +1334,7 @@
 
 .public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-cart-sheet__panel {
   background: #241814;
-  color: var(--menu-text);
+  color: #f8efe8;
 }
 
 .public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-cart-sheet__close,
@@ -1333,4 +1450,110 @@
 .public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__total.is-live {
   background: rgba(248, 113, 113, 0.2);
   border-color: rgba(248, 113, 113, 0.4);
+}
+
+/* —— Lüks + Sipariş: Hakkımızda gece —— */
+.public-menu-page[data-theme-menu='luxury'] .about-page,
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .about-page {
+  background: var(--menu-card, #161412);
+  border-color: color-mix(in srgb, var(--menu-text, #f3eee4) 12%, transparent);
+  color: var(--menu-text, #f3eee4);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+
+.public-menu-page[data-theme-menu='luxury'] .about-page__body h2,
+.public-menu-page[data-theme-menu='luxury'] .about-page__editorial-copy h2,
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .about-page__body h2,
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .about-page__editorial-copy h2 {
+  color: var(--menu-text, #f3eee4);
+}
+
+.public-menu-page[data-theme-menu='luxury'] .about-page__body p,
+.public-menu-page[data-theme-menu='luxury'] .about-page__editorial-copy p,
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .about-page__body p,
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .about-page__editorial-copy p {
+  color: var(--menu-text-muted, #9a9286);
+}
+
+.public-menu-page[data-theme-menu='luxury'] .about-page__highlights li,
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .about-page__highlights li {
+  background: color-mix(in srgb, var(--menu-accent, #c9a962) 18%, transparent);
+  border-color: color-mix(in srgb, var(--menu-accent, #c9a962) 28%, transparent);
+  color: var(--menu-text, #f3eee4);
+}
+
+.public-menu-page[data-theme-menu='luxury'] .about-page__editorial-copy,
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .about-page__editorial-copy {
+  background: var(--menu-card, #161412);
+}
+
+.public-menu-page[data-theme-menu='luxury'] .about-page__cover,
+.public-menu-page[data-theme-menu='luxury'] .about-page__editorial-media,
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .about-page__cover,
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .about-page__editorial-media {
+  background: color-mix(in srgb, var(--menu-text, #f3eee4) 6%, var(--menu-card, #161412));
+}
+
+/* Lüks gündüz hakkımızda — koyu metin */
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .about-page {
+  background: #ffffff;
+  border-color: rgba(44, 40, 36, 0.1);
+  color: #2c2824;
+  box-shadow: 0 10px 28px rgba(40, 30, 20, 0.08);
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .about-page__body h2,
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .about-page__editorial-copy h2 {
+  color: #2c2824;
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .about-page__body p,
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .about-page__editorial-copy p {
+  color: #6b6560;
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .about-page__highlights li {
+  background: rgba(168, 135, 63, 0.12);
+  border-color: rgba(168, 135, 63, 0.22);
+  color: #2c2824;
+}
+
+.public-menu-page[data-theme-menu='luxury'][data-color-mode='day'] .about-page__editorial-copy {
+  background: #ffffff;
+}
+
+/* —— Menü Dedektifi gece (tüm temalar: lüks + linear dahil) —— */
+.public-menu-page[data-color-mode='night'] .menu-det__ladder li span {
+  color: #fbbf24 !important;
+}
+
+.public-menu-page[data-color-mode='night'] .menu-det__ladder li strong {
+  color: #f8fafc !important;
+}
+
+.public-menu-page[data-color-mode='night'] .menu-det__hero h3,
+.public-menu-page[data-color-mode='night'] .menu-det__result strong.menu-det__prize {
+  color: #f8fafc !important;
+}
+
+.public-menu-page[data-color-mode='night'] .menu-det__hero p,
+.public-menu-page[data-color-mode='night'] .menu-det__top {
+  color: #94a3b8 !important;
+}
+
+.public-menu-page[data-color-mode='night'] .menu-det__top strong,
+.public-menu-page[data-color-mode='night'] .menu-det__prize,
+.public-menu-page[data-color-mode='night'] .menu-det__kicker {
+  color: #fbbf24 !important;
+}
+
+/* Lüks varsayılan gece — data-color-mode gece olmasa da panel koyuysa okunabilir tut */
+.public-menu-page[data-theme-menu='luxury']:not([data-color-mode='day']) .menu-det__ladder li span,
+.public-menu-page[data-theme-menu='linear'][data-color-mode='night'] .menu-det__ladder li span {
+  color: #fbbf24 !important;
+}
+
+.public-menu-page[data-theme-menu='luxury']:not([data-color-mode='day']) .menu-det__ladder li strong,
+.public-menu-page[data-theme-menu='linear'][data-color-mode='night'] .menu-det__ladder li strong {
+  color: #f8fafc !important;
 }

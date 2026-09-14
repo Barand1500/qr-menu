@@ -16,7 +16,6 @@ import MenuGamesOverlay from '@/components/public/games/MenuGamesOverlay';
 import { MENU_WAITER_CALLED_EVENT, type MenuGameId } from '@/lib/menuGames';
 import { isPublicGamesOn, type PublicMenuGames } from '@/lib/menuGamesConfig';
 import '@/menu-customer.css';
-import '@/menu-games.css';
 import {
   DEMO_MENU_BANNERS,
   DEMO_POPULAR_PRODUCTS,

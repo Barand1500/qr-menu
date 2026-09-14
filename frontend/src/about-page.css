@@ -295,9 +295,9 @@
 .about-page {
   border-radius: 1.1rem;
   overflow: hidden;
-  background: var(--menu-card-bg, #fff);
+  background: var(--menu-card, #fff);
   color: var(--menu-text, #1c1917);
-  border: 1px solid color-mix(in srgb, var(--menu-text, #1c1917) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--menu-text, #1c1917) 10%, transparent);
 }
 
 .about-page--preview {
@@ -307,7 +307,7 @@
 .about-page__cover {
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  background: #e7e5e4;
+  background: color-mix(in srgb, var(--menu-text, #1c1917) 8%, transparent);
 }
 
 .about-page__cover img,
@@ -332,6 +332,7 @@
   font-weight: 850;
   letter-spacing: -0.02em;
   line-height: 1.2;
+  color: var(--menu-text, #1c1917);
 }
 
 .about-page__body p,
@@ -354,7 +355,8 @@
 .about-page__highlights li {
   padding: 0.65rem 0.8rem;
   border-radius: 0.75rem;
-  background: color-mix(in srgb, var(--menu-accent, #8a5a2b) 10%, transparent);
+  background: color-mix(in srgb, var(--menu-accent, #8a5a2b) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--menu-accent, #8a5a2b) 22%, transparent);
   font-size: 0.88rem;
   font-weight: 700;
   color: var(--menu-text, #1c1917);
@@ -411,7 +413,7 @@
 }
 
 .about-page__editorial-media {
-  background: #e7e5e4;
+  background: color-mix(in srgb, var(--menu-text, #1c1917) 8%, transparent);
   min-height: 12rem;
 }
 

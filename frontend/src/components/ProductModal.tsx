@@ -412,6 +412,29 @@ export default function ProductModal({
                 options={groupOptions}
                 onChange={(e) => onFormChange({ ...form, groupId: e.target.value })}
               />
+              <Input
+                label="Adı"
+                value={trTranslation.name}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  onFormChange({
+                    ...form,
+                    translations: {
+                      ...form.translations,
+                      tr: {
+                        ...(form.translations.tr || {
+                          name: '',
+                          description: '',
+                          ingredients: '',
+                          allergens: '',
+                        }),
+                        name,
+                      },
+                    },
+                  });
+                }}
+                placeholder="Ürün adı"
+              />
               <div className="grid grid-cols-2 gap-3">
                 <Input
                   type="number"
@@ -455,7 +478,7 @@ export default function ProductModal({
                 onChange={(features) => onFormChange({ ...form, features })}
               />
 
-              <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <label className="flex items-center gap-2.5 cursor-pointer text-sm text-[var(--admin-text)]">
                   <input
                     type="checkbox"

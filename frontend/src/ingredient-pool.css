@@ -84,6 +84,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  position: relative;
   border-radius: 1.15rem;
   background: #fff;
   border: 1px solid rgba(15, 23, 42, 0.1);
@@ -209,6 +210,142 @@
   font-size: 0.84rem;
   color: #64748b;
   line-height: 1.4;
+}
+
+.ingredient-pool-picker__empty-box {
+  margin: 1.25rem 0.35rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.ingredient-pool-picker__empty-box p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.ingredient-pool-picker__quick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 0.85rem;
+  border: none;
+  background: var(--admin-accent, #0ea5e9);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.ingredient-pool-picker__quick:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.ingredient-pool-quick {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem;
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(2px);
+}
+
+.ingredient-pool-quick__card {
+  width: 100%;
+  border-radius: 1rem;
+  background: var(--admin-card, #fff);
+  border: 1px solid var(--admin-card-border, rgba(15, 23, 42, 0.08));
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+
+.ingredient-pool-quick__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.85rem 0.9rem 0.55rem;
+}
+
+.ingredient-pool-quick__head h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--admin-text, #0f172a);
+}
+
+.ingredient-pool-quick__body {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0 0.9rem 0.75rem;
+}
+
+.ingredient-pool-quick__body label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.ingredient-pool-quick__body span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-text-muted, #64748b);
+}
+
+.ingredient-pool-quick__body input,
+.ingredient-pool-quick__body select {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--admin-card-border, rgba(15, 23, 42, 0.1));
+  background: var(--admin-input-bg, #f8fafc);
+  color: var(--admin-text, #0f172a);
+  padding: 0.55rem 0.7rem;
+  font-size: 0.88rem;
+  outline: none;
+}
+
+.ingredient-pool-quick__body input:focus,
+.ingredient-pool-quick__body select:focus {
+  border-color: var(--admin-accent, #0ea5e9);
+}
+
+.ingredient-pool-quick__error {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #dc2626;
+}
+
+.ingredient-pool-quick__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  padding: 0.65rem 0.9rem 0.9rem;
+}
+
+.ingredient-pool-quick__ghost {
+  border: none;
+  background: transparent;
+  color: var(--admin-text-muted, #64748b);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.7rem;
+  cursor: pointer;
+}
+
+.ingredient-pool-quick__ghost:hover {
+  background: var(--admin-input-bg, #f8fafc);
 }
 
 .ingredient-pool-picker__list {

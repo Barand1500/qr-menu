@@ -565,9 +565,21 @@ export default function ProductVariantsLevels({
             <p>Grup: {selected.groupName || 'Grup yok'}</p>
             <strong className="pv-levels__hero-price">{formatMoney(selected.price)}</strong>
           </div>
-          <button type="button" className="pv-levels__change" onClick={onClearProduct}>
-            Ürünü değiştir
-          </button>
+          <div className="pv-levels__hero-actions">
+            <button type="button" className="pv-levels__change" onClick={onClearProduct}>
+              Ürünü değiştir
+            </button>
+            <button
+              type="button"
+              className="pv-levels__save"
+              disabled={!dirty || saving}
+              onClick={() => void onSave()}
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              {saving ? 'Kaydediliyor…' : 'Kaydet'}
+            </button>
+            {dirty ? <span className="pv-levels__dirty">Kaydedilmemiş değişiklik var</span> : null}
+          </div>
         </header>
 
         <nav className="pv-levels__tabs" aria-label="Seviyeler">
@@ -729,19 +741,6 @@ export default function ProductVariantsLevels({
               })}
             </div>
           </aside>
-        </div>
-
-        <div className="pv-levels__footer">
-          <button
-            type="button"
-            className="pv-levels__save"
-            disabled={!dirty || saving}
-            onClick={() => void onSave()}
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            {saving ? 'Kaydediliyor…' : 'Kaydet'}
-          </button>
-          {dirty ? <span className="pv-levels__dirty">Kaydedilmemiş değişiklik var</span> : null}
         </div>
       </div>
     </div>

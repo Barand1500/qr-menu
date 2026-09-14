@@ -796,17 +796,28 @@ export default function ProductVariantsPage() {
                           placeholder="Grup adı"
                         />
                       </div>
-                      <button
-                        type="button"
-                        className="pv-icon-danger"
-                        title="Grubu sil"
-                        onClick={() => {
-                          const next = groups.filter((g) => g.id !== activeGroup.id);
-                          updateGroups(next);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="pv-canvas__actions">
+                        <button
+                          type="button"
+                          className="pv-btn pv-btn--teal pv-btn--sm"
+                          data-tour="pv-rules"
+                          onClick={() => setRulesOpen(true)}
+                        >
+                          <SlidersHorizontal className="w-4 h-4" />
+                          {(activeGroup.name.trim() || 'Grup') + ' kuralları'}
+                        </button>
+                        <button
+                          type="button"
+                          className="pv-icon-danger"
+                          title="Grubu sil"
+                          onClick={() => {
+                            const next = groups.filter((g) => g.id !== activeGroup.id);
+                            updateGroups(next);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </header>
 
                     <ul className="pv-opt-list">
@@ -891,22 +902,6 @@ export default function ProductVariantsPage() {
                       <Plus className="w-3.5 h-3.5" />
                       Seçenek ekle
                     </button>
-
-                    <div className="pv-canvas__foot">
-                      <button
-                        type="button"
-                        className="pv-btn pv-btn--teal"
-                        data-tour="pv-rules"
-                        disabled={!activeGroup}
-                        onClick={() => setRulesOpen(true)}
-                      >
-                        <SlidersHorizontal className="w-4 h-4" />
-                        {(activeGroup.name.trim() || 'Grup') + ' kuralları'}
-                      </button>
-                      <p>
-                        Zorunluluk, fiyat modu, maks. adet ve “seçilince gizle” kuralları burada.
-                      </p>
-                    </div>
                   </>
                 )}
               </main>

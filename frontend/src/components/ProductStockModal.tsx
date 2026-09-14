@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Boxes, Check, Clock, Moon, SlidersHorizontal, Sun, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { ProductOptionGroup } from '@/lib/productOptions';
+import '@/product-stock-modal.css';
 
 export type StockProduct = {
   id: number;
@@ -19,7 +20,6 @@ export function stockLabel(stockQty: number | null | undefined) {
   return stockQty == null ? 'S' : String(stockQty);
 }
 
-/** 'S' / boş = sınırsız (null), rakam = adet, geçersiz = undefined */
 function readStockInput(raw: string): number | null | undefined {
   const t = raw.trim();
   if (!t || /^s$/i.test(t)) return null;
@@ -38,10 +38,12 @@ function StockField({
   value,
   onChange,
   ariaLabel,
+  size = 'md',
 }: {
   value: string;
   onChange: (next: string) => void;
   ariaLabel: string;
+  size?: 'sm' | 'md';
 }) {
   return (
     <input
@@ -52,12 +54,7 @@ function StockField({
         const next = sanitizeStockText(e.target.value);
         if (next !== null) onChange(next);
       }}
-      className="w-20 rounded-xl px-3 py-2 text-center text-sm font-semibold outline-none focus:border-[var(--admin-accent)]"
-      style={{
-        background: 'var(--admin-input-bg)',
-        border: '1px solid var(--admin-card-border)',
-        color: 'var(--admin-text)',
-      }}
+      className={`psm-stock-input${size === 'sm' ? ' psm-stock-input--sm' : ''}`}
     />
   );
 }
@@ -109,6 +106,7 @@ export default function ProductStockModal({
   }, [onClose]);
 
   const hour24 = isPm ? (hour12 % 12) + 12 : hour12 % 12;
+  const timeLabel = `${String(hour24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
   async function save() {
     setError(null);
@@ -167,53 +165,29 @@ export default function ProductStockModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Kapat"
-        onClick={onClose}
-        className="absolute inset-0 bg-black/45 backdrop-blur-sm"
-      />
+    <div className="psm-overlay">
+      <button type="button" className="psm-scrim" aria-label="Kapat" onClick={onClose} />
 
       <div
         role="dialog"
         aria-modal="true"
         aria-label={`${product.name} stok yönetimi`}
-        className="relative w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden animate-slide-up"
-        style={{
-          background: 'var(--admin-card-bg)',
-          border: '1px solid var(--admin-card-border)',
-        }}
+        className="psm-modal animate-slide-up"
       >
-        <header
-          className="flex items-start gap-3 px-5 py-4 border-b"
-          style={{ borderColor: 'var(--admin-card-border)' }}
-        >
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-wider admin-text-muted">
-              Stok yönetimi
-            </p>
-            <h2
-              className="text-lg font-bold truncate"
-              style={{ color: 'var(--admin-text)' }}
-            >
-              {product.name}
-            </h2>
+        <header className="psm-head">
+          <div className="psm-head__icon" aria-hidden>
+            <Clock className="w-5 h-5" />
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Kapat"
-            className="p-2 rounded-xl admin-text-muted hover:bg-[var(--admin-input-bg)]"
-          >
+          <div className="psm-head__copy">
+            <p>Stok yönetimi</p>
+            <h2>{product.name}</h2>
+          </div>
+          <button type="button" className="psm-close" onClick={onClose} aria-label="Kapat">
             <X className="w-4 h-4" />
           </button>
         </header>
 
-        <nav
-          className="grid grid-cols-2 border-b"
-          style={{ borderColor: 'var(--admin-card-border)' }}
-        >
+        <nav className="psm-tabs" role="tablist">
           {(
             [
               { key: 'variants' as const, label: 'Varyant stoğu', icon: Boxes },
@@ -223,16 +197,10 @@ export default function ProductStockModal({
             <button
               key={key}
               type="button"
+              role="tab"
+              aria-selected={tab === key}
+              className={`psm-tab${tab === key ? ' is-active' : ''}`}
               onClick={() => setTab(key)}
-              className="flex items-center justify-center gap-2 py-3 text-sm font-semibold transition"
-              style={{
-                color: tab === key ? 'var(--admin-accent)' : 'var(--admin-text-muted)',
-                borderBottom:
-                  tab === key
-                    ? '2px solid var(--admin-accent)'
-                    : '2px solid transparent',
-                background: tab === key ? 'var(--admin-accent-soft)' : 'transparent',
-              }}
             >
               <Icon className="w-4 h-4" />
               {label}
@@ -240,227 +208,189 @@ export default function ProductStockModal({
           ))}
         </nav>
 
-        <div className="px-5 py-4 max-h-[60vh] overflow-y-auto admin-scroll">
+        <div className="psm-body admin-scroll">
           {tab === 'variants' ? (
             groups.length === 0 ? (
-              <p className="py-8 text-center text-sm admin-text-muted">
-                Bu üründe varyant yok. Ürün stoğunu Ayarlar sekmesinden yönet.
-              </p>
+              <div className="psm-empty">
+                <Boxes className="w-8 h-8" />
+                <p>Bu üründe varyant yok.</p>
+                <span>Ürün stoğunu Ayarlar sekmesinden yönet.</span>
+              </div>
             ) : (
-              <div className="space-y-4">
-                <p className="text-xs admin-text-muted">
-                  Her varyant için ayrı stok gir. <strong>S</strong> = sınırsız,{' '}
-                  <strong>0</strong> = tükendi (menüde soluk görünür).
+              <div className="psm-variants">
+                <p className="psm-hint">
+                  Her varyant için ayrı stok gir. <b>S</b> = sınırsız, <b>0</b> = tükendi.
                 </p>
                 {groups.map((group) => (
-                  <section key={group.id}>
-                    <h3
-                      className="text-xs font-bold uppercase tracking-wide mb-2"
-                      style={{ color: 'var(--admin-text)' }}
-                    >
-                      {group.name}
-                    </h3>
-                    <div className="space-y-1.5">
+                  <section key={group.id} className="psm-variant-group">
+                    <h3>{group.name}</h3>
+                    <ul>
                       {group.options.map((option) => {
                         const soldOut = optionStocks[option.id] === '0';
                         return (
-                          <div
-                            key={option.id}
-                            className="flex items-center gap-3 rounded-xl px-3 py-2"
-                            style={{ background: 'var(--admin-input-bg)' }}
-                          >
-                            <span
-                              className="flex-1 min-w-0 truncate text-sm font-medium"
-                              style={{
-                                color: soldOut ? '#dc2626' : 'var(--admin-text)',
-                              }}
-                            >
-                              {option.name}
-                            </span>
+                          <li key={option.id} className={soldOut ? 'is-soldout' : undefined}>
+                            <span>{option.name}</span>
                             <StockField
+                              size="sm"
                               ariaLabel={`${option.name} stoğu`}
                               value={optionStocks[option.id] ?? 'S'}
                               onChange={(next) =>
                                 setOptionStocks((prev) => ({ ...prev, [option.id]: next }))
                               }
                             />
-                          </div>
+                          </li>
                         );
                       })}
-                    </div>
+                    </ul>
                   </section>
                 ))}
               </div>
             )
           ) : (
-            <div className="space-y-5">
-              <div>
-                <label
-                  className="block text-xs font-bold uppercase tracking-wide mb-1.5"
-                  style={{ color: 'var(--admin-text)' }}
-                >
-                  Ürün stoğu
-                </label>
-                <div className="flex items-center gap-3">
+            <div className="psm-settings">
+              <section className="psm-card">
+                <div className="psm-card__row">
+                  <div>
+                    <h3>Ürün stoğu</h3>
+                    <p>S = sınırsız · 0 = bugün bitti</p>
+                  </div>
                   <StockField
                     ariaLabel="Ürün stoğu"
                     value={productStock}
                     onChange={setProductStock}
                   />
-                  <p className="text-xs admin-text-muted">
-                    S = sınırsız · 0 = bugün bitti
-                  </p>
                 </div>
-              </div>
+              </section>
 
-              <div
-                className="rounded-2xl p-4"
-                style={{ background: 'var(--admin-input-bg)' }}
-              >
-                <label className="flex items-center gap-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={resetOn}
-                    onChange={(e) => setResetOn(e.target.checked)}
-                    className="w-4 h-4 accent-[var(--admin-accent)]"
-                  />
-                  <Clock className="w-4 h-4" style={{ color: 'var(--admin-accent)' }} />
-                  <span
-                    className="text-sm font-semibold"
-                    style={{ color: 'var(--admin-text)' }}
-                  >
-                    Günlük otomatik reset
+              <section className={`psm-reset${resetOn ? ' is-on' : ''}`}>
+                <button
+                  type="button"
+                  className="psm-reset__toggle"
+                  onClick={() => setResetOn((v) => !v)}
+                  aria-pressed={resetOn}
+                >
+                  <span className="psm-reset__switch" aria-hidden>
+                    <em />
                   </span>
-                </label>
+                  <span className="psm-reset__copy">
+                    <strong>Günlük otomatik reset</strong>
+                    <small>
+                      {resetOn
+                        ? `Her gün ${timeLabel} saatinde yenilenir`
+                        : 'Kapalı — stok yalnızca elle değişir'}
+                    </small>
+                  </span>
+                </button>
 
                 {resetOn ? (
-                  <div className="mt-4 space-y-4">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-wide admin-text-muted mb-2">
-                        Saat
-                      </p>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <select
-                          value={hour12}
-                          onChange={(e) => setHour12(Number(e.target.value))}
-                          aria-label="Saat"
-                          className="rounded-xl px-3 py-2 text-sm font-semibold outline-none"
-                          style={{
-                            background: 'var(--admin-card-bg)',
-                            border: '1px solid var(--admin-card-border)',
-                            color: 'var(--admin-text)',
-                          }}
-                        >
-                          {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
-                            <option key={h} value={h}>
-                              {String(h).padStart(2, '0')}
-                            </option>
-                          ))}
-                        </select>
-                        <span className="font-bold admin-text-muted">:</span>
-                        <select
-                          value={minute}
-                          onChange={(e) => setMinute(Number(e.target.value))}
-                          aria-label="Dakika"
-                          className="rounded-xl px-3 py-2 text-sm font-semibold outline-none"
-                          style={{
-                            background: 'var(--admin-card-bg)',
-                            border: '1px solid var(--admin-card-border)',
-                            color: 'var(--admin-text)',
-                          }}
-                        >
-                          {[0, 15, 30, 45].map((m) => (
-                            <option key={m} value={m}>
-                              {String(m).padStart(2, '0')}
-                            </option>
-                          ))}
-                        </select>
-
-                        <div
-                          className="flex rounded-xl overflow-hidden ml-1"
-                          style={{ border: '1px solid var(--admin-card-border)' }}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => setIsPm(false)}
-                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition"
-                            style={{
-                              background: !isPm
-                                ? 'var(--admin-accent)'
-                                : 'var(--admin-card-bg)',
-                              color: !isPm ? '#fff' : 'var(--admin-text-muted)',
-                            }}
-                          >
-                            <Sun className="w-3.5 h-3.5" />
-                            Gündüz
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsPm(true)}
-                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition"
-                            style={{
-                              background: isPm
-                                ? 'var(--admin-accent)'
-                                : 'var(--admin-card-bg)',
-                              color: isPm ? '#fff' : 'var(--admin-text-muted)',
-                            }}
-                          >
-                            <Moon className="w-3.5 h-3.5" />
-                            Gece
-                          </button>
-                        </div>
-                      </div>
-                      <p className="mt-2 text-xs admin-text-muted">
-                        Her gün{' '}
-                        <strong style={{ color: 'var(--admin-text)' }}>
-                          {String(hour24).padStart(2, '0')}:
-                          {String(minute).padStart(2, '0')}
-                        </strong>{' '}
-                        saatinde stok yenilenir.
-                      </p>
+                  <div className="psm-reset__panel">
+                    <div className="psm-period" role="group" aria-label="Gündüz veya gece">
+                      <button
+                        type="button"
+                        className={`psm-period__btn psm-period__btn--day${!isPm ? ' is-on' : ''}`}
+                        onClick={() => {
+                          setIsPm(false);
+                          if (hour12 === 12) setHour12(10);
+                        }}
+                        aria-pressed={!isPm}
+                      >
+                        <Sun className="w-5 h-5" />
+                        <span>
+                          <strong>Gündüz</strong>
+                          <small>Örn. 08:00 · 10:00</small>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`psm-period__btn psm-period__btn--night${isPm ? ' is-on' : ''}`}
+                        onClick={() => {
+                          setIsPm(true);
+                          if (hour12 === 12) setHour12(10);
+                        }}
+                        aria-pressed={isPm}
+                      >
+                        <Moon className="w-5 h-5" />
+                        <span>
+                          <strong>Gece</strong>
+                          <small>Örn. 22:00 · 00:00</small>
+                        </span>
+                      </button>
                     </div>
 
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-wide admin-text-muted mb-2">
-                        Reset sonrası stok
-                      </p>
-                      <StockField
-                        ariaLabel="Reset sonrası stok"
-                        value={resetTo}
-                        onChange={setResetTo}
-                      />
+                    <div className="psm-clock">
+                      <div className="psm-clock__face" aria-hidden>
+                        <span className={isPm ? 'is-night' : 'is-day'}>
+                          {isPm ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                        </span>
+                        <strong>{timeLabel}</strong>
+                      </div>
+
+                      <div className="psm-clock__pickers">
+                        <label>
+                          <span>Saat</span>
+                          <select
+                            value={hour12}
+                            onChange={(e) => setHour12(Number(e.target.value))}
+                            aria-label="Saat"
+                          >
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+                              <option key={h} value={h}>
+                                {String(h).padStart(2, '0')}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <span className="psm-clock__colon" aria-hidden>
+                          :
+                        </span>
+                        <label>
+                          <span>Dakika</span>
+                          <select
+                            value={minute}
+                            onChange={(e) => setMinute(Number(e.target.value))}
+                            aria-label="Dakika"
+                          >
+                            {[0, 15, 30, 45].map((m) => (
+                              <option key={m} value={m}>
+                                {String(m).padStart(2, '0')}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="psm-card psm-card--inset">
+                      <div className="psm-card__row">
+                        <div>
+                          <h3>Reset sonrası stok</h3>
+                          <p>Her gün bu değere döner</p>
+                        </div>
+                        <StockField
+                          ariaLabel="Reset sonrası stok"
+                          value={resetTo}
+                          onChange={setResetTo}
+                        />
+                      </div>
                     </div>
                   </div>
-                ) : (
-                  <p className="mt-2 text-xs admin-text-muted">
-                    Kapalı — stok yalnızca elle değişir.
-                  </p>
-                )}
-              </div>
+                ) : null}
+              </section>
             </div>
           )}
         </div>
 
-        <footer
-          className="flex items-center justify-between gap-3 px-5 py-3.5 border-t"
-          style={{ borderColor: 'var(--admin-card-border)' }}
-        >
-          <p className="text-xs text-red-500 min-h-[1rem]">{error}</p>
-          <div className="flex gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="px-4 py-2 rounded-xl text-sm font-semibold admin-text-muted hover:bg-[var(--admin-input-bg)]"
-            >
+        <footer className="psm-foot">
+          <p className="psm-error">{error}</p>
+          <div className="psm-foot__actions">
+            <button type="button" className="psm-btn-ghost" onClick={onClose} disabled={saving}>
               Vazgeç
             </button>
             <button
               type="button"
+              className="psm-btn-primary"
               onClick={() => void save()}
               disabled={saving}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-60"
-              style={{ background: 'var(--admin-accent)' }}
             >
               <Check className="w-4 h-4" />
               {saving ? 'Kaydediliyor…' : 'Kaydet'}

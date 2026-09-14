@@ -176,6 +176,8 @@ model ShowcaseImage {
   displayType  ShowcaseDisplayType @default(banner) @map("gosterim_tipi")
   sortOrder    Int                 @default(0) @map("sira")
   isActive     Boolean             @default(true) @map("aktif")
+  /// Soft delete — true ise admin/menü listesinde görünmez, satır DB'de kalır
+  isDeleted    Boolean             @default(false) @map("silindi")
   durationSeconds Int              @default(5) @map("sure_sn")
   i18n         Json                @default("{}") @map("ceviriler")
   createdAt    DateTime            @default(now()) @map("olusturma")
@@ -185,6 +187,7 @@ model ShowcaseImage {
   product    Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([restaurantId, sortOrder])
+  @@index([restaurantId, isDeleted])
   @@map("vitrin_gorselleri")
 }
 

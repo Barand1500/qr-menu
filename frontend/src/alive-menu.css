@@ -55,8 +55,9 @@
 }
 
 .public-menu-page[data-theme-menu='alive'] .public-side-menu__link.is-active {
-  color: var(--alive-forest);
-  box-shadow: inset 3px 0 0 var(--alive-forest);
+  color: #ecfdf5;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 3px 0 0 #86efac;
 }
 
 .public-menu-page[data-theme-menu='alive'] .public-content-card {
