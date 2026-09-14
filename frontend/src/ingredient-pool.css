@@ -364,10 +364,15 @@
   .product-modal-shell__main,
   .ingredient-pool-page__toast,
   .ingredient-pool-panel,
-  .ingredient-pool-list__item,
+  .ingredient-pool-list__item:not(.is-flash),
   .ingredient-pool-page {
     animation: none !important;
     transition: none !important;
+  }
+
+  .ingredient-pool-list__item.is-flash {
+    animation: none !important;
+    transform: none !important;
   }
 }
 
@@ -732,6 +737,29 @@
 
 .ingredient-pool-list__item:hover {
   border-color: color-mix(in srgb, var(--admin-accent) 28%, transparent);
+}
+
+.ingredient-pool-list__item.is-flash {
+  border-color: color-mix(in srgb, var(--admin-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--admin-accent) 12%, var(--admin-card));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-accent) 22%, transparent);
+  animation: ingredient-pool-item-flash 0.48s ease-in-out 3 !important;
+  animation-delay: 0s !important;
+  z-index: 1;
+}
+
+@keyframes ingredient-pool-item-flash {
+  0%,
+  100% {
+    background: color-mix(in srgb, var(--admin-accent) 10%, var(--admin-card));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-accent) 18%, transparent);
+    transform: scale(1);
+  }
+  50% {
+    background: color-mix(in srgb, var(--admin-accent) 28%, #fff);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-accent) 40%, transparent);
+    transform: scale(1.012);
+  }
 }
 
 @keyframes ingredient-pool-row-in {

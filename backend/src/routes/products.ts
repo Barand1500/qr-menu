@@ -494,16 +494,37 @@ router.put('/:id', async (req, res) => {
     );
   }
 
+  const nextGroupId = groupId !== undefined ? Number(groupId) : existing.groupId;
+  const groupChanged = groupId !== undefined && nextGroupId !== existing.groupId;
+
+  if (groupChanged) {
+    const group = await prisma.group.findFirst({
+      where: { id: nextGroupId, restaurantId: restaurantId! },
+    });
+    if (!group) return res.status(400).json({ message: 'Geçersiz grup' });
+  }
+
+  // Başka gruba taşınınca eski sıra taşınmaz; yeni grubun sonuna (boş yere) geçer
+  let nextSortOrder: number | undefined = sortOrder !== undefined ? Number(sortOrder) : undefined;
+  if (groupChanged) {
+    const maxOrder = await prisma.product.aggregate({
+      where: { groupId: nextGroupId },
+      _max: { sortOrder: true },
+    });
+    nextSortOrder = (maxOrder._max.sortOrder ?? 0) + 1;
+  }
+
   const product = await prisma.product.update({
     where: { id },
     data: {
-      ...(groupId !== undefined && { groupId: Number(groupId) }),
+      ...(groupId !== undefined && { groupId: nextGroupId }),
       ...(price !== undefined && { price }),
       ...(currencyId !== undefined && {
         currencyId:
           currencyId == null || currencyId === '' ? null : Number(currencyId),
       }),
-      ...(sortOrder !== undefined && { sortOrder }),
+      ...(nextSortOrder !== undefined &&
+        Number.isFinite(nextSortOrder) && { sortOrder: nextSortOrder }),
       ...(isActive !== undefined && { isActive }),
       ...(imageUrl !== undefined && { imageUrl }),
       ...(prepTimeMinutes !== undefined && {

@@ -56,6 +56,11 @@ export default function GroupProductsModal({
     navigate(`${adminPath('products')}?edit=${productId}`);
   }
 
+  function goQuickAdd() {
+    onClose();
+    navigate(`${adminPath('products')}?new=1&groupId=${groupId}`);
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
@@ -105,39 +110,59 @@ export default function GroupProductsModal({
             <div className="py-12 text-center">
               <Package className="w-10 h-10 mx-auto admin-text-subtle mb-3" />
               <p className="text-sm admin-text-muted">Bu grupta henüz ürün yok</p>
+              <button
+                type="button"
+                onClick={goQuickAdd}
+                className="mt-3 text-xs font-semibold underline-offset-2 hover:underline transition"
+                style={{ color: 'var(--admin-accent)' }}
+              >
+                Hızlı ürün ekle
+              </button>
             </div>
           ) : (
-            <ul className="space-y-2">
-              {products.map((product) => (
-                <li key={product.id}>
-                  <button
-                    type="button"
-                    onClick={() => goEdit(product.id)}
-                    className="w-full flex items-center gap-3 p-3 rounded-2xl text-left transition hover:bg-[var(--admin-accent-soft)]/60 group"
-                    style={{ background: 'var(--admin-input-bg)' }}
-                  >
-                    {product.imageUrl ? (
-                      <img
-                        src={imageUrl(product.imageUrl)}
-                        alt=""
-                        className="w-12 h-12 rounded-xl object-cover shrink-0"
-                      />
-                    ) : (
-                      <div
-                        className="w-12 h-12 rounded-xl shrink-0"
-                        style={{ background: 'var(--admin-accent-soft)' }}
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-[var(--admin-text)] truncate">{product.name}</p>
-                      <p className="text-sm admin-text-muted">{formatMoney(product.price, product.currency)}</p>
-                    </div>
-                    <Badge active={product.isActive} />
-                    <ChevronRight className="w-4 h-4 admin-text-subtle shrink-0 group-hover:text-[var(--admin-accent)] transition" />
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              <div className="mb-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={goQuickAdd}
+                  className="text-xs font-semibold underline-offset-2 hover:underline transition"
+                  style={{ color: 'var(--admin-accent)' }}
+                >
+                  Hızlı ürün ekle
+                </button>
+              </div>
+              <ul className="space-y-2">
+                {products.map((product) => (
+                  <li key={product.id}>
+                    <button
+                      type="button"
+                      onClick={() => goEdit(product.id)}
+                      className="w-full flex items-center gap-3 p-3 rounded-2xl text-left transition hover:bg-[var(--admin-accent-soft)]/60 group"
+                      style={{ background: 'var(--admin-input-bg)' }}
+                    >
+                      {product.imageUrl ? (
+                        <img
+                          src={imageUrl(product.imageUrl)}
+                          alt=""
+                          className="w-12 h-12 rounded-xl object-cover shrink-0"
+                        />
+                      ) : (
+                        <div
+                          className="w-12 h-12 rounded-xl shrink-0"
+                          style={{ background: 'var(--admin-accent-soft)' }}
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-[var(--admin-text)] truncate">{product.name}</p>
+                        <p className="text-sm admin-text-muted">{formatMoney(product.price, product.currency)}</p>
+                      </div>
+                      <Badge active={product.isActive} />
+                      <ChevronRight className="w-4 h-4 admin-text-subtle shrink-0 group-hover:text-[var(--admin-accent)] transition" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
 

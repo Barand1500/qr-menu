@@ -19,6 +19,8 @@ import {
 } from '@/lib/ingredientPool';
 import '@/ingredient-pool.css';
 
+const FLASH_MS = 1700;
+
 type MenuGroupRow = {
   id: number;
   name: string;
@@ -70,11 +72,29 @@ export default function IngredientPoolPage() {
   const [activeGroupId, setActiveGroupId] = useState<string | 'all' | 'none'>('all');
   const [newGroupName, setNewGroupName] = useState('');
   const [newItemName, setNewItemName] = useState('');
+  const [flashItemId, setFlashItemId] = useState<string | null>(null);
+  const [flashKey, setFlashKey] = useState(0);
 
   const showToast = useCallback((text: string, kind: 'ok' | 'warn' = 'ok') => {
     setToastKind(kind);
     setMessage(text);
   }, []);
+
+  const revealExistingItem = useCallback(
+    (itemId: string, itemsInView: IngredientPoolItem[]) => {
+      if (!itemsInView.some((i) => i.id === itemId)) {
+        setActiveGroupId('all');
+      }
+      setNewItemName('');
+      // Aynı satıra tekrar basınca animasyonu yeniden başlat
+      setFlashItemId(null);
+      window.requestAnimationFrame(() => {
+        setFlashItemId(itemId);
+        setFlashKey((k) => k + 1);
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +120,21 @@ export default function IngredientPoolPage() {
     const t = window.setTimeout(() => setMessage(null), 2600);
     return () => window.clearTimeout(t);
   }, [message]);
+
+  useEffect(() => {
+    if (!flashItemId) return;
+    const t = window.setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(
+        `[data-pool-item="${flashItemId}"]`
+      );
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 40);
+    const clear = window.setTimeout(() => setFlashItemId(null), FLASH_MS);
+    return () => {
+      window.clearTimeout(t);
+      window.clearTimeout(clear);
+    };
+  }, [flashItemId, flashKey, activeGroupId]);
 
   const menuGroups = useMemo(
     () => pool.groups.filter((g) => g.menuGroupId != null || /^mg-\d+$/.test(g.id)),
@@ -192,7 +227,7 @@ export default function IngredientPoolPage() {
     // Aktif grup varsa ona ekle
     if (targetGroupId) {
       if (existing && itemInGroup(existing, targetGroupId)) {
-        showToast('Zaten ekli', 'warn');
+        revealExistingItem(existing.id, filteredItems);
         return;
       }
       if (existing) {
@@ -216,9 +251,9 @@ export default function IngredientPoolPage() {
       return;
     }
 
-    // Tümü / Grupsuz: yeni malzeme (grupsuz) — aynı isim varsa uyarı
+    // Tümü / Grupsuz: yeni malzeme (grupsuz) — aynı isim varsa satıra kay
     if (existing) {
-      showToast('Zaten ekli', 'warn');
+      revealExistingItem(existing.id, filteredItems);
       return;
     }
     const item: IngredientPoolItem = {
@@ -254,7 +289,7 @@ export default function IngredientPoolPage() {
       trimmed
     );
     if (clash) {
-      showToast('Zaten ekli', 'warn');
+      revealExistingItem(clash.id, filteredItems);
       return;
     }
     void save({
@@ -446,8 +481,16 @@ export default function IngredientPoolPage() {
                   return (
                     <li
                       key={item.id}
-                      className="ingredient-pool-list__item ingredient-pool-list__item--multi"
-                      style={{ animationDelay: `${Math.min(index, 12) * 35}ms` }}
+                      data-pool-item={item.id}
+                      className={`ingredient-pool-list__item ingredient-pool-list__item--multi${
+                        flashItemId === item.id ? ' is-flash' : ''
+                      }`}
+                      style={{
+                        animationDelay:
+                          flashItemId === item.id
+                            ? '0ms'
+                            : `${Math.min(index, 12) * 35}ms`,
+                      }}
                     >
                       <input
                         className="ingredient-pool-list__name"

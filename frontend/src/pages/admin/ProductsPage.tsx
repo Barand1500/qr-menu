@@ -427,15 +427,22 @@ export default function ProductsPage() {
     search.trim().length > 0,
   ].filter(Boolean).length;
 
-  function openCreate() {
+  function openCreate(presetGroupId?: number | string | null) {
     setModalMode('create');
     setEditing(null);
     const defaultCurrency =
       currencies.find((c) => c.code === 'TRY' && c.isActive) ||
       currencies.find((c) => c.isActive);
+    const preset =
+      presetGroupId != null && presetGroupId !== ''
+        ? String(presetGroupId)
+        : '';
+    const groupId = groups.some((g) => String(g.id) === preset)
+      ? preset
+      : groups[0]?.id?.toString() || '';
     setForm({
       ...emptyForm(),
-      groupId: groups[0]?.id?.toString() || '',
+      groupId,
       currencyId: defaultCurrency?.id.toString() || '',
     });
     setProductImages([]);
@@ -492,6 +499,23 @@ export default function ProductsPage() {
     openFromUrl();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, products, loading]);
+
+  useEffect(() => {
+    const wantsNew =
+      searchParams.get('new') === '1' || searchParams.get('add') === '1';
+    if (!wantsNew || loading) return;
+
+    const groupIdParam = searchParams.get('groupId');
+    openCreate(groupIdParam);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('new');
+      next.delete('add');
+      next.delete('groupId');
+      return next;
+    }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, loading, groups]);
 
   function handleAddImages(files: FileList | null) {
     if (!files?.length) return;
@@ -724,7 +748,7 @@ export default function ProductsPage() {
                 )}
               </div>
             )}
-            <Button onClick={openCreate}>
+            <Button onClick={() => openCreate()}>
               <Plus className="w-4 h-4" />
               Yeni Ürün Ekle
             </Button>

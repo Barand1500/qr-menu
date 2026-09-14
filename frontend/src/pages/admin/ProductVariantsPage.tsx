@@ -30,7 +30,7 @@ import {
   type ProductOption,
   type ProductOptionGroup,
 } from '@/lib/productOptions';
-import ProductVariantsWizard from '@/pages/admin/ProductVariantsWizard';
+import ProductVariantsLevels from '@/pages/admin/ProductVariantsLevels';
 import ProductVariantsKanban from '@/pages/admin/ProductVariantsKanban';
 import {
   animateCopySuck,
@@ -182,13 +182,13 @@ export default function ProductVariantsPage() {
 
   useEffect(() => {
     if (!selected) {
-      if (layout === 'wizard' || layout === 'kanban' || view === 'editor') {
+      if (layout === 'levels' || layout === 'kanban' || view === 'editor') {
         setGroups([]);
         setDirty(false);
       }
       return;
     }
-    // Galeri: sadece editördeyken yükle; sihirbaz/kanban: ürün seçilince yükle
+    // Galeri: sadece editördeyken yükle; seviyeli/kanban: ürün seçilince yükle
     if (layout === 'gallery' && view !== 'editor') return;
     setGroups(normalizeLoadedGroups(selected.optionGroups));
     setDirty(false);
@@ -261,7 +261,7 @@ export default function ProductVariantsPage() {
     if (
       dirty &&
       selectedId !== p.id &&
-      (view === 'editor' || layout === 'wizard' || layout === 'kanban')
+      (view === 'editor' || layout === 'levels' || layout === 'kanban')
     ) {
       if (!confirm('Kaydedilmemiş değişiklikler var. Yine de geçilsin mi?')) return;
     }
@@ -270,6 +270,14 @@ export default function ProductVariantsPage() {
       setView('editor');
       setRulesOpen(false);
     }
+  }
+
+  function clearSelectedProduct() {
+    if (dirty && (layout === 'levels' || layout === 'kanban')) {
+      if (!confirm('Kaydedilmemiş değişiklikler var. Ürün seçimine dönülsün mü?')) return;
+    }
+    setSelectedId(null);
+    setDirty(false);
   }
 
   function cycleLayout(dir: -1 | 1) {
@@ -361,7 +369,7 @@ export default function ProductVariantsPage() {
     }
     const useLive =
       p.id === selectedId &&
-      (view === 'editor' || layout === 'wizard' || layout === 'kanban');
+      (view === 'editor' || layout === 'levels' || layout === 'kanban');
     const sourceGroups = useLive ? groups : normalizeLoadedGroups(p.optionGroups);
     if (!sourceGroups.length) {
       alert('Bu üründe kopyalanacak seçenek yok.');
@@ -467,8 +475,8 @@ export default function ProductVariantsPage() {
       ? view === 'editor'
         ? ' is-editor'
         : ' is-gallery'
-      : layout === 'wizard'
-        ? ' is-wizard'
+      : layout === 'levels'
+        ? ' is-levels'
         : ' is-kanban';
 
   return (
@@ -497,8 +505,8 @@ export default function ProductVariantsPage() {
               <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
             <p>
-              {layout === 'wizard'
-                ? 'Kurulum sihirbazı'
+              {layout === 'levels'
+                ? 'Seviyeli kurulum'
                 : layout === 'kanban'
                   ? 'Kanban panosu'
                   : view === 'gallery'
@@ -521,9 +529,7 @@ export default function ProductVariantsPage() {
           <strong>
             {layout === 'gallery' && view === 'editor' && selected
               ? selected.name || `Ürün #${selected.id}`
-              : layout === 'wizard'
-                ? 'Varyant & ekstra yönetimi'
-                : 'Varyant & ekstra yönetimi'}
+              : 'Varyant & ekstra yönetimi'}
           </strong>
         </div>
         <div className="pv-top-actions">
@@ -561,9 +567,8 @@ export default function ProductVariantsPage() {
         </div>
       </header>
 
-      {layout === 'wizard' ? (
-        <ProductVariantsWizard
-          products={products}
+      {layout === 'levels' ? (
+        <ProductVariantsLevels
           filtered={filtered}
           loading={loading}
           query={query}
@@ -574,9 +579,8 @@ export default function ProductVariantsPage() {
           selected={selected}
           selectedId={selectedId}
           onSelectProduct={(p) => openProduct(p as ProductRow)}
+          onClearProduct={clearSelectedProduct}
           groups={groups}
-          activeGroupId={activeGroupId}
-          onActiveGroupId={setActiveGroupId}
           onUpdateGroups={updateGroups}
           dirty={dirty}
           saving={saving}

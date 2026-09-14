@@ -1277,3 +1277,60 @@
   background: #1a1210;
   border-color: rgba(248, 113, 113, 0.35);
 }
+
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts {
+  border-top-color: rgba(248, 113, 113, 0.18);
+}
+
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__chip {
+  background: #2a1c18;
+  border-color: rgba(248, 113, 113, 0.22);
+  color: #f8efe8;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__chip small {
+  color: #fca5a5;
+}
+
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__chip.is-on {
+  background: linear-gradient(135deg, #dc2626, #9f1239);
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__chip.is-on small {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__chip:hover:not(.is-on) {
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__multi-row {
+  background: #2a1c18;
+  border-color: rgba(248, 113, 113, 0.16);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__multi-copy strong {
+  color: #f8efe8;
+}
+
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__multi-copy span {
+  color: #fca5a5;
+}
+
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__stepper em {
+  color: #f8efe8;
+}
+
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__total {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.28);
+}
+
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__total.is-live {
+  background: rgba(248, 113, 113, 0.2);
+  border-color: rgba(248, 113, 113, 0.4);
+}
