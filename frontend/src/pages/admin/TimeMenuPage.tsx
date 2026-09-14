@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Check, Clock, Plus, Trash2, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Check, Plus, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { adminPath } from '@/lib/adminPath';
+import { Button, PageHeader, Spinner } from '@/components/ui';
 import {
   compactRules,
   createCustomSlot,
@@ -11,18 +14,17 @@ import {
   type TimeMenuRule,
   type TimeMenuSlot,
 } from '@/lib/timeMenu';
-import '@/schedule-menu-modal.css';
+import '@/time-menu-page.css';
 
-export type ScheduleMenuProduct = {
+type ProductRow = {
   id: number;
   name: string;
   groupId: number;
   groupName: string;
   price: number;
-  isRecommended?: boolean;
 };
 
-export type ScheduleMenuGroup = {
+type GroupRow = {
   id: number;
   name: string;
   isSubGroup?: boolean;
@@ -73,51 +75,57 @@ function draftsToRules(
   return compactRules(next);
 }
 
-export default function ScheduleMenuModal({
-  open,
-  groups,
-  onClose,
-}: {
-  open: boolean;
-  groups: ScheduleMenuGroup[];
-  onClose: () => void;
-}) {
-  const [products, setProducts] = useState<ScheduleMenuProduct[]>([]);
+function draftsFromConfig(
+  products: ProductRow[],
+  config: TimeMenuConfig,
+  slotId: string
+): Record<number, RuleDraft> {
+  const map: Record<number, RuleDraft> = {};
+  for (const p of products) map[p.id] = emptyDraft();
+  for (const rule of config.rules) {
+    if (rule.slotId !== slotId) continue;
+    map[rule.productId] = ruleToDraft(rule);
+  }
+  return map;
+}
+
+export default function TimeMenuPage() {
+  const [products, setProducts] = useState<ProductRow[]>([]);
+  const [groups, setGroups] = useState<GroupRow[]>([]);
   const [config, setConfig] = useState<TimeMenuConfig | null>(null);
   const [slotId, setSlotId] = useState('morning');
   const [groupFilter, setGroupFilter] = useState('');
   const [drafts, setDrafts] = useState<Record<number, RuleDraft>>({});
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [toastKind, setToastKind] = useState<'ok' | 'warn'>('ok');
+
+  const showToast = useCallback((text: string, kind: 'ok' | 'warn' = 'ok') => {
+    setToastKind(kind);
+    setMessage(text);
+  }, []);
 
   useEffect(() => {
-    if (!open) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
     Promise.all([
       api<{ ok: boolean; config: TimeMenuConfig }>('/api/admin/settings/time-menu'),
-      api<{ data: ScheduleMenuProduct[] }>('/api/admin/products?limit=500'),
+      api<{ data: ProductRow[] }>('/api/admin/products?limit=500'),
+      api<{ data: GroupRow[] }>('/api/admin/groups?limit=200'),
     ])
-      .then(([cfgRes, prodRes]) => {
+      .then(([cfgRes, prodRes, groupsRes]) => {
         if (cancelled) return;
         const cfg = normalizeTimeMenuConfig(cfgRes.config);
         const list = prodRes.data || [];
         setProducts(list);
+        setGroups(groupsRes.data || []);
         setConfig(cfg);
         const first = cfg.slots[0]?.id || 'morning';
         setSlotId(first);
-        const map: Record<number, RuleDraft> = {};
-        for (const p of list) map[p.id] = emptyDraft();
-        for (const rule of cfg.rules) {
-          if (rule.slotId !== first) continue;
-          map[rule.productId] = ruleToDraft(rule);
-        }
-        setDrafts(map);
+        setDrafts(draftsFromConfig(list, cfg, first));
       })
       .catch(() => {
-        if (!cancelled) setError('Ayarlar yüklenemedi');
+        if (!cancelled) showToast('Ayarlar yüklenemedi', 'warn');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -125,24 +133,19 @@ export default function ScheduleMenuModal({
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [showToast]);
 
   useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+    if (!message) return;
+    const t = window.setTimeout(() => setMessage(null), 2600);
+    return () => window.clearTimeout(t);
+  }, [message]);
 
-  const activeSlot = useMemo(
+  const activeSlotLive = useMemo(
     () => (config ? getActiveSlot(config) : null),
     [config]
   );
-
   const currentSlot = config?.slots.find((s) => s.id === slotId) || null;
-
   const overlaps = useMemo(
     () => (config ? findOverlappingSlots(config.slots) : []),
     [config]
@@ -159,23 +162,22 @@ export default function ScheduleMenuModal({
       groups.map((g) => ({
         value: String(g.id),
         label: g.isSubGroup && g.parentName ? `${g.parentName} › ${g.name}` : g.name,
+        count: products.filter((p) => p.groupId === g.id).length,
       })),
-    [groups]
+    [groups, products]
   );
+
+  function commitSlotDrafts(nextSlotId: string, nextConfig: TimeMenuConfig) {
+    const rules = draftsToRules(slotId, drafts, nextConfig.rules);
+    const merged = { ...nextConfig, rules };
+    setConfig(merged);
+    setSlotId(nextSlotId);
+    setDrafts(draftsFromConfig(products, merged, nextSlotId));
+  }
 
   function switchSlot(nextId: string) {
     if (!config || nextId === slotId) return;
-    const rules = draftsToRules(slotId, drafts, config.rules);
-    const nextConfig = { ...config, rules };
-    setConfig(nextConfig);
-    setSlotId(nextId);
-    const map: Record<number, RuleDraft> = {};
-    for (const p of products) map[p.id] = emptyDraft();
-    for (const rule of nextConfig.rules) {
-      if (rule.slotId !== nextId) continue;
-      map[rule.productId] = ruleToDraft(rule);
-    }
-    setDrafts(map);
+    commitSlotDrafts(nextId, config);
   }
 
   function updateSlot(patch: Partial<TimeMenuSlot>) {
@@ -188,13 +190,12 @@ export default function ScheduleMenuModal({
 
   function addCustomSlot() {
     if (!config) return;
-    const slot = createCustomSlot({ name: `Özel ${config.slots.length - 2}` });
+    const slot = createCustomSlot({ name: `Özel ${Math.max(1, config.slots.length - 2)}` });
     const rules = draftsToRules(slotId, drafts, config.rules);
-    setConfig({ ...config, slots: [...config.slots, slot], rules });
+    const next = { ...config, slots: [...config.slots, slot], rules };
+    setConfig(next);
     setSlotId(slot.id);
-    const map: Record<number, RuleDraft> = {};
-    for (const p of products) map[p.id] = emptyDraft();
-    setDrafts(map);
+    setDrafts(draftsFromConfig(products, next, slot.id));
   }
 
   function removeCurrentSlot() {
@@ -206,15 +207,10 @@ export default function ScheduleMenuModal({
     const nextSlots = config.slots.filter((s) => s.id !== currentSlot.id);
     const nextRules = config.rules.filter((r) => r.slotId !== currentSlot.id);
     const nextId = nextSlots[0]?.id || 'morning';
-    setConfig({ ...config, slots: nextSlots, rules: nextRules });
+    const next = { ...config, slots: nextSlots, rules: nextRules };
+    setConfig(next);
     setSlotId(nextId);
-    const map: Record<number, RuleDraft> = {};
-    for (const p of products) map[p.id] = emptyDraft();
-    for (const rule of nextRules) {
-      if (rule.slotId !== nextId) continue;
-      map[rule.productId] = ruleToDraft(rule);
-    }
-    setDrafts(map);
+    setDrafts(draftsFromConfig(products, next, nextId));
   }
 
   function setDraft(productId: number, patch: Partial<RuleDraft>) {
@@ -241,101 +237,169 @@ export default function ScheduleMenuModal({
   async function save() {
     if (!config) return;
     setSaving(true);
-    setError(null);
     try {
       const rules = draftsToRules(slotId, drafts, config.rules);
       const payload = normalizeTimeMenuConfig({ ...config, rules });
-      await api('/api/admin/settings/time-menu', {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-      });
-      onClose();
+      const res = await api<{ ok: boolean; config: TimeMenuConfig }>(
+        '/api/admin/settings/time-menu',
+        {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        }
+      );
+      const saved = normalizeTimeMenuConfig(res.config);
+      setConfig(saved);
+      setDrafts(draftsFromConfig(products, saved, slotId));
+      showToast('Saatlik menü kaydedildi');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kaydedilemedi');
+      showToast(err instanceof Error ? err.message : 'Kaydedilemedi', 'warn');
     } finally {
       setSaving(false);
     }
   }
 
-  if (!open) return null;
+  if (loading) {
+    return (
+      <div className="time-menu-page">
+        <div className="time-menu-page__loading">
+          <Spinner />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="smm-overlay" role="dialog" aria-modal="true" aria-labelledby="smm-title">
-      <button type="button" className="smm-scrim" aria-label="Kapat" onClick={onClose} />
-      <div className="smm-modal">
-        <header className="smm-head">
-          <div className="smm-head__icon" aria-hidden>
-            <Clock className="w-5 h-5" />
-          </div>
-          <div className="smm-head__copy">
-            <p>Ürünler</p>
-            <h2 id="smm-title">Saatlik menü</h2>
-          </div>
-          <button type="button" className="smm-close" onClick={onClose} aria-label="Kapat">
-            <X className="w-4 h-4" />
-          </button>
-        </header>
+    <div className="time-menu-page">
+      <div className="time-menu-page__top">
+        <Link to={adminPath('products')} className="time-menu-page__back">
+          <ArrowLeft className="w-4 h-4" />
+          Ürünlere dön
+        </Link>
+      </div>
 
-        <div className="smm-body">
-          {loading || !config ? (
-            <p className="smm-empty">Yükleniyor…</p>
-          ) : (
-            <>
-              <div className="smm-enable">
-                <div className="smm-enable__copy">
-                  <strong>Saat dilimli menü</strong>
-                  <span>Açıkken menü, saate göre ürünleri gösterir / gizler.</span>
-                </div>
-                <button
-                  type="button"
-                  className={`smm-switch${config.enabled ? ' is-on' : ''}`}
-                  aria-pressed={config.enabled}
-                  onClick={() => setConfig({ ...config, enabled: !config.enabled })}
-                >
-                  <em />
-                </button>
+      <PageHeader
+        title="Saatlik menü"
+        actions={
+          <Button onClick={() => void save()} disabled={saving || !config}>
+            <Check className="w-4 h-4" />
+            {saving ? 'Kaydediliyor…' : 'Kaydet'}
+          </Button>
+        }
+      />
+      <p className="time-menu-page__lead">
+        Sabah / öğle / akşam dilimlerinde ürünleri gizle, öne çıkar veya özel fiyat ver. Kural
+        yoksa ürün her zaman görünür.
+      </p>
+
+      {message ? (
+        <div
+          className={`time-menu-page__toast${toastKind === 'warn' ? ' is-warn' : ''}`}
+          role="status"
+        >
+          {message}
+        </div>
+      ) : null}
+
+      {!config ? (
+        <p className="time-menu-empty">Ayarlar yüklenemedi</p>
+      ) : (
+        <>
+          <div className="time-menu-page__toolbar">
+            <div className="time-menu-page__enable">
+              <button
+                type="button"
+                className={`time-menu-switch${config.enabled ? ' is-on' : ''}`}
+                aria-pressed={config.enabled}
+                onClick={() => setConfig({ ...config, enabled: !config.enabled })}
+              >
+                <em />
+              </button>
+              <div>
+                <strong>Saat dilimli menü {config.enabled ? 'açık' : 'kapalı'}</strong>
+                <span>Açıkken menü, saate göre ürünleri gösterir veya gizler.</span>
               </div>
+            </div>
+            <p className="time-menu-page__active">
+              Şu an aktif:{' '}
+              <strong>
+                {activeSlotLive
+                  ? `${activeSlotLive.name} (${activeSlotLive.start}–${activeSlotLive.end})`
+                  : 'yok'}
+              </strong>
+            </p>
+          </div>
 
-              <p className="smm-active">
-                Şu an aktif dilim:{' '}
-                <strong>{activeSlot ? `${activeSlot.name} (${activeSlot.start}–${activeSlot.end})` : 'yok'}</strong>
-              </p>
-
-              <div className="smm-slots" role="tablist">
+          <div className="time-menu-page__grid">
+            <aside className="time-menu-panel time-menu-panel--side">
+              <p className="time-menu-panel__label">Dilimler</p>
+              <div className="time-menu-slots">
                 {config.slots.map((s) => (
                   <button
                     key={s.id}
                     type="button"
-                    role="tab"
-                    className={`smm-slot-tab${slotId === s.id ? ' is-on' : ''}`}
+                    className={`time-menu-slots__btn${slotId === s.id ? ' is-active' : ''}${
+                      !s.enabled ? ' is-off' : ''
+                    }`}
                     onClick={() => switchSlot(s.id)}
                   >
-                    {s.name}
-                    {!s.enabled ? ' · kapalı' : ''}
+                    <span>{s.name}</span>
+                    <small>
+                      {s.start}–{s.end}
+                      {!s.enabled ? ' · kapalı' : ''}
+                    </small>
                   </button>
                 ))}
                 <button
                   type="button"
-                  className="smm-slot-tab smm-slot-tab--add"
+                  className="time-menu-slots__btn time-menu-slots__add"
                   onClick={addCustomSlot}
                 >
-                  <Plus className="w-3.5 h-3.5 inline" /> Özel
+                  <span>
+                    <Plus className="w-3.5 h-3.5 inline" /> Özel dilim
+                  </span>
                 </button>
               </div>
 
+              <p className="time-menu-panel__label">Grup filtresi</p>
+              <div className="time-menu-groups">
+                <button
+                  type="button"
+                  className={`time-menu-groups__btn${groupFilter === '' ? ' is-active' : ''}`}
+                  onClick={() => setGroupFilter('')}
+                >
+                  <span>Tüm gruplar</span>
+                  <em>{products.length}</em>
+                </button>
+                {groupOptions.map((g) => (
+                  <button
+                    key={g.value}
+                    type="button"
+                    className={`time-menu-groups__btn${
+                      groupFilter === g.value ? ' is-active' : ''
+                    }`}
+                    onClick={() => setGroupFilter(g.value)}
+                  >
+                    <span>{g.label}</span>
+                    <em>{g.count}</em>
+                  </button>
+                ))}
+              </div>
+            </aside>
+
+            <section className="time-menu-panel">
               {currentSlot ? (
-                <div className="smm-slot-card">
-                  <div className="smm-slot-card__row">
-                    <div className="smm-field">
-                      <label htmlFor="smm-slot-name">Dilim adı</label>
+                <div className="time-menu-slot-edit">
+                  <div className="time-menu-slot-edit__row">
+                    <div className="time-menu-field">
+                      <label htmlFor="tm-slot-name">Dilim adı</label>
                       <input
-                        id="smm-slot-name"
+                        id="tm-slot-name"
                         type="text"
                         value={currentSlot.name}
                         onChange={(e) => updateSlot({ name: e.target.value })}
                       />
                     </div>
-                    <label className="smm-slot-enabled">
+                    <label className="time-menu-check">
                       <input
                         type="checkbox"
                         checked={currentSlot.enabled}
@@ -344,20 +408,22 @@ export default function ScheduleMenuModal({
                       Aktif
                     </label>
                   </div>
-                  <div className="smm-times">
-                    <div className="smm-field">
-                      <label htmlFor="smm-start">Başlangıç</label>
+                  <div className="time-menu-slot-edit__times">
+                    <div className="time-menu-field">
+                      <label htmlFor="tm-start">Başlangıç</label>
                       <input
-                        id="smm-start"
+                        id="tm-start"
                         type="time"
                         value={currentSlot.start}
-                        onChange={(e) => updateSlot({ start: e.target.value || currentSlot.start })}
+                        onChange={(e) =>
+                          updateSlot({ start: e.target.value || currentSlot.start })
+                        }
                       />
                     </div>
-                    <div className="smm-field">
-                      <label htmlFor="smm-end">Bitiş</label>
+                    <div className="time-menu-field">
+                      <label htmlFor="tm-end">Bitiş</label>
                       <input
-                        id="smm-end"
+                        id="tm-end"
                         type="time"
                         value={currentSlot.end}
                         onChange={(e) => updateSlot({ end: e.target.value || currentSlot.end })}
@@ -366,42 +432,25 @@ export default function ScheduleMenuModal({
                     {!['morning', 'lunch', 'dinner'].includes(currentSlot.id) ? (
                       <button
                         type="button"
-                        className="smm-chip is-danger"
+                        className="time-menu-icon-btn"
                         title="Dilimini sil"
                         onClick={removeCurrentSlot}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     ) : (
                       <span />
                     )}
                   </div>
                   {overlaps.length > 0 ? (
-                    <p className="smm-warn">{overlaps[0]} — kayıtta ilk eşleşen dilim kullanılır.</p>
+                    <p className="time-menu-warn">
+                      {overlaps[0]} — kayıtta listedeki ilk eşleşen dilim kullanılır.
+                    </p>
                   ) : null}
                 </div>
               ) : null}
 
-              <div className="smm-products-head">
-                <h3>Ürünler · {currentSlot?.name || 'dilim'}</h3>
-                <div className="smm-field" style={{ minWidth: '11rem' }}>
-                  <label htmlFor="smm-group">Grup</label>
-                  <select
-                    id="smm-group"
-                    value={groupFilter}
-                    onChange={(e) => setGroupFilter(e.target.value)}
-                  >
-                    <option value="">Tüm gruplar</option>
-                    {groupOptions.map((g) => (
-                      <option key={g.value} value={g.value}>
-                        {g.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="smm-bulk">
+              <div className="time-menu-bulk">
                 <button type="button" onClick={() => bulkForFiltered('hide')}>
                   Listedekileri gizle
                 </button>
@@ -417,30 +466,33 @@ export default function ScheduleMenuModal({
               </div>
 
               {filteredProducts.length === 0 ? (
-                <p className="smm-empty">Bu grupta ürün yok</p>
+                <p className="time-menu-empty">Bu grupta ürün yok</p>
               ) : (
-                <ul className="smm-list">
+                <ul className="time-menu-list">
                   {filteredProducts.map((p) => {
                     const d = drafts[p.id] || emptyDraft();
                     return (
-                      <li key={p.id} className={`smm-row${d.hidden ? ' is-hidden' : ''}`}>
+                      <li
+                        key={p.id}
+                        className={`time-menu-row${d.hidden ? ' is-hidden' : ''}`}
+                      >
                         <div>
-                          <p className="smm-row__name">{p.name}</p>
-                          <p className="smm-row__meta">
-                            {p.groupName} · {p.price.toFixed(2)}
+                          <p className="time-menu-row__name">{p.name}</p>
+                          <p className="time-menu-row__meta">
+                            {p.groupName} · normal {p.price.toFixed(2)}
                           </p>
                         </div>
-                        <div className="smm-row__actions">
+                        <div className="time-menu-row__actions">
                           <button
                             type="button"
-                            className={`smm-chip is-danger${d.hidden ? ' is-on' : ''}`}
+                            className={`time-menu-chip is-danger${d.hidden ? ' is-on' : ''}`}
                             onClick={() => setDraft(p.id, { hidden: !d.hidden })}
                           >
                             Gizle
                           </button>
                           <button
                             type="button"
-                            className={`smm-chip is-gold${d.featured ? ' is-on' : ''}`}
+                            className={`time-menu-chip is-gold${d.featured ? ' is-on' : ''}`}
                             onClick={() =>
                               setDraft(p.id, {
                                 featured: !d.featured,
@@ -451,7 +503,7 @@ export default function ScheduleMenuModal({
                             Öne çıkan
                           </button>
                           <input
-                            className="smm-price"
+                            className="time-menu-price"
                             inputMode="decimal"
                             placeholder="Fiyat"
                             title="Bu dilimde özel fiyat (boş = normal)"
@@ -464,26 +516,10 @@ export default function ScheduleMenuModal({
                   })}
                 </ul>
               )}
-            </>
-          )}
-          {error ? <p className="smm-error">{error}</p> : null}
-        </div>
-
-        <footer className="smm-foot">
-          <button type="button" className="smm-foot__ghost" onClick={onClose}>
-            İptal
-          </button>
-          <button
-            type="button"
-            className="smm-foot__primary"
-            disabled={saving || loading || !config}
-            onClick={() => void save()}
-          >
-            <Check className="w-4 h-4" />
-            {saving ? 'Kaydediliyor…' : 'Kaydet'}
-          </button>
-        </footer>
-      </div>
+            </section>
+          </div>
+        </>
+      )}
     </div>
   );
 }
