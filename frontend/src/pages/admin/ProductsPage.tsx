@@ -25,6 +25,7 @@ import {
   Spinner,
 } from '@/components/ui';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
+import { AdminListPager } from '@/components/AdminListPager';
 import ProductModal, {
   type ProductFormState,
   type ProductTranslationFields,
@@ -295,6 +296,9 @@ export default function ProductsPage() {
   const [groupFilter, setGroupFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const PAGE_SIZE = 15;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -342,27 +346,43 @@ export default function ProductsPage() {
   }, []);
 
   const load = useCallback(async () => {
-    const params = new URLSearchParams({ limit: '100' });
+    const params = new URLSearchParams({
+      limit: String(PAGE_SIZE),
+      page: String(page),
+    });
     if (search) params.set('search', search);
     if (groupFilter) params.set('groupId', groupFilter);
     if (statusFilter === 'active') params.set('active', 'true');
     if (statusFilter === 'passive') params.set('active', 'false');
 
     const [p, g, langs, curs] = await Promise.all([
-      api<{ data: Product[] }>(`/api/admin/products?${params}`),
+      api<{ data: Product[]; pagination: { total: number; page: number; limit: number } }>(
+        `/api/admin/products?${params}`
+      ),
       api<{ data: Group[] }>('/api/admin/groups?limit=200'),
       api<Language[]>('/api/admin/languages'),
       api<Currency[]>('/api/admin/currencies'),
     ]);
     setProducts(p.data);
+    setTotal(p.pagination?.total ?? p.data.length);
     setGroups(g.data);
     setLanguages(getActiveLanguages(langs));
     setCurrencies(curs);
+  }, [search, groupFilter, statusFilter, page]);
+
+  useEffect(() => {
+    setPage(1);
   }, [search, groupFilter, statusFilter]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
   }, [load]);
+
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
 
   useEffect(() => {
     void refreshBulkStatus();
@@ -998,6 +1018,13 @@ export default function ProductsPage() {
               )}
             </tbody>
           </table>
+          <AdminListPager
+            page={page}
+            pageCount={pageCount}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+          />
         </div>
       </Card>
 

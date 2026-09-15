@@ -32,6 +32,7 @@ import { api, imageUrl } from '@/lib/api';
 import { getActiveLanguages, type AdminLanguage } from '@/lib/languages';
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Spinner } from '@/components/ui';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
+import { AdminListPager } from '@/components/AdminListPager';
 import GroupModal, { type GroupFormState } from '@/components/GroupModal';
 import GroupProductsModal from '@/components/GroupProductsModal';
 import {
@@ -300,6 +301,8 @@ export default function GroupsPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [hideSubGroups, setHideSubGroups] = useState(false);
   const [sortMode, setSortMode] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15;
 
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [editing, setEditing] = useState<Group | null>(null);
@@ -373,6 +376,18 @@ export default function GroupsPage() {
     list.filter((g) => !seen.has(g.id)).forEach((g) => ordered.push(g));
     return ordered;
   }, [allGroups, search, statusFilter, typeFilter, hideSubGroups]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, typeFilter, hideSubGroups]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredGroups.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pagedGroups = useMemo(() => {
+    if (sortMode) return filteredGroups;
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filteredGroups.slice(start, start + PAGE_SIZE);
+  }, [filteredGroups, safePage, sortMode]);
 
   const activeFilterCount = [
     statusFilter !== 'all',
@@ -660,22 +675,22 @@ export default function GroupsPage() {
                 </tr>
               </thead>
               <SortableContext
-                items={filteredGroups.map((g) => g.id)}
+                items={pagedGroups.map((g) => g.id)}
                 strategy={verticalListSortingStrategy}
               >
                 <tbody>
-                  {filteredGroups.length === 0 ? (
+                  {pagedGroups.length === 0 ? (
                     <tr>
                       <td colSpan={sortMode ? 8 : 7}>
                         <EmptyState message="Filtrelere uygun grup bulunamadı" />
                       </td>
                     </tr>
                   ) : (
-                    filteredGroups.map((group, index) => (
+                    pagedGroups.map((group, index) => (
                       <SortableRow
                         key={group.id}
                         group={group}
-                        layout={getRowLayout(filteredGroups, index)}
+                        layout={getRowLayout(pagedGroups, index)}
                         sortMode={sortMode}
                         pickMode={subGroupPickMode}
                         selectedForSub={pickParent?.id ?? null}
@@ -691,6 +706,15 @@ export default function GroupsPage() {
               </SortableContext>
             </table>
           </DndContext>
+          {!sortMode ? (
+            <AdminListPager
+              page={safePage}
+              pageCount={pageCount}
+              total={filteredGroups.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setPage}
+            />
+          ) : null}
         </div>
       </Card>
 
