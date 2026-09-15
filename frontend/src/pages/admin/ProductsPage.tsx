@@ -323,12 +323,16 @@ export default function ProductsPage() {
   const [rollFrom, setRollFrom] = useState<number | null>(null);
   const productsRef = useRef(products);
   productsRef.current = products;
+  const pageRef = useRef(page);
+  pageRef.current = page;
+  const bulkAnimatingRef = useRef(false);
   const animTokenRef = useRef({ cancelled: false });
   const bulkToastTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
       animTokenRef.current.cancelled = true;
+      bulkAnimatingRef.current = false;
       if (bulkToastTimerRef.current != null) {
         window.clearTimeout(bulkToastTimerRef.current);
         bulkToastTimerRef.current = null;
@@ -345,10 +349,12 @@ export default function ProductsPage() {
     }
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (pageOverride?: number) => {
+    if (bulkAnimatingRef.current) return;
+    const pageToLoad = pageOverride ?? page;
     const params = new URLSearchParams({
       limit: String(PAGE_SIZE),
-      page: String(page),
+      page: String(pageToLoad),
     });
     if (search) params.set('search', search);
     if (groupFilter) params.set('groupId', groupFilter);
@@ -375,12 +381,14 @@ export default function ProductsPage() {
   }, [search, groupFilter, statusFilter]);
 
   useEffect(() => {
+    if (bulkAnimatingRef.current) return;
     load().finally(() => setLoading(false));
   }, [load]);
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   useEffect(() => {
+    if (bulkAnimatingRef.current) return;
     if (page > pageCount) setPage(pageCount);
   }, [page, pageCount]);
 
@@ -392,6 +400,50 @@ export default function ProductsPage() {
     fetchPrefCatalog().then(setPrefCatalog).catch(() => undefined);
   }, []);
 
+  async function loadProductCatalog(): Promise<Map<number, Product>> {
+    const map = new Map(productsRef.current.map((p) => [p.id, p]));
+    try {
+      const res = await api<{ data: Product[] }>('/api/admin/products?limit=500');
+      for (const p of res.data) map.set(p.id, p);
+    } catch {
+      /* mevcut satırlarla devam */
+    }
+    return map;
+  }
+
+  function buildAnimPageProducts(
+    updates: {
+      id: number;
+      price: number;
+      previousPrice?: number | null;
+      previousPriceAt?: string | null;
+    }[],
+    pageNum: number,
+    animatedCount: number,
+    kind: 'apply' | 'restore',
+    catalog: Map<number, Product>,
+    fromPrices?: Map<number, number>
+  ): Product[] {
+    const start = (pageNum - 1) * PAGE_SIZE;
+    return updates.slice(start, start + PAGE_SIZE).flatMap((u, j) => {
+      const base = catalog.get(u.id);
+      if (!base) return [];
+      const globalIdx = start + j;
+      const done = globalIdx < animatedCount;
+      const startPrice =
+        fromPrices?.get(u.id) ??
+        (kind === 'apply' ? (u.previousPrice ?? base.price) : base.price);
+      return [
+        {
+          ...base,
+          price: done ? u.price : startPrice,
+          previousPrice: kind === 'apply' && done ? (u.previousPrice ?? null) : null,
+          previousPriceAt: kind === 'apply' && done ? (u.previousPriceAt ?? null) : null,
+        },
+      ];
+    });
+  }
+
   async function runPriceSequence(
     updates: {
       id: number;
@@ -399,14 +451,38 @@ export default function ProductsPage() {
       previousPrice?: number | null;
       previousPriceAt?: string | null;
     }[],
-    kind: 'apply' | 'restore'
+    kind: 'apply' | 'restore',
+    fromPrices?: Map<number, number>
   ) {
     animTokenRef.current = { cancelled: false };
     const token = animTokenRef.current;
+    bulkAnimatingRef.current = true;
     setBulkAnimating(true);
 
-    for (const u of updates) {
+    const resumePage = pageRef.current;
+    const catalog = await loadProductCatalog();
+    const animUpdates = updates.filter((u) => catalog.has(u.id));
+    const animTotal = animUpdates.length;
+    setTotal(Math.max(animTotal, 1));
+    let shownPage = -1;
+
+    for (let i = 0; i < animUpdates.length; i++) {
       if (token.cancelled) break;
+      const u = animUpdates[i];
+      const targetPage = Math.floor(i / PAGE_SIZE) + 1;
+
+      if (shownPage !== targetPage) {
+        shownPage = targetPage;
+        pageRef.current = targetPage;
+        setPage(targetPage);
+        setProducts(
+          buildAnimPageProducts(animUpdates, targetPage, i, kind, catalog, fromPrices)
+        );
+        await sleep(80);
+        await new Promise<void>((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => r()))
+        );
+      }
 
       const row = document.querySelector(`[data-product-row="${u.id}"]`);
       if (row) {
@@ -416,7 +492,10 @@ export default function ProductsPage() {
       }
 
       const current = productsRef.current.find((p) => p.id === u.id);
-      const from = current?.price ?? u.previousPrice ?? u.price;
+      const from =
+        fromPrices?.get(u.id) ??
+        current?.price ??
+        (u.previousPrice != null ? u.previousPrice : u.price);
       setRollFrom(from);
       setRollingId(u.id);
       setProducts((prev) =>
@@ -434,11 +513,16 @@ export default function ProductsPage() {
       await sleep(720);
     }
 
-    if (token.cancelled) return;
-
     setRollingId(null);
     setRollFrom(null);
+    bulkAnimatingRef.current = false;
     setBulkAnimating(false);
+
+    if (token.cancelled) return;
+
+    pageRef.current = resumePage;
+    setPage(resumePage);
+    await load(resumePage);
     await refreshBulkStatus();
   }
 
@@ -470,13 +554,17 @@ export default function ProductsPage() {
     if (bulkAnimating || bulkRestoring || !bulkStatus.hasSnapshot) return;
     setBulkRestoring(true);
     try {
+      const catalog = await loadProductCatalog();
+      const fromPrices = new Map<number, number>();
+      for (const [id, p] of catalog) fromPrices.set(id, p.price);
+
       const res = await api<{
         ok: true;
         orderIds: number[];
         updates: { id: number; price: number }[];
       }>('/api/admin/products/bulk-price/restore', { method: 'POST' });
       setBulkRestoreOpen(false);
-      await runPriceSequence(res.updates, 'restore');
+      await runPriceSequence(res.updates, 'restore', fromPrices);
     } catch (e) {
       window.alert(e instanceof Error ? e.message : 'Geri alınamadı');
     } finally {
@@ -1023,7 +1111,7 @@ export default function ProductsPage() {
             pageCount={pageCount}
             total={total}
             pageSize={PAGE_SIZE}
-            onPageChange={setPage}
+            onPageChange={bulkAnimating ? () => undefined : setPage}
           />
         </div>
       </Card>
