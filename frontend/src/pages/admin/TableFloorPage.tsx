@@ -10,7 +10,6 @@ import {
   Copy,
   NotebookPen,
   Plus,
-  Receipt,
   Timer,
   UtensilsCrossed,
   X,
@@ -34,10 +33,11 @@ import {
   type ProductOptionGroup,
 } from '@/lib/productOptions';
 import BillReceiptModal from '@/components/BillReceiptModal';
-import TablePaymentModal, { type PaymentMethod } from '@/components/TablePaymentModal';
 import GarsonCallsPanel from '@/components/admin/GarsonCallsPanel';
 import '@/table-floor.css';
 import '@/garson-panel.css';
+
+type PaymentMethod = 'cash' | 'card' | 'mixed';
 
 const FLOOR_SKIN_KEY = 'menu_qr_table_floor_skin';
 const FLOOR_SOUND_KEY = 'menu_qr_floor_notify_sound';
@@ -278,25 +278,30 @@ function formatExpectedAt(expectedAt: string | null | undefined) {
   });
 }
 
-/** Masada: sadece dakika */
+/** Masa üstü süre (dakika:saniye) */
 function formatDurationMinutes(openedAt: string | null, now: number) {
   if (!openedAt) return '—';
   const ms = Math.max(0, now - new Date(openedAt).getTime());
-  const mins = Math.floor(ms / 60_000);
-  return `${mins} dk`;
+  const totalSecs = Math.floor(ms / 1000);
+  const hrs = Math.floor(totalSecs / 3600);
+  const mins = Math.floor((totalSecs % 3600) / 60);
+  const secs = totalSecs % 60;
+  if (hrs > 0) {
+    return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
-/** Sağ panel: dakika + saniye */
-function formatDurationPrecise(openedAt: string | null, now: number) {
-  if (!openedAt) return '—';
-  const ms = Math.max(0, now - new Date(openedAt).getTime());
-  const totalSec = Math.floor(ms / 1000);
-  const mins = Math.floor(totalSec / 60);
-  const secs = totalSec % 60;
-  const hrs = Math.floor(mins / 60);
-  const remMins = mins % 60;
-  if (hrs > 0) return `${hrs} sa ${remMins} dk ${secs} sn`;
-  return `${mins} dk ${secs} sn`;
+function orderOptionsLine(o: FloorOrder) {
+  if (o.selections?.length) {
+    return o.selections
+      .map((s) => {
+        const label = s.label?.trim() || 'Seçenek';
+        return s.qty > 1 ? `${label} ×${s.qty}` : label;
+      })
+      .join(' · ');
+  }
+  return (o.freeNote || '').trim();
 }
 
 function toLocalInputValue(iso: string | null | undefined) {
@@ -351,7 +356,10 @@ export default function TableFloorPage() {
   const [editQty, setEditQty] = useState(1);
   const [editFreeNote, setEditFreeNote] = useState('');
   const [billOpen, setBillOpen] = useState(false);
-  const [payOpen, setPayOpen] = useState(false);
+  const [payMode, setPayMode] = useState(false);
+  const [paySelected, setPaySelected] = useState<Set<string>>(new Set());
+  const [payIncludeSeat, setPayIncludeSeat] = useState(false);
+  const [payMethod, setPayMethod] = useState<PaymentMethod>('cash');
   const [receiptFocus, setReceiptFocus] = useState<{
     orders: FloorOrder[];
     seatingFee: number;
@@ -427,6 +435,8 @@ export default function TableFloorPage() {
     setSelectedCode(null);
     setSelectedGroupSlug('');
     setCodeTtlMenuOpen(false);
+    setPayMode(false);
+    setPaySelected(new Set());
     clearTableFocusParams();
   }
 
@@ -634,18 +644,63 @@ export default function TableFloorPage() {
     return Math.round((unpaidSum + seatLeft) * 100) / 100;
   }, [selected, liveSeatingFee, liveSeatPaid]);
 
+  const seatLeft = Math.max(0, Math.round((liveSeatingFee - liveSeatPaid) * 100) / 100);
+
+  const paySelectedAmount = useMemo(() => {
+    if (!selected) return 0;
+    let sum = 0;
+    for (const o of selected.orders) {
+      if (!o.settledAt && paySelected.has(o.id)) sum += lineTotal(o);
+    }
+    if (payIncludeSeat) sum += seatLeft;
+    return Math.round(sum * 100) / 100;
+  }, [selected, paySelected, payIncludeSeat, seatLeft]);
+
   function methodLabel(m: PaymentMethod) {
     if (m === 'card') return 'Kart';
     if (m === 'mixed') return 'Karışık';
     return 'Nakit';
   }
 
-  async function submitPayment(payload: {
+  function enterPayMode() {
+    if (!selected) return;
+    const unpaidIds = selected.orders.filter((o) => !o.settledAt).map((o) => o.id);
+    setPaySelected(new Set(unpaidIds));
+    setPayIncludeSeat(seatLeft > 0.009);
+    setPayMethod('cash');
+    setPayMode(true);
+  }
+
+  function exitPayMode() {
+    setPayMode(false);
+    setPaySelected(new Set());
+    setPayIncludeSeat(false);
+  }
+
+  function togglePayItem(id: string) {
+    setPaySelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function submitPayment(payload?: {
     itemIds: string[];
     includeSeatingFee: boolean;
     method: PaymentMethod;
   }) {
     if (!selected?.sessionId) return;
+    const body = payload || {
+      itemIds: [...paySelected],
+      includeSeatingFee: payIncludeSeat && seatLeft > 0.009,
+      method: payMethod,
+    };
+    if (!body.itemIds.length && !body.includeSeatingFee) {
+      window.alert('Ödenecek kalem seçin');
+      return;
+    }
     setBusy(true);
     try {
       await api('/api/admin/table-floor/payment', {
@@ -654,13 +709,13 @@ export default function TableFloorPage() {
           sessionId: selected.sessionId,
           tableNumber: selected.code,
           groupSlug: selectedGroupSlug,
-          itemIds: payload.itemIds,
-          includeSeatingFee: payload.includeSeatingFee,
-          method: payload.method,
+          itemIds: body.itemIds,
+          includeSeatingFee: body.includeSeatingFee,
+          method: body.method,
         }),
       });
       await load();
-      setPayOpen(false);
+      exitPayMode();
     } catch (e) {
       window.alert(e instanceof Error ? e.message : 'Ödeme kaydedilemedi');
     } finally {
@@ -1803,44 +1858,32 @@ export default function TableFloorPage() {
             ) : (
               <>
                 <div className="table-floor__stats">
-                  <div>
-                    <Clock3 className="w-4 h-4" />
-                    <div>
-                      {selected.status === 'reserved' ? (
-                        <>
-                          <span>Beklenen</span>
-                          <strong>{formatExpectedAt(selected.expectedAt)}</strong>
-                        </>
-                      ) : (
-                        <>
-                          <span>Oturma</span>
-                          <strong>{formatDurationPrecise(selected.openedAt, now)}</strong>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <Receipt className="w-4 h-4" />
+                  <div className="table-floor__bill-card">
                     <div>
                       <span>Toplam</span>
                       <strong>{formatMoney(liveTotal)}</strong>
                     </div>
+                    {selected.occupied && selected.status === 'open' ? (
+                      <>
+                        <div>
+                          <span>Ödenen</span>
+                          <strong>{formatMoney(livePaidTotal)}</strong>
+                        </div>
+                        <div>
+                          <span>Kalan</span>
+                          <strong className={liveRemaining > 0.009 ? 'is-warn' : 'is-ok'}>
+                            {formatMoney(liveRemaining)}
+                          </strong>
+                        </div>
+                      </>
+                    ) : selected.status === 'reserved' ? (
+                      <div>
+                        <span>Beklenen</span>
+                        <strong>{formatExpectedAt(selected.expectedAt)}</strong>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
-                {selected.occupied && selected.status === 'open' ? (
-                  <div className="table-floor__pay-strip">
-                    <div>
-                      <span>Ödenen</span>
-                      <strong>{formatMoney(livePaidTotal)}</strong>
-                    </div>
-                    <div>
-                      <span>Kalan</span>
-                      <strong className={liveRemaining > 0.009 ? 'is-warn' : 'is-ok'}>
-                        {formatMoney(liveRemaining)}
-                      </strong>
-                    </div>
-                  </div>
-                ) : null}
 
                 {!selected.occupied || selected.status === 'reserved' ? (
                   <div className="table-floor__tool">
@@ -1909,86 +1952,164 @@ export default function TableFloorPage() {
 
                 <div className="table-floor__orders">
                   <div className="table-floor__orders-head">
-                    <h3>Siparişler</h3>
-                    <button
-                      type="button"
-                      className="table-floor__text-btn"
-                      onClick={() => void openOrderModal()}
-                    >
-                      <Plus className="w-4 h-4" />
-                      Yemek ekle
-                    </button>
+                    <h3>{payMode ? 'Ödeme seçimi' : 'Siparişler'}</h3>
+                    {payMode ? (
+                      <div className="table-floor__pay-tools">
+                        <button
+                          type="button"
+                          className="table-floor__text-btn"
+                          onClick={() => {
+                            setPaySelected(
+                              new Set(
+                                selected.orders.filter((o) => !o.settledAt).map((o) => o.id)
+                              )
+                            );
+                            setPayIncludeSeat(seatLeft > 0.009);
+                          }}
+                        >
+                          Tümünü seç
+                        </button>
+                        <button
+                          type="button"
+                          className="table-floor__text-btn"
+                          onClick={() => {
+                            setPaySelected(new Set());
+                            setPayIncludeSeat(false);
+                          }}
+                        >
+                          Temizle
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="table-floor__text-btn"
+                        onClick={() => void openOrderModal()}
+                      >
+                        <Plus className="w-4 h-4" />
+                        Yemek ekle
+                      </button>
+                    )}
                   </div>
                   {selected.orders.length === 0 && liveSeatingFee <= 0 ? (
                     <p className="table-floor__hint">Henüz sipariş yok.</p>
                   ) : (
-                    <ul>
-                      {selected.orders.map((o) => (
+                    <ul className={payMode ? 'is-pay-mode' : undefined}>
+                      {selected.orders.map((o) => {
+                        const opted = orderOptionsLine(o);
+                        const checked = paySelected.has(o.id);
+                        const canPick = payMode && !o.settledAt;
+                        return (
+                          <li
+                            key={o.id}
+                            className={`${o.settledAt ? 'is-settled' : ''}${
+                              canPick && checked ? ' is-pay-on' : ''
+                            }${canPick ? ' is-pay-pick' : ''}`.trim()}
+                            onClick={() => {
+                              if (canPick) togglePayItem(o.id);
+                            }}
+                            onDoubleClick={() => {
+                              if (payMode) return;
+                              if (selected.status === 'open' && !o.settledAt) openOrderEdit(o);
+                            }}
+                            title={
+                              o.settledAt
+                                ? 'Ödendi'
+                                : payMode
+                                  ? 'Ödemeye dahil et'
+                                  : selected.status === 'open'
+                                    ? 'Çift tıkla: düzenle'
+                                    : undefined
+                            }
+                          >
+                            {canPick ? (
+                              <span className={`table-floor__pay-check${checked ? ' is-on' : ''}`}>
+                                {checked ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : null}
+                              </span>
+                            ) : null}
+                            <div>
+                              <strong>
+                                {o.qty}× {o.name}
+                                {o.settledAt ? ' · ödendi' : ''}
+                              </strong>
+                              <span>
+                                {o.source === 'admin' ? 'Admin' : 'Müşteri'}
+                                {formatAdjLabel(o) ? ` · ${formatAdjLabel(o)}` : ''}
+                              </span>
+                              {opted ? (
+                                <em className="table-floor__order-note">{opted}</em>
+                              ) : null}
+                            </div>
+                            <div className="table-floor__order-side">
+                              <em>{formatMoney(lineTotal(o))}</em>
+                              {!payMode && selected.status === 'open' && !o.settledAt ? (
+                                <div className="table-floor__order-actions">
+                                  <button
+                                    type="button"
+                                    className="table-floor__icon-btn is-tiny"
+                                    title="Satırı çoğalt (aynı ürün ayrı satır)"
+                                    disabled={busy}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void orderItemAction(o.id, 'copy');
+                                    }}
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="table-floor__icon-btn is-tiny is-danger"
+                                    title="Satırı sil"
+                                    disabled={busy}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void orderItemAction(o.id, 'remove');
+                                    }}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+                          </li>
+                        );
+                      })}
+                      {liveSeatingFee > 0 ? (
                         <li
-                          key={o.id}
-                          className={o.settledAt ? 'is-settled' : undefined}
-                          onDoubleClick={() => {
-                            if (selected.status === 'open' && !o.settledAt) openOrderEdit(o);
+                          className={`is-fee${
+                            payMode && seatLeft > 0.009
+                              ? payIncludeSeat
+                                ? ' is-pay-pick is-pay-on'
+                                : ' is-pay-pick'
+                              : ''
+                          }${seatLeft <= 0.009 ? ' is-settled' : ''}`}
+                          onClick={() => {
+                            if (payMode && seatLeft > 0.009) {
+                              setPayIncludeSeat((v) => !v);
+                            }
                           }}
-                          title={
-                            o.settledAt
-                              ? 'Ödendi'
-                              : selected.status === 'open'
-                                ? 'Çift tıkla: düzenle'
-                                : undefined
-                          }
                         >
+                          {payMode && seatLeft > 0.009 ? (
+                            <span
+                              className={`table-floor__pay-check${payIncludeSeat ? ' is-on' : ''}`}
+                            >
+                              {payIncludeSeat ? (
+                                <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                              ) : null}
+                            </span>
+                          ) : null}
                           <div>
                             <strong>
-                              {o.qty}× {o.name}
-                              {o.settledAt ? ' · ödendi' : ''}
+                              Oturma ücreti
+                              {seatLeft <= 0.009 ? ' · ödendi' : ''}
                             </strong>
-                            <span>
-                              {o.source === 'admin' ? 'Admin' : 'Müşteri'}
-                              {formatAdjLabel(o) ? ` · ${formatAdjLabel(o)}` : ''}
-                            </span>
-                            {o.note?.trim() ? (
-                              <em className="table-floor__order-note">{o.note}</em>
-                            ) : null}
-                          </div>
-                          <div className="table-floor__order-side">
-                            <em>{formatMoney(lineTotal(o))}</em>
-                            {selected.status === 'open' && !o.settledAt ? (
-                              <div className="table-floor__order-actions">
-                                <button
-                                  type="button"
-                                  className="table-floor__icon-btn is-tiny"
-                                  title="Satırı çoğalt (aynı ürün ayrı satır)"
-                                  disabled={busy}
-                                  onClick={() => void orderItemAction(o.id, 'copy')}
-                                >
-                                  <Copy className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="table-floor__icon-btn is-tiny is-danger"
-                                  title="Satırı sil"
-                                  disabled={busy}
-                                  onClick={() => void orderItemAction(o.id, 'remove')}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            ) : null}
-                          </div>
-                        </li>
-                      ))}
-                      {liveSeatingFee > 0 ? (
-                        <li className="is-fee">
-                          <div>
-                            <strong>Oturma ücreti</strong>
                             <span>
                               {selected.seatingFee?.rate}
                               {selected.seatingFee?.unit === 'hour' ? ' ₺/saat' : ' ₺/dk'} ·
                               birikiyor
                             </span>
                           </div>
-                          <em>{formatMoney(liveSeatingFee)}</em>
+                          <em>{formatMoney(payMode ? seatLeft || liveSeatingFee : liveSeatingFee)}</em>
                         </li>
                       ) : null}
                     </ul>
@@ -2098,11 +2219,11 @@ export default function TableFloorPage() {
                       </button>
                       <button
                         type="button"
-                        className="table-floor__primary"
+                        className={`table-floor__primary${payMode ? ' is-active-pay' : ''}`}
                         disabled={busy}
-                        onClick={() => setPayOpen(true)}
+                        onClick={() => (payMode ? exitPayMode() : enterPayMode())}
                       >
-                        Ödeme
+                        {payMode ? 'Ödemeyi kapat' : 'Ödeme'}
                       </button>
                     </div>
                   ) : null}
@@ -2787,8 +2908,8 @@ export default function TableFloorPage() {
             name: o.name,
             qty: o.qty,
             price: o.price,
-            note: o.note,
-            freeNote: o.freeNote,
+            note: undefined,
+            freeNote: (o.freeNote || (!o.selections?.length ? o.note : '') || '').trim() || undefined,
             selections: o.selections,
             adjustmentType: o.adjustmentType,
             adjustmentMode: o.adjustmentMode,
@@ -2804,35 +2925,80 @@ export default function TableFloorPage() {
         />
       ) : null}
 
-      {selected && payOpen ? (
-        <TablePaymentModal
-          open={payOpen}
-          tableName={selected.name}
-          orders={selected.orders}
-          seatingFee={liveSeatingFee}
-          seatingFeePaid={liveSeatPaid}
-          paidTotal={livePaidTotal}
-          remaining={liveRemaining}
-          busy={busy}
-          onClose={() => setPayOpen(false)}
-          onSubmit={submitPayment}
-          onPrintSelection={({ itemIds, includeSeatingFee, amount, method }) => {
-            const lines = selected.orders.filter((o) => itemIds.includes(o.id));
-            const seat = includeSeatingFee
-              ? Math.max(0, liveSeatingFee - liveSeatPaid)
-              : 0;
-            setReceiptFocus({
-              orders: lines,
-              seatingFee: seat,
-              total: amount,
-              paidTotal: amount,
-              remaining: Math.max(0, Math.round((liveRemaining - amount) * 100) / 100),
-              methodLabel: methodLabel(method),
-              docTitle: 'ÖDEME FİŞİ',
-            });
-            setBillOpen(true);
-          }}
-        />
+      {selected && payMode ? (
+        <aside className="table-floor__pay-dock" aria-label="Seçilen ödeme özeti">
+          <header>
+            <p>Ödeme özeti</p>
+            <h3>{selected.name}</h3>
+          </header>
+          <div className="table-floor__pay-dock-stats">
+            <div>
+              <span>Seçilen</span>
+              <strong>{formatMoney(paySelectedAmount)}</strong>
+            </div>
+            <div>
+              <span>Kalan (sonra)</span>
+              <strong className={liveRemaining - paySelectedAmount > 0.009 ? 'is-warn' : 'is-ok'}>
+                {formatMoney(Math.max(0, Math.round((liveRemaining - paySelectedAmount) * 100) / 100))}
+              </strong>
+            </div>
+          </div>
+          <div className="table-floor__pay-dock-methods">
+            {(
+              [
+                ['cash', 'Nakit'],
+                ['card', 'Kart'],
+                ['mixed', 'Karışık'],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className={payMethod === id ? 'is-on' : undefined}
+                onClick={() => setPayMethod(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="table-floor__pay-dock-actions">
+            <button
+              type="button"
+              className="table-floor__secondary"
+              disabled={paySelectedAmount <= 0.009}
+              onClick={() => {
+                const lines = selected.orders.filter((o) => paySelected.has(o.id));
+                const seat = payIncludeSeat ? seatLeft : 0;
+                setReceiptFocus({
+                  orders: lines,
+                  seatingFee: seat,
+                  total: paySelectedAmount,
+                  paidTotal: paySelectedAmount,
+                  remaining: Math.max(
+                    0,
+                    Math.round((liveRemaining - paySelectedAmount) * 100) / 100
+                  ),
+                  methodLabel: methodLabel(payMethod),
+                  docTitle: 'ÖDEME FİŞİ',
+                });
+                setBillOpen(true);
+              }}
+            >
+              Fiş
+            </button>
+            <button type="button" className="table-floor__secondary" onClick={exitPayMode}>
+              Vazgeç
+            </button>
+            <button
+              type="button"
+              className="table-floor__primary"
+              disabled={busy || paySelectedAmount <= 0.009}
+              onClick={() => void submitPayment()}
+            >
+              {busy ? '…' : 'Ödemeyi kaydet'}
+            </button>
+          </div>
+        </aside>
       ) : null}
     </div>
   );
