@@ -190,6 +190,10 @@ type Props = {
   orders: ReceiptOrderLine[];
   seatingFee?: number;
   total: number;
+  paidTotal?: number;
+  remaining?: number;
+  paymentMethodLabel?: string | null;
+  docTitle?: string;
 };
 
 export default function BillReceiptModal({
@@ -203,6 +207,10 @@ export default function BillReceiptModal({
   orders,
   seatingFee = 0,
   total,
+  paidTotal,
+  remaining,
+  paymentMethodLabel,
+  docTitle = 'HESAP FİŞİ',
 }: Props) {
   if (!open) return null;
 
@@ -224,6 +232,7 @@ export default function BillReceiptModal({
   const receiptNo = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
   const logoSrc = logoUrl ? imageUrl(logoUrl) : '';
   const name = restaurantName || 'Restoran';
+  const showPayBlock = paidTotal != null || remaining != null || paymentMethodLabel;
 
   function buildPrintHtml() {
     const lines =
@@ -251,14 +260,21 @@ export default function BillReceiptModal({
         ? `<hr class="rule dash" /><div class="fee"><span>Oturma ücreti</span><strong>${esc(money(seatingFee))}</strong></div>`
         : '';
 
+    const payBlock = showPayBlock
+      ? `<hr class="rule dash" />
+         ${paymentMethodLabel ? `<div class="fee"><span>Ödeme</span><strong>${esc(paymentMethodLabel)}</strong></div>` : ''}
+         ${paidTotal != null ? `<div class="fee"><span>Ödenen</span><strong>${esc(money(paidTotal))}</strong></div>` : ''}
+         ${remaining != null ? `<div class="fee"><span>Kalan</span><strong>${esc(money(remaining))}</strong></div>` : ''}`
+      : '';
+
     const logoBlock = logoSrc
       ? `<img class="logo" src="${esc(logoSrc)}" alt="" />`
       : `<div class="logo-fb">${esc(name.trim().charAt(0).toUpperCase() || 'R')}</div>`;
 
-    return `<!doctype html><html><head><meta charset="utf-8" /><title>Hesap fişi</title>
+    return `<!doctype html><html><head><meta charset="utf-8" /><title>${esc(docTitle)}</title>
 <style>${PRINT_CSS}</style></head><body>
 <div class="sheet">
-  <div class="brand">${logoBlock}<h1>${esc(name)}</h1><p class="doc">HESAP FİŞİ</p></div>
+  <div class="brand">${logoBlock}<h1>${esc(name)}</h1><p class="doc">${esc(docTitle)}</p></div>
   <div class="grid">
     <div><span>Tarih</span><strong>${esc(dateStr)}</strong></div>
     <div><span>Saat</span><strong>${esc(timeStr)}</strong></div>
@@ -276,6 +292,7 @@ export default function BillReceiptModal({
   ${feeBlock}
   <hr class="rule" />
   <div class="total"><span>Toplam</span><strong>${esc(money(total))}</strong></div>
+  ${payBlock}
   <hr class="rule dash" />
   <div class="foot">Afiyet olsun<small>Teşekkür ederiz</small></div>
 </div>
@@ -364,7 +381,7 @@ export default function BillReceiptModal({
               </div>
             )}
             <h1>{name}</h1>
-            <p className="tf-receipt__doc">HESAP FİŞİ</p>
+            <p className="tf-receipt__doc">{docTitle}</p>
           </header>
 
           <div className="tf-receipt__meta">
@@ -447,6 +464,30 @@ export default function BillReceiptModal({
             <span>Toplam</span>
             <strong>{money(total)}</strong>
           </div>
+
+          {showPayBlock ? (
+            <>
+              <div className="tf-receipt__rule is-dashed" aria-hidden />
+              {paymentMethodLabel ? (
+                <div className="tf-receipt__fee">
+                  <span>Ödeme</span>
+                  <strong>{paymentMethodLabel}</strong>
+                </div>
+              ) : null}
+              {paidTotal != null ? (
+                <div className="tf-receipt__fee">
+                  <span>Ödenen</span>
+                  <strong>{money(paidTotal)}</strong>
+                </div>
+              ) : null}
+              {remaining != null ? (
+                <div className="tf-receipt__fee">
+                  <span>Kalan</span>
+                  <strong>{money(remaining)}</strong>
+                </div>
+              ) : null}
+            </>
+          ) : null}
 
           <div className="tf-receipt__rule is-dashed" aria-hidden />
 

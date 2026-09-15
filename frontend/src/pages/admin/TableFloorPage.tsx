@@ -34,6 +34,7 @@ import {
   type ProductOptionGroup,
 } from '@/lib/productOptions';
 import BillReceiptModal from '@/components/BillReceiptModal';
+import TablePaymentModal, { type PaymentMethod } from '@/components/TablePaymentModal';
 import GarsonCallsPanel from '@/components/admin/GarsonCallsPanel';
 import '@/table-floor.css';
 import '@/garson-panel.css';
@@ -87,6 +88,17 @@ type FloorOrder = {
   adjustmentType?: 'extra' | 'discount' | null;
   adjustmentMode?: 'fixed' | 'percent';
   adjustmentValue?: number;
+  settledAt?: string | null;
+};
+
+type FloorPayment = {
+  id: string;
+  amount: number;
+  method: PaymentMethod;
+  itemIds: string[];
+  seatingFee: number;
+  createdAt: string;
+  note?: string;
 };
 
 type SeatingFeeConfig = {
@@ -177,8 +189,12 @@ type FloorTable = {
   reservationNote?: string | null;
   paidAt?: string | null;
   orders: FloorOrder[];
+  payments?: FloorPayment[];
+  paidTotal?: number;
+  remaining?: number;
   seatingFee?: SeatingFeeConfig | null;
   seatingFeeAmount?: number;
+  seatingFeePaid?: number;
   total: number;
   mergedTables?: string[];
   mergePrimary?: string | null;
@@ -335,6 +351,16 @@ export default function TableFloorPage() {
   const [editQty, setEditQty] = useState(1);
   const [editFreeNote, setEditFreeNote] = useState('');
   const [billOpen, setBillOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
+  const [receiptFocus, setReceiptFocus] = useState<{
+    orders: FloorOrder[];
+    seatingFee: number;
+    total: number;
+    paidTotal?: number;
+    remaining?: number;
+    methodLabel?: string;
+    docTitle?: string;
+  } | null>(null);
   const [editAdjType, setEditAdjType] = useState<'none' | 'extra' | 'discount'>('none');
   const [editAdjValue, setEditAdjValue] = useState('');
   const [editSelections, setEditSelections] = useState<CartLine['selections']>({});
@@ -596,6 +622,51 @@ export default function TableFloorPage() {
     const ordersSum = selected.orders.reduce((s, o) => s + lineTotal(o), 0);
     return Math.round((ordersSum + liveSeatingFee) * 100) / 100;
   }, [selected, liveSeatingFee]);
+
+  const livePaidTotal = selected?.paidTotal ?? 0;
+  const liveSeatPaid = selected?.seatingFeePaid ?? 0;
+  const liveRemaining = useMemo(() => {
+    if (!selected) return 0;
+    const unpaidSum = selected.orders
+      .filter((o) => !o.settledAt)
+      .reduce((s, o) => s + lineTotal(o), 0);
+    const seatLeft = Math.max(0, liveSeatingFee - liveSeatPaid);
+    return Math.round((unpaidSum + seatLeft) * 100) / 100;
+  }, [selected, liveSeatingFee, liveSeatPaid]);
+
+  function methodLabel(m: PaymentMethod) {
+    if (m === 'card') return 'Kart';
+    if (m === 'mixed') return 'Karışık';
+    return 'Nakit';
+  }
+
+  async function submitPayment(payload: {
+    itemIds: string[];
+    includeSeatingFee: boolean;
+    method: PaymentMethod;
+  }) {
+    if (!selected?.sessionId) return;
+    setBusy(true);
+    try {
+      await api('/api/admin/table-floor/payment', {
+        method: 'POST',
+        body: JSON.stringify({
+          sessionId: selected.sessionId,
+          tableNumber: selected.code,
+          groupSlug: selectedGroupSlug,
+          itemIds: payload.itemIds,
+          includeSeatingFee: payload.includeSeatingFee,
+          method: payload.method,
+        }),
+      });
+      await load();
+      setPayOpen(false);
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Ödeme kaydedilemedi');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!pickMode && selectedCode && activeGroup && selectedGroupSlug === activeGroup.id) {
@@ -1756,6 +1827,20 @@ export default function TableFloorPage() {
                     </div>
                   </div>
                 </div>
+                {selected.occupied && selected.status === 'open' ? (
+                  <div className="table-floor__pay-strip">
+                    <div>
+                      <span>Ödenen</span>
+                      <strong>{formatMoney(livePaidTotal)}</strong>
+                    </div>
+                    <div>
+                      <span>Kalan</span>
+                      <strong className={liveRemaining > 0.009 ? 'is-warn' : 'is-ok'}>
+                        {formatMoney(liveRemaining)}
+                      </strong>
+                    </div>
+                  </div>
+                ) : null}
 
                 {!selected.occupied || selected.status === 'reserved' ? (
                   <div className="table-floor__tool">
@@ -1841,18 +1926,22 @@ export default function TableFloorPage() {
                       {selected.orders.map((o) => (
                         <li
                           key={o.id}
+                          className={o.settledAt ? 'is-settled' : undefined}
                           onDoubleClick={() => {
-                            if (selected.status === 'open') openOrderEdit(o);
+                            if (selected.status === 'open' && !o.settledAt) openOrderEdit(o);
                           }}
                           title={
-                            selected.status === 'open'
-                              ? 'Çift tıkla: düzenle'
-                              : undefined
+                            o.settledAt
+                              ? 'Ödendi'
+                              : selected.status === 'open'
+                                ? 'Çift tıkla: düzenle'
+                                : undefined
                           }
                         >
                           <div>
                             <strong>
                               {o.qty}× {o.name}
+                              {o.settledAt ? ' · ödendi' : ''}
                             </strong>
                             <span>
                               {o.source === 'admin' ? 'Admin' : 'Müşteri'}
@@ -1864,7 +1953,7 @@ export default function TableFloorPage() {
                           </div>
                           <div className="table-floor__order-side">
                             <em>{formatMoney(lineTotal(o))}</em>
-                            {selected.status === 'open' ? (
+                            {selected.status === 'open' && !o.settledAt ? (
                               <div className="table-floor__order-actions">
                                 <button
                                   type="button"
@@ -2000,7 +2089,10 @@ export default function TableFloorPage() {
                       <button
                         type="button"
                         className="table-floor__secondary"
-                        onClick={() => setBillOpen(true)}
+                        onClick={() => {
+                          setReceiptFocus(null);
+                          setBillOpen(true);
+                        }}
                       >
                         Hesap yazdır
                       </button>
@@ -2008,9 +2100,9 @@ export default function TableFloorPage() {
                         type="button"
                         className="table-floor__primary"
                         disabled={busy}
-                        onClick={() => void closeTable(selected, true)}
+                        onClick={() => setPayOpen(true)}
                       >
-                        Ödeme alındı
+                        Ödeme
                       </button>
                     </div>
                   ) : null}
@@ -2029,9 +2121,13 @@ export default function TableFloorPage() {
                       type="button"
                       className="table-floor__danger"
                       disabled={busy}
-                      onClick={() => void closeTable(selected, false)}
+                      onClick={() =>
+                        void closeTable(selected, liveRemaining <= 0.009)
+                      }
                     >
-                      Masayı kapat / boşalt
+                      {liveRemaining <= 0.009
+                        ? 'Masayı kapat (ödendi)'
+                        : 'Masayı kapat / boşalt'}
                     </button>
                   )}
                 </div>
@@ -2677,13 +2773,16 @@ export default function TableFloorPage() {
       {selected && billOpen ? (
         <BillReceiptModal
           open={billOpen}
-          onClose={() => setBillOpen(false)}
+          onClose={() => {
+            setBillOpen(false);
+            setReceiptFocus(null);
+          }}
           restaurantName={data?.restaurant?.name || user?.restaurant?.name || 'Restoran'}
           logoUrl={user?.restaurant?.logoUrl}
           tableName={selected.name}
           guestName={selected.guestName}
           openedAt={selected.openedAt}
-          orders={selected.orders.map((o) => ({
+          orders={(receiptFocus?.orders || selected.orders).map((o) => ({
             id: o.id,
             name: o.name,
             qty: o.qty,
@@ -2696,8 +2795,43 @@ export default function TableFloorPage() {
             adjustmentValue: o.adjustmentValue,
             createdAt: o.createdAt,
           }))}
+          seatingFee={receiptFocus?.seatingFee ?? liveSeatingFee}
+          total={receiptFocus?.total ?? liveTotal}
+          paidTotal={receiptFocus?.paidTotal ?? livePaidTotal}
+          remaining={receiptFocus?.remaining ?? liveRemaining}
+          paymentMethodLabel={receiptFocus?.methodLabel}
+          docTitle={receiptFocus?.docTitle || 'HESAP FİŞİ'}
+        />
+      ) : null}
+
+      {selected && payOpen ? (
+        <TablePaymentModal
+          open={payOpen}
+          tableName={selected.name}
+          orders={selected.orders}
           seatingFee={liveSeatingFee}
-          total={liveTotal}
+          seatingFeePaid={liveSeatPaid}
+          paidTotal={livePaidTotal}
+          remaining={liveRemaining}
+          busy={busy}
+          onClose={() => setPayOpen(false)}
+          onSubmit={submitPayment}
+          onPrintSelection={({ itemIds, includeSeatingFee, amount, method }) => {
+            const lines = selected.orders.filter((o) => itemIds.includes(o.id));
+            const seat = includeSeatingFee
+              ? Math.max(0, liveSeatingFee - liveSeatPaid)
+              : 0;
+            setReceiptFocus({
+              orders: lines,
+              seatingFee: seat,
+              total: amount,
+              paidTotal: amount,
+              remaining: Math.max(0, Math.round((liveRemaining - amount) * 100) / 100),
+              methodLabel: methodLabel(method),
+              docTitle: 'ÖDEME FİŞİ',
+            });
+            setBillOpen(true);
+          }}
         />
       ) : null}
     </div>

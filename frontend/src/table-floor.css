@@ -2222,6 +2222,70 @@
   margin-bottom: 0.45rem;
 }
 
+.table-floor__pay-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  margin: -0.15rem 0 0.75rem;
+}
+
+.table-floor__pay-strip > div {
+  border-radius: 0.85rem;
+  border: 1px solid var(--admin-card-border, rgba(88, 60, 36, 0.14));
+  background: var(--admin-input-bg, rgba(255, 248, 239, 0.72));
+  padding: 0.55rem 0.7rem;
+}
+
+.table-floor__pay-strip span {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 750;
+  color: var(--admin-text-muted, #7a6758);
+}
+
+.table-floor__pay-strip strong {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.95rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  color: var(--admin-text, #2b1d12);
+}
+
+.table-floor__pay-strip strong.is-warn {
+  color: #c2410c;
+}
+
+.table-floor__pay-strip strong.is-ok {
+  color: #15803d;
+}
+
+[data-theme='dark'] .table-floor__pay-strip > div {
+  background: #1c1c1c;
+  border-color: #333;
+}
+
+[data-theme='dark'] .table-floor__pay-strip strong {
+  color: #f5f5f5;
+}
+
+[data-theme='dark'] .table-floor__pay-strip strong.is-warn {
+  color: #fdba74;
+}
+
+[data-theme='dark'] .table-floor__pay-strip strong.is-ok {
+  color: #86efac;
+}
+
+.table-floor__orders li.is-settled {
+  opacity: 0.55;
+}
+
+.table-floor__orders li.is-settled strong {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
 .table-floor__drawer-actions {
   margin-top: auto;
 }

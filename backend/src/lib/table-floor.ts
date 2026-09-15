@@ -29,6 +29,21 @@ export type FloorOrderItem = {
   adjustmentType?: 'extra' | 'discount' | null;
   adjustmentMode?: 'fixed' | 'percent';
   adjustmentValue?: number;
+  /** Bu kalem için ödeme alındı */
+  settledAt?: string | null;
+};
+
+export type FloorPaymentMethod = 'cash' | 'card' | 'mixed';
+
+export type FloorPayment = {
+  id: string;
+  amount: number;
+  method: FloorPaymentMethod;
+  itemIds: string[];
+  /** Bu ödemeye dahil edilen oturma ücreti tutarı */
+  seatingFee: number;
+  createdAt: string;
+  note?: string;
 };
 
 export const WAITER_ALERT_MS = 8_000;
@@ -89,12 +104,70 @@ export function parseOrdersJson(raw?: string | null): FloorOrderItem[] {
           adjustmentType,
           adjustmentMode: adjustmentType ? adjustmentMode : undefined,
           adjustmentValue: adjustmentType && adjustmentValue > 0 ? adjustmentValue : undefined,
+          settledAt: row.settledAt ? String(row.settledAt) : null,
         };
       })
       .filter((r) => r.name);
   } catch {
     return [];
   }
+}
+
+export function parsePaymentsJson(raw?: string | null): FloorPayment[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((row) => {
+        const methodRaw = String(row.method || 'cash');
+        const method: FloorPaymentMethod =
+          methodRaw === 'card' || methodRaw === 'mixed' ? methodRaw : 'cash';
+        const itemIds = Array.isArray(row.itemIds)
+          ? row.itemIds.map((x: unknown) => String(x)).filter(Boolean)
+          : [];
+        return {
+          id: String(row.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`),
+          amount: Math.round((Number(row.amount) || 0) * 100) / 100,
+          method,
+          itemIds,
+          seatingFee: Math.max(0, Math.round((Number(row.seatingFee) || 0) * 100) / 100),
+          createdAt: String(row.createdAt || new Date().toISOString()),
+          note: String(row.note || '').trim().slice(0, 240) || undefined,
+        };
+      })
+      .filter((p) => p.amount > 0 || p.itemIds.length > 0 || p.seatingFee > 0);
+  } catch {
+    return [];
+  }
+}
+
+export function unpaidOrders(items: FloorOrderItem[]) {
+  return items.filter((i) => !i.settledAt);
+}
+
+export function paymentsTotal(payments: FloorPayment[]) {
+  return Math.round(payments.reduce((s, p) => s + (Number(p.amount) || 0), 0) * 100) / 100;
+}
+
+export function seatingFeePaidTotal(payments: FloorPayment[]) {
+  return Math.round(payments.reduce((s, p) => s + (Number(p.seatingFee) || 0), 0) * 100) / 100;
+}
+
+export function remainingBalance(
+  items: FloorOrderItem[],
+  payments: FloorPayment[],
+  liveSeatingFee: number
+) {
+  const unpaid = ordersTotal(unpaidOrders(items));
+  const seatLeft = Math.max(0, liveSeatingFee - seatingFeePaidTotal(payments));
+  return Math.round((unpaid + seatLeft) * 100) / 100;
+}
+
+export function methodLabel(method: FloorPaymentMethod) {
+  if (method === 'card') return 'Kart';
+  if (method === 'mixed') return 'Karışık';
+  return 'Nakit';
 }
 
 export function parseMergedJson(raw?: string | null): string[] {

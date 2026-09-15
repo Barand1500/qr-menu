@@ -321,8 +321,10 @@ model TableFloorSession {
   paidAt       DateTime? @map("odeme")
   /// Ana masaya birleşen diğer masa kodları: ["4","6"]
   mergedJson   String?   @map("birlesen") @db.Text
-  /// [{ id, productId?, name, qty, price, createdAt, source }]
+  /// [{ id, productId?, name, qty, price, createdAt, source, settledAt? }]
   ordersJson   String?   @map("siparis_json") @db.Text
+  /// [{ id, amount, method, itemIds, seatingFee, createdAt }]
+  paymentsJson String?   @map("odeme_json") @db.Text
   /// Müşteriye verilen benzersiz erişim kodu
   accessCode     String?   @map("erisim_kodu") @db.VarChar(12)
   codeExpiresAt  DateTime? @map("kod_bitis")
