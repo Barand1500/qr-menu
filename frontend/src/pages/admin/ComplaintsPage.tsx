@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { MessageCircleHeart, MailOpen, Trash2, CheckCheck } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { FeedbackReplyPanel } from '@/components/admin/FeedbackReplyPanel';
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui';
 
 interface Complaint {
@@ -20,6 +22,7 @@ function formatDate(iso: string) {
 }
 
 export default function ComplaintsPage() {
+  const { user } = useAuth();
   const [items, setItems] = useState<Complaint[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -155,6 +158,15 @@ export default function ComplaintsPage() {
                 <p className="text-sm text-[var(--admin-text)] whitespace-pre-wrap leading-relaxed">
                   {item.message}
                 </p>
+                <FeedbackReplyPanel
+                  kind="complaint"
+                  phone={item.phone}
+                  guestName={item.fullName}
+                  restaurantName={user?.restaurant.name}
+                  onSent={() => {
+                    if (!item.isRead) void markRead(item.id);
+                  }}
+                />
               </div>
             </Card>
           ))}

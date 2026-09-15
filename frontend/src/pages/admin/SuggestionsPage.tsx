@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Lightbulb, MailOpen, Trash2, CheckCheck, Star } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { FeedbackReplyPanel } from '@/components/admin/FeedbackReplyPanel';
 import { STAR_COLORS } from '@/components/public/SuggestionMascot';
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui';
 
@@ -38,6 +40,7 @@ function RatingStars({ rating }: { rating: number }) {
 }
 
 export default function SuggestionsPage() {
+  const { user } = useAuth();
   const [items, setItems] = useState<Suggestion[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -173,13 +176,22 @@ export default function SuggestionsPage() {
                   </button>
                 </div>
               </div>
-              {item.message && (
-                <div className="p-4 sm:p-5">
+              <div className="p-4 sm:p-5">
+                {item.message ? (
                   <p className="text-sm text-[var(--admin-text)] whitespace-pre-wrap leading-relaxed">
                     {item.message}
                   </p>
-                </div>
-              )}
+                ) : null}
+                <FeedbackReplyPanel
+                  kind="suggestion"
+                  phone={item.phone}
+                  guestName={item.fullName}
+                  restaurantName={user?.restaurant.name}
+                  onSent={() => {
+                    if (!item.isRead) void markRead(item.id);
+                  }}
+                />
+              </div>
             </Card>
           ))}
         </div>
