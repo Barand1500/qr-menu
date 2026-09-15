@@ -40,6 +40,7 @@ import {
   fetchAndCacheAdminPath,
   getAdminPathSlug,
 } from '@/lib/adminPath';
+import { fetchAndCacheSiteTitle } from '@/lib/siteTitle';
 
 function LegacyMenuRedirect({ to }: { to: 'welcome' | 'home' | 'group' | 'product' }) {
   const { groupId, productId } = useParams();
@@ -100,7 +101,7 @@ function AppRouter() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    void fetchAndCacheAdminPath().then((p) => {
+    void Promise.all([fetchAndCacheAdminPath(), fetchAndCacheSiteTitle()]).then(([p]) => {
       setSlug(p);
       setReady(true);
     });

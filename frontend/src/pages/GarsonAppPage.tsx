@@ -6,6 +6,7 @@ import GarsonCallsPanel from '@/components/admin/GarsonCallsPanel';
 import CustomerUnlockModal from '@/components/admin/CustomerUnlockModal';
 import { Input } from '@/components/ui';
 import { adminPath } from '@/lib/adminPath';
+import { applyDocumentTitle, getSiteTitle } from '@/lib/siteTitle';
 import { playAdminNotificationSound } from '@/lib/notificationSound';
 import {
   armGarsonInstallCapture,
@@ -45,10 +46,11 @@ export default function GarsonAppPage() {
     void registerGarsonServiceWorker();
     const offArm = armGarsonInstallCapture();
     const offSub = subscribeGarsonInstallReady(setInstallReady);
-    document.title = 'Garson Merkezi';
+    document.title = `${getSiteTitle()} · Garson`;
     return () => {
       offArm();
       offSub();
+      applyDocumentTitle();
     };
   }, []);
 

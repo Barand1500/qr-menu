@@ -61,6 +61,11 @@ import {
   normalizeAdminPath,
   validateAdminPath,
 } from '../lib/admin-path.js';
+import {
+  DEFAULT_SITE_TITLE,
+  SITE_TITLE_KEY,
+  validateSiteTitle,
+} from '../lib/site-title.js';
 
 const router = Router();
 router.use(authRequired);
@@ -772,6 +777,29 @@ router.put('/admin-path', async (req, res) => {
   });
 
   res.json({ path: checked.path });
+});
+
+router.get('/site-title', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const row = await prisma.setting.findUnique({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: SITE_TITLE_KEY } },
+  });
+  const title = String(row?.value || '').trim() || DEFAULT_SITE_TITLE;
+  res.json({ title });
+});
+
+router.put('/site-title', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const checked = validateSiteTitle((req.body as { title?: string }).title);
+  if (!checked.ok) return res.status(400).json({ message: checked.message });
+
+  await prisma.setting.upsert({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: SITE_TITLE_KEY } },
+    update: { value: checked.title },
+    create: { restaurantId: restaurantId!, key: SITE_TITLE_KEY, value: checked.title },
+  });
+
+  res.json({ title: checked.title });
 });
 
 export default router;

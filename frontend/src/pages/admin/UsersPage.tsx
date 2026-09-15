@@ -12,6 +12,7 @@ import {
   Shuffle,
   Search,
   Link2,
+  Type,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Spinner } from '@/components/ui';
@@ -24,6 +25,12 @@ import {
   suggestAdminPath,
   validateAdminPath,
 } from '@/lib/adminPath';
+import {
+  DEFAULT_SITE_TITLE,
+  getSiteTitle,
+  setSiteTitle,
+  validateSiteTitle,
+} from '@/lib/siteTitle';
 
 interface UserItem {
   id: number;
@@ -58,6 +65,10 @@ export default function UsersPage() {
   const [pathError, setPathError] = useState<string | null>(null);
   const [pathOk, setPathOk] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(getSiteTitle());
+  const [titleSaving, setTitleSaving] = useState(false);
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [titleOk, setTitleOk] = useState<string | null>(null);
 
   async function load() {
     const params = search ? `?search=${encodeURIComponent(search)}` : '';
@@ -81,8 +92,37 @@ export default function UsersPage() {
         setPanelPath(p);
         setPathDraft(p);
       }
+      try {
+        const res = await api<{ title: string }>('/api/admin/settings/site-title');
+        setTitleDraft(setSiteTitle(res.title));
+      } catch {
+        setTitleDraft(getSiteTitle());
+      }
     })();
   }, []);
+
+  async function saveSiteTitle() {
+    setTitleError(null);
+    setTitleOk(null);
+    const checked = validateSiteTitle(titleDraft);
+    if (!checked.ok) {
+      setTitleError(checked.message);
+      return;
+    }
+    setTitleSaving(true);
+    try {
+      const res = await api<{ title: string }>('/api/admin/settings/site-title', {
+        method: 'PUT',
+        body: JSON.stringify({ title: checked.title }),
+      });
+      setTitleDraft(setSiteTitle(res.title));
+      setTitleOk('Sekme adı güncellendi');
+    } catch (e) {
+      setTitleError(e instanceof Error ? e.message : 'Kaydedilemedi');
+    } finally {
+      setTitleSaving(false);
+    }
+  }
 
   useEffect(() => {
     if (!modalOpen) return;
@@ -380,6 +420,92 @@ export default function UsersPage() {
 
           {pathError ? <p className="text-xs text-red-600">{pathError}</p> : null}
           {pathOk ? <p className="text-xs text-emerald-600">{pathOk}</p> : null}
+        </div>
+      </Card>
+
+      <Card className="!p-0 overflow-hidden">
+        <div
+          className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 border-b"
+          style={{
+            borderColor: 'var(--admin-card-border)',
+            background: 'color-mix(in srgb, var(--admin-accent-soft) 55%, var(--admin-card))',
+          }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: 'var(--admin-card)', border: '1px solid var(--admin-card-border)' }}
+            >
+              <Type className="w-3.5 h-3.5" style={{ color: 'var(--admin-accent)' }} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[var(--admin-text)] leading-tight">
+                Site / sekme adı
+              </p>
+              <p className="text-[11px] admin-text-muted leading-snug">
+                Tarayıcı sekmesinde görünen ad · Yol değişmez · Varsayılan: {DEFAULT_SITE_TITLE}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-4 py-3 space-y-3">
+          <div className="flex flex-col lg:flex-row gap-2 lg:items-center">
+            <div
+              className="flex-1 flex items-stretch rounded-xl overflow-hidden min-w-0"
+              style={{
+                border: '1px solid var(--admin-card-border)',
+                background: 'var(--admin-input-bg)',
+              }}
+            >
+              <input
+                value={titleDraft}
+                onChange={(e) => {
+                  setTitleDraft(e.target.value);
+                  setTitleError(null);
+                  setTitleOk(null);
+                }}
+                placeholder={DEFAULT_SITE_TITLE}
+                maxLength={60}
+                className="flex-1 min-w-0 px-3 py-2.5 text-sm font-medium outline-none bg-transparent text-[var(--admin-text)]"
+                aria-label="Site / sekme adı"
+              />
+            </div>
+            <div className="flex flex-wrap gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setTitleDraft(DEFAULT_SITE_TITLE);
+                  setTitleError(null);
+                  setTitleOk(null);
+                }}
+                className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-xs font-semibold transition hover:bg-[var(--admin-accent-soft)]"
+                style={{
+                  border: '1px solid var(--admin-card-border)',
+                  color: 'var(--admin-text)',
+                  background: 'var(--admin-card)',
+                }}
+              >
+                Varsayılan
+              </button>
+              <Button
+                size="sm"
+                className="h-10"
+                disabled={titleSaving}
+                onClick={() => void saveSiteTitle()}
+              >
+                {titleSaving ? '…' : 'Kaydet'}
+              </Button>
+            </div>
+          </div>
+          <p className="text-[11px] admin-text-muted">
+            Önizleme:{' '}
+            <span className="font-medium text-[var(--admin-text)]">
+              {titleDraft.trim() || DEFAULT_SITE_TITLE}
+            </span>
+          </p>
+          {titleError ? <p className="text-xs text-red-600">{titleError}</p> : null}
+          {titleOk ? <p className="text-xs text-emerald-600">{titleOk}</p> : null}
         </div>
       </Card>
 
