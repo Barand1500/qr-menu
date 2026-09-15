@@ -85,7 +85,8 @@ export function FeedbackReplyPanel({
     } else {
       if (!canEmail) return;
       const subject = mailSubject(kind, restaurantName);
-      window.location.href = `mailto:${encodeURIComponent(mail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      const mailto = `mailto:${mail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.open(mailto, '_blank', 'noopener,noreferrer');
     }
 
     setChannel(null);
