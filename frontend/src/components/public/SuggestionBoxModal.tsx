@@ -33,6 +33,7 @@ async function postSuggestion(slug: string, body: object) {
 export default function SuggestionBoxModal({ open, slug, onClose }: SuggestionBoxModalProps) {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [rating, setRating] = useState(0);
   const [phase, setPhase] = useState<SuggestionPhase>('form');
@@ -74,6 +75,7 @@ export default function SuggestionBoxModal({ open, slug, onClose }: SuggestionBo
         rating,
         fullName: fullName.trim() || undefined,
         phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
         message: message.trim() || undefined,
       });
       setPhase('done');
@@ -93,6 +95,7 @@ export default function SuggestionBoxModal({ open, slug, onClose }: SuggestionBo
     window.setTimeout(() => {
       setFullName('');
       setPhone('');
+      setEmail('');
       setMessage('');
       setRating(0);
       setPhase('form');
@@ -165,8 +168,22 @@ export default function SuggestionBoxModal({ open, slug, onClose }: SuggestionBo
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Geri dönüş için"
+                placeholder="WhatsApp için numaranız"
                 maxLength={30}
+                disabled={phase === 'sending'}
+              />
+            </label>
+
+            <label className="suggestion-field">
+              <span>
+                E-posta <em>(opsiyonel)</em>
+              </span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Geri dönüş için e-posta"
+                maxLength={150}
                 disabled={phase === 'sending'}
               />
             </label>

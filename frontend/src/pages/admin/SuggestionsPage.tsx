@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Lightbulb, MailOpen, Trash2, CheckCheck, Star } from 'lucide-react';
+import { Lightbulb, MailOpen, Trash2, CheckCheck, Star, Search } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { FeedbackReplyPanel } from '@/components/admin/FeedbackReplyPanel';
 import { STAR_COLORS } from '@/components/public/SuggestionMascot';
 import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui';
+import '@/feedback-reply.css';
 
 interface Suggestion {
   id: number;
   fullName?: string | null;
   phone?: string | null;
+  email?: string | null;
   message?: string | null;
   rating: number;
   isRead: boolean;
@@ -45,20 +47,28 @@ export default function SuggestionsPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [query, setQuery] = useState('');
 
   const load = useCallback(async () => {
     const params = new URLSearchParams({ limit: '100' });
     if (filter === 'unread') params.set('unread', 'true');
+    if (query) params.set('q', query);
     const res = await api<{ data: Suggestion[]; unreadCount: number }>(
       `/api/admin/suggestions?${params}`
     );
     setItems(res.data);
     setUnreadCount(res.unreadCount);
-  }, [filter]);
+  }, [filter, query]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
   }, [load]);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setQuery(searchInput.trim()), 280);
+    return () => window.clearTimeout(t);
+  }, [searchInput]);
 
   async function markRead(id: number) {
     await api(`/api/admin/suggestions/${id}/read`, { method: 'PATCH' });
@@ -83,38 +93,53 @@ export default function SuggestionsPage() {
           : 'Karşılama ekranından gelen öneri ve puanlar'}
       </p>
 
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setFilter('all')}
-          className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${
-            filter === 'all'
-              ? 'bg-[var(--admin-accent)] text-white'
-              : 'bg-[var(--admin-input-bg)] admin-text-muted'
-          }`}
-        >
-          Tümü
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter('unread')}
-          className={`px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-1.5 ${
-            filter === 'unread'
-              ? 'bg-[var(--admin-accent)] text-white'
-              : 'bg-[var(--admin-input-bg)] admin-text-muted'
-          }`}
-        >
-          <MailOpen className="w-4 h-4" />
-          Okunmamış
-          {unreadCount > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 rounded-full text-xs bg-white/20">{unreadCount}</span>
-          )}
-        </button>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${
+              filter === 'all'
+                ? 'bg-[var(--admin-accent)] text-white'
+                : 'bg-[var(--admin-input-bg)] admin-text-muted'
+            }`}
+          >
+            Tümü
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('unread')}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-1.5 ${
+              filter === 'unread'
+                ? 'bg-[var(--admin-accent)] text-white'
+                : 'bg-[var(--admin-input-bg)] admin-text-muted'
+            }`}
+          >
+            <MailOpen className="w-4 h-4" />
+            Okunmamış
+            {unreadCount > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-full text-xs bg-white/20">{unreadCount}</span>
+            )}
+          </button>
+        </div>
+
+        <label className="feedback-search sm:ml-auto">
+          <Search className="w-4 h-4 shrink-0" aria-hidden />
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Ad, telefon, e-posta veya mesaj ara…"
+            aria-label="Öneri ara"
+          />
+        </label>
       </div>
 
       {items.length === 0 ? (
         <Card>
-          <EmptyState message="Henüz öneri veya puan yok" />
+          <EmptyState
+            message={query ? 'Aramanızla eşleşen öneri yok' : 'Henüz öneri veya puan yok'}
+          />
         </Card>
       ) : (
         <div className="space-y-3">
@@ -143,7 +168,11 @@ export default function SuggestionsPage() {
                       <p className="font-semibold text-[var(--admin-text)] mt-1">{item.fullName}</p>
                     )}
                     <p className="text-xs admin-text-muted mt-0.5">{formatDate(item.createdAt)}</p>
-                    {item.phone && <p className="text-sm admin-text-muted mt-1">{item.phone}</p>}
+                    {(item.phone || item.email) && (
+                      <p className="text-sm admin-text-muted mt-1 break-all">
+                        {[item.phone, item.email].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -185,6 +214,7 @@ export default function SuggestionsPage() {
                 <FeedbackReplyPanel
                   kind="suggestion"
                   phone={item.phone}
+                  email={item.email}
                   guestName={item.fullName}
                   restaurantName={user?.restaurant.name}
                   onSent={() => {

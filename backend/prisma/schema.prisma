@@ -231,6 +231,7 @@ model Complaint {
   restaurantId Int      @map("restoran_id")
   fullName     String   @map("ad_soyad") @db.VarChar(150)
   phone        String?  @db.VarChar(30)
+  email        String?  @db.VarChar(150)
   message      String   @map("mesaj") @db.Text
   isRead       Boolean  @default(false) @map("okundu")
   createdAt    DateTime @default(now()) @map("olusturma")
@@ -247,6 +248,7 @@ model Suggestion {
   restaurantId Int      @map("restoran_id")
   fullName     String?  @map("ad_soyad") @db.VarChar(150)
   phone        String?  @db.VarChar(30)
+  email        String?  @db.VarChar(150)
   message      String?  @map("mesaj") @db.Text
   rating       Int      @map("puan")
   isRead       Boolean  @default(false) @map("okundu")

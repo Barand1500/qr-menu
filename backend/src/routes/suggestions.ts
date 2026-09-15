@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId } from '../lib/auth.js';
 
@@ -9,13 +10,22 @@ router.get('/', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   if (restaurantId == null) return res.status(401).json({ message: 'Yetkisiz' });
 
-  const { unread, page = '1', limit = '50' } = req.query;
+  const { unread, page = '1', limit = '50', q } = req.query;
   const pageNum = Math.max(1, parseInt(String(page), 10));
   const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10)));
   const skip = (pageNum - 1) * limitNum;
+  const query = String(q || '').trim();
 
-  const where: { restaurantId: number; isRead?: boolean } = { restaurantId };
+  const where: Prisma.SuggestionWhereInput = { restaurantId };
   if (unread === 'true') where.isRead = false;
+  if (query) {
+    where.OR = [
+      { fullName: { contains: query } },
+      { phone: { contains: query } },
+      { email: { contains: query } },
+      { message: { contains: query } },
+    ];
+  }
 
   const [data, total, unreadCount] = await Promise.all([
     prisma.suggestion.findMany({

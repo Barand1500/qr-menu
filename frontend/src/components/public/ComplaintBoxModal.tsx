@@ -31,6 +31,7 @@ async function postComplaint(slug: string, body: object) {
 export default function ComplaintBoxModal({ open, slug, onClose }: ComplaintBoxModalProps) {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [phase, setPhase] = useState<ComplaintPhase>('form');
   const [error, setError] = useState('');
@@ -71,6 +72,7 @@ export default function ComplaintBoxModal({ open, slug, onClose }: ComplaintBoxM
       await postComplaint(slug, {
         fullName: fullName.trim(),
         phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
         message: message.trim(),
       });
       setPhase('done');
@@ -90,6 +92,7 @@ export default function ComplaintBoxModal({ open, slug, onClose }: ComplaintBoxM
     window.setTimeout(() => {
       setFullName('');
       setPhone('');
+      setEmail('');
       setMessage('');
       setPhase('form');
       setError('');
@@ -143,8 +146,22 @@ export default function ComplaintBoxModal({ open, slug, onClose }: ComplaintBoxM
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Sizi arayabilmemiz için"
+                placeholder="WhatsApp için numaranız"
                 maxLength={30}
+                disabled={phase === 'sending'}
+              />
+            </label>
+
+            <label className="complaint-field">
+              <span>
+                E-posta <em>(opsiyonel)</em>
+              </span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Geri dönüş için e-posta"
+                maxLength={150}
                 disabled={phase === 'sending'}
               />
             </label>

@@ -1174,9 +1174,10 @@ router.get('/:slug/search', async (req, res) => {
 
 router.post('/:slug/complaints', async (req, res) => {
   const slug = req.params.slug;
-  const { fullName, phone, message } = req.body as {
+  const { fullName, phone, email, message } = req.body as {
     fullName?: string;
     phone?: string;
+    email?: string;
     message?: string;
   };
 
@@ -1186,6 +1187,8 @@ router.post('/:slug/complaints', async (req, res) => {
   const name = String(fullName || '').trim();
   const text = String(message || '').trim();
   const tel = phone ? String(phone).trim() : null;
+  const mailRaw = email ? String(email).trim() : '';
+  const mail = mailRaw || null;
 
   if (name.length < 2) {
     return res.status(400).json({ message: 'Ad soyad en az 2 karakter olmalı' });
@@ -1196,12 +1199,19 @@ router.post('/:slug/complaints', async (req, res) => {
   if (text.length > 2000) {
     return res.status(400).json({ message: 'Mesaj çok uzun (en fazla 2000 karakter)' });
   }
+  if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
+    return res.status(400).json({ message: 'Geçerli bir e-posta adresi girin' });
+  }
+  if (mail && mail.length > 150) {
+    return res.status(400).json({ message: 'E-posta çok uzun' });
+  }
 
   const complaint = await prisma.complaint.create({
     data: {
       restaurantId: restaurant.id,
       fullName: name,
       phone: tel || null,
+      email: mail,
       message: text,
     },
   });
@@ -1211,9 +1221,10 @@ router.post('/:slug/complaints', async (req, res) => {
 
 router.post('/:slug/suggestions', async (req, res) => {
   const slug = req.params.slug;
-  const { fullName, phone, message, rating } = req.body as {
+  const { fullName, phone, email, message, rating } = req.body as {
     fullName?: string;
     phone?: string;
+    email?: string;
     message?: string;
     rating?: number;
   };
@@ -1229,6 +1240,8 @@ router.post('/:slug/suggestions', async (req, res) => {
   const name = fullName ? String(fullName).trim() : null;
   const text = message ? String(message).trim() : null;
   const tel = phone ? String(phone).trim() : null;
+  const mailRaw = email ? String(email).trim() : '';
+  const mail = mailRaw || null;
 
   if (name && name.length < 2) {
     return res.status(400).json({ message: 'Ad soyad en az 2 karakter olmalı' });
@@ -1236,12 +1249,19 @@ router.post('/:slug/suggestions', async (req, res) => {
   if (text && text.length > 2000) {
     return res.status(400).json({ message: 'Mesaj çok uzun (en fazla 2000 karakter)' });
   }
+  if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
+    return res.status(400).json({ message: 'Geçerli bir e-posta adresi girin' });
+  }
+  if (mail && mail.length > 150) {
+    return res.status(400).json({ message: 'E-posta çok uzun' });
+  }
 
   const suggestion = await prisma.suggestion.create({
     data: {
       restaurantId: restaurant.id,
       fullName: name || null,
       phone: tel || null,
+      email: mail,
       message: text || null,
       rating: stars,
     },
