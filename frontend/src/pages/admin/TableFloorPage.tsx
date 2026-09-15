@@ -2023,11 +2023,14 @@ export default function TableFloorPage() {
                             }
                           >
                             {canPick ? (
-                              <span className={`table-floor__pay-check${checked ? ' is-on' : ''}`}>
+                              <span
+                                className={`table-floor__pay-check${checked ? ' is-on' : ''}`}
+                                aria-hidden
+                              >
                                 {checked ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : null}
                               </span>
                             ) : null}
-                            <div>
+                            <div className="table-floor__order-body">
                               <strong>
                                 {o.qty}× {o.name}
                                 {o.settledAt ? ' · ödendi' : ''}
@@ -2041,7 +2044,7 @@ export default function TableFloorPage() {
                               ) : null}
                             </div>
                             <div className="table-floor__order-side">
-                              <em>{formatMoney(lineTotal(o))}</em>
+                              <em className="table-floor__order-price">{formatMoney(lineTotal(o))}</em>
                               {!payMode && selected.status === 'open' && !o.settledAt ? (
                                 <div className="table-floor__order-actions">
                                   <button
@@ -2092,13 +2095,14 @@ export default function TableFloorPage() {
                           {payMode && seatLeft > 0.009 ? (
                             <span
                               className={`table-floor__pay-check${payIncludeSeat ? ' is-on' : ''}`}
+                              aria-hidden
                             >
                               {payIncludeSeat ? (
                                 <Check className="w-3.5 h-3.5" strokeWidth={3} />
                               ) : null}
                             </span>
                           ) : null}
-                          <div>
+                          <div className="table-floor__order-body">
                             <strong>
                               Oturma ücreti
                               {seatLeft <= 0.009 ? ' · ödendi' : ''}
@@ -2109,7 +2113,9 @@ export default function TableFloorPage() {
                               birikiyor
                             </span>
                           </div>
-                          <em>{formatMoney(payMode ? seatLeft || liveSeatingFee : liveSeatingFee)}</em>
+                          <em className="table-floor__order-price">
+                            {formatMoney(payMode ? seatLeft || liveSeatingFee : liveSeatingFee)}
+                          </em>
                         </li>
                       ) : null}
                     </ul>
@@ -2927,7 +2933,7 @@ export default function TableFloorPage() {
 
       {selected && payMode ? (
         <aside className="table-floor__pay-dock" aria-label="Seçilen ödeme özeti">
-          <header>
+          <header className="table-floor__pay-dock-head">
             <p>Ödeme özeti</p>
             <h3>{selected.name}</h3>
           </header>
@@ -2937,13 +2943,15 @@ export default function TableFloorPage() {
               <strong>{formatMoney(paySelectedAmount)}</strong>
             </div>
             <div>
-              <span>Kalan (sonra)</span>
+              <span>Kalan</span>
               <strong className={liveRemaining - paySelectedAmount > 0.009 ? 'is-warn' : 'is-ok'}>
-                {formatMoney(Math.max(0, Math.round((liveRemaining - paySelectedAmount) * 100) / 100))}
+                {formatMoney(
+                  Math.max(0, Math.round((liveRemaining - paySelectedAmount) * 100) / 100)
+                )}
               </strong>
             </div>
           </div>
-          <div className="table-floor__pay-dock-methods">
+          <div className="table-floor__pay-dock-methods" role="group" aria-label="Ödeme yöntemi">
             {(
               [
                 ['cash', 'Nakit'],
@@ -2962,36 +2970,42 @@ export default function TableFloorPage() {
             ))}
           </div>
           <div className="table-floor__pay-dock-actions">
+            <div className="table-floor__pay-dock-row">
+              <button
+                type="button"
+                className="table-floor__pay-dock-btn"
+                disabled={paySelectedAmount <= 0.009}
+                onClick={() => {
+                  const lines = selected.orders.filter((o) => paySelected.has(o.id));
+                  const seat = payIncludeSeat ? seatLeft : 0;
+                  setReceiptFocus({
+                    orders: lines,
+                    seatingFee: seat,
+                    total: paySelectedAmount,
+                    paidTotal: paySelectedAmount,
+                    remaining: Math.max(
+                      0,
+                      Math.round((liveRemaining - paySelectedAmount) * 100) / 100
+                    ),
+                    methodLabel: methodLabel(payMethod),
+                    docTitle: 'ÖDEME FİŞİ',
+                  });
+                  setBillOpen(true);
+                }}
+              >
+                Fiş
+              </button>
+              <button
+                type="button"
+                className="table-floor__pay-dock-btn"
+                onClick={exitPayMode}
+              >
+                Vazgeç
+              </button>
+            </div>
             <button
               type="button"
-              className="table-floor__secondary"
-              disabled={paySelectedAmount <= 0.009}
-              onClick={() => {
-                const lines = selected.orders.filter((o) => paySelected.has(o.id));
-                const seat = payIncludeSeat ? seatLeft : 0;
-                setReceiptFocus({
-                  orders: lines,
-                  seatingFee: seat,
-                  total: paySelectedAmount,
-                  paidTotal: paySelectedAmount,
-                  remaining: Math.max(
-                    0,
-                    Math.round((liveRemaining - paySelectedAmount) * 100) / 100
-                  ),
-                  methodLabel: methodLabel(payMethod),
-                  docTitle: 'ÖDEME FİŞİ',
-                });
-                setBillOpen(true);
-              }}
-            >
-              Fiş
-            </button>
-            <button type="button" className="table-floor__secondary" onClick={exitPayMode}>
-              Vazgeç
-            </button>
-            <button
-              type="button"
-              className="table-floor__primary"
+              className="table-floor__pay-dock-submit"
               disabled={busy || paySelectedAmount <= 0.009}
               onClick={() => void submitPayment()}
             >
