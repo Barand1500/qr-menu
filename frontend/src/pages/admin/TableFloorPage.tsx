@@ -223,28 +223,6 @@ type FloorTable = {
   codeStatus?: 'empty' | 'pending' | 'verified' | 'expired';
 };
 
-function tableLiveRemaining(
-  table: FloorTable,
-  nowMs: number,
-  discount?: FloorSessionMeta['checkDiscount']
-) {
-  const fee = computeSeatingFee(table.seatingFee, table.openedAt, table.status, nowMs);
-  const unpaidSum = (table.orders || [])
-    .filter((o) => !o.settledAt)
-    .reduce((s, o) => s + lineTotal(o), 0);
-  const seatLeft = Math.max(0, fee - (table.seatingFeePaid ?? 0));
-  const gross = unpaidSum + seatLeft;
-  let disc = 0;
-  if (discount?.value) {
-    disc =
-      discount.mode === 'percent'
-        ? (gross * discount.value) / 100
-        : discount.value;
-    disc = Math.min(gross, Math.max(0, Math.round(disc * 100) / 100));
-  }
-  return Math.round((gross - disc) * 100) / 100;
-}
-
 type FloorGroup = {
   id: string;
   name: string;
@@ -1476,28 +1454,28 @@ export default function TableFloorPage() {
             />
           </span>
           {table.occupied ? (
-            <span className="floor-table__meta-stack">
-              <span className="floor-table__meta" title="Oturum süresi">
-                <Clock3 className="w-3 h-3" />
-                {formatDurationMinutes(table.openedAt, now)}
-              </span>
-              <span
-                className={`floor-table__meta is-idle is-${idleUrgency(
-                  lastOrderAtIso(table.orders),
-                  now
-                )}`}
-                title="Son siparişten beri"
-              >
-                <Timer className="w-3 h-3" />
-                {lastOrderAtIso(table.orders)
-                  ? formatDurationMinutes(lastOrderAtIso(table.orders), now)
-                  : '—'}
-              </span>
+            <span className="floor-table__meta is-session" title="Oturum süresi">
+              <Clock3 className="w-3 h-3" />
+              {formatDurationMinutes(table.openedAt, now)}
             </span>
           ) : null}
         </span>
         <span className="floor-table__caption">
           <span className="floor-table__label">{table.name}</span>
+          {table.occupied ? (
+            <span
+              className={`floor-table__idle-chip is-${idleUrgency(
+                lastOrderAtIso(table.orders),
+                now
+              )}`}
+              title="Son siparişten beri"
+            >
+              <Timer className="w-3 h-3" />
+              {lastOrderAtIso(table.orders)
+                ? formatDurationMinutes(lastOrderAtIso(table.orders), now)
+                : '—'}
+            </span>
+          ) : null}
           <span className="floor-table__combined-tag">Birleşmiş masa</span>
           {joined.length > 0 ? (
             <span className="floor-table__combined-members">
@@ -1576,7 +1554,7 @@ export default function TableFloorPage() {
             />
           </span>
           {table.status === 'reserved' ? (
-            <span className="floor-table__meta">
+            <span className="floor-table__meta is-session">
               {table.expectedAt
                 ? new Date(table.expectedAt).toLocaleTimeString('tr-TR', {
                     hour: '2-digit',
@@ -1585,28 +1563,14 @@ export default function TableFloorPage() {
                 : 'Rezerve'}
             </span>
           ) : table.status === 'merged' ? (
-            <span className="floor-table__meta">Birleşik</span>
+            <span className="floor-table__meta is-session">Birleşik</span>
           ) : table.occupied ? (
-            <span className="floor-table__meta-stack">
-              <span className="floor-table__meta" title="Oturum süresi">
-                <Clock3 className="w-3 h-3" />
-                {formatDurationMinutes(table.openedAt, now)}
-              </span>
-              <span
-                className={`floor-table__meta is-idle is-${idleUrgency(
-                  lastOrderAtIso(table.orders),
-                  now
-                )}`}
-                title="Son siparişten beri"
-              >
-                <Timer className="w-3 h-3" />
-                {lastOrderAtIso(table.orders)
-                  ? formatDurationMinutes(lastOrderAtIso(table.orders), now)
-                  : '—'}
-              </span>
+            <span className="floor-table__meta is-session" title="Oturum süresi">
+              <Clock3 className="w-3 h-3" />
+              {formatDurationMinutes(table.openedAt, now)}
             </span>
           ) : (
-            <span className="floor-table__meta floor-table__meta--free">
+            <span className="floor-table__meta floor-table__meta--free is-session">
               Boş
               {table.seatingFee?.enabled ? ' · Ücretli' : ''}
             </span>
@@ -1616,13 +1580,16 @@ export default function TableFloorPage() {
           <span className="floor-table__label">{table.name}</span>
           {table.occupied && table.status === 'open' ? (
             <span
-              className={`floor-table__due${
-                tableLiveRemaining(table, now, table.meta?.checkDiscount) > 0.009
-                  ? ' is-warn'
-                  : ' is-ok'
-              }`}
+              className={`floor-table__idle-chip is-${idleUrgency(
+                lastOrderAtIso(table.orders),
+                now
+              )}`}
+              title="Son siparişten beri"
             >
-              {formatMoney(tableLiveRemaining(table, now, table.meta?.checkDiscount))}
+              <Timer className="w-3 h-3" />
+              {lastOrderAtIso(table.orders)
+                ? formatDurationMinutes(lastOrderAtIso(table.orders), now)
+                : '—'}
             </span>
           ) : null}
           {statusFilter !== 'all' ? (
