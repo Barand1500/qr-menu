@@ -1443,57 +1443,59 @@ export default function TableFloorPage() {
         <span className="floor-table__chair floor-table__chair--se" aria-hidden />
         <span className="floor-table__chair floor-table__chair--sw" aria-hidden />
         <span className="floor-table__top">
+          <span className="floor-table__badges">
+            {table.occupied ? (
+              <span className="floor-table__meta is-session" title="Oturum süresi">
+                <Clock3 className="w-3 h-3" />
+                {formatDurationMinutes(table.openedAt, now)}
+              </span>
+            ) : null}
+            {table.occupied ? (
+              <span
+                className={`floor-table__meta is-idle is-${idleUrgency(
+                  lastOrderAtIso(table.orders),
+                  now
+                )}`}
+                title="Son siparişten beri"
+              >
+                <Timer className="w-3 h-3" />
+                {lastOrderAtIso(table.orders)
+                  ? formatDurationMinutes(lastOrderAtIso(table.orders), now)
+                  : '—'}
+              </span>
+            ) : null}
+            {table.codeStatus === 'pending' ? (
+              <span className="floor-table__meta is-code is-pending">Kod bekliyor</span>
+            ) : null}
+            {table.codeStatus === 'verified' ? (
+              <span className="floor-table__meta is-code is-ok">Kod OK</span>
+            ) : null}
+            {table.codeStatus === 'expired' ? (
+              <span className="floor-table__meta is-code is-expired">Süre doldu</span>
+            ) : null}
+          </span>
           <span className="floor-table__qr" style={{ background: qrColor.bg }}>
             <QRCodeSVG
               value={menuUrl}
-              size={52}
+              size={40}
               level="M"
               includeMargin={false}
               fgColor={qrColor.fg}
               bgColor={qrColor.bg}
             />
           </span>
-          {table.occupied ? (
-            <span className="floor-table__meta is-session" title="Oturum süresi">
-              <Clock3 className="w-3 h-3" />
-              {formatDurationMinutes(table.openedAt, now)}
-            </span>
-          ) : null}
         </span>
         <span className="floor-table__caption">
           <span className="floor-table__label">{table.name}</span>
-          {table.occupied ? (
-            <span
-              className={`floor-table__idle-chip is-${idleUrgency(
-                lastOrderAtIso(table.orders),
-                now
-              )}`}
-              title="Son siparişten beri"
-            >
-              <Timer className="w-3 h-3" />
-              {lastOrderAtIso(table.orders)
-                ? formatDurationMinutes(lastOrderAtIso(table.orders), now)
-                : '—'}
-            </span>
-          ) : null}
-          <span className="floor-table__combined-tag">Birleşmiş masa</span>
           {joined.length > 0 ? (
-            <span className="floor-table__combined-members">
-              {joined.join(', ')} katıldı
+            <span className="floor-table__combined-members" title={joined.join(', ')}>
+              {joined.length} katıldı
             </span>
-          ) : null}
-          {statusFilter !== 'all' ? (
-            <span className="floor-table__link">{groupName}</span>
-          ) : null}
-          {table.codeStatus === 'pending' ? (
-            <span className="floor-table__code-badge is-pending">Kod bekliyor</span>
-          ) : null}
-          {table.codeStatus === 'verified' ? (
-            <span className="floor-table__code-badge is-ok">Kod OK</span>
-          ) : null}
-          {table.codeStatus === 'expired' ? (
-            <span className="floor-table__code-badge is-expired">Süre doldu</span>
-          ) : null}
+          ) : (
+            <span className="floor-table__caption-slot" aria-hidden>
+              {statusFilter !== 'all' ? groupName : '\u00a0'}
+            </span>
+          )}
         </span>
       </button>
     );
@@ -1543,78 +1545,78 @@ export default function TableFloorPage() {
         <span className="floor-table__chair floor-table__chair--s" aria-hidden />
         <span className="floor-table__chair floor-table__chair--w" aria-hidden />
         <span className="floor-table__top">
+          <span className="floor-table__badges">
+            {table.status === 'reserved' ? (
+              <span className="floor-table__meta is-session">
+                {table.expectedAt
+                  ? new Date(table.expectedAt).toLocaleTimeString('tr-TR', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : 'Rezerve'}
+              </span>
+            ) : table.status === 'merged' ? (
+              <span className="floor-table__meta is-session">Birleşik</span>
+            ) : table.occupied ? (
+              <span className="floor-table__meta is-session" title="Oturum süresi">
+                <Clock3 className="w-3 h-3" />
+                {formatDurationMinutes(table.openedAt, now)}
+              </span>
+            ) : (
+              <span className="floor-table__meta floor-table__meta--free is-session">
+                Boş
+                {table.seatingFee?.enabled ? ' · Ücretli' : ''}
+              </span>
+            )}
+            {table.occupied && table.status === 'open' ? (
+              <span
+                className={`floor-table__meta is-idle is-${idleUrgency(
+                  lastOrderAtIso(table.orders),
+                  now
+                )}`}
+                title="Son siparişten beri"
+              >
+                <Timer className="w-3 h-3" />
+                {lastOrderAtIso(table.orders)
+                  ? formatDurationMinutes(lastOrderAtIso(table.orders), now)
+                  : '—'}
+              </span>
+            ) : null}
+            {table.occupied && table.codeStatus === 'empty' ? (
+              <span className="floor-table__meta is-code is-empty">Kod yok</span>
+            ) : null}
+            {table.codeStatus === 'pending' ? (
+              <span className="floor-table__meta is-code is-pending">Kod bekliyor</span>
+            ) : null}
+            {table.codeStatus === 'verified' ? (
+              <span className="floor-table__meta is-code is-ok">Kod OK</span>
+            ) : null}
+            {table.codeStatus === 'expired' ? (
+              <span className="floor-table__meta is-code is-expired">Süre doldu</span>
+            ) : null}
+          </span>
           <span className="floor-table__qr" style={{ background: qrColor.bg }}>
             <QRCodeSVG
               value={menuUrl}
-              size={44}
+              size={40}
               level="M"
               includeMargin={false}
               fgColor={qrColor.fg}
               bgColor={qrColor.bg}
             />
           </span>
-          {table.status === 'reserved' ? (
-            <span className="floor-table__meta is-session">
-              {table.expectedAt
-                ? new Date(table.expectedAt).toLocaleTimeString('tr-TR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })
-                : 'Rezerve'}
-            </span>
-          ) : table.status === 'merged' ? (
-            <span className="floor-table__meta is-session">Birleşik</span>
-          ) : table.occupied ? (
-            <span className="floor-table__meta is-session" title="Oturum süresi">
-              <Clock3 className="w-3 h-3" />
-              {formatDurationMinutes(table.openedAt, now)}
-            </span>
-          ) : (
-            <span className="floor-table__meta floor-table__meta--free is-session">
-              Boş
-              {table.seatingFee?.enabled ? ' · Ücretli' : ''}
-            </span>
-          )}
         </span>
         <span className="floor-table__caption">
           <span className="floor-table__label">{table.name}</span>
-          {table.occupied && table.status === 'open' ? (
-            <span
-              className={`floor-table__idle-chip is-${idleUrgency(
-                lastOrderAtIso(table.orders),
-                now
-              )}`}
-              title="Son siparişten beri"
-            >
-              <Timer className="w-3 h-3" />
-              {lastOrderAtIso(table.orders)
-                ? formatDurationMinutes(lastOrderAtIso(table.orders), now)
-                : '—'}
-            </span>
-          ) : null}
-          {statusFilter !== 'all' ? (
-            <span className="floor-table__link">{groupName}</span>
-          ) : null}
-          {table.occupied && table.codeStatus === 'empty' ? (
-            <span className="floor-table__code-badge is-empty">Kod yok</span>
-          ) : null}
-          {table.codeStatus === 'pending' ? (
-            <span className="floor-table__code-badge is-pending">Kod bekliyor</span>
-          ) : null}
-          {table.codeStatus === 'verified' ? (
-            <span className="floor-table__code-badge is-ok">Kod OK</span>
-          ) : null}
-          {table.codeStatus === 'expired' ? (
-            <span className="floor-table__code-badge is-expired">Süre doldu</span>
-          ) : null}
-          {table.status === 'merged' && primaryName ? (
-            <span className="floor-table__link">{primaryName} ile</span>
-          ) : null}
-          {(table.mergedTables || []).length > 0 ? (
-            <span className="floor-table__link">
-              +{(table.mergedTables || []).length} birleşik
-            </span>
-          ) : null}
+          <span className="floor-table__caption-slot" aria-hidden>
+            {table.status === 'merged' && primaryName
+              ? `${primaryName} ile`
+              : (table.mergedTables || []).length > 0
+                ? `+${(table.mergedTables || []).length} birleşik`
+                : statusFilter !== 'all'
+                  ? groupName
+                  : '\u00a0'}
+          </span>
         </span>
       </button>
     );
