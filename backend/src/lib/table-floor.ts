@@ -44,10 +44,81 @@ export type FloorPayment = {
   seatingFee: number;
   createdAt: string;
   note?: string;
+  tendered?: number;
+  change?: number;
+  tip?: number;
+};
+
+export type FloorCheckDiscount = {
+  mode: 'fixed' | 'percent';
+  value: number;
+};
+
+export type FloorSessionMeta = {
+  pax?: number;
+  serviceNote?: string;
+  waiterUserId?: number | null;
+  waiterName?: string | null;
+  checkDiscount?: FloorCheckDiscount | null;
 };
 
 export const WAITER_ALERT_MS = 8_000;
 export const ACTIVE_STATUSES = ['open', 'reserved'] as const;
+
+export function parseSessionMeta(raw?: string | null): FloorSessionMeta {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const r = parsed as Record<string, unknown>;
+    const pax = Math.round(Number(r.pax));
+    const discountRaw =
+      r.checkDiscount && typeof r.checkDiscount === 'object' && !Array.isArray(r.checkDiscount)
+        ? (r.checkDiscount as Record<string, unknown>)
+        : null;
+    const discountValue = discountRaw ? Math.abs(Number(discountRaw.value) || 0) : 0;
+    return {
+      pax: Number.isFinite(pax) && pax > 0 ? Math.min(99, pax) : undefined,
+      serviceNote: String(r.serviceNote || '').trim().slice(0, 1000) || undefined,
+      waiterUserId:
+        r.waiterUserId == null || r.waiterUserId === ''
+          ? null
+          : Number.isFinite(Number(r.waiterUserId))
+            ? Number(r.waiterUserId)
+            : null,
+      waiterName: String(r.waiterName || '').trim().slice(0, 120) || null,
+      checkDiscount:
+        discountRaw && discountValue > 0
+          ? {
+              mode: discountRaw.mode === 'percent' ? 'percent' : 'fixed',
+              value: discountValue,
+            }
+          : null,
+    };
+  } catch {
+    return {};
+  }
+}
+
+export function serializeSessionMeta(meta: FloorSessionMeta): string {
+  return JSON.stringify({
+    pax: meta.pax && meta.pax > 0 ? meta.pax : undefined,
+    serviceNote: meta.serviceNote || undefined,
+    waiterUserId: meta.waiterUserId ?? null,
+    waiterName: meta.waiterName || null,
+    checkDiscount: meta.checkDiscount?.value ? meta.checkDiscount : null,
+  });
+}
+
+export function checkDiscountAmount(
+  gross: number,
+  discount?: FloorCheckDiscount | null
+) {
+  if (!discount || !discount.value || gross <= 0) return 0;
+  const raw =
+    discount.mode === 'percent' ? (gross * discount.value) / 100 : discount.value;
+  return Math.min(gross, Math.max(0, Math.round(raw * 100) / 100));
+}
 
 export function lineTotal(item: {
   price: number;
@@ -134,6 +205,18 @@ export function parsePaymentsJson(raw?: string | null): FloorPayment[] {
           seatingFee: Math.max(0, Math.round((Number(row.seatingFee) || 0) * 100) / 100),
           createdAt: String(row.createdAt || new Date().toISOString()),
           note: String(row.note || '').trim().slice(0, 240) || undefined,
+          tendered:
+            row.tendered != null && Number.isFinite(Number(row.tendered))
+              ? Math.round(Number(row.tendered) * 100) / 100
+              : undefined,
+          change:
+            row.change != null && Number.isFinite(Number(row.change))
+              ? Math.round(Number(row.change) * 100) / 100
+              : undefined,
+          tip:
+            row.tip != null && Number.isFinite(Number(row.tip))
+              ? Math.max(0, Math.round(Number(row.tip) * 100) / 100)
+              : undefined,
         };
       })
       .filter((p) => p.amount > 0 || p.itemIds.length > 0 || p.seatingFee > 0);
@@ -157,11 +240,14 @@ export function seatingFeePaidTotal(payments: FloorPayment[]) {
 export function remainingBalance(
   items: FloorOrderItem[],
   payments: FloorPayment[],
-  liveSeatingFee: number
+  liveSeatingFee: number,
+  discount?: FloorCheckDiscount | null
 ) {
   const unpaid = ordersTotal(unpaidOrders(items));
   const seatLeft = Math.max(0, liveSeatingFee - seatingFeePaidTotal(payments));
-  return Math.round((unpaid + seatLeft) * 100) / 100;
+  const gross = unpaid + seatLeft;
+  const disc = checkDiscountAmount(gross, discount);
+  return Math.round((gross - disc) * 100) / 100;
 }
 
 export function methodLabel(method: FloorPaymentMethod) {

@@ -35,6 +35,7 @@ import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import { AdminListPager } from '@/components/AdminListPager';
 import GroupModal, { type GroupFormState } from '@/components/GroupModal';
 import GroupProductsModal from '@/components/GroupProductsModal';
+import AdminConfirmModal from '@/components/AdminConfirmModal';
 import {
   AdminFilterBar,
   FilterChipGroup,
@@ -314,6 +315,8 @@ export default function GroupsPage() {
   const [pickParent, setPickParent] = useState<Group | null>(null);
 
   const [productsModalGroup, setProductsModalGroup] = useState<Group | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Group | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -504,17 +507,24 @@ export default function GroupsPage() {
     }
   }
 
-  async function handleDelete(group: Group) {
-    if (!window.confirm(`“${group.name}” grubunu silmek istiyor musunuz? Bu işlem geri alınamaz.`)) {
-      return;
-    }
+  function handleDelete(group: Group) {
+    setDeleteTarget(group);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget || deleting) return;
+    const group = deleteTarget;
+    setDeleting(true);
     const prev = allGroups;
     setAllGroups((list) => list.filter((g) => g.id !== group.id));
+    setDeleteTarget(null);
     try {
       await api(`/api/admin/groups/${group.id}`, { method: 'DELETE' });
     } catch (err) {
       setAllGroups(prev);
       window.alert(err instanceof Error ? err.message : 'Grup silinemedi.');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -737,6 +747,19 @@ export default function GroupsPage() {
         onSave={handleSave}
         onFormChange={setForm}
         onImageChange={setImageFile}
+      />
+
+      <AdminConfirmModal
+        open={Boolean(deleteTarget)}
+        title="Grubu sil"
+        description="Seçili grup menüden kalıcı olarak kaldırılır."
+        highlight={deleteTarget?.name}
+        confirmLabel="Evet, sil"
+        busy={deleting}
+        onCancel={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+        onConfirm={() => void confirmDelete()}
       />
     </div>
   );

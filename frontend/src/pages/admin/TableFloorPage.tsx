@@ -33,11 +33,22 @@ import {
   type ProductOptionGroup,
 } from '@/lib/productOptions';
 import BillReceiptModal from '@/components/BillReceiptModal';
+import KitchenTicketModal from '@/components/KitchenTicketModal';
 import GarsonCallsPanel from '@/components/admin/GarsonCallsPanel';
 import '@/table-floor.css';
 import '@/garson-panel.css';
 
 type PaymentMethod = 'cash' | 'card' | 'mixed';
+
+type FloorSessionMeta = {
+  pax?: number;
+  serviceNote?: string;
+  waiterUserId?: number | null;
+  waiterName?: string | null;
+  checkDiscount?: { mode: 'fixed' | 'percent'; value: number } | null;
+};
+
+type StaffUser = { id: number; fullName: string; role: string };
 
 const FLOOR_SKIN_KEY = 'menu_qr_table_floor_skin';
 const FLOOR_SOUND_KEY = 'menu_qr_floor_notify_sound';
@@ -199,11 +210,34 @@ type FloorTable = {
   mergedTables?: string[];
   mergePrimary?: string | null;
   waiterAlertMs: number;
+  meta?: FloorSessionMeta;
   accessCode?: string | null;
   codeExpiresAt?: string | null;
   codeVerifiedAt?: string | null;
   codeStatus?: 'empty' | 'pending' | 'verified' | 'expired';
 };
+
+function tableLiveRemaining(
+  table: FloorTable,
+  nowMs: number,
+  discount?: FloorSessionMeta['checkDiscount']
+) {
+  const fee = computeSeatingFee(table.seatingFee, table.openedAt, table.status, nowMs);
+  const unpaidSum = (table.orders || [])
+    .filter((o) => !o.settledAt)
+    .reduce((s, o) => s + lineTotal(o), 0);
+  const seatLeft = Math.max(0, fee - (table.seatingFeePaid ?? 0));
+  const gross = unpaidSum + seatLeft;
+  let disc = 0;
+  if (discount?.value) {
+    disc =
+      discount.mode === 'percent'
+        ? (gross * discount.value) / 100
+        : discount.value;
+    disc = Math.min(gross, Math.max(0, Math.round(disc * 100) / 100));
+  }
+  return Math.round((gross - disc) * 100) / 100;
+}
 
 type FloorGroup = {
   id: string;
@@ -292,6 +326,25 @@ function formatDurationMinutes(openedAt: string | null, now: number) {
   return `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
+/** Son sipariş satırından idle süre */
+function lastOrderAtIso(orders: FloorOrder[] | undefined) {
+  if (!orders?.length) return null;
+  let max = 0;
+  for (const o of orders) {
+    const t = new Date(o.createdAt).getTime();
+    if (Number.isFinite(t) && t > max) max = t;
+  }
+  return max > 0 ? new Date(max).toISOString() : null;
+}
+
+function idleUrgency(openedOrOrderAt: string | null, now: number): 'ok' | 'warn' | 'hot' {
+  if (!openedOrOrderAt) return 'ok';
+  const mins = (now - new Date(openedOrOrderAt).getTime()) / 60_000;
+  if (mins >= 20) return 'hot';
+  if (mins >= 10) return 'warn';
+  return 'ok';
+}
+
 function orderOptionsLine(o: FloorOrder) {
   if (o.selections?.length) {
     return o.selections
@@ -356,10 +409,20 @@ export default function TableFloorPage() {
   const [editQty, setEditQty] = useState(1);
   const [editFreeNote, setEditFreeNote] = useState('');
   const [billOpen, setBillOpen] = useState(false);
+  const [kitchenOpen, setKitchenOpen] = useState(false);
   const [payMode, setPayMode] = useState(false);
   const [paySelected, setPaySelected] = useState<Set<string>>(new Set());
   const [payIncludeSeat, setPayIncludeSeat] = useState(false);
   const [payMethod, setPayMethod] = useState<PaymentMethod>('cash');
+  const [payTendered, setPayTendered] = useState('');
+  const [payTip, setPayTip] = useState('');
+  const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
+  const [metaBusy, setMetaBusy] = useState(false);
+  const [paxDraft, setPaxDraft] = useState('');
+  const [serviceNoteDraft, setServiceNoteDraft] = useState('');
+  const [discountMode, setDiscountMode] = useState<'fixed' | 'percent'>('percent');
+  const [discountValue, setDiscountValue] = useState('');
+  const [opsPanelOpen, setOpsPanelOpen] = useState(false);
   const [receiptFocus, setReceiptFocus] = useState<{
     orders: FloorOrder[];
     seatingFee: number;
@@ -435,8 +498,11 @@ export default function TableFloorPage() {
     setSelectedCode(null);
     setSelectedGroupSlug('');
     setCodeTtlMenuOpen(false);
-    setPayMode(false);
-    setPaySelected(new Set());
+    setKitchenOpen(false);
+    setBillOpen(false);
+    setOpsPanelOpen(false);
+    setReceiptFocus(null);
+    exitPayMode();
     clearTableFocusParams();
   }
 
@@ -608,6 +674,12 @@ export default function TableFloorPage() {
         : ''
     );
     setFeeUnit(selected.seatingFee?.unit === 'hour' ? 'hour' : 'minute');
+    setPaxDraft(selected.meta?.pax ? String(selected.meta.pax) : '');
+    setServiceNoteDraft(selected.meta?.serviceNote || '');
+    setDiscountMode(selected.meta?.checkDiscount?.mode === 'fixed' ? 'fixed' : 'percent');
+    setDiscountValue(
+      selected.meta?.checkDiscount?.value ? String(selected.meta.checkDiscount.value) : ''
+    );
   }, [
     selected?.code,
     selected?.sessionId,
@@ -617,7 +689,56 @@ export default function TableFloorPage() {
     selected?.seatingFee?.enabled,
     selected?.seatingFee?.rate,
     selected?.seatingFee?.unit,
+    selected?.meta?.pax,
+    selected?.meta?.serviceNote,
+    selected?.meta?.checkDiscount?.mode,
+    selected?.meta?.checkDiscount?.value,
   ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api<{ data: (StaffUser & { isActive?: boolean })[] }>('/api/admin/users?limit=100')
+      .then((res) => {
+        if (!cancelled) {
+          setStaffUsers(
+            (res.data || []).filter((u) => u.role && u.isActive !== false)
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setStaffUsers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function saveSessionMeta(patch: {
+    pax?: number | null;
+    serviceNote?: string | null;
+    waiterUserId?: number | null;
+    waiterName?: string | null;
+    checkDiscount?: { mode: 'fixed' | 'percent'; value: number } | null;
+  }) {
+    if (!selected) return;
+    setMetaBusy(true);
+    try {
+      await api('/api/admin/table-floor/meta', {
+        method: 'POST',
+        body: JSON.stringify({
+          sessionId: selected.sessionId,
+          tableNumber: selected.code,
+          groupSlug: selectedGroupSlug || undefined,
+          ...patch,
+        }),
+      });
+      await load(true);
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Kaydedilemedi');
+    } finally {
+      setMetaBusy(false);
+    }
+  }
 
   const liveSeatingFee = useMemo(
     () =>
@@ -635,14 +756,33 @@ export default function TableFloorPage() {
 
   const livePaidTotal = selected?.paidTotal ?? 0;
   const liveSeatPaid = selected?.seatingFeePaid ?? 0;
+  const liveDiscount = selected?.meta?.checkDiscount ?? null;
   const liveRemaining = useMemo(() => {
     if (!selected) return 0;
     const unpaidSum = selected.orders
       .filter((o) => !o.settledAt)
       .reduce((s, o) => s + lineTotal(o), 0);
-    const seatLeft = Math.max(0, liveSeatingFee - liveSeatPaid);
-    return Math.round((unpaidSum + seatLeft) * 100) / 100;
+    const seatLeftAmt = Math.max(0, liveSeatingFee - liveSeatPaid);
+    const gross = unpaidSum + seatLeftAmt;
+    let disc = 0;
+    if (liveDiscount?.value) {
+      disc =
+        liveDiscount.mode === 'percent'
+          ? (gross * liveDiscount.value) / 100
+          : liveDiscount.value;
+      disc = Math.min(gross, Math.max(0, Math.round(disc * 100) / 100));
+    }
+    return Math.round((gross - disc) * 100) / 100;
+  }, [selected, liveSeatingFee, liveSeatPaid, liveDiscount]);
+  const liveGrossRemaining = useMemo(() => {
+    if (!selected) return 0;
+    const unpaidSum = selected.orders
+      .filter((o) => !o.settledAt)
+      .reduce((s, o) => s + lineTotal(o), 0);
+    const seatLeftAmt = Math.max(0, liveSeatingFee - liveSeatPaid);
+    return Math.round((unpaidSum + seatLeftAmt) * 100) / 100;
   }, [selected, liveSeatingFee, liveSeatPaid]);
+  const liveDiscountAmount = Math.max(0, Math.round((liveGrossRemaining - liveRemaining) * 100) / 100);
 
   const seatLeft = Math.max(0, Math.round((liveSeatingFee - liveSeatPaid) * 100) / 100);
 
@@ -653,8 +793,22 @@ export default function TableFloorPage() {
       if (!o.settledAt && paySelected.has(o.id)) sum += lineTotal(o);
     }
     if (payIncludeSeat) sum += seatLeft;
+    const unpaidIds = selected.orders.filter((o) => !o.settledAt).map((o) => o.id);
+    const payingAll =
+      unpaidIds.every((id) => paySelected.has(id)) &&
+      (seatLeft <= 0.009 || payIncludeSeat);
+    if (payingAll && liveDiscountAmount > 0) {
+      sum = Math.max(0, sum - liveDiscountAmount);
+    }
     return Math.round(sum * 100) / 100;
-  }, [selected, paySelected, payIncludeSeat, seatLeft]);
+  }, [selected, paySelected, payIncludeSeat, seatLeft, liveDiscountAmount]);
+
+  const payTipAmt = Math.max(0, Math.round((Number(String(payTip).replace(',', '.')) || 0) * 100) / 100);
+  const payTenderedAmt = Math.round((Number(String(payTendered).replace(',', '.')) || 0) * 100) / 100;
+  const payChangeAmt =
+    payMethod === 'cash' && payTenderedAmt > 0
+      ? Math.max(0, Math.round((payTenderedAmt - paySelectedAmount - payTipAmt) * 100) / 100)
+      : 0;
 
   function methodLabel(m: PaymentMethod) {
     if (m === 'card') return 'Kart';
@@ -668,6 +822,8 @@ export default function TableFloorPage() {
     setPaySelected(new Set(unpaidIds));
     setPayIncludeSeat(seatLeft > 0.009);
     setPayMethod('cash');
+    setPayTendered('');
+    setPayTip('');
     setPayMode(true);
   }
 
@@ -675,6 +831,8 @@ export default function TableFloorPage() {
     setPayMode(false);
     setPaySelected(new Set());
     setPayIncludeSeat(false);
+    setPayTendered('');
+    setPayTip('');
   }
 
   function togglePayItem(id: string) {
@@ -712,6 +870,8 @@ export default function TableFloorPage() {
           itemIds: body.itemIds,
           includeSeatingFee: body.includeSeatingFee,
           method: body.method,
+          tendered: body.method === 'cash' && payTenderedAmt > 0 ? payTenderedAmt : undefined,
+          tip: payTipAmt > 0 ? payTipAmt : undefined,
         }),
       });
       await load();
@@ -1258,9 +1418,22 @@ export default function TableFloorPage() {
             />
           </span>
           {table.occupied ? (
-            <span className="floor-table__meta">
-              <Clock3 className="w-3 h-3" />
-              {formatDurationMinutes(table.openedAt, now)}
+            <span className="floor-table__meta-stack">
+              <span className="floor-table__meta">
+                <Clock3 className="w-3 h-3" />
+                {formatDurationMinutes(table.openedAt, now)}
+              </span>
+              <span
+                className={`floor-table__meta is-idle is-${idleUrgency(
+                  lastOrderAtIso(table.orders),
+                  now
+                )}`}
+              >
+                <Timer className="w-3 h-3" />
+                {lastOrderAtIso(table.orders)
+                  ? formatDurationMinutes(lastOrderAtIso(table.orders), now)
+                  : '—'}
+              </span>
             </span>
           ) : null}
         </span>
@@ -1355,9 +1528,22 @@ export default function TableFloorPage() {
           ) : table.status === 'merged' ? (
             <span className="floor-table__meta">Birleşik</span>
           ) : table.occupied ? (
-            <span className="floor-table__meta">
-              <Clock3 className="w-3 h-3" />
-              {formatDurationMinutes(table.openedAt, now)}
+            <span className="floor-table__meta-stack">
+              <span className="floor-table__meta">
+                <Clock3 className="w-3 h-3" />
+                {formatDurationMinutes(table.openedAt, now)}
+              </span>
+              <span
+                className={`floor-table__meta is-idle is-${idleUrgency(
+                  lastOrderAtIso(table.orders),
+                  now
+                )}`}
+              >
+                <Timer className="w-3 h-3" />
+                {lastOrderAtIso(table.orders)
+                  ? formatDurationMinutes(lastOrderAtIso(table.orders), now)
+                  : '—'}
+              </span>
             </span>
           ) : (
             <span className="floor-table__meta floor-table__meta--free">
@@ -1368,6 +1554,17 @@ export default function TableFloorPage() {
         </span>
         <span className="floor-table__caption">
           <span className="floor-table__label">{table.name}</span>
+          {table.occupied && table.status === 'open' ? (
+            <span
+              className={`floor-table__due${
+                tableLiveRemaining(table, now, table.meta?.checkDiscount) > 0.009
+                  ? ' is-warn'
+                  : ' is-ok'
+              }`}
+            >
+              {formatMoney(tableLiveRemaining(table, now, table.meta?.checkDiscount))}
+            </span>
+          ) : null}
           {statusFilter !== 'all' ? (
             <span className="floor-table__link">{groupName}</span>
           ) : null}
@@ -1397,36 +1594,61 @@ export default function TableFloorPage() {
   }
 
   return (
-    <div className={`table-floor table-floor--skin-${floorSkin}`}>
+    <div
+      className={`table-floor table-floor--skin-${floorSkin}${
+        selected && !pickMode && panelMode === 'floor' ? ' is-room' : ''
+      }`}
+    >
       <header className="table-floor__top">
-        <Link to={adminPath()} className="table-floor__back" aria-label="Admin panele dön">
-          <ArrowLeft className="w-4 h-4" />
-          <span>Geri</span>
-        </Link>
+        {selected && !pickMode && panelMode === 'floor' ? (
+          <button
+            type="button"
+            className="table-floor__back"
+            aria-label="Masalara dön"
+            onClick={closeTableDrawer}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Masalar</span>
+          </button>
+        ) : (
+          <Link to={adminPath()} className="table-floor__back" aria-label="Admin panele dön">
+            <ArrowLeft className="w-4 h-4" />
+            <span>Geri</span>
+          </Link>
+        )}
         <div className="table-floor__brand">
           <div className="table-floor__brand-title">
-            <button
-              type="button"
-              className="table-floor__skin-btn"
-              aria-label="Önceki masa tasarımı"
-              title="Önceki tasarım"
-              onClick={() => cycleFloorSkin(-1)}
-            >
-              <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.5} />
-            </button>
-            <p>{panelMode === 'garson' ? 'Garson' : 'Masa görünümü'}</p>
-            <button
-              type="button"
-              className="table-floor__skin-btn"
-              aria-label="Sonraki masa tasarımı"
-              title="Sonraki tasarım"
-              onClick={() => cycleFloorSkin(1)}
-            >
-              <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
-            </button>
-            <span className="table-floor__skin-index" aria-hidden>
-              {floorSkin + 1}/{FLOOR_SKIN_COUNT}
-            </span>
+            {!(selected && !pickMode && panelMode === 'floor') ? (
+              <>
+                <button
+                  type="button"
+                  className="table-floor__skin-btn"
+                  aria-label="Önceki masa tasarımı"
+                  title="Önceki tasarım"
+                  onClick={() => cycleFloorSkin(-1)}
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.5} />
+                </button>
+                <p>{panelMode === 'garson' ? 'Garson' : 'Masa görünümü'}</p>
+                <button
+                  type="button"
+                  className="table-floor__skin-btn"
+                  aria-label="Sonraki masa tasarımı"
+                  title="Sonraki tasarım"
+                  onClick={() => cycleFloorSkin(1)}
+                >
+                  <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+                </button>
+                <span className="table-floor__skin-index" aria-hidden>
+                  {floorSkin + 1}/{FLOOR_SKIN_COUNT}
+                </span>
+              </>
+            ) : (
+              <p className="table-floor__room-title">
+                {selected.name}
+                <em>{sourceGroupName || activeGroup?.name}</em>
+              </p>
+            )}
           </div>
           <div className="table-floor__brand-row">
             <strong>{data?.restaurant?.name || user?.restaurant?.name || 'Restoran'}</strong>
@@ -1450,7 +1672,7 @@ export default function TableFloorPage() {
             </button>
           </div>
         </div>
-        {panelMode === 'floor' ? (
+        {panelMode === 'floor' && !(selected && !pickMode) ? (
           <div className="table-floor__nav-filters">
             <button
               type="button"
@@ -1539,7 +1761,11 @@ export default function TableFloorPage() {
         </main>
       ) : (
       <>
-      <main className={`table-floor__main${pickMode ? ' is-picking' : ''}`}>
+      <main
+        className={`table-floor__main${pickMode ? ' is-picking' : ''}${
+          selected && !pickMode ? ' is-away' : ''
+        }`}
+      >
         {loading && !data ? (
           <div className="table-floor__empty">Masalar yükleniyor…</div>
         ) : error ? (
@@ -1650,25 +1876,57 @@ export default function TableFloorPage() {
       </main>
 
       <aside
-        className={`table-floor__drawer${selected && !pickMode ? ' is-open' : ''}`}
+        className={`table-floor__room${selected && !pickMode ? ' is-open' : ''}`}
         aria-hidden={!selected || Boolean(pickMode)}
       >
         {selected && activeGroup && !pickMode ? (
           <>
-            <div className="table-floor__drawer-head">
-              <div>
+            <div className="table-floor__room-head">
+              <div className="table-floor__room-head-copy">
                 <p className="table-floor__drawer-eyebrow">
                   {sourceGroupName || activeGroup.name}
                 </p>
                 <h2>{selected.name}</h2>
               </div>
+              {selected.occupied && selected.status === 'open' ? (
+                <div className="table-floor__timers" aria-label="Masa sayaçları">
+                  <div
+                    className={`table-floor__timer is-${idleUrgency(selected.openedAt, now)}`}
+                    title="Masa açılışından beri"
+                  >
+                    <Clock3 className="w-4 h-4" aria-hidden />
+                    <div>
+                      <span>Oturum</span>
+                      <strong>{formatDurationMinutes(selected.openedAt, now)}</strong>
+                    </div>
+                  </div>
+                  <div
+                    className={`table-floor__timer is-${idleUrgency(
+                      lastOrderAtIso(selected.orders),
+                      now
+                    )}`}
+                    title="Son siparişten beri"
+                  >
+                    <Timer className="w-4 h-4" aria-hidden />
+                    <div>
+                      <span>Son sipariş</span>
+                      <strong>
+                        {lastOrderAtIso(selected.orders)
+                          ? formatDurationMinutes(lastOrderAtIso(selected.orders), now)
+                          : '—'}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               <button
                 type="button"
-                className="table-floor__icon-btn"
-                aria-label="Kapat"
+                className="table-floor__room-back"
+                aria-label="Masalara dön"
                 onClick={closeTableDrawer}
               >
-                <X className="w-4 h-4" />
+                <ArrowLeft className="w-4 h-4" />
+                Masalara dön
               </button>
             </div>
 
@@ -1875,6 +2133,22 @@ export default function TableFloorPage() {
                             {formatMoney(liveRemaining)}
                           </strong>
                         </div>
+                        {liveDiscountAmount > 0.009 ? (
+                          <div>
+                            <span>İndirim</span>
+                            <strong className="is-ok">−{formatMoney(liveDiscountAmount)}</strong>
+                          </div>
+                        ) : null}
+                        {selected.meta?.pax ? (
+                          <div>
+                            <span>Kişi başı</span>
+                            <strong>
+                              {formatMoney(
+                                Math.round((liveRemaining / selected.meta.pax) * 100) / 100
+                              )}
+                            </strong>
+                          </div>
+                        ) : null}
                       </>
                     ) : selected.status === 'reserved' ? (
                       <div>
@@ -1884,6 +2158,118 @@ export default function TableFloorPage() {
                     ) : null}
                   </div>
                 </div>
+
+                {selected.occupied && selected.status === 'open' ? (
+                  <div className="table-floor__tool table-floor__ops">
+                    <button
+                      type="button"
+                      className="table-floor__ops-toggle"
+                      onClick={() => setOpsPanelOpen((v) => !v)}
+                    >
+                      <span>Masa bilgisi · kişi / garson / indirim</span>
+                      <ChevronDown
+                        className={`table-floor__section-chevron${opsPanelOpen ? ' is-open' : ''}`}
+                      />
+                    </button>
+                    {opsPanelOpen ? (
+                      <div className="table-floor__ops-body">
+                        <label className="table-floor__field">
+                          <span>Kişi sayısı</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={99}
+                            className="table-floor__input"
+                            value={paxDraft}
+                            onChange={(e) => setPaxDraft(e.target.value)}
+                            placeholder="örn. 4"
+                          />
+                        </label>
+                        <label className="table-floor__field">
+                          <span>Garson</span>
+                          <select
+                            className="table-floor__input"
+                            value={selected.meta?.waiterUserId ?? ''}
+                            disabled={metaBusy}
+                            onChange={(e) => {
+                              const id = e.target.value ? Number(e.target.value) : null;
+                              void saveSessionMeta({
+                                waiterUserId: id,
+                                waiterName: id
+                                  ? staffUsers.find((u) => u.id === id)?.fullName || null
+                                  : null,
+                              });
+                            }}
+                          >
+                            <option value="">Atanmadı</option>
+                            {staffUsers.map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.fullName}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="table-floor__field">
+                          <span>Servis notu</span>
+                          <textarea
+                            className="table-floor__input table-floor__textarea"
+                            rows={2}
+                            value={serviceNoteDraft}
+                            onChange={(e) => setServiceNoteDraft(e.target.value)}
+                            placeholder="Alerji, bebek sandalyesi, VIP…"
+                          />
+                        </label>
+                        <div className="table-floor__fee-row">
+                          <select
+                            className="table-floor__input"
+                            value={discountMode}
+                            onChange={(e) =>
+                              setDiscountMode(e.target.value === 'fixed' ? 'fixed' : 'percent')
+                            }
+                          >
+                            <option value="percent">İndirim %</option>
+                            <option value="fixed">İndirim ₺</option>
+                          </select>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            className="table-floor__input"
+                            value={discountValue}
+                            onChange={(e) => setDiscountValue(e.target.value)}
+                            placeholder="0"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          className="table-floor__secondary"
+                          disabled={metaBusy || !selected.sessionId}
+                          onClick={() =>
+                            void saveSessionMeta({
+                              pax: paxDraft ? Number(paxDraft) : null,
+                              serviceNote: serviceNoteDraft,
+                              checkDiscount: discountValue
+                                ? {
+                                    mode: discountMode,
+                                    value: Number(String(discountValue).replace(',', '.')),
+                                  }
+                                : null,
+                            })
+                          }
+                        >
+                          {metaBusy ? 'Kaydediliyor…' : 'Bilgileri kaydet'}
+                        </button>
+                      </div>
+                    ) : null}
+                    {selected.meta?.waiterName || selected.meta?.serviceNote ? (
+                      <p className="table-floor__hint" style={{ marginTop: '0.45rem' }}>
+                        {selected.meta?.waiterName ? `Garson: ${selected.meta.waiterName}` : ''}
+                        {selected.meta?.waiterName && selected.meta?.serviceNote ? ' · ' : ''}
+                        {selected.meta?.serviceNote || ''}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 {!selected.occupied || selected.status === 'reserved' ? (
                   <div className="table-floor__tool">
@@ -2006,11 +2392,13 @@ export default function TableFloorPage() {
                               canPick && checked ? ' is-pay-on' : ''
                             }${canPick ? ' is-pay-pick' : ''}`.trim()}
                             onClick={() => {
-                              if (canPick) togglePayItem(o.id);
-                            }}
-                            onDoubleClick={() => {
-                              if (payMode) return;
-                              if (selected.status === 'open' && !o.settledAt) openOrderEdit(o);
+                              if (canPick) {
+                                togglePayItem(o.id);
+                                return;
+                              }
+                              if (selected.status === 'open' && !o.settledAt && !payMode) {
+                                openOrderEdit(o);
+                              }
                             }}
                             title={
                               o.settledAt
@@ -2018,7 +2406,7 @@ export default function TableFloorPage() {
                                 : payMode
                                   ? 'Ödemeye dahil et'
                                   : selected.status === 'open'
-                                    ? 'Çift tıkla: düzenle'
+                                    ? 'Düzenlemek için dokun'
                                     : undefined
                             }
                           >
@@ -2212,26 +2600,37 @@ export default function TableFloorPage() {
                     </div>
                   ) : null}
                   {selected.occupied && selected.status === 'open' ? (
-                    <div className="table-floor__action-row">
-                      <button
-                        type="button"
-                        className="table-floor__secondary"
-                        onClick={() => {
-                          setReceiptFocus(null);
-                          setBillOpen(true);
-                        }}
-                      >
-                        Hesap yazdır
-                      </button>
-                      <button
-                        type="button"
-                        className={`table-floor__primary${payMode ? ' is-active-pay' : ''}`}
-                        disabled={busy}
-                        onClick={() => (payMode ? exitPayMode() : enterPayMode())}
-                      >
-                        {payMode ? 'Ödemeyi kapat' : 'Ödeme'}
-                      </button>
-                    </div>
+                    <>
+                      <div className="table-floor__action-row">
+                        <button
+                          type="button"
+                          className="table-floor__secondary"
+                          onClick={() => {
+                            setReceiptFocus(null);
+                            setBillOpen(true);
+                          }}
+                        >
+                          Hesap yazdır
+                        </button>
+                        <button
+                          type="button"
+                          className="table-floor__secondary"
+                          onClick={() => setKitchenOpen(true)}
+                        >
+                          Mutfak fişi
+                        </button>
+                      </div>
+                      <div className="table-floor__action-row">
+                        <button
+                          type="button"
+                          className={`table-floor__primary${payMode ? ' is-active-pay' : ''}`}
+                          disabled={busy}
+                          onClick={() => (payMode ? exitPayMode() : enterPayMode())}
+                        >
+                          {payMode ? 'Ödemeyi kapat' : 'Ödeme al'}
+                        </button>
+                      </div>
+                    </>
                   ) : null}
                   {!selected.occupied || selected.status === 'reserved' ? (
                     <button
@@ -2265,15 +2664,6 @@ export default function TableFloorPage() {
       </aside>
       </>
       )}
-
-      {selected && !pickMode ? (
-        <button
-          type="button"
-          className="table-floor__scrim"
-          aria-label="Paneli kapat"
-          onClick={closeTableDrawer}
-        />
-      ) : null}
 
       {confirm ? (
         <div className="table-floor-modal table-floor-confirm" role="dialog" aria-modal="true">
@@ -2931,6 +3321,26 @@ export default function TableFloorPage() {
         />
       ) : null}
 
+      {selected && kitchenOpen ? (
+        <KitchenTicketModal
+          open={kitchenOpen}
+          restaurantName={data?.restaurant?.name || user?.restaurant?.name || 'Restoran'}
+          tableName={selected.name}
+          lines={selected.orders
+            .filter((o) => !o.settledAt)
+            .map((o) => ({
+              id: o.id,
+              name: o.name,
+              qty: o.qty,
+              note: o.note,
+              freeNote: o.freeNote,
+              selections: o.selections,
+              createdAt: o.createdAt,
+            }))}
+          onClose={() => setKitchenOpen(false)}
+        />
+      ) : null}
+
       {selected && payMode ? (
         <aside className="table-floor__pay-dock" aria-label="Seçilen ödeme özeti">
           <header className="table-floor__pay-dock-head">
@@ -2969,6 +3379,47 @@ export default function TableFloorPage() {
               </button>
             ))}
           </div>
+          {liveDiscountAmount > 0.009 ? (
+            <p className="table-floor__hint" style={{ margin: 0 }}>
+              Hesap indirimi: −{formatMoney(liveDiscountAmount)} (tümü seçiliyse uygulanır)
+            </p>
+          ) : null}
+          <div className="table-floor__fee-row">
+            <label className="table-floor__field" style={{ flex: 1, margin: 0 }}>
+              <span>Bahşiş</span>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                className="table-floor__input"
+                value={payTip}
+                onChange={(e) => setPayTip(e.target.value)}
+                placeholder="0"
+              />
+            </label>
+            {payMethod === 'cash' ? (
+              <label className="table-floor__field" style={{ flex: 1, margin: 0 }}>
+                <span>Alınan</span>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  className="table-floor__input"
+                  value={payTendered}
+                  onChange={(e) => setPayTendered(e.target.value)}
+                  placeholder={String(paySelectedAmount + payTipAmt || '')}
+                />
+              </label>
+            ) : null}
+          </div>
+          {payMethod === 'cash' && payTenderedAmt > 0 ? (
+            <div className="table-floor__pay-dock-stats">
+              <div>
+                <span>Para üstü</span>
+                <strong className="is-ok">{formatMoney(payChangeAmt)}</strong>
+              </div>
+            </div>
+          ) : null}
           <div className="table-floor__pay-dock-actions">
             <div className="table-floor__pay-dock-row">
               <button

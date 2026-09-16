@@ -20,6 +20,7 @@ import ShowcaseModal, {
   type ShowcaseTranslationFields,
 } from '@/components/ShowcaseModal';
 import StoryModal, { type StoryFormState } from '@/components/StoryModal';
+import AdminConfirmModal from '@/components/AdminConfirmModal';
 
 interface ShowcaseItem {
   id: number;
@@ -109,6 +110,8 @@ export default function ShowcasePage() {
   const [storyForm, setStoryForm] = useState<StoryFormState>(emptyStoryForm());
   const [storyImageFile, setStoryImageFile] = useState<File | null>(null);
   const [storyImagePreview, setStoryImagePreview] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ShowcaseItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     const [showcase, productList, langs] = await Promise.all([
@@ -310,15 +313,24 @@ export default function ShowcasePage() {
     }
   }
 
-  async function deleteItem(id: number) {
-    if (!window.confirm('Bu kaydı listeden kaldırmak istediğinize emin misiniz?')) return;
+  function requestDelete(item: ShowcaseItem) {
+    setDeleteTarget(item);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget || deleting) return;
+    const id = deleteTarget.id;
+    setDeleting(true);
     const snapshot = items;
     setItems((prev) => prev.filter((i) => i.id !== id));
+    setDeleteTarget(null);
     try {
       await api(`/api/admin/showcase/${id}`, { method: 'DELETE' });
     } catch {
       setItems(snapshot);
       window.alert('Silinemedi. Lütfen tekrar deneyin.');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -463,7 +475,7 @@ export default function ShowcasePage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => deleteItem(item.id)}
+                              onClick={() => requestDelete(item)}
                               className="p-2 rounded-xl text-red-500 hover:bg-red-50"
                               title="Sil"
                               aria-label="Sil"
@@ -574,7 +586,7 @@ export default function ShowcasePage() {
                         <button
                           type="button"
                           className="admin-stories-card__btn admin-stories-card__btn--danger"
-                          onClick={() => deleteItem(story.id)}
+                          onClick={() => requestDelete(story)}
                           title="Sil"
                           aria-label="Sil"
                         >
@@ -615,6 +627,23 @@ export default function ShowcasePage() {
         onSave={saveStory}
         onFormChange={setStoryForm}
         onImageChange={setStoryImageFile}
+      />
+
+      <AdminConfirmModal
+        open={Boolean(deleteTarget)}
+        title={deleteTarget?.displayType === 'story' ? 'Hikâyeyi sil' : 'Bannerı sil'}
+        description="Seçili vitrin kaydı listeden kalıcı olarak kaldırılır."
+        highlight={
+          deleteTarget?.name ||
+          deleteTarget?.productName ||
+          (deleteTarget?.displayType === 'story' ? 'Hikâye' : 'Banner')
+        }
+        confirmLabel="Evet, sil"
+        busy={deleting}
+        onCancel={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+        onConfirm={() => void confirmDelete()}
       />
     </div>
   );

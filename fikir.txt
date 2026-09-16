@@ -9,16 +9,6 @@
   A) ADMİN PANEL
 ───────────────────────────────────────────────────────────
 
-1) Akıllı stok / “bugün bitti” paneli
-   Mutfak tek tıkla ürünü “tükendi” yapar; menüde grileşir
-   veya gizlenir. Gün sonu otomatik sıfırlama seçeneği.
-   Amaç: garson/QR üzerinden sürekli “yok” demeyi bitirmek.
-
-2) Saat dilimli menü (brunch / öğle / akşam)
-   Grup veya ürünlere görünürlük penceresi tanımla
-   (ör. 10:00–14:00 brunch). Menü saate göre kendini düzenler.
-   Amaç: tek menüde üç hizmet dilimini yönetmek.
-
 8) “Sessiz saat” modu
    Belirli saatlerde bildirim sesi / garson çağrısı kapanır
    veya titreşime düşer (otel lounge, fine dining).

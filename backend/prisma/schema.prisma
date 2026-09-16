@@ -325,6 +325,8 @@ model TableFloorSession {
   ordersJson   String?   @map("siparis_json") @db.Text
   /// [{ id, amount, method, itemIds, seatingFee, createdAt }]
   paymentsJson String?   @map("odeme_json") @db.Text
+  /// { pax, serviceNote, waiterUserId, waiterName, checkDiscount }
+  metaJson     String?   @map("meta_json") @db.Text
   /// Müşteriye verilen benzersiz erişim kodu
   accessCode     String?   @map("erisim_kodu") @db.VarChar(12)
   codeExpiresAt  DateTime? @map("kod_bitis")

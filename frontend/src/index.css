@@ -6740,6 +6740,185 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   transform: translateY(-1px);
 }
 
+/* ─── Feedback sheet (öneri + şikayet, tüm karşılama temaları) ─── */
+.feedback-sheet-overlay {
+  align-items: flex-end;
+  padding: 0;
+}
+
+.feedback-sheet {
+  width: 100%;
+  max-width: none;
+  max-height: min(88dvh, 640px);
+  border-radius: 1.35rem 1.35rem 0 0;
+  padding: 0.35rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: feedback-sheet-up 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.feedback-sheet__handle {
+  display: block;
+  width: 2.5rem;
+  height: 0.28rem;
+  margin: 0.35rem auto 0.55rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.feedback-sheet__hero {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
+  padding-right: 1.75rem;
+}
+
+.feedback-sheet__head {
+  margin-bottom: 0.35rem;
+}
+
+.feedback-sheet__form {
+  padding-bottom: 0.15rem;
+}
+
+.feedback-sheet__more {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.15rem 0 0.55rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: background 0.2s, color 0.2s;
+}
+
+.feedback-sheet__more svg {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  opacity: 0.75;
+}
+
+.feedback-sheet__more.is-open svg {
+  transform: rotate(180deg);
+}
+
+.feedback-sheet__more:disabled {
+  opacity: 0.5;
+}
+
+.feedback-sheet__contact {
+  animation: feedback-sheet-fade 0.22s ease;
+}
+
+.feedback-sheet__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.feedback-sheet__row .suggestion-field,
+.feedback-sheet__row .complaint-field {
+  margin-bottom: 0.55rem;
+}
+
+@keyframes feedback-sheet-up {
+  from {
+    opacity: 0.85;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes feedback-sheet-fade {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 640px) {
+  .feedback-sheet-overlay {
+    align-items: center;
+    padding: 1rem;
+  }
+
+  .feedback-sheet {
+    max-width: 22rem;
+    max-height: min(82dvh, 560px);
+    border-radius: 1.35rem;
+    padding: 1rem 1.1rem 1.15rem;
+    animation: feedback-sheet-pop 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .feedback-sheet__handle {
+    display: none;
+  }
+
+  .feedback-sheet__hero {
+    flex-direction: column;
+    gap: 0.4rem;
+    padding-right: 0;
+    margin-bottom: 0.75rem;
+  }
+}
+
+@keyframes feedback-sheet-pop {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (min-width: 640px) {
+  .complaint-mascot,
+  .suggestion-mascot {
+    width: 5.75rem;
+    height: 5.75rem;
+  }
+
+  .complaint-bubble,
+  .suggestion-bubble {
+    max-width: 16rem;
+    text-align: center;
+    font-size: 0.75rem;
+  }
+
+  .complaint-bubble::after,
+  .suggestion-bubble::after {
+    bottom: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 7px solid transparent;
+    border-top-color: rgba(255, 255, 255, 0.14);
+    border-right-color: transparent;
+  }
+
+  .complaint-bubble::after {
+    border-top-color: rgba(255, 255, 255, 0.12);
+  }
+}
+
 /* ─── Şikayet kutusu modal ─── */
 .complaint-overlay {
   position: fixed;
@@ -6748,7 +6927,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: 1rem;
+  padding: 0;
   background: rgba(15, 23, 42, 0.55);
   backdrop-filter: blur(8px);
   animation: complaint-overlay-in 0.3s ease;
@@ -6757,6 +6936,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 @media (min-width: 640px) {
   .complaint-overlay {
     align-items: center;
+    padding: 1rem;
   }
 }
 
@@ -6768,12 +6948,27 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 .complaint-modal {
   position: relative;
   width: 100%;
-  max-width: 26rem;
-  max-height: min(92dvh, 720px);
+  max-width: none;
+  max-height: min(88dvh, 640px);
   overflow-y: auto;
-  border-radius: 1.75rem;
-  padding: 1.25rem 1.25rem 1.5rem;
-  animation: complaint-modal-in 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 1.35rem 1.35rem 0 0;
+  padding: 0.35rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+  animation: feedback-sheet-up 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (min-width: 640px) {
+  .complaint-modal {
+    max-width: 22rem;
+    max-height: min(82dvh, 560px);
+    border-radius: 1.35rem;
+    padding: 1rem 1.1rem 1.15rem;
+    animation: feedback-sheet-pop 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .complaint-modal__hero {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
 }
 
 .complaint-modal--done {
@@ -6798,14 +6993,14 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 .complaint-modal__close {
   position: absolute;
-  top: 0.875rem;
-  right: 0.875rem;
+  top: 0.65rem;
+  right: 0.65rem;
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 9999px;
   color: rgba(255, 255, 255, 0.85);
   background: rgba(255, 255, 255, 0.12);
@@ -6814,16 +7009,19 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 .complaint-modal__hero {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  margin-bottom: 1rem;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
 }
 
 .complaint-mascot {
   position: relative;
-  width: 8.5rem;
-  height: 8.5rem;
-  margin-bottom: 0.5rem;
+  width: 4.75rem;
+  height: 4.75rem;
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .complaint-mascot__shadow {
@@ -6977,12 +7175,12 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 .complaint-bubble {
   position: relative;
-  max-width: 18rem;
-  padding: 0.75rem 1rem;
-  border-radius: 1.125rem;
-  font-size: 0.8125rem;
-  line-height: 1.55;
-  text-align: center;
+  max-width: min(14rem, 58vw);
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.95rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  text-align: left;
   color: rgba(255, 255, 255, 0.92);
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -6992,11 +7190,12 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 .complaint-bubble::after {
   content: '';
   position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 8px solid transparent;
-  border-top-color: rgba(255, 255, 255, 0.12);
+  bottom: 50%;
+  left: -7px;
+  transform: translateY(50%);
+  border: 7px solid transparent;
+  border-right-color: rgba(255, 255, 255, 0.12);
+  border-top-color: transparent;
 }
 
 .complaint-bubble--sad {
@@ -7038,32 +7237,32 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 }
 
 .complaint-form__title {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 800;
   color: #fff;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.15rem;
 }
 
 .complaint-form__subtitle {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.65);
-  margin-bottom: 1rem;
-  line-height: 1.5;
+  margin-bottom: 0.65rem;
+  line-height: 1.4;
 }
 
 .complaint-field {
   display: block;
-  margin-bottom: 0.875rem;
+  margin-bottom: 0.55rem;
 }
 
 .complaint-field span {
   display: block;
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: rgba(255, 255, 255, 0.55);
-  margin-bottom: 0.375rem;
+  margin-bottom: 0.28rem;
 }
 
 .complaint-field span em {
@@ -7077,15 +7276,15 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 .complaint-field input,
 .complaint-field textarea {
   width: 100%;
-  padding: 0.625rem 0.875rem;
-  border-radius: 0.875rem;
-  font-size: 0.875rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
   color: #fff;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.18);
   outline: none;
   transition: border-color 0.2s, background 0.2s;
-  resize: vertical;
+  resize: none;
 }
 
 .complaint-field input::placeholder,
@@ -7176,9 +7375,9 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.8125rem 1.25rem;
+  padding: 0.7rem 1.1rem;
   border-radius: 9999px;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 700;
   color: #312e81;
   background: linear-gradient(135deg, #fff 0%, #f1f5f9 100%);
@@ -8326,7 +8525,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: 1rem;
+  padding: 0;
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.72) 0%, rgba(88, 28, 135, 0.45) 50%, rgba(180, 83, 9, 0.35) 100%);
   backdrop-filter: blur(10px);
   animation: suggestion-overlay-in 0.35s ease;
@@ -8336,6 +8535,7 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 @media (min-width: 640px) {
   .suggestion-overlay {
     align-items: center;
+    padding: 1rem;
   }
 }
 
@@ -8344,6 +8544,12 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
+}
+
+@media (max-width: 639px) {
+  .suggestion-overlay__stars {
+    display: none;
+  }
 }
 
 .suggestion-overlay__star {
@@ -8385,13 +8591,28 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 26rem;
-  max-height: min(92dvh, 760px);
+  max-width: none;
+  max-height: min(88dvh, 640px);
   overflow-y: auto;
-  border-radius: 1.75rem;
-  padding: 1.25rem 1.25rem 1.5rem;
-  animation: suggestion-modal-in 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 1.35rem 1.35rem 0 0;
+  padding: 0.35rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+  animation: feedback-sheet-up 0.38s cubic-bezier(0.22, 1, 0.36, 1);
   background: linear-gradient(160deg, rgba(255,255,255,0.14) 0%, rgba(251,191,36,0.08) 100%);
+}
+
+@media (min-width: 640px) {
+  .suggestion-modal {
+    max-width: 22rem;
+    max-height: min(82dvh, 560px);
+    border-radius: 1.35rem;
+    padding: 1rem 1.1rem 1.15rem;
+    animation: feedback-sheet-pop 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .suggestion-modal__hero {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
 }
 
 .suggestion-modal--done {
@@ -8410,14 +8631,14 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 .suggestion-modal__close {
   position: absolute;
-  top: 0.875rem;
-  right: 0.875rem;
+  top: 0.65rem;
+  right: 0.65rem;
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 9999px;
   color: rgba(255, 255, 255, 0.85);
   background: rgba(255, 255, 255, 0.12);
@@ -8426,17 +8647,20 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 .suggestion-modal__hero {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  margin-bottom: 1rem;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
 }
 
 /* Mascot */
 .suggestion-mascot {
   position: relative;
-  width: 8.5rem;
-  height: 8.5rem;
-  margin-bottom: 0.5rem;
+  width: 4.75rem;
+  height: 4.75rem;
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .suggestion-mascot__shadow {
@@ -8562,12 +8786,12 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 /* Bubble */
 .suggestion-bubble {
   position: relative;
-  max-width: 18rem;
-  padding: 0.75rem 1rem;
-  border-radius: 1.125rem;
-  font-size: 0.8125rem;
-  line-height: 1.55;
-  text-align: center;
+  max-width: min(14rem, 58vw);
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.95rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  text-align: left;
   color: rgba(255, 255, 255, 0.95);
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -8577,11 +8801,12 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 .suggestion-bubble::after {
   content: '';
   position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 8px solid transparent;
-  border-top-color: rgba(255, 255, 255, 0.14);
+  bottom: 50%;
+  left: -7px;
+  transform: translateY(50%);
+  border: 7px solid transparent;
+  border-right-color: rgba(255, 255, 255, 0.14);
+  border-top-color: transparent;
 }
 
 .suggestion-bubble--ecstatic,
@@ -8607,20 +8832,20 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 /* Star rating */
 .star-rating {
-  margin-bottom: 1.125rem;
-  padding: 1rem;
-  border-radius: 1.125rem;
+  margin-bottom: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.95rem;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
   text-align: center;
 }
 
 .star-rating__label {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 0.75rem;
-  min-height: 1.25rem;
+  margin-bottom: 0.45rem;
+  min-height: 1.1rem;
   transition: color 0.25s;
 }
 
@@ -8632,8 +8857,8 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 .star-rating__star {
   position: relative;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 2.35rem;
+  height: 2.35rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8686,32 +8911,32 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 
 /* Form */
 .suggestion-form__title {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 800;
   color: #fff;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.15rem;
 }
 
 .suggestion-form__subtitle {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.65);
-  margin-bottom: 1rem;
-  line-height: 1.5;
+  margin-bottom: 0.65rem;
+  line-height: 1.4;
 }
 
 .suggestion-field {
   display: block;
-  margin-bottom: 0.875rem;
+  margin-bottom: 0.55rem;
 }
 
 .suggestion-field span {
   display: block;
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: rgba(255, 255, 255, 0.55);
-  margin-bottom: 0.375rem;
+  margin-bottom: 0.28rem;
 }
 
 .suggestion-field span em {
@@ -8725,15 +8950,15 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 .suggestion-field input,
 .suggestion-field textarea {
   width: 100%;
-  padding: 0.625rem 0.875rem;
-  border-radius: 0.875rem;
-  font-size: 0.875rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
   color: #fff;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.18);
   outline: none;
   transition: border-color 0.2s, background 0.2s;
-  resize: vertical;
+  resize: none;
 }
 
 .suggestion-field input:focus,
@@ -8776,9 +9001,9 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.8125rem 1.25rem;
+  padding: 0.7rem 1.1rem;
   border-radius: 9999px;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 700;
   color: #422006;
   background: linear-gradient(135deg, #fde047 0%, #fbbf24 50%, #fb923c 100%);

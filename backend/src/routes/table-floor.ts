@@ -4,6 +4,7 @@ import { authRequired, getRestaurantId } from '../lib/auth.js';
 import {
   ACTIVE_STATUSES,
   appendOrdersToSession,
+  checkDiscountAmount,
   closeSession,
   findActiveSession,
   lineTotal,
@@ -14,16 +15,19 @@ import {
   parseOrdersJson,
   parsePaymentsJson,
   parseSeatingFee,
+  parseSessionMeta,
   paymentsTotal,
   remainingBalance,
   seatingFeeAmount,
   seatingFeePaidTotal,
+  serializeSessionMeta,
   tableCode,
   unpaidOrders,
   WAITER_ALERT_MS,
   type FloorOrderItem,
   type FloorPayment,
   type FloorPaymentMethod,
+  type FloorSessionMeta,
   type SeatingFeeConfig,
 } from '../lib/table-floor.js';
 import { getProductField, getLanguages, getGroupName } from '../lib/i18n-json.js';
@@ -133,6 +137,7 @@ function serializeSession(session: {
   ordersJson: string | null;
   paymentsJson?: string | null;
   mergedJson: string | null;
+  metaJson?: string | null;
   accessCode?: string | null;
   codeExpiresAt?: Date | null;
   codeVerifiedAt?: Date | null;
@@ -140,6 +145,7 @@ function serializeSession(session: {
   const orders = parseOrdersJson(session.ordersJson);
   const payments = parsePaymentsJson(session.paymentsJson);
   const merged = parseMergedJson(session.mergedJson);
+  const meta = parseSessionMeta(session.metaJson);
   const codeStatus = resolveCodeGateStatus(session);
   const paidTotal = paymentsTotal(payments);
   return {
@@ -155,9 +161,10 @@ function serializeSession(session: {
     orders,
     payments,
     paidTotal,
-    remaining: remainingBalance(orders, payments, 0),
+    remaining: remainingBalance(orders, payments, 0, meta.checkDiscount),
     total: ordersTotal(orders),
     mergedTables: merged,
+    meta,
     accessCode: session.accessCode || null,
     codeExpiresAt: session.codeExpiresAt?.toISOString() || null,
     codeVerifiedAt: session.codeVerifiedAt?.toISOString() || null,
@@ -234,7 +241,8 @@ router.get('/', async (req, res) => {
           : 0;
         const codeStatus = resolveCodeGateStatus(own || null);
         const paidTotal = paymentsTotal(payments);
-        const remaining = remainingBalance(orders, payments, feeAmount);
+        const meta = parseSessionMeta(own?.metaJson);
+        const remaining = remainingBalance(orders, payments, feeAmount, meta.checkDiscount);
 
         return {
           index: n,
@@ -261,6 +269,7 @@ router.get('/', async (req, res) => {
           mergedTables: own ? parseMergedJson(own.mergedJson) : [],
           mergePrimary: isSatellite && linked ? linked.tableNumber : null,
           waiterAlertMs: alertMsLeft,
+          meta,
           accessCode: own?.accessCode || null,
           codeExpiresAt: own?.codeExpiresAt?.toISOString() || null,
           codeVerifiedAt: own?.codeVerifiedAt?.toISOString() || null,
@@ -567,6 +576,8 @@ router.post('/payment', async (req, res) => {
     includeSeatingFee,
     method,
     note,
+    tendered,
+    tip,
   } = req.body as {
     tableNumber?: string;
     groupSlug?: string;
@@ -575,6 +586,8 @@ router.post('/payment', async (req, res) => {
     includeSeatingFee?: boolean;
     method?: string;
     note?: string;
+    tendered?: number;
+    tip?: number;
   };
 
   let session =
@@ -656,31 +669,97 @@ router.post('/payment', async (req, res) => {
     }
   }
 
-  const amount = Math.round((itemsAmount + seatPart) * 100) / 100;
-  if (amount <= 0) {
+  const amountGross = Math.round((itemsAmount + seatPart) * 100) / 100;
+  if (amountGross <= 0) {
     return res.status(400).json({ message: 'Ödeme tutarı geçersiz' });
   }
 
+  const meta = parseSessionMeta(session.metaJson);
+  const unpaidLeft = unpaidOrders(orders).filter((o) => !settledIds.includes(o.id));
+  const payingAllItems = unpaidLeft.length === 0;
+  let liveFeeForDisc = 0;
+  // discount only when clearing all unpaid items (+ optional remaining seat)
+  let amount = amountGross;
+  let discountApplied = 0;
+  if (payingAllItems) {
+    if (session.groupSlug) {
+      const group = await prisma.qrTableGroup.findFirst({
+        where: { restaurantId: restaurantId!, slug: session.groupSlug },
+      });
+      if (group) {
+        const styles = (
+          group.tableStyles && typeof group.tableStyles === 'object' ? group.tableStyles : {}
+        ) as Record<string, TableStylePayload>;
+        for (let n = 1; n <= group.tableCount; n++) {
+          if (tableCode(n, group.prefix || '') === session.tableNumber) {
+            const fee = parseSeatingFee(styles[String(n)]?.seatingFee);
+            liveFeeForDisc = seatingFeeAmount(fee, session.openedAt, session.status);
+            break;
+          }
+        }
+      }
+    }
+    const seatLeftTotal = Math.max(0, liveFeeForDisc - seatingFeePaidTotal(payments));
+    const coveringSeat = !wantSeat ? seatLeftTotal <= 0.009 : true;
+    if (coveringSeat) {
+      const unpaidSum = orders
+        .filter((o) => settledIds.includes(o.id))
+        .reduce((s, o) => s + lineTotal(o), 0);
+      const gross = unpaidSum + seatPart;
+      discountApplied = checkDiscountAmount(gross, meta.checkDiscount);
+      amount = Math.max(0, Math.round((gross - discountApplied) * 100) / 100);
+    }
+  }
+
+  const tipAmt = Math.max(0, Math.round((Number(tip) || 0) * 100) / 100);
+  const tenderedAmt =
+    tendered != null && Number.isFinite(Number(tendered))
+      ? Math.round(Number(tendered) * 100) / 100
+      : undefined;
+  const changeAmt =
+    tenderedAmt != null ? Math.max(0, Math.round((tenderedAmt - amount - tipAmt) * 100) / 100) : undefined;
+
   const payment: FloorPayment = {
     id: `pay-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    // amount = adisyon/oturma; bahşiş ayrı alanda (paidTotal şişmesin)
     amount,
     method: methodNorm,
     itemIds: settledIds,
     seatingFee: seatPart,
     createdAt: nowIso,
-    note: String(note || '').trim().slice(0, 240) || undefined,
+    note:
+      [
+        String(note || '').trim(),
+        discountApplied > 0 ? `İndirim ${discountApplied.toFixed(2)}₺` : '',
+        tipAmt > 0 ? `Bahşiş ${tipAmt.toFixed(2)}₺` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ')
+        .slice(0, 240) || undefined,
+    tendered: tenderedAmt,
+    change: changeAmt,
+    tip: tipAmt > 0 ? tipAmt : undefined,
   };
 
   const nextOrders = orders.map((o) =>
     settledIds.includes(o.id) ? { ...o, settledAt: nowIso } : o
   );
   const nextPayments = [...payments, payment];
+  const clearDiscount = payingAllItems && discountApplied > 0;
 
   const updated = await prisma.tableFloorSession.update({
     where: { id: session.id },
     data: {
       ordersJson: JSON.stringify(nextOrders),
       paymentsJson: JSON.stringify(nextPayments),
+      ...(clearDiscount
+        ? {
+            metaJson: serializeSessionMeta({
+              ...meta,
+              checkDiscount: null,
+            }),
+          }
+        : {}),
     },
   });
 
@@ -705,7 +784,8 @@ router.post('/payment', async (req, res) => {
 
   const finalOrders = parseOrdersJson(updated.ordersJson);
   const finalPayments = parsePaymentsJson(updated.paymentsJson);
-  const remaining = remainingBalance(finalOrders, finalPayments, liveFee);
+  const finalMeta = parseSessionMeta(updated.metaJson);
+  const remaining = remainingBalance(finalOrders, finalPayments, liveFee, finalMeta.checkDiscount);
 
   res.json({
     ok: true,
@@ -773,6 +853,99 @@ router.post('/reserve', async (req, res) => {
   }
 
   res.json({ ok: true, session: serializeSession(session) });
+});
+
+/** Masa oturum meta: kişi / not / garson / hesap indirimi */
+router.post('/meta', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const { tableNumber, groupSlug, sessionId, pax, serviceNote, waiterUserId, waiterName, checkDiscount } =
+    req.body as {
+      tableNumber?: string;
+      groupSlug?: string;
+      sessionId?: number;
+      pax?: number | null;
+      serviceNote?: string | null;
+      waiterUserId?: number | null;
+      waiterName?: string | null;
+      checkDiscount?: { mode?: string; value?: number } | null;
+    };
+
+  let session =
+    sessionId != null
+      ? await prisma.tableFloorSession.findFirst({
+          where: {
+            id: Number(sessionId),
+            restaurantId: restaurantId!,
+            status: { in: [...ACTIVE_STATUSES] },
+          },
+        })
+      : null;
+  if (!session && tableNumber) {
+    session = await findActiveSession(
+      restaurantId!,
+      String(tableNumber).trim(),
+      groupSlug ? String(groupSlug).trim() : null
+    );
+  }
+  if (!session) return res.status(404).json({ message: 'Açık masa yok' });
+
+  const prev = parseSessionMeta(session.metaJson);
+  let nextWaiterName = waiterName !== undefined ? String(waiterName || '').trim().slice(0, 120) || null : prev.waiterName ?? null;
+  let nextWaiterId =
+    waiterUserId !== undefined
+      ? waiterUserId == null || waiterUserId === ('' as unknown)
+        ? null
+        : Number(waiterUserId)
+      : prev.waiterUserId ?? null;
+
+  if (waiterUserId !== undefined && nextWaiterId != null && Number.isFinite(nextWaiterId)) {
+    const user = await prisma.user.findFirst({
+      where: { id: nextWaiterId, restaurantId: restaurantId!, isActive: true },
+      select: { id: true, fullName: true },
+    });
+    if (!user) return res.status(400).json({ message: 'Garson bulunamadı' });
+    nextWaiterId = user.id;
+    nextWaiterName = user.fullName;
+  } else if (waiterUserId !== undefined && (waiterUserId == null || waiterUserId === ('' as unknown))) {
+    nextWaiterId = null;
+    nextWaiterName = null;
+  }
+
+  let nextDiscount = prev.checkDiscount ?? null;
+  if (checkDiscount !== undefined) {
+    if (!checkDiscount || !Number(checkDiscount.value)) nextDiscount = null;
+    else {
+      nextDiscount = {
+        mode: checkDiscount.mode === 'percent' ? 'percent' : 'fixed',
+        value: Math.abs(Number(checkDiscount.value) || 0),
+      };
+    }
+  }
+
+  const nextPax =
+    pax !== undefined
+      ? pax == null || !Number(pax)
+        ? undefined
+        : Math.min(99, Math.max(1, Math.round(Number(pax))))
+      : prev.pax;
+
+  const meta: FloorSessionMeta = {
+    pax: nextPax,
+    serviceNote:
+      serviceNote !== undefined
+        ? String(serviceNote || '').trim().slice(0, 1000) || undefined
+        : prev.serviceNote,
+    waiterUserId: nextWaiterId,
+    waiterName: nextWaiterName,
+    checkDiscount: nextDiscount,
+  };
+
+  const updated = await prisma.tableFloorSession.update({
+    where: { id: session.id },
+    data: { metaJson: serializeSessionMeta(meta) },
+  });
+
+  res.json({ ok: true, session: serializeSession(updated), meta: parseSessionMeta(updated.metaJson) });
 });
 
 /** Masa kalıcı oturma ücreti ayarı (tableStyles içinde) */

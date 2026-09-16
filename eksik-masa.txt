@@ -1,0 +1,336 @@
+═══════════════════════════════════════════════════════════
+  MENU-QR — MASA GÖRÜNÜMÜ ARAŞTIRMA & EKSİK LİSTESİ
+  Dosya: eksik-masa.txt
+  Tarih: 2026-03-24
+  Amaç: Dokunmatik monitör / adisyon odaklı modern masa
+        operasyonu için ne var, ne yok, neden gerekli,
+        nasıl ilerleyelim.
+═══════════════════════════════════════════════════════════
+
+
+───────────────────────────────────────────────────────────
+  0) KISA ÖZET
+───────────────────────────────────────────────────────────
+
+Bugün “Masa görünümü” bir POS-lite:
+  • Masa ızgarası + sağdan açılan çekmece (drawer)
+  • Oturum, sipariş, satır indirim/ekstra, kısmi ödeme
+  • Birleştir / taşı / ayır, oturma ücreti, masa kodu
+  • Hesap yazdır (tarayıcı 80mm fiş), garson çağrı paneli
+
+Ana UX sorunu:
+  Masaya tıklayınca sağ panel açılıyor. Dokunmatik ekranda
+  bu “yarı yarıya bakmak” yorar; masa “içine girmek”
+  (tam ekran masa odası) daha doğru hissettirecek.
+
+Hedef yön:
+  1) Tıkla → masa içine gir (tam ekran adisyon yüzeyi)
+  2) İki sayaç (masa süresi + son siparişten beri)
+  3) Dokunmatik / parmak dostu, modern adisyon akışı
+  4) Eksik operasyon parçalarını faz faz tamamla
+
+
+───────────────────────────────────────────────────────────
+  1) ŞU AN NE VAR? (envanter)
+───────────────────────────────────────────────────────────
+
+Kaynaklar:
+  • frontend/src/pages/admin/TableFloorPage.tsx
+  • frontend/src/table-floor.css
+  • frontend/src/components/admin/GarsonCallsPanel.tsx
+  • frontend/src/components/BillReceiptModal.tsx
+  • backend/src/routes/table-floor.ts
+  • backend/src/lib/table-floor.ts
+  • Prisma: TableFloorSession (ordersJson / paymentsJson)
+
+Yetenekler:
+  [x] Masa grid (boş / dolu / rezerve / birleşik / kod bekliyor)
+  [x] 4 sn poll + 1 sn saat tick
+  [x] Masa aç / kapat (ödeme alındı bayrağı ile)
+  [x] Rezervasyon (isim, saat, not)
+  [x] Admin sipariş ekleme (katalog modal) + stok kontrolü
+  [x] Satır düzenle: adet, seçenek, serbest not, ekstra/indirim
+  [x] Kısmi ödeme (kalem seç + nakit/kart/karışık)
+  [x] Toplam / ödenen / kalan
+  [x] Masa taşı, birleştir, birleşikten ayır
+  [x] Oturma ücreti (masa bazlı ayar)
+  [x] Masa kodu (TTL, onay, ± süre) — regenerate API var, UI yok
+  [x] Kart üzerinde “masa açılışından beri” süre
+  [x] Garson çağrısı flaşı (~8 sn)
+  [x] Hesap / ödeme fişi yazdır (tarayıcı print)
+  [x] Garson paneli (canlı / geçmiş / rapor) — ayrı görünüm
+
+
+───────────────────────────────────────────────────────────
+  2) ŞU ANKİ TIKLAMA AKIŞI (sorun burada)
+───────────────────────────────────────────────────────────
+
+  Masaya tıkla
+    → selectedCode set
+    → sağ drawer açılır (min(24rem, %100))
+    → grid yarı görünür / scrim
+
+Dokunmatik monitörde sorunlar:
+  • Çift odak: hem grid hem dar panel
+  • Parmakla küçük ikonlar / çift tıkla satır düzenleme
+  • Ödeme dock’u sol üstte drawer ile çakışabiliyor
+  • “Masa odasına girdim” hissi yok; sürekli dışarı bakıyorsun
+
+İstenen yeni akış (Faz 1):
+  Masaya tıkla
+    → tam ekran / ana alanı kaplayan “masa içi” görünüm
+    → üstte geri (masalara dön)
+    → ortada adisyon + aksiyonlar
+    → grid sadece dışarıdayken
+
+
+───────────────────────────────────────────────────────────
+  3) EKSİKLER (öncelik + neden gerekli)
+───────────────────────────────────────────────────────────
+
+### A — UX / dokunmatik (öncelik: ÇOK YÜKSEK)
+
+1) Masa içi (full) görünüm
+   Neden: Sağ drawer POS hissi vermiyor; garson/kasa
+   monitörde sürekli parmakla sağa uzanmak yorar.
+   Etki: Hata azalır, hız artar, eğitim kısalır.
+
+2) Büyük dokunma hedefleri (min ~48px)
+   Neden: Küçük ikonlar yanlış tıklama üretir.
+   Etki: Özellikle 15–24" dokunmatikte kritik.
+
+3) Çift tık yerine tek dokunuş / uzun basma
+   Neden: Touch’ta dblclick güvenilmez.
+   Etki: Satır düzenleme gerçekten kullanılır hale gelir.
+
+4) Kartlarda tutar (kalan / toplam) görmek
+   Neden: Odaya bakınca hangi masa “sıcak” belli olmalı.
+   Etki: Koşu azaltır, hesap kaçırmayı önler.
+
+
+### B — Sayaçlar (öncelik: YÜKSEK)  ★ senin örneğin
+
+5) Masa oturum sayacı (var — kartta)
+   Durum: openedAt’ten beri süre kartta var.
+   İhtiyaç: Masa İÇİNDE de net, büyük, sürekli görünsün.
+   Neden: “Bu masa kaç dakikadır burada?” garsonun
+   temel sorusu; oturma ücreti / turnover için şart.
+
+6) Son siparişten beri sayaç (YOK)
+   Durum: Satır createdAt var ama idle timer yok.
+   Davranış önerisi:
+     • Son si ekleme) anından say
+     • Yeni sipariş gelince sıfırla
+     • Eşik aşınca renk: yeşil → sarı → kırmızı
+   Neden: “Sipariş unutuldu mu? / Hesap mı getireyim?”
+   mutfak ve servis temposunu görünür kılar.
+   Klasik adisyon / runner ekranlarında standarttır.
+
+
+### C — Adisyon / fiş / mutfak (öncelik: YÜKSEK)
+
+7) Gerçek adisyon deneyimi (iç ekranda)
+   Neden: Şu an sipariş listesi + ödeme var ama “adisyon
+   sayfası” gibi değil; fiş önizleme, kişi sayısı, not,
+   yazdır / öde / yeni sipariş bir arada olmalı.
+
+8) Mutfak fişi / KDS (YOK)
+   Neden: Admin sipariş sadece garson çağrısına düşüyor;
+   mutfak ayrı ticket almıyor. Kaos ve “kim ne söyledi”.
+   Etki: Yoğun saatte kritik.
+
+9) ESC/POS / yazıcı kuyruğu (kısmi)
+   Durum: Tarayıcı print var; gerçek termal kuyruk yok.
+   Neden: Restoran kasada “Yazdır” = fiziksel fiş bekler.
+
+
+### D — Operasyon alanları (öncelik: ORTA–YÜKSEK)
+
+10) Kişi sayısı (covers / pax) — YOK
+    Neden: Ortalama hesap, oturma ücreti, “4 kişilik masa”
+    takibi, raporlama için temel metrik.
+
+11) Garson atama — YOK
+    Neden: “Bu masa kimin?”; performapariş (veya satırns ve sorumluluk.
+    Sadece 8 sn çağrı flaşı yetmez.
+
+12) Masa seviyesi servis notu — kısmi
+    Durum: Rezervasyon notu + satır notu var.
+    Neden: “Alerji / bebek sandalyesi / VIP” oturum boyu
+    görünmeli.
+
+13) Check-level indirim / ikram — YOK
+    Durum: Sadece satır bazlı ekstra/indirim.
+    Neden: “Hesaba %10” veya “tatlı ikram” günlük işlem.
+
+14) Gelişmiş hesap bölme — kısmi
+    Durum: Kalem seçerek kısmi ödeme var (iyi temel).
+    Eksik: Eşit böl / kişiye göre / koltuk bazlı.
+    Neden: Grup masalarında tartışmayı bitirir.
+
+15) Ödeme detayı — kısmi
+    Durum: nakit / kart / karışık etiket.
+    Eksik: Verilen tutar, para üstü, bahşiş, kısmi nakit+kart
+    tutar ayrımı.
+    Neden: Kasa kapanışı ve muhasebe.
+
+16) Birleştirmeden ayırırken sipariş bölme — zayıf
+    Durum: Split sadece birleşik linki koparır; kalemler
+    ana masada kalır.
+    Neden: Yanlış hesap riski.
+
+
+### E — Durum / uyarı / çevrimdışı (öncelik: ORTA)
+
+17) Son sipariş + garson çağrı sesi masa ekranında
+    Durum: Kod beklerken ses var; garson paneli floor’da
+    titreşim/ses bağlı değil.
+    Neden: Monitöre bakmayan garson kaçırır.
+
+18) Offline / zayıf ağ toleransı — YOK
+    Neden: Wi-Fi düşerse masa kilitlenmemeli; en azından
+    kuyruk + “senkron bekliyor” durumu.
+
+19) Masa haritası (serbest yerleşim) — YOK
+    Durum: Numaralı grid.
+    Neden: Salon planına benzeyen harita eğitim süresini
+    kısaltır (sonraki faz).
+
+
+### F — Güvenlik / sağlamlık (önceki audit’ten hatırlatma)
+
+20) Eşzamanlı ödeme yarışı (read-modify-write)
+    Neden: İki kişi aynı masada öderse bozulma riski.
+21) Merge sırasında paymentsJson (düzeltildiyse doğrula)
+22) close + paid:true kalan bakiyeyi zorlamıyor olabilir
+
+
+───────────────────────────────────────────────────────────
+  4) RAKİP / SEKTÖR BEKLENTİSİ (kısa)
+───────────────────────────────────────────────────────────
+
+Tipik restoran POS / adisyon (Dokunmatik kasa, Toast,
+Simpra, Adisyon, Micros benzeri) beklentileri:
+
+  • Masa tıkla → masa içi tam ekran adisyon
+  • İki zaman: oturum süresi + idle (son işlem)
+  • Büyük butonlar: Sipariş / Öde / Yazdır / Taşı
+  • Kişi sayısı + garson
+  • Mutfak fişi + hesap fişi ayrı
+  • Renkli masa durumu + tutar rozeti
+  • Hesap bölme (kalem / eşit)
+  • Dokunmatik-first (hover / dblclick yok)
+
+Bizdeki boşluk en çok: “içine girme”, idle sayaç,
+mutfak ticket, pax/garson, dokunmatik dil.
+
+
+───────────────────────────────────────────────────────────
+  5) PLAN (fazlar)
+───────────────────────────────────────────────────────────
+
+FAZ 0 — Karar & iskelet (şimdi)
+  [x] Bu dosyayı onayla / öncelikleri işaretle
+  [x] “İçine gir” navigasyon modelini kilitle
+      (route: ?masa=X — drawer KALDIR; viewMode floor|table)
+
+FAZ 1 — Masa içi UX (ilk büyük görünür kazanım)
+  [x] Tıkla → tam ekran masa odası (sağ drawer kalksın)
+  [x] Üst bar: geri | masa adı | 2 sayaç | durum | kod
+  [x] Sol/orta: adisyon listesi (büyük satırlar)
+  [x] Alt veya yan aksiyon şeridi (parmak boyu):
+        + Sipariş | Öde | Yazdır | Taşı | Birleştir | Kapat
+  [x] Satır: tek dokunuşla seç / düzenle (dblclick kaldır)
+  [x] Kartlarda kalan tutar + iki sayaç (küçük)
+
+FAZ 2 — Sayaçlar & görsel durum
+  [x] Oturum sayacı (iç + kart) — mevcut openedAt
+  [x] lastOrderAt: ordersJson max(createdAt) türetiliyor (kolon yok)
+  [x] Idle sayaç + eşik renkleri (10dk sarı / 20dk kırmızı)
+  [x] Yeni sipariş / müşteri siparişi gelince idle sıfır
+
+FAZ 3 — Adisyon derinliği
+  [x] Kişi sayısı (pax) alanı — session metaJson
+  [x] Masa servis notu — metaJson.serviceNote
+  [x] Garson atama — staff kullanıcı listesi
+  [x] Check-level indirim (% / ₺) — kalan bakiyeye uygulanır
+  [x] Ödeme: para üstü + bahşiş (nakitte alınan → para üstü)
+  [x] Yazdır: Hesap yazdır + Mutfak fişi ayrı butonlar
+
+FAZ 4 — Mutfak & uyarı
+  [x] Mutfak fişi: KitchenTicketModal (önizleme + yazdır)
+  [x] Garson çağrı uyarısı masa kartı / oda görünümünde
+  [ ] (İleride) KDS ekranı
+
+FAZ 5 — Dokunmatik cilası & sağlamlık
+  [x] Hit-target / büyük butonlar (masa odası)
+  [ ] Ödeme concurrency (optimistic lock / version)
+  [ ] Offline kuyruk (ileride)
+  [ ] Masa haritası editörü (ileride)
+
+
+───────────────────────────────────────────────────────────
+  6) TEKNİK NOTLAR (uygulama ipuçları)
+───────────────────────────────────────────────────────────
+
+• lastOrderAt:
+  - TableFloorSession’a kolon VEYA ordersJson içinden
+    max(createdAt) türet (kolon daha temiz, idle için)
+  - appendOrdersToSession / customer order path güncelle
+
+• Navigasyon:
+  - Drawer state yerine “viewMode: floor | table”
+  - URL ?masa=&grup= zaten var — bunu “iç sayfa” yap
+  - Geri = clear query / viewMode=floor
+
+• Dokunmatik:
+  - table-floor.css’te --tf-tap: 48px
+  - hover’a güvenme; active/selected stilleri
+
+• Yazdırma:
+  - BillReceiptModal’ı masa içinden tek büyük butonla aç
+
+
+───────────────────────────────────────────────────────────
+  7) ÖNERİLEN İLK ADIM (onay bekler) — GÜNCELLEME
+───────────────────────────────────────────────────────────
+
+★ FAZ 1–4 TAMAMLANDI (2026-09-16):
+  [x] Sağ drawer kaldırıldı → tam ekran “masa odası”
+  [x] İki sayaç + kart tutar + idle renkleri
+  [x] Pax / garson / servis notu / check indirim (metaJson)
+  [x] Ödeme: bahşiş + alınan + para üstü
+  [x] Hesap yazdır + Mutfak fişi (KitchenTicketModal)
+  [ ] Sonraya: masa haritası, KDS, ödeme concurrency, offline
+
+Teknik:
+  • TableFloorSession.meta_json (Text) — pax, note, waiter, discount
+  • POST /api/admin/table-floor/meta
+  • Payment: tip / tendered / change paymentsJson’da
+
+★ DEPLOY ÖNCESİ (sunucu DB):
+  meta_json kolonu yoksa çalıştır:
+  backend/prisma/migrations_manual/add_masa_meta_json.sql
+  (USE satırındaki DB adını sunucu adıyla değiştir)
+  Sonra: backend’de `npx prisma generate` (+ gerekirse db push)
+
+
+───────────────────────────────────────────────────────────
+  8) KONTROL LİSTESİ
+───────────────────────────────────────────────────────────
+
+[x] Masa içi (drawer kalksın) — şart
+[x] 2 sayaç (oturum + son sipariş) — şart
+[x] Kartlarda tutar
+[x] Kişi sayısı
+[x] Garson atama
+[x] Mutfak fişi
+[x] Para üstü / bahşiş
+[ ] Masa haritası — sonraya
+
+Not: Bu dosya yaşayan bir checklist; uygulama ilerledikçe
+güncellenecek.
+
+═══════════════════════════════════════════════════════════
+  SON
+═══════════════════════════════════════════════════════════

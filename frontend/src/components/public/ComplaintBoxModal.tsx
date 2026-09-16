@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { X, Send, RefreshCw } from 'lucide-react';
+import { X, Send, RefreshCw, ChevronDown } from 'lucide-react';
 import { api } from '@/lib/api';
 import ComplaintMascot, {
   ComplaintMascotBubble,
@@ -35,6 +35,7 @@ export default function ComplaintBoxModal({ open, slug, onClose }: ComplaintBoxM
   const [message, setMessage] = useState('');
   const [phase, setPhase] = useState<ComplaintPhase>('form');
   const [error, setError] = useState('');
+  const [contactOpen, setContactOpen] = useState(false);
 
   const mood = phase === 'done' ? 'happy' : phase === 'sending' ? 'sending' : 'sad';
   const lineIndex = useComplaintBubbleLines(mood, open);
@@ -43,6 +44,7 @@ export default function ComplaintBoxModal({ open, slug, onClose }: ComplaintBoxM
     if (!open) return;
     setPhase('form');
     setError('');
+    setContactOpen(false);
   }, [open]);
 
   useEffect(() => {
@@ -62,6 +64,7 @@ export default function ComplaintBoxModal({ open, slug, onClose }: ComplaintBoxM
 
   const canSend =
     fullName.trim().length >= 2 && message.trim().length >= 10 && phase === 'form';
+  const hasExtraContact = Boolean(phone.trim() || email.trim());
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -96,35 +99,44 @@ export default function ComplaintBoxModal({ open, slug, onClose }: ComplaintBoxM
       setMessage('');
       setPhase('form');
       setError('');
+      setContactOpen(false);
     }, 300);
   }
 
   return (
-    <div className="complaint-overlay" onClick={handleClose}>
+    <div className="feedback-sheet-overlay complaint-overlay" onClick={handleClose}>
       <div
-        className={`complaint-modal login-glass ${phase === 'done' ? 'complaint-modal--done' : ''}`}
+        className={`feedback-sheet complaint-modal login-glass ${
+          phase === 'done' ? 'complaint-modal--done' : ''
+        }`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="complaint-title"
       >
-        <button type="button" className="complaint-modal__close" onClick={handleClose} aria-label="Kapat">
-          <X className="w-5 h-5" />
+        <div className="feedback-sheet__handle" aria-hidden />
+        <button
+          type="button"
+          className="complaint-modal__close"
+          onClick={handleClose}
+          aria-label="Kapat"
+        >
+          <X className="w-4 h-4" />
         </button>
 
-        <div className="complaint-modal__hero">
+        <div className="feedback-sheet__hero complaint-modal__hero">
           <ComplaintMascot mood={mood} />
           <ComplaintMascotBubble mood={mood} lineIndex={lineIndex} />
         </div>
 
         {phase !== 'done' ? (
-          <form className="complaint-form" onSubmit={handleSubmit}>
-            <h2 id="complaint-title" className="complaint-form__title">
-              Şikayet Kutusu
-            </h2>
-            <p className="complaint-form__subtitle">
-              Yaşadığın olumsuz deneyimi bizimle paylaş — sana geri dönüş yapalım.
-            </p>
+          <form className="complaint-form feedback-sheet__form" onSubmit={handleSubmit}>
+            <div className="feedback-sheet__head">
+              <h2 id="complaint-title" className="complaint-form__title">
+                Şikayet Kutusu
+              </h2>
+              <p className="complaint-form__subtitle">Kısaca anlat, sana dönüş yapalım.</p>
+            </div>
 
             <label className="complaint-field">
               <span>Ad Soyad *</span>
@@ -139,46 +151,57 @@ export default function ComplaintBoxModal({ open, slug, onClose }: ComplaintBoxM
             </label>
 
             <label className="complaint-field">
-              <span>
-                Telefon <em>(opsiyonel)</em>
-              </span>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="WhatsApp için numaranız"
-                maxLength={30}
-                disabled={phase === 'sending'}
-              />
-            </label>
-
-            <label className="complaint-field">
-              <span>
-                E-posta <em>(opsiyonel)</em>
-              </span>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Geri dönüş için e-posta"
-                maxLength={150}
-                disabled={phase === 'sending'}
-              />
-            </label>
-
-            <label className="complaint-field">
               <span>Şikayetiniz *</span>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Ne oldu? Nasıl hissettin? Detaylı anlatırsan daha hızlı çözeriz…"
-                rows={4}
+                placeholder="Ne oldu? Kısa ve net yazman yeterli…"
+                rows={3}
                 maxLength={2000}
                 disabled={phase === 'sending'}
               />
             </label>
 
-            {error && (
+            <button
+              type="button"
+              className={`feedback-sheet__more${contactOpen || hasExtraContact ? ' is-open' : ''}`}
+              onClick={() => setContactOpen((v) => !v)}
+              disabled={phase === 'sending'}
+            >
+              <span>Telefon / e-posta ekle</span>
+              <ChevronDown className="w-4 h-4" />
+            </button>
+
+            {contactOpen || hasExtraContact ? (
+              <div className="feedback-sheet__contact">
+                <div className="feedback-sheet__row">
+                  <label className="complaint-field">
+                    <span>Telefon</span>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="05xx…"
+                      maxLength={30}
+                      disabled={phase === 'sending'}
+                    />
+                  </label>
+                  <label className="complaint-field">
+                    <span>E-posta</span>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="ornek@mail.com"
+                      maxLength={150}
+                      disabled={phase === 'sending'}
+                    />
+                  </label>
+                </div>
+              </div>
+            ) : null}
+
+            {error ? (
               <div className="complaint-form__error-box">
                 <p>{error}</p>
                 <button type="button" onClick={() => setError('')}>
@@ -186,7 +209,7 @@ export default function ComplaintBoxModal({ open, slug, onClose }: ComplaintBoxM
                   Tamam
                 </button>
               </div>
-            )}
+            ) : null}
 
             <button type="submit" className="complaint-form__submit" disabled={!canSend}>
               <Send className="w-4 h-4" />
