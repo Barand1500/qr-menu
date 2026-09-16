@@ -428,11 +428,6 @@ export default function TableFloorPage() {
   const [payTip, setPayTip] = useState('');
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
   const [metaBusy, setMetaBusy] = useState(false);
-  const [paxDraft, setPaxDraft] = useState('');
-  const [serviceNoteDraft, setServiceNoteDraft] = useState('');
-  const [discountMode, setDiscountMode] = useState<'fixed' | 'percent'>('percent');
-  const [discountValue, setDiscountValue] = useState('');
-  const [opsPanelOpen, setOpsPanelOpen] = useState(false);
   const [receiptFocus, setReceiptFocus] = useState<{
     orders: FloorOrder[];
     seatingFee: number;
@@ -510,7 +505,6 @@ export default function TableFloorPage() {
     setCodeTtlMenuOpen(false);
     setKitchenOpen(false);
     setBillOpen(false);
-    setOpsPanelOpen(false);
     setWaiterPopOpen(false);
     setFeePanelOpen(false);
     setNotePanelOpen(false);
@@ -689,12 +683,6 @@ export default function TableFloorPage() {
         : ''
     );
     setFeeUnit(selected.seatingFee?.unit === 'hour' ? 'hour' : 'minute');
-    setPaxDraft(selected.meta?.pax ? String(selected.meta.pax) : '');
-    setServiceNoteDraft(selected.meta?.serviceNote || '');
-    setDiscountMode(selected.meta?.checkDiscount?.mode === 'fixed' ? 'fixed' : 'percent');
-    setDiscountValue(
-      selected.meta?.checkDiscount?.value ? String(selected.meta.checkDiscount.value) : ''
-    );
   }, [
     selected?.code,
     selected?.sessionId,
@@ -704,10 +692,6 @@ export default function TableFloorPage() {
     selected?.seatingFee?.enabled,
     selected?.seatingFee?.rate,
     selected?.seatingFee?.unit,
-    selected?.meta?.pax,
-    selected?.meta?.serviceNote,
-    selected?.meta?.checkDiscount?.mode,
-    selected?.meta?.checkDiscount?.value,
   ]);
 
   useEffect(() => {
@@ -1727,47 +1711,77 @@ export default function TableFloorPage() {
           </div>
           {selected && !pickMode && panelMode === 'floor' ? (
             <div className="table-floor__header-status" aria-label="Masa durumu">
-              <span
-                className={`table-floor__pill is-compact${
-                  selected.status === 'reserved'
-                    ? ' is-wait'
-                    : selected.occupied
-                      ? ' is-busy'
-                      : ''
-                }`}
-              >
-                {selected.status === 'reserved'
-                  ? 'Rezerve'
-                  : selected.status === 'merged'
-                    ? mergePrimaryTarget
-                      ? `Birleşik · ${mergePrimaryTarget.table.name}`
-                      : 'Birleşik'
-                    : selected.occupied
-                      ? 'Dolu'
-                      : 'Boş'}
-              </span>
-              {selected.waiterAlertMs > 0 ? (
-                <span className="table-floor__pill is-wait is-compact">
-                  <HandHelping className="w-3.5 h-3.5" />
-                  Garson
+              <div className="table-floor__header-pills">
+                <span
+                  className={`table-floor__pill is-compact${
+                    selected.status === 'reserved'
+                      ? ' is-wait'
+                      : selected.occupied
+                        ? ' is-busy'
+                        : ''
+                  }`}
+                >
+                  {selected.status === 'reserved'
+                    ? 'Rezerve'
+                    : selected.status === 'merged'
+                      ? mergePrimaryTarget
+                        ? `Birleşik · ${mergePrimaryTarget.table.name}`
+                        : 'Birleşik'
+                      : selected.occupied
+                        ? 'Dolu'
+                        : 'Boş'}
                 </span>
-              ) : null}
-              {selected.codeStatus === 'pending' ? (
-                <span className="table-floor__pill is-code-pending is-compact">Kod bekleniyor</span>
-              ) : null}
-              {selected.codeStatus === 'verified' ? (
-                <span className="table-floor__pill is-code-ok is-compact">Kod girildi</span>
-              ) : null}
-              {selected.codeStatus === 'expired' ? (
-                <span className="table-floor__pill is-code-expired is-compact">Kod süresi doldu</span>
-              ) : null}
-              {selected.openedBy ? (
-                <span className="table-floor__pill is-muted is-compact">
-                  {selected.openedBy === 'admin' ? 'Admin açtı' : 'QR okutuldu'}
-                </span>
-              ) : null}
-              {selected.seatingFee?.enabled ? (
-                <span className="table-floor__pill is-fee is-compact">Ücretli</span>
+                {selected.waiterAlertMs > 0 ? (
+                  <span className="table-floor__pill is-wait is-compact">
+                    <HandHelping className="w-3.5 h-3.5" />
+                    Garson
+                  </span>
+                ) : null}
+                {selected.codeStatus === 'pending' ? (
+                  <span className="table-floor__pill is-code-pending is-compact">Kod bekleniyor</span>
+                ) : null}
+                {selected.codeStatus === 'verified' ? (
+                  <span className="table-floor__pill is-code-ok is-compact">Kod girildi</span>
+                ) : null}
+                {selected.codeStatus === 'expired' ? (
+                  <span className="table-floor__pill is-code-expired is-compact">Süre doldu</span>
+                ) : null}
+                {selected.openedBy ? (
+                  <span className="table-floor__pill is-muted is-compact">
+                    {selected.openedBy === 'admin' ? 'Admin' : 'QR'}
+                  </span>
+                ) : null}
+              </div>
+              {selected.occupied && selected.status === 'open' ? (
+                <div className="table-floor__header-timers" aria-label="Masa sayaçları">
+                  <div
+                    className={`table-floor__header-timer is-${idleUrgency(selected.openedAt, now)}`}
+                    title="Oturum süresi"
+                  >
+                    <Clock3 className="w-3.5 h-3.5" aria-hidden />
+                    <div>
+                      <span>Oturum</span>
+                      <strong>{formatDurationMinutes(selected.openedAt, now)}</strong>
+                    </div>
+                  </div>
+                  <div
+                    className={`table-floor__header-timer is-${idleUrgency(
+                      lastOrderAtIso(selected.orders),
+                      now
+                    )}`}
+                    title="Son siparişten beri"
+                  >
+                    <Timer className="w-3.5 h-3.5" aria-hidden />
+                    <div>
+                      <span>Son sipariş</span>
+                      <strong>
+                        {lastOrderAtIso(selected.orders)
+                          ? formatDurationMinutes(lastOrderAtIso(selected.orders), now)
+                          : '—'}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
               ) : null}
             </div>
           ) : (
@@ -2003,186 +2017,8 @@ export default function TableFloorPage() {
       >
         {selected && activeGroup && !pickMode ? (
           <>
-            {selected.occupied && selected.status === 'open' ? (
-              <div className="table-floor__timers is-slim" aria-label="Masa sayaçları">
-                <div
-                  className={`table-floor__timer is-${idleUrgency(selected.openedAt, now)}`}
-                  title="Oturum süresi"
-                >
-                  <Clock3 className="w-4 h-4" aria-hidden />
-                  <div>
-                    <span>Oturum</span>
-                    <strong>{formatDurationMinutes(selected.openedAt, now)}</strong>
-                  </div>
-                </div>
-                <div
-                  className={`table-floor__timer is-${idleUrgency(
-                    lastOrderAtIso(selected.orders),
-                    now
-                  )}`}
-                  title="Son siparişten beri"
-                >
-                  <Timer className="w-4 h-4" aria-hidden />
-                  <div>
-                    <span>Son sipariş</span>
-                    <strong>
-                      {lastOrderAtIso(selected.orders)
-                        ? formatDurationMinutes(lastOrderAtIso(selected.orders), now)
-                        : '—'}
-                    </strong>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="table-floor__status-row">
-              {selected.status !== 'merged' ? (
-                <div className="table-floor__status-actions">
-                  {selected.reservationNote?.trim() && selected.status === 'open' ? (
-                    <button
-                      type="button"
-                      className={`table-floor__icon-btn is-compact${notePanelOpen ? ' is-active' : ''}`}
-                      title="Rezervasyon notu"
-                      aria-label="Rezervasyon notu"
-                      aria-expanded={notePanelOpen}
-                      onClick={() => {
-                        setNotePanelOpen((v) => !v);
-                        setFeePanelOpen(false);
-                        setWaiterPopOpen(false);
-                      }}
-                    >
-                      <NotebookPen className="w-4 h-4" />
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    className={`table-floor__icon-btn is-compact${
-                      feePanelOpen || selected.seatingFee?.enabled ? ' is-active' : ''
-                    }${selected.seatingFee?.enabled ? ' is-fee' : ''}`}
-                    title="Oturma ücreti"
-                    aria-label="Oturma ücreti ayarı"
-                    aria-expanded={feePanelOpen}
-                    onClick={() => {
-                      setFeePanelOpen((v) => !v);
-                      setNotePanelOpen(false);
-                      setWaiterPopOpen(false);
-                    }}
-                  >
-                    <Timer className="w-4 h-4" />
-                  </button>
-                  {selected.occupied && selected.status === 'open' ? (
-                    <div className="table-floor__waiter-wrap">
-                      <button
-                        type="button"
-                        className={`table-floor__waiter-chip${waiterPopOpen ? ' is-open' : ''}${
-                          selected.meta?.waiterName ? ' has-waiter' : ''
-                        }`}
-                        aria-expanded={waiterPopOpen}
-                        disabled={metaBusy}
-                        onClick={() => {
-                          setWaiterPopOpen((v) => !v);
-                          setFeePanelOpen(false);
-                          setNotePanelOpen(false);
-                        }}
-                      >
-                        <HandHelping className="w-3.5 h-3.5" />
-                        <span>{selected.meta?.waiterName || 'Garson'}</span>
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      </button>
-                      {waiterPopOpen ? (
-                        <div className="table-floor__waiter-pop" role="listbox" aria-label="Garson seç">
-                          <button
-                            type="button"
-                            role="option"
-                            className={!selected.meta?.waiterUserId ? 'is-on' : undefined}
-                            onClick={() => {
-                              void saveSessionMeta({ waiterUserId: null, waiterName: null });
-                              setWaiterPopOpen(false);
-                            }}
-                          >
-                            Atanmadı
-                          </button>
-                          {staffUsers.map((u) => (
-                            <button
-                              key={u.id}
-                              type="button"
-                              role="option"
-                              className={
-                                selected.meta?.waiterUserId === u.id ? 'is-on' : undefined
-                              }
-                              onClick={() => {
-                                void saveSessionMeta({
-                                  waiterUserId: u.id,
-                                  waiterName: u.fullName,
-                                });
-                                setWaiterPopOpen(false);
-                              }}
-                            >
-                              {u.fullName}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-
-            {feePanelOpen && selected.status !== 'merged' ? (
-              <div className="table-floor__pop">
-                <div className="table-floor__pop-head">
-                  <h3>Oturma ücreti</h3>
-                  <button
-                    type="button"
-                    className="table-floor__icon-btn is-tiny"
-                    aria-label="Kapat"
-                    onClick={() => setFeePanelOpen(false)}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <label className="table-floor__check">
-                  <input
-                    type="checkbox"
-                    checked={feeEnabled}
-                    onChange={(e) => setFeeEnabled(e.target.checked)}
-                  />
-                  Bu masa ücretli oturma
-                </label>
-                <div className="table-floor__fee-row">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    className="table-floor__input"
-                    placeholder="Tutar"
-                    value={feeRate}
-                    disabled={!feeEnabled}
-                    onChange={(e) => setFeeRate(e.target.value)}
-                  />
-                  <select
-                    className="table-floor__input"
-                    value={feeUnit}
-                    disabled={!feeEnabled}
-                    onChange={(e) => setFeeUnit(e.target.value as 'minute' | 'hour')}
-                  >
-                    <option value="minute">₺ / dakika</option>
-                    <option value="hour">₺ / saat</option>
-                  </select>
-                </div>
-                <button
-                  type="button"
-                  className="table-floor__secondary"
-                  disabled={busy}
-                  onClick={() => void saveSeatingFee()}
-                >
-                  Ücreti kaydet
-                </button>
-              </div>
-            ) : null}
-
             {notePanelOpen && selected.reservationNote?.trim() ? (
-              <div className="table-floor__pop is-note">
+              <div className="table-floor__pop is-note is-mini">
                 <div className="table-floor__pop-head">
                   <h3>Rezervasyon notu</h3>
                   <button
@@ -2200,7 +2036,10 @@ export default function TableFloorPage() {
 
             <div className="table-floor__room-body">
               {orderRailOpen ? (
-                <aside className="table-floor__order-rail" aria-label="Yemek ekle">
+                <aside
+                  className={`table-floor__order-rail${railProduct ? ' has-config' : ''}`}
+                  aria-label="Yemek ekle"
+                >
                   <header className="table-floor__order-rail-head">
                     <div>
                       <p>Sipariş ekle</p>
@@ -2523,135 +2362,185 @@ export default function TableFloorPage() {
               <>
                 <div className="table-floor__stats">
                   <div className="table-floor__bill-card">
-                    <div>
-                      <span>Toplam</span>
-                      <strong>{formatMoney(liveTotal)}</strong>
-                    </div>
-                    {selected.occupied && selected.status === 'open' ? (
-                      <>
-                        <div>
-                          <span>Ödenen</span>
-                          <strong>{formatMoney(livePaidTotal)}</strong>
-                        </div>
-                        <div>
-                          <span>Kalan</span>
-                          <strong className={liveRemaining > 0.009 ? 'is-warn' : 'is-ok'}>
-                            {formatMoney(liveRemaining)}
-                          </strong>
-                        </div>
-                        {liveDiscountAmount > 0.009 ? (
+                    <div className="table-floor__bill-metrics">
+                      <div>
+                        <span>Toplam</span>
+                        <strong>{formatMoney(liveTotal)}</strong>
+                      </div>
+                      {selected.occupied && selected.status === 'open' ? (
+                        <>
                           <div>
-                            <span>İndirim</span>
-                            <strong className="is-ok">−{formatMoney(liveDiscountAmount)}</strong>
+                            <span>Ödenen</span>
+                            <strong>{formatMoney(livePaidTotal)}</strong>
                           </div>
-                        ) : null}
-                        {selected.meta?.pax ? (
                           <div>
-                            <span>Kişi başı</span>
-                            <strong>
-                              {formatMoney(
-                                Math.round((liveRemaining / selected.meta.pax) * 100) / 100
-                              )}
+                            <span>Kalan</span>
+                            <strong className={liveRemaining > 0.009 ? 'is-warn' : 'is-ok'}>
+                              {formatMoney(liveRemaining)}
                             </strong>
                           </div>
+                        </>
+                      ) : selected.status === 'reserved' ? (
+                        <div>
+                          <span>Beklenen</span>
+                          <strong>{formatExpectedAt(selected.expectedAt)}</strong>
+                        </div>
+                      ) : null}
+                    </div>
+                    {selected.status !== 'merged' ? (
+                      <div className="table-floor__bill-tools">
+                        {selected.reservationNote?.trim() && selected.status === 'open' ? (
+                          <button
+                            type="button"
+                            className={`table-floor__icon-btn is-compact${notePanelOpen ? ' is-active' : ''}`}
+                            title="Rezervasyon notu"
+                            aria-label="Rezervasyon notu"
+                            onClick={() => {
+                              setNotePanelOpen((v) => !v);
+                              setFeePanelOpen(false);
+                              setWaiterPopOpen(false);
+                            }}
+                          >
+                            <NotebookPen className="w-4 h-4" />
+                          </button>
                         ) : null}
-                      </>
-                    ) : selected.status === 'reserved' ? (
-                      <div>
-                        <span>Beklenen</span>
-                        <strong>{formatExpectedAt(selected.expectedAt)}</strong>
+                        <div className="table-floor__fee-mini-wrap">
+                          <button
+                            type="button"
+                            className={`table-floor__bill-tool${
+                              feePanelOpen || selected.seatingFee?.enabled ? ' is-on' : ''
+                            }`}
+                            title="Oturma ücreti"
+                            aria-expanded={feePanelOpen}
+                            onClick={() => {
+                              setFeePanelOpen((v) => !v);
+                              setWaiterPopOpen(false);
+                              setNotePanelOpen(false);
+                            }}
+                          >
+                            <Timer className="w-3.5 h-3.5" />
+                            Ücret
+                          </button>
+                          {feePanelOpen ? (
+                            <div className="table-floor__pop is-mini is-fee-pop">
+                              <div className="table-floor__pop-head">
+                                <h3>Oturma ücreti</h3>
+                                <button
+                                  type="button"
+                                  className="table-floor__icon-btn is-tiny"
+                                  aria-label="Kapat"
+                                  onClick={() => setFeePanelOpen(false)}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              <label className="table-floor__check">
+                                <input
+                                  type="checkbox"
+                                  checked={feeEnabled}
+                                  onChange={(e) => setFeeEnabled(e.target.checked)}
+                                />
+                                Aktif
+                              </label>
+                              <div className="table-floor__fee-row is-mini">
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  className="table-floor__input"
+                                  placeholder="Tutar"
+                                  value={feeRate}
+                                  disabled={!feeEnabled}
+                                  onChange={(e) => setFeeRate(e.target.value)}
+                                />
+                                <select
+                                  className="table-floor__input"
+                                  value={feeUnit}
+                                  disabled={!feeEnabled}
+                                  onChange={(e) =>
+                                    setFeeUnit(e.target.value as 'minute' | 'hour')
+                                  }
+                                >
+                                  <option value="minute">/dk</option>
+                                  <option value="hour">/saat</option>
+                                </select>
+                              </div>
+                              <button
+                                type="button"
+                                className="table-floor__secondary is-mini"
+                                disabled={busy}
+                                onClick={() => void saveSeatingFee()}
+                              >
+                                Kaydet
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                        {selected.occupied && selected.status === 'open' ? (
+                          <div className="table-floor__waiter-wrap">
+                            <button
+                              type="button"
+                              className={`table-floor__bill-tool${waiterPopOpen ? ' is-on' : ''}${
+                                selected.meta?.waiterName ? ' has-waiter' : ''
+                              }`}
+                              aria-expanded={waiterPopOpen}
+                              disabled={metaBusy}
+                              onClick={() => {
+                                setWaiterPopOpen((v) => !v);
+                                setFeePanelOpen(false);
+                                setNotePanelOpen(false);
+                              }}
+                            >
+                              <HandHelping className="w-3.5 h-3.5" />
+                              {selected.meta?.waiterName || 'Garson'}
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </button>
+                            {waiterPopOpen ? (
+                              <div
+                                className="table-floor__waiter-pop"
+                                role="listbox"
+                                aria-label="Garson seç"
+                              >
+                                <button
+                                  type="button"
+                                  role="option"
+                                  className={!selected.meta?.waiterUserId ? 'is-on' : undefined}
+                                  onClick={() => {
+                                    void saveSessionMeta({
+                                      waiterUserId: null,
+                                      waiterName: null,
+                                    });
+                                    setWaiterPopOpen(false);
+                                  }}
+                                >
+                                  Atanmadı
+                                </button>
+                                {staffUsers.map((u) => (
+                                  <button
+                                    key={u.id}
+                                    type="button"
+                                    role="option"
+                                    className={
+                                      selected.meta?.waiterUserId === u.id ? 'is-on' : undefined
+                                    }
+                                    onClick={() => {
+                                      void saveSessionMeta({
+                                        waiterUserId: u.id,
+                                        waiterName: u.fullName,
+                                      });
+                                      setWaiterPopOpen(false);
+                                    }}
+                                  >
+                                    {u.fullName}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
                 </div>
-
-                {selected.occupied && selected.status === 'open' ? (
-                  <div className="table-floor__tool table-floor__ops">
-                    <button
-                      type="button"
-                      className="table-floor__ops-toggle"
-                      onClick={() => setOpsPanelOpen((v) => !v)}
-                    >
-                      <span>Masa bilgisi · kişi / indirim</span>
-                      <ChevronDown
-                        className={`table-floor__section-chevron${opsPanelOpen ? ' is-open' : ''}`}
-                      />
-                    </button>
-                    {opsPanelOpen ? (
-                      <div className="table-floor__ops-body">
-                        <label className="table-floor__field">
-                          <span>Kişi sayısı</span>
-                          <input
-                            type="number"
-                            min={1}
-                            max={99}
-                            className="table-floor__input"
-                            value={paxDraft}
-                            onChange={(e) => setPaxDraft(e.target.value)}
-                            placeholder="örn. 4"
-                          />
-                        </label>
-                        <label className="table-floor__field">
-                          <span>Servis notu</span>
-                          <textarea
-                            className="table-floor__input table-floor__textarea"
-                            rows={2}
-                            value={serviceNoteDraft}
-                            onChange={(e) => setServiceNoteDraft(e.target.value)}
-                            placeholder="Alerji, bebek sandalyesi, VIP…"
-                          />
-                        </label>
-                        <div className="table-floor__fee-row">
-                          <select
-                            className="table-floor__input"
-                            value={discountMode}
-                            onChange={(e) =>
-                              setDiscountMode(e.target.value === 'fixed' ? 'fixed' : 'percent')
-                            }
-                          >
-                            <option value="percent">İndirim %</option>
-                            <option value="fixed">İndirim ₺</option>
-                          </select>
-                          <input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            className="table-floor__input"
-                            value={discountValue}
-                            onChange={(e) => setDiscountValue(e.target.value)}
-                            placeholder="0"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          className="table-floor__secondary"
-                          disabled={metaBusy || !selected.sessionId}
-                          onClick={() =>
-                            void saveSessionMeta({
-                              pax: paxDraft ? Number(paxDraft) : null,
-                              serviceNote: serviceNoteDraft,
-                              checkDiscount: discountValue
-                                ? {
-                                    mode: discountMode,
-                                    value: Number(String(discountValue).replace(',', '.')),
-                                  }
-                                : null,
-                            })
-                          }
-                        >
-                          {metaBusy ? 'Kaydediliyor…' : 'Bilgileri kaydet'}
-                        </button>
-                      </div>
-                    ) : null}
-                    {selected.meta?.waiterName || selected.meta?.serviceNote ? (
-                      <p className="table-floor__hint" style={{ marginTop: '0.45rem' }}>
-                        {selected.meta?.waiterName ? `Garson: ${selected.meta.waiterName}` : ''}
-                        {selected.meta?.waiterName && selected.meta?.serviceNote ? ' · ' : ''}
-                        {selected.meta?.serviceNote || ''}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
 
                 {!selected.occupied || selected.status === 'reserved' ? (
                   <div className="table-floor__tool is-reserve-compact">
@@ -3052,7 +2941,7 @@ export default function TableFloorPage() {
                 </div>
 
                 {payMode ? (
-                  <aside className="table-floor__pay-dock is-float" aria-label="Seçilen ödeme özeti">
+                  <aside className="table-floor__pay-dock is-sheet" aria-label="Seçilen ödeme özeti">
                     <header className="table-floor__pay-dock-head">
                       <p>Ödeme özeti</p>
                       <h3>{selected.name}</h3>
