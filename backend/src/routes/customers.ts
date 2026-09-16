@@ -106,7 +106,16 @@ router.get('/', async (req, res) => {
   }
   const debtorCount = debtorIds.length;
 
-  const where: Prisma.MenuCustomerWhereInput = {};
+  const relatedRows = await prisma.menuCustomerLedger.findMany({
+    where: { restaurantId },
+    distinct: ['customerId'],
+    select: { customerId: true },
+  });
+  const relatedIds = relatedRows.map((r) => r.customerId);
+
+  const where: Prisma.MenuCustomerWhereInput = {
+    id: { in: relatedIds.length ? relatedIds : [-1] },
+  };
   if (filter === 'debtors') {
     if (debtorIds.length === 0) {
       return res.json({
@@ -259,11 +268,41 @@ router.delete('/:id', async (req, res) => {
   const ok = await bcrypt.compare(password, admin.passwordHash);
   if (!ok) return res.status(403).json({ message: 'Şifre hatalı' });
 
-  const row = await prisma.menuCustomer.findUnique({ where: { id }, select: { id: true } });
+  const row = await prisma.menuCustomer.findUnique({
+    where: { id },
+    select: { id: true, pointsJson: true, discountsJson: true },
+  });
   if (!row) return res.status(404).json({ message: 'Müşteri bulunamadı' });
 
-  await prisma.menuCustomer.delete({ where: { id } });
-  res.json({ ok: true, permanent: true });
+  const key = String(restaurantId);
+  const pointsMap = parsePointsJson(row.pointsJson);
+  delete pointsMap[key];
+  const discountsMap = parseDiscountsJson(row.discountsJson);
+  delete discountsMap[key];
+
+  await prisma.$transaction([
+    prisma.menuCustomerLedger.deleteMany({ where: { customerId: id, restaurantId } }),
+    prisma.menuCustomer.update({
+      where: { id },
+      data: {
+        pointsJson: pointsMap,
+        discountsJson: serializeDiscountsJson(discountsMap) as object,
+      },
+    }),
+  ]);
+
+  const otherLedger = await prisma.menuCustomerLedger.count({
+    where: { customerId: id },
+  });
+  const otherPoints = Object.keys(pointsMap).length > 0;
+  const otherDiscounts = Object.keys(discountsMap).length > 0;
+
+  if (!otherLedger && !otherPoints && !otherDiscounts) {
+    await prisma.menuCustomer.delete({ where: { id } });
+    return res.json({ ok: true, permanent: true });
+  }
+
+  res.json({ ok: true, permanent: false });
 });
 
 router.post('/:id/undo', async (req, res) => {

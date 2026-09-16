@@ -33,6 +33,7 @@ import ProductModal, {
 import BulkPriceModal, {
   type BulkPriceApplyResult,
 } from '@/components/BulkPriceModal';
+import AdminConfirmModal from '@/components/AdminConfirmModal';
 import ProductStockModal, { stockLabel } from '@/components/ProductStockModal';
 import type { ProductOptionGroup } from '@/lib/productOptions';
 import {
@@ -304,6 +305,8 @@ export default function ProductsPage() {
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editing, setEditing] = useState<Product | null>(null);
   const [stockProduct, setStockProduct] = useState<Product | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState<ProductFormState>(emptyForm());
   const [productImages, setProductImages] = useState<string[]>([]);
   const [pendingFiles, setPendingFiles] = useState<{ id: string; file: File; url: string }[]>([]);
@@ -833,17 +836,24 @@ export default function ProductsPage() {
     }
   }
 
-  async function handleDelete(product: Product) {
-    if (!window.confirm(`“${product.name}” ürününü silmek istiyor musunuz? Bu işlem geri alınamaz.`)) {
-      return;
-    }
+  function handleDelete(product: Product) {
+    setDeleteTarget(product);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget || deleting) return;
+    const product = deleteTarget;
+    setDeleting(true);
     const prev = products;
     setProducts((list) => list.filter((p) => p.id !== product.id));
+    setDeleteTarget(null);
     try {
       await api(`/api/admin/products/${product.id}`, { method: 'DELETE' });
     } catch (err) {
       setProducts(prev);
       window.alert(err instanceof Error ? err.message : 'Ürün silinemedi.');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -1155,6 +1165,19 @@ export default function ProductsPage() {
           }
         />
       ) : null}
+
+      <AdminConfirmModal
+        open={Boolean(deleteTarget)}
+        title="Ürünü sil"
+        description="Seçili ürün menüden kalıcı olarak kaldırılır."
+        highlight={deleteTarget?.name}
+        confirmLabel="Evet, sil"
+        busy={deleting}
+        onCancel={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+        onConfirm={() => void confirmDelete()}
+      />
 
       {bulkRestoreOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">

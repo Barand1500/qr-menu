@@ -486,6 +486,9 @@ router.post('/chat', async (req, res) => {
     const q = fold(message);
 
     if (isSecretResetPurchases(q)) {
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ message: 'Bu komut production’da kapalı' });
+      }
       return res.json(await resetPurchases(restaurantId));
     }
 

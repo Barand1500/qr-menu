@@ -1074,12 +1074,14 @@ router.post('/merge', async (req, res) => {
   }
 
   let orders = parseOrdersJson(primarySession.ordersJson);
+  let payments = parsePaymentsJson(primarySession.paymentsJson);
   const merged = new Set(parseMergedJson(primarySession.mergedJson));
 
   for (const code of others) {
     const other = await findActiveSession(restaurantId!, code, grup);
     if (other) {
       orders = [...orders, ...parseOrdersJson(other.ordersJson)];
+      payments = [...payments, ...parsePaymentsJson(other.paymentsJson)];
       for (const m of parseMergedJson(other.mergedJson)) merged.add(m);
       await closeSession(other.id);
     }
@@ -1091,6 +1093,7 @@ router.post('/merge', async (req, res) => {
     data: {
       status: 'open',
       ordersJson: JSON.stringify(orders),
+      paymentsJson: JSON.stringify(payments),
       mergedJson: JSON.stringify([...merged]),
     },
   });

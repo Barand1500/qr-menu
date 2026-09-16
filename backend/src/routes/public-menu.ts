@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { parseClientMeta } from '../lib/client-meta.js';
 import {
   getGroupName,
+  getLanguages,
   getProductField,
   getShowcaseTitles,
   getWelcomeMessage,
@@ -1329,25 +1330,105 @@ router.post('/:slug/table-request', async (req, res) => {
   let floorLines: FloorOrderItem[] = [];
   let stockItems: { productId: number | null; qty: number }[] = [];
   if (order && Array.isArray(order.items) && order.items.length > 0) {
-    const items = order.items
-      .slice(0, 40)
-      .map((i) => ({
-        productId:
-          i.productId != null && Number.isFinite(Number(i.productId))
-            ? Number(i.productId)
-            : null,
-        name: String(i.name || '').trim().slice(0, 120),
-        qty: Math.min(99, Math.max(1, Number(i.qty) || 1)),
-        price: Number(i.price) || 0,
+    const rawItems = order.items.slice(0, 40);
+    const productIds = [
+      ...new Set(
+        rawItems
+          .map((i) => Number(i.productId))
+          .filter((id) => Number.isFinite(id) && id > 0)
+      ),
+    ];
+    const products = productIds.length
+      ? await prisma.product.findMany({
+          where: {
+            restaurantId: restaurant.id,
+            id: { in: productIds },
+            isActive: true,
+          },
+        })
+      : [];
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const timeRt = await getTimeMenuRuntime(restaurant.id);
+    const langs = await getLanguages();
+    const langCode = langs.find((l) => l.code === 'tr')?.code || langs[0]?.code || 'tr';
+
+    const campaignMin = new Map<number, number>();
+    if (productIds.length) {
+      const campaignRows = await prisma.campaignItem.findMany({
+        where: {
+          productId: { in: productIds },
+          campaign: { restaurantId: restaurant.id, isActive: true },
+        },
+        select: { productId: true, price: true },
+      });
+      for (const row of campaignRows) {
+        const p = Number(row.price);
+        if (!Number.isFinite(p)) continue;
+        const prev = campaignMin.get(row.productId);
+        if (prev == null || p < prev) campaignMin.set(row.productId, p);
+      }
+    }
+
+    const items: {
+      productId: number;
+      name: string;
+      qty: number;
+      price: number;
+      calories: number | null;
+    }[] = [];
+
+    for (const i of rawItems) {
+      const productId = Number(i.productId);
+      if (!Number.isFinite(productId) || productId <= 0) continue;
+      const product = byId.get(productId);
+      if (!product) continue;
+
+      const qty = Math.min(99, Math.max(1, Number(i.qty) || 1));
+      const slotPatch = patchProductForSlot(
+        product.id,
+        { price: Number(product.price) },
+        timeRt.rules.get(product.id)
+      );
+      if (slotPatch.hidden) continue;
+
+      const slotOrBase =
+        slotPatch.price != null && Number.isFinite(slotPatch.price)
+          ? Number(slotPatch.price)
+          : Number(product.price) || 0;
+      const campaignPrice = campaignMin.get(product.id);
+      const floorPrice =
+        campaignPrice != null ? Math.min(slotOrBase, campaignPrice) : slotOrBase;
+      const clientPrice = Number(i.price) || 0;
+      // İstemci fiyatına güvenme: taban altını reddet (0 TL hilesi), seçenekli üstü kabul et
+      const price =
+        clientPrice >= floorPrice - 0.001
+          ? Math.min(clientPrice, Math.max(floorPrice * 40, floorPrice) + 2000)
+          : floorPrice;
+      const name =
+        getProductField(product.i18n, langCode, 'name') ||
+        String(i.name || '').trim() ||
+        'Ürün';
+
+      items.push({
+        productId: product.id,
+        name: name.slice(0, 120),
+        qty,
+        price: Math.round(price * 100) / 100,
         calories:
           i.calories != null && Number(i.calories) > 0 ? Number(i.calories) : null,
-      }))
-      .filter((i) => i.name);
+      });
+    }
+
+    if (rawItems.length > 0 && items.length === 0) {
+      return res.status(400).json({ message: 'Geçerli ürün bulunamadı' });
+    }
+
     if (items.length > 0) {
       stockItems = items.map((i) => ({ productId: i.productId, qty: i.qty }));
+      const totalPrice = items.reduce((s, i) => s + i.price * i.qty, 0);
       orderJson = JSON.stringify({
         items,
-        totalPrice: Number(order.totalPrice) || items.reduce((s, i) => s + i.price * i.qty, 0),
+        totalPrice,
         totalCalories:
           order.totalCalories != null && Number(order.totalCalories) > 0
             ? Number(order.totalCalories)
