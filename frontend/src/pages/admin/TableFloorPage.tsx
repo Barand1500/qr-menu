@@ -832,6 +832,10 @@ export default function TableFloorPage() {
     setPayMethod('cash');
     setPayTendered('');
     setPayTip('');
+    if (!orderRailPinned) {
+      setOrderRailOpen(false);
+      resetOrderRailDraft();
+    }
     setPayMode(true);
   }
 
@@ -2939,13 +2943,27 @@ export default function TableFloorPage() {
                     </button>
                   ) : null}
                 </div>
+              </>
+            )}
+              </div>
 
-                {payMode ? (
-                  <aside className="table-floor__pay-dock is-sheet" aria-label="Seçilen ödeme özeti">
-                    <header className="table-floor__pay-dock-head">
+              {payMode ? (
+                <aside className="table-floor__pay-rail" aria-label="Ödeme özeti">
+                  <header className="table-floor__pay-rail-head">
+                    <div>
                       <p>Ödeme özeti</p>
                       <h3>{selected.name}</h3>
-                    </header>
+                    </div>
+                    <button
+                      type="button"
+                      className="table-floor__icon-btn is-tiny"
+                      aria-label="Ödemeyi kapat"
+                      onClick={exitPayMode}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </header>
+                  <div className="table-floor__pay-rail-body">
                     <div className="table-floor__pay-dock-stats">
                       <div>
                         <span>Seçilen</span>
@@ -2991,7 +3009,8 @@ export default function TableFloorPage() {
                     </div>
                     {liveDiscountAmount > 0.009 ? (
                       <p className="table-floor__hint" style={{ margin: 0 }}>
-                        Hesap indirimi: −{formatMoney(liveDiscountAmount)} (tümü seçiliyse uygulanır)
+                        Hesap indirimi: −{formatMoney(liveDiscountAmount)} (tümü seçiliyse
+                        uygulanır)
                       </p>
                     ) : null}
                     <div className="table-floor__fee-row">
@@ -3030,59 +3049,57 @@ export default function TableFloorPage() {
                         </div>
                       </div>
                     ) : null}
-                    <div className="table-floor__pay-dock-actions">
-                      <div className="table-floor__pay-dock-row">
-                        <button
-                          type="button"
-                          className="table-floor__pay-dock-btn"
-                          disabled={paySelectedAmount <= 0.009}
-                          onClick={() => {
-                            const lines = selected.orders
-                              .filter((o) => (payUnits[o.id] || 0) > 0)
-                              .map((o) => ({
-                                ...o,
-                                qty: payUnits[o.id] || o.qty,
-                              }));
-                            const seat = payIncludeSeat ? seatLeft : 0;
-                            setReceiptFocus({
-                              orders: lines,
-                              seatingFee: seat,
-                              total: paySelectedAmount,
-                              paidTotal: paySelectedAmount,
-                              remaining: Math.max(
-                                0,
-                                Math.round((liveRemaining - paySelectedAmount) * 100) / 100
-                              ),
-                              methodLabel: methodLabel(payMethod),
-                              docTitle: 'ÖDEME FİŞİ',
-                            });
-                            setBillOpen(true);
-                          }}
-                        >
-                          Fiş
-                        </button>
-                        <button
-                          type="button"
-                          className="table-floor__pay-dock-btn"
-                          onClick={exitPayMode}
-                        >
-                          Vazgeç
-                        </button>
-                      </div>
+                  </div>
+                  <footer className="table-floor__pay-rail-foot">
+                    <div className="table-floor__pay-dock-row">
                       <button
                         type="button"
-                        className="table-floor__pay-dock-submit"
-                        disabled={busy || paySelectedAmount <= 0.009}
-                        onClick={() => void submitPayment()}
+                        className="table-floor__pay-dock-btn"
+                        disabled={paySelectedAmount <= 0.009}
+                        onClick={() => {
+                          const lines = selected.orders
+                            .filter((o) => (payUnits[o.id] || 0) > 0)
+                            .map((o) => ({
+                              ...o,
+                              qty: payUnits[o.id] || o.qty,
+                            }));
+                          const seat = payIncludeSeat ? seatLeft : 0;
+                          setReceiptFocus({
+                            orders: lines,
+                            seatingFee: seat,
+                            total: paySelectedAmount,
+                            paidTotal: paySelectedAmount,
+                            remaining: Math.max(
+                              0,
+                              Math.round((liveRemaining - paySelectedAmount) * 100) / 100
+                            ),
+                            methodLabel: methodLabel(payMethod),
+                            docTitle: 'ÖDEME FİŞİ',
+                          });
+                          setBillOpen(true);
+                        }}
                       >
-                        {busy ? '…' : 'Ödemeyi kaydet'}
+                        Fiş
+                      </button>
+                      <button
+                        type="button"
+                        className="table-floor__pay-dock-btn"
+                        onClick={exitPayMode}
+                      >
+                        Vazgeç
                       </button>
                     </div>
-                  </aside>
-                ) : null}
-              </>
-            )}
-              </div>
+                    <button
+                      type="button"
+                      className="table-floor__pay-dock-submit"
+                      disabled={busy || paySelectedAmount <= 0.009}
+                      onClick={() => void submitPayment()}
+                    >
+                      {busy ? '…' : 'Ödemeyi kaydet'}
+                    </button>
+                  </footer>
+                </aside>
+              ) : null}
             </div>
           </>
         ) : null}
