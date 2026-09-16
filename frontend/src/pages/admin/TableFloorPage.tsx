@@ -1661,15 +1661,23 @@ export default function TableFloorPage() {
     >
       <header className="table-floor__top">
         {selected && !pickMode && panelMode === 'floor' ? (
-          <button
-            type="button"
-            className="table-floor__back"
-            aria-label="Masalara dön"
-            onClick={closeTableDrawer}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Masalar</span>
-          </button>
+          <div className="table-floor__top-lead">
+            <button
+              type="button"
+              className="table-floor__back"
+              aria-label="Masalara dön"
+              onClick={closeTableDrawer}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Masalar</span>
+            </button>
+            <p className="table-floor__room-title is-phrase">
+              <em>{sourceGroupName || activeGroup?.name}</em>
+              <span> grubundaki </span>
+              <strong>{selected.name}</strong>
+              <span> masası</span>
+            </p>
+          </div>
         ) : (
           <Link to={adminPath()} className="table-floor__back" aria-label="Admin panele dön">
             <ArrowLeft className="w-4 h-4" />
@@ -1677,42 +1685,32 @@ export default function TableFloorPage() {
           </Link>
         )}
         <div className="table-floor__brand">
-          <div className="table-floor__brand-title">
-            {!(selected && !pickMode && panelMode === 'floor') ? (
-              <>
-                <button
-                  type="button"
-                  className="table-floor__skin-btn"
-                  aria-label="Önceki masa tasarımı"
-                  title="Önceki tasarım"
-                  onClick={() => cycleFloorSkin(-1)}
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.5} />
-                </button>
-                <p>{panelMode === 'garson' ? 'Garson' : 'Masa görünümü'}</p>
-                <button
-                  type="button"
-                  className="table-floor__skin-btn"
-                  aria-label="Sonraki masa tasarımı"
-                  title="Sonraki tasarım"
-                  onClick={() => cycleFloorSkin(1)}
-                >
-                  <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
-                </button>
-                <span className="table-floor__skin-index" aria-hidden>
-                  {floorSkin + 1}/{FLOOR_SKIN_COUNT}
-                </span>
-              </>
-            ) : (
-              <p className="table-floor__room-title is-inline">
-                <em>{sourceGroupName || activeGroup?.name}</em>
-                <span className="table-floor__room-title-sep" aria-hidden>
-                  ·
-                </span>
-                <strong>{selected.name}</strong>
-              </p>
-            )}
-          </div>
+          {!(selected && !pickMode && panelMode === 'floor') ? (
+            <div className="table-floor__brand-title">
+              <button
+                type="button"
+                className="table-floor__skin-btn"
+                aria-label="Önceki masa tasarımı"
+                title="Önceki tasarım"
+                onClick={() => cycleFloorSkin(-1)}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.5} />
+              </button>
+              <p>{panelMode === 'garson' ? 'Garson' : 'Masa görünümü'}</p>
+              <button
+                type="button"
+                className="table-floor__skin-btn"
+                aria-label="Sonraki masa tasarımı"
+                title="Sonraki tasarım"
+                onClick={() => cycleFloorSkin(1)}
+              >
+                <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+              </button>
+              <span className="table-floor__skin-index" aria-hidden>
+                {floorSkin + 1}/{FLOOR_SKIN_COUNT}
+              </span>
+            </div>
+          ) : null}
           {selected && !pickMode && panelMode === 'floor' ? (
             <div className="table-floor__header-status" aria-label="Masa durumu">
               <div className="table-floor__header-pills">

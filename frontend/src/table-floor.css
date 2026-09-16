@@ -1452,37 +1452,49 @@
 
 .table-floor.is-room .table-floor__top {
   border-bottom: 1px solid var(--tf-header-border);
+  flex-wrap: nowrap;
+  gap: 0.55rem 0.75rem;
+}
+
+.table-floor__top-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: min(36rem, 48%);
 }
 
 .table-floor__room-title {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.35rem;
+  display: inline;
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 850;
-  color: var(--tf-ink);
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: var(--tf-muted);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.table-floor__room-title.is-inline {
-  align-items: center;
+.table-floor__room-title.is-phrase {
+  min-width: 0;
 }
 
 .table-floor__room-title em {
   font-style: normal;
-  font-size: 0.82rem;
-  font-weight: 650;
-  letter-spacing: 0.02em;
+  font-size: 0.92rem;
+  font-weight: 750;
+  letter-spacing: 0.01em;
   text-transform: none;
   color: var(--tf-muted);
 }
 
 .table-floor__room-title strong {
-  font-size: 1.08rem;
+  font-size: 0.98rem;
   font-weight: 900;
   letter-spacing: -0.02em;
+  color: var(--tf-ink);
 }
 
 .table-floor__room-title-sep {
@@ -1491,14 +1503,21 @@
   opacity: 0.7;
 }
 
+.table-floor.is-room .table-floor__brand {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-left: auto;
+}
+
 .table-floor__header-status {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
   gap: 0.45rem 0.65rem;
-  max-width: min(42rem, 68vw);
-  margin-left: auto;
+  max-width: none;
+  margin-left: 0;
 }
 
 .table-floor__header-pills {
