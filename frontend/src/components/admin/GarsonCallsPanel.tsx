@@ -1,17 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import {
   BellOff,
   CheckCheck,
   ChevronLeft,
@@ -23,6 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { api, formatMoney } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatTableServiceLabel } from '@/lib/tableContext';
 import { parseOrderJson } from '@/lib/tableRequestNotify';
 
@@ -37,20 +26,45 @@ export type GarsonCallRow = {
   createdAt: string;
 };
 
-type Stats = {
-  days: number;
-  total: number;
-  waiter: number;
-  bill: number;
-  topTables: { tableNumber: string; groupSlug: string | null; count: number }[];
-  byHour?: number[];
-  byDay?: { date: string; waiter: number; bill: number; total: number }[];
+type AssignedTable = {
+  key: string;
+  code: string;
+  name: string;
+  groupSlug: string;
+  groupName: string;
+};
+
+type FloorLitePayload = {
+  groups: {
+    id: string;
+    name: string;
+    tables: {
+      code: string;
+      name: string;
+      occupied: boolean;
+      meta?: { waiterUserId?: number | null; waiterName?: string | null };
+    }[];
+  }[];
 };
 
 const HISTORY_PAGE_SIZE = 8;
-const CHART_TEAL = '#0f766e';
-const CHART_AMBER = '#d97706';
-const CHART_MUTED = '#a8a29e';
+
+function tableKey(code: string, groupSlug?: string | null) {
+  return `${String(groupSlug || '').trim()}::${String(code || '').trim()}`;
+}
+
+function isAssignedToUser(
+  meta: { waiterUserId?: number | null; waiterName?: string | null } | undefined,
+  user: { id: number; fullName: string } | null | undefined
+) {
+  if (!meta || !user) return false;
+  const wid = meta.waiterUserId;
+  if (wid != null && wid !== ('' as unknown) && Number.isFinite(Number(wid))) {
+    return Number(wid) === Number(user.id);
+  }
+  const name = String(meta.waiterName || '').trim();
+  return Boolean(name && name === user.fullName.trim());
+}
 
 function formatTime(iso: string) {
   try {
@@ -62,17 +76,6 @@ function formatTime(iso: string) {
     });
   } catch {
     return '';
-  }
-}
-
-function formatDayLabel(isoDate: string) {
-  try {
-    return new Date(`${isoDate}T12:00:00`).toLocaleDateString('tr-TR', {
-      day: 'numeric',
-      month: 'short',
-    });
-  } catch {
-    return isoDate;
   }
 }
 
@@ -92,35 +95,68 @@ export default function GarsonCallsPanel({
   /** Yeni veri yüklendiğinde (bildirim / titreşim için) */
   onCallsSnapshot?: (rows: GarsonCallRow[], unreadCount: number) => void;
 }) {
+  const { user } = useAuth();
   const [items, setItems] = useState<GarsonCallRow[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [assigned, setAssigned] = useState<AssignedTable[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [tab, setTab] = useState<'live' | 'history' | 'report'>('live');
+  const [tab, setTab] = useState<'all' | 'mine'>('mine');
   const [historyPage, setHistoryPage] = useState(1);
   const snapshotRef = useRef(onCallsSnapshot);
   snapshotRef.current = onCallsSnapshot;
+  const assignedKeysRef = useRef<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     try {
-      const [list, report] = await Promise.all([
-        api<{ data: GarsonCallRow[]; unreadCount: number; pagination: { total: number } }>(
+      const [list, floor] = await Promise.all([
+        api<{ data: GarsonCallRow[]; unreadCount: number }>(
           '/api/admin/table-requests?limit=100'
         ),
-        api<Stats>('/api/admin/table-requests/stats?days=7'),
+        api<FloorLitePayload>('/api/admin/table-floor').catch(() => null),
       ]);
+
       const rows = list.data || [];
-      const unread = list.unreadCount || 0;
+      const nextAssigned: AssignedTable[] = [];
+      if (floor && user) {
+        for (const g of floor.groups || []) {
+          for (const t of g.tables || []) {
+            if (isAssignedToUser(t.meta, user)) {
+              nextAssigned.push({
+                key: tableKey(t.code, g.id),
+                code: t.code,
+                name: t.name,
+                groupSlug: g.id,
+                groupName: g.name,
+              });
+            }
+          }
+        }
+      }
+      nextAssigned.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+      assignedKeysRef.current = new Set(nextAssigned.map((t) => t.key));
+
+      const mineUnread = rows.filter(
+        (r) => !r.isRead && assignedKeysRef.current.has(tableKey(r.tableNumber, r.groupSlug))
+      ).length;
+      const notifyUnread =
+        nextAssigned.length > 0
+          ? mineUnread
+          : list.unreadCount || 0;
+      const notifyRows =
+        nextAssigned.length > 0
+          ? rows.filter((r) =>
+              assignedKeysRef.current.has(tableKey(r.tableNumber, r.groupSlug))
+            )
+          : rows;
+
       setItems(rows);
-      setUnreadCount(unread);
-      setStats(report);
-      snapshotRef.current?.(rows, unread);
+      setAssigned(nextAssigned);
+      snapshotRef.current?.(notifyRows, notifyUnread);
     } catch {
       /* ignore */
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     void load();
@@ -132,7 +168,6 @@ export default function GarsonCallsPanel({
     try {
       await api(`/api/admin/table-requests/${id}/read`, { method: 'PATCH' });
       setItems((prev) => prev.map((x) => (x.id === id ? { ...x, isRead: true } : x)));
-      setUnreadCount((c) => Math.max(0, c - 1));
     } catch {
       /* ignore */
     }
@@ -144,31 +179,30 @@ export default function GarsonCallsPanel({
     try {
       await api('/api/admin/table-requests', { method: 'DELETE' });
       setItems([]);
-      setUnreadCount(0);
-      setStats((s) =>
-        s
-          ? {
-              ...s,
-              total: 0,
-              waiter: 0,
-              bill: 0,
-              topTables: [],
-              byHour: Array.from({ length: 24 }, () => 0),
-              byDay: (s.byDay || []).map((d) => ({ ...d, waiter: 0, bill: 0, total: 0 })),
-            }
-          : s
-      );
       setHistoryPage(1);
     } catch {
       /* ignore */
     }
   }
 
-  const live = useMemo(() => items.filter((i) => !i.isRead), [items]);
-  const history = items;
-  const historyPages = Math.max(1, Math.ceil(history.length / HISTORY_PAGE_SIZE));
+  const assignedKeySet = useMemo(
+    () => new Set(assigned.map((t) => t.key)),
+    [assigned]
+  );
+
+  const isMineCall = useCallback(
+    (row: GarsonCallRow) => assignedKeySet.has(tableKey(row.tableNumber, row.groupSlug)),
+    [assignedKeySet]
+  );
+
+  const mineItems = useMemo(() => items.filter(isMineCall), [items, isMineCall]);
+  const mineLive = useMemo(() => mineItems.filter((i) => !i.isRead), [mineItems]);
+  const mineHistory = useMemo(() => mineItems.filter((i) => i.isRead), [mineItems]);
+  const mineUnread = mineLive.length;
+
+  const historyPages = Math.max(1, Math.ceil(mineHistory.length / HISTORY_PAGE_SIZE));
   const safeHistoryPage = Math.min(historyPage, historyPages);
-  const historySlice = history.slice(
+  const historySlice = mineHistory.slice(
     (safeHistoryPage - 1) * HISTORY_PAGE_SIZE,
     safeHistoryPage * HISTORY_PAGE_SIZE
   );
@@ -177,62 +211,22 @@ export default function GarsonCallsPanel({
     if (historyPage > historyPages) setHistoryPage(historyPages);
   }, [historyPage, historyPages]);
 
-  const typeChart = useMemo(() => {
-    const w = stats?.waiter ?? 0;
-    const b = stats?.bill ?? 0;
-    return [
-      { name: 'Garson', value: w, color: CHART_TEAL },
-      { name: 'Hesap', value: b, color: CHART_AMBER },
-    ].filter((x) => x.value > 0);
-  }, [stats]);
-
-  const dayChart = useMemo(
-    () =>
-      (stats?.byDay || []).map((d) => ({
-        label: formatDayLabel(d.date),
-        Garson: d.waiter,
-        Hesap: d.bill,
-        Toplam: d.total,
-      })),
-    [stats]
-  );
-
-  const hourChart = useMemo(() => {
-    const hours = stats?.byHour || [];
-    return hours
-      .map((count, hour) => ({ hour: `${String(hour).padStart(2, '0')}`, count }))
-      .filter((row) => {
-        const h = Number(row.hour);
-        return h >= 8 && h <= 23;
-      });
-  }, [stats]);
-
-  const tableChart = useMemo(
-    () =>
-      (stats?.topTables || []).slice(0, 8).map((row) => ({
-        name: formatTableServiceLabel(row.tableNumber, row.groupSlug),
-        count: row.count,
-      })),
-    [stats]
-  );
-
-  const listItems = tab === 'live' ? live : historySlice;
-
-  function renderCallItem(item: GarsonCallRow) {
+  function renderCallItem(item: GarsonCallRow, allowRead: boolean) {
     const order = parseOrderJson(item.orderJson);
     const note = (item.note || order?.note || '').trim();
     const Icon = item.type === 'bill' ? Receipt : HandHelping;
     const focused = focusCallId === item.id;
+    const showUnread = allowRead && !item.isRead;
     return (
       <li
         key={item.id}
-        className={`garson-panel__item${!item.isRead ? ' is-new' : ''}${focused ? ' is-focus' : ''}`}
+        className={`garson-panel__item${showUnread ? ' is-new' : ''}${focused ? ' is-focus' : ''}`}
       >
         <button
           type="button"
           className="garson-panel__item-main"
           onClick={() => {
-            void markRead(item.id);
+            if (allowRead && !item.isRead) void markRead(item.id);
             onOpenTable?.(item.tableNumber, item.groupSlug || null);
           }}
         >
@@ -274,7 +268,7 @@ export default function GarsonCallsPanel({
             ) : null}
           </span>
         </button>
-        {!item.isRead ? (
+        {showUnread ? (
           <button
             type="button"
             className="garson-panel__item-read"
@@ -288,67 +282,89 @@ export default function GarsonCallsPanel({
     );
   }
 
-  const tooltipStyle = {
-    borderRadius: 10,
-    border: '1px solid rgba(88, 60, 36, 0.12)',
-    fontSize: 12,
-  };
-
   return (
     <div className="garson-panel">
       <div className="garson-panel__shell">
         <div className="garson-panel__head">
-          <div>
+          <div className="garson-panel__head-main">
             <p className="garson-panel__eyebrow">Garson merkezi</p>
             <h2>
-              Çağrılar {unreadCount > 0 ? <em>{unreadCount}</em> : null}
+              {user?.fullName || 'Çağrılar'}
+              {tab === 'mine' && mineUnread > 0 ? <em>{mineUnread}</em> : null}
             </h2>
             <p className="garson-panel__lead">
-              Masa çağrılarını buradan takip et; dokununca masaya gidersin.
+              {user?.restaurant?.name
+                ? `${user.restaurant.name} · size atanan masaları buradan takip edin.`
+                : 'Size atanan masaları buradan takip edin.'}
             </p>
           </div>
-          <button
-            type="button"
-            className="garson-panel__clear"
-            onClick={() => void clearAll()}
-            disabled={!items.length}
-          >
-            <Trash2 className="w-4 h-4" />
-            Temizle
-          </button>
+
+          <div className="garson-panel__head-side">
+            {assigned.length > 0 ? (
+              <div className="garson-panel__assigned">
+                <span className="garson-panel__assigned-label">Size atanan masalar (garson ata)</span>
+                <div className="garson-panel__assigned-chips">
+                  {assigned.map((t) =>
+                    onOpenTable ? (
+                      <button
+                        key={t.key}
+                        type="button"
+                        className="garson-panel__assigned-chip"
+                        title={`${t.groupName} · ${t.name}`}
+                        onClick={() => onOpenTable(t.code, t.groupSlug || null)}
+                      >
+                        {t.name}
+                      </button>
+                    ) : (
+                      <span
+                        key={t.key}
+                        className="garson-panel__assigned-chip"
+                        title={`${t.groupName} · ${t.name}`}
+                      >
+                        {t.name}
+                      </span>
+                    )
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="garson-panel__assigned-empty">Atanan masa yok</p>
+            )}
+            <button
+              type="button"
+              className="garson-panel__clear"
+              onClick={() => void clearAll()}
+              disabled={!items.length}
+            >
+              <Trash2 className="w-4 h-4" />
+              Temizle
+            </button>
+          </div>
         </div>
 
         <div className="garson-panel__tabs" role="tablist">
           <button
             type="button"
             role="tab"
-            aria-selected={tab === 'live'}
-            className={tab === 'live' ? 'is-active' : ''}
-            onClick={() => setTab('live')}
+            aria-selected={tab === 'all'}
+            className={tab === 'all' ? 'is-active' : ''}
+            onClick={() => setTab('all')}
           >
-            Canlı
-            {live.length > 0 ? <i>{live.length}</i> : null}
+            Tümü
+            {items.length > 0 ? <i>{items.length}</i> : null}
           </button>
           <button
             type="button"
             role="tab"
-            aria-selected={tab === 'history'}
-            className={tab === 'history' ? 'is-active' : ''}
+            aria-selected={tab === 'mine'}
+            className={tab === 'mine' ? 'is-active' : ''}
             onClick={() => {
-              setTab('history');
+              setTab('mine');
               setHistoryPage(1);
             }}
           >
-            Geçmiş
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'report'}
-            className={tab === 'report' ? 'is-active' : ''}
-            onClick={() => setTab('report')}
-          >
-            Rapor
+            Sizin masalarınız
+            {mineUnread > 0 ? <i>{mineUnread}</i> : null}
           </button>
         </div>
 
@@ -356,204 +372,96 @@ export default function GarsonCallsPanel({
           <div className="garson-panel__empty-card">
             <p>Yükleniyor…</p>
           </div>
-        ) : tab === 'report' ? (
-          <div className="garson-panel__report">
-            {!stats || stats.total === 0 ? (
-              <div className="garson-panel__empty-card">
-                <History className="garson-panel__empty-icon" strokeWidth={1.75} />
-                <strong>Henüz veri yok</strong>
-                <p>Çağrılar geldikçe günlük ve saatlik grafikler burada görünür.</p>
-              </div>
-            ) : (
-              <>
-                <div className="garson-panel__charts">
-                  <section className="garson-panel__chart-card">
-                    <header>
-                      <h3>Çağrı türü</h3>
-                      <p>Son {stats.days} gün · {stats.total} çağrı</p>
-                    </header>
-                    <div className="garson-panel__chart-body garson-panel__chart-body--sm">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={typeChart.length ? typeChart : [{ name: 'Yok', value: 1, color: CHART_MUTED }]}
-                            dataKey="value"
-                            nameKey="name"
-                            innerRadius={48}
-                            outerRadius={72}
-                            paddingAngle={3}
-                          >
-                            {(typeChart.length ? typeChart : [{ color: CHART_MUTED }]).map((entry, i) => (
-                              <Cell key={i} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip contentStyle={tooltipStyle} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <ul className="garson-panel__legend">
-                      <li>
-                        <i style={{ background: CHART_TEAL }} />
-                        Garson <b>{stats.waiter}</b>
-                      </li>
-                      <li>
-                        <i style={{ background: CHART_AMBER }} />
-                        Hesap <b>{stats.bill}</b>
-                      </li>
-                    </ul>
-                  </section>
-
-                  <section className="garson-panel__chart-card garson-panel__chart-card--wide">
-                    <header>
-                      <h3>Günlük trend</h3>
-                      <p>Garson ve hesap çağrıları</p>
-                    </header>
-                    <div className="garson-panel__chart-body">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dayChart} barGap={2}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(88,60,36,0.1)" />
-                          <XAxis
-                            dataKey="label"
-                            tick={{ fill: '#78716c', fontSize: 11 }}
-                            axisLine={false}
-                            tickLine={false}
-                          />
-                          <YAxis
-                            allowDecimals={false}
-                            tick={{ fill: '#78716c', fontSize: 11 }}
-                            axisLine={false}
-                            tickLine={false}
-                            width={28}
-                          />
-                          <Tooltip contentStyle={tooltipStyle} />
-                          <Bar dataKey="Garson" stackId="a" fill={CHART_TEAL} radius={[0, 0, 0, 0]} />
-                          <Bar dataKey="Hesap" stackId="a" fill={CHART_AMBER} radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </section>
-
-                  <section className="garson-panel__chart-card garson-panel__chart-card--wide">
-                    <header>
-                      <h3>Saatlik yoğunluk</h3>
-                      <p>08:00 – 23:00</p>
-                    </header>
-                    <div className="garson-panel__chart-body">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={hourChart}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(88,60,36,0.1)" />
-                          <XAxis
-                            dataKey="hour"
-                            tick={{ fill: '#78716c', fontSize: 10 }}
-                            axisLine={false}
-                            tickLine={false}
-                            interval={1}
-                          />
-                          <YAxis
-                            allowDecimals={false}
-                            tick={{ fill: '#78716c', fontSize: 11 }}
-                            axisLine={false}
-                            tickLine={false}
-                            width={28}
-                          />
-                          <Tooltip contentStyle={tooltipStyle} />
-                          <Bar dataKey="count" name="Çağrı" fill={CHART_TEAL} radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </section>
-
-                  <section className="garson-panel__chart-card">
-                    <header>
-                      <h3>En çok çağıran masalar</h3>
-                      <p>Dokununca masaya git</p>
-                    </header>
-                    {!tableChart.length ? (
-                      <p className="garson-panel__chart-empty">Masa verisi yok</p>
-                    ) : (
-                      <div className="garson-panel__chart-body">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={tableChart} layout="vertical" margin={{ left: 4, right: 12 }}>
-                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(88,60,36,0.1)" />
-                            <XAxis type="number" allowDecimals={false} hide />
-                            <YAxis
-                              type="category"
-                              dataKey="name"
-                              width={88}
-                              tick={{ fill: '#57534e', fontSize: 11 }}
-                              axisLine={false}
-                              tickLine={false}
-                            />
-                            <Tooltip contentStyle={tooltipStyle} />
-                            <Bar
-                              dataKey="count"
-                              name="Çağrı"
-                              fill={CHART_TEAL}
-                              radius={[0, 6, 6, 0]}
-                              cursor="pointer"
-                              onClick={(data) => {
-                                const row = stats.topTables.find(
-                                  (t) =>
-                                    formatTableServiceLabel(t.tableNumber, t.groupSlug) ===
-                                    (data as { name?: string })?.name
-                                );
-                                if (row) onOpenTable?.(row.tableNumber, row.groupSlug);
-                              }}
-                            />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
-                  </section>
-                </div>
-              </>
-            )}
-          </div>
-        ) : listItems.length === 0 ? (
-          <div className="garson-panel__empty-card">
-            {tab === 'live' ? (
+        ) : tab === 'all' ? (
+          items.length === 0 ? (
+            <div className="garson-panel__empty-card">
               <BellOff className="garson-panel__empty-icon" strokeWidth={1.75} />
-            ) : (
-              <History className="garson-panel__empty-icon" strokeWidth={1.75} />
-            )}
-            <strong>{tab === 'live' ? 'Bekleyen çağrı yok' : 'Geçmiş çağrı yok'}</strong>
+              <strong>Çağrı yok</strong>
+              <p>Restorandaki tüm çağrılar burada listelenir. Okundu durumu yalnızca sizin masalarınızda işler.</p>
+            </div>
+          ) : (
+            <ul className="garson-panel__list">{items.map((item) => renderCallItem(item, false))}</ul>
+          )
+        ) : assigned.length === 0 ? (
+          <div className="garson-panel__empty-card">
+            <HandHelping className="garson-panel__empty-icon" strokeWidth={1.75} />
+            <strong>Size atanmış masa yok</strong>
             <p>
-              {tab === 'live'
-                ? 'Misafir garson çağırınca veya hesap isteyince burada anında görünür.'
-                : 'Okunan ve geçmiş çağrılar burada listelenir.'}
+              Masa görünümünde masayı açıp <b>Garson</b> ile kendinizi atayın; atanan masaların
+              çağrıları ve okundu takibi burada görünür.
             </p>
           </div>
         ) : (
-          <>
-            <ul className="garson-panel__list">{listItems.map(renderCallItem)}</ul>
-            {tab === 'history' && history.length > HISTORY_PAGE_SIZE ? (
-              <div className="garson-panel__pager">
-                <button
-                  type="button"
-                  disabled={safeHistoryPage <= 1}
-                  onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Önceki
-                </button>
-                <span>
-                  {safeHistoryPage} / {historyPages}
-                  <small>
-                    · {(safeHistoryPage - 1) * HISTORY_PAGE_SIZE + 1}–
-                    {Math.min(safeHistoryPage * HISTORY_PAGE_SIZE, history.length)} / {history.length}
-                  </small>
-                </span>
-                <button
-                  type="button"
-                  disabled={safeHistoryPage >= historyPages}
-                  onClick={() => setHistoryPage((p) => Math.min(historyPages, p + 1))}
-                >
-                  Sonraki
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            ) : null}
-          </>
+          <div className="garson-panel__mine">
+            <section className="garson-panel__section">
+              <header className="garson-panel__section-head">
+                <h3>Aktif çağrılar</h3>
+                <p>Sadece size atanan masalar · okundu işaretleyebilirsiniz</p>
+              </header>
+              {mineLive.length === 0 ? (
+                <div className="garson-panel__empty-card is-compact">
+                  <BellOff className="garson-panel__empty-icon" strokeWidth={1.75} />
+                  <strong>Bekleyen çağrı yok</strong>
+                  <p>Atanan masalarınızdan yeni çağrı gelince burada görünür.</p>
+                </div>
+              ) : (
+                <ul className="garson-panel__list">
+                  {mineLive.map((item) => renderCallItem(item, true))}
+                </ul>
+              )}
+            </section>
+
+            <section className="garson-panel__section">
+              <header className="garson-panel__section-head">
+                <h3>
+                  <History className="w-4 h-4" />
+                  Geçmiş
+                </h3>
+                <p>Okunan çağrılar · sizin masalarınız</p>
+              </header>
+              {mineHistory.length === 0 ? (
+                <div className="garson-panel__empty-card is-compact">
+                  <History className="garson-panel__empty-icon" strokeWidth={1.75} />
+                  <strong>Geçmiş boş</strong>
+                  <p>Okuduğunuz çağrılar burada birikir.</p>
+                </div>
+              ) : (
+                <>
+                  <ul className="garson-panel__list">
+                    {historySlice.map((item) => renderCallItem(item, true))}
+                  </ul>
+                  {mineHistory.length > HISTORY_PAGE_SIZE ? (
+                    <div className="garson-panel__pager">
+                      <button
+                        type="button"
+                        disabled={safeHistoryPage <= 1}
+                        onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Önceki
+                      </button>
+                      <span>
+                        {safeHistoryPage} / {historyPages}
+                        <small>
+                          · {(safeHistoryPage - 1) * HISTORY_PAGE_SIZE + 1}–
+                          {Math.min(safeHistoryPage * HISTORY_PAGE_SIZE, mineHistory.length)} /{' '}
+                          {mineHistory.length}
+                        </small>
+                      </span>
+                      <button
+                        type="button"
+                        disabled={safeHistoryPage >= historyPages}
+                        onClick={() => setHistoryPage((p) => Math.min(historyPages, p + 1))}
+                      >
+                        Sonraki
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </section>
+          </div>
         )}
       </div>
     </div>

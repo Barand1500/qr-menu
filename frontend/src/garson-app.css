@@ -2,6 +2,8 @@
 
 .garson-app {
   min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   background:
     radial-gradient(120% 80% at 0% 0%, rgba(15, 118, 110, 0.16), transparent 50%),
     radial-gradient(90% 60% at 100% 0%, rgba(217, 119, 6, 0.1), transparent 45%),
@@ -244,21 +246,27 @@
 }
 
 .garson-app__body {
-  padding: 0.35rem 0 1rem;
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .garson-app__body .garson-panel {
   width: 100%;
-  padding: 0.35rem 0.65rem 1rem;
+  padding: 0;
+  flex: 1;
 }
 
 .garson-app__body .garson-panel__shell {
-  min-height: calc(100dvh - 5.5rem);
-  padding: 1rem 0.95rem 1.15rem;
-  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.06);
+  min-height: calc(100dvh - 3.75rem);
+  padding: 1rem 1rem 1.15rem;
+  box-shadow: none;
   background: #fff;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  border-radius: 0;
 }
 
 .garson-app__body .garson-panel__eyebrow {
@@ -277,8 +285,266 @@
   color: #fff;
 }
 
+.garson-app__chip.is-on {
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.28);
+}
+
 .garson-app__topbar-actions {
   flex-wrap: wrap;
   justify-content: flex-end;
   max-width: 62%;
+}
+
+.garson-app__body.is-hidden {
+  display: none;
+}
+
+.garson-app.is-scanning {
+  background: #0c0a09;
+}
+
+.garson-unlock--code {
+  padding: 0.75rem 0.85rem 0;
+}
+
+.garson-unlock__code-card {
+  width: min(520px, 100%);
+  margin: 0 auto;
+  padding: 1rem 1rem 1.1rem;
+  border-radius: 1.1rem;
+  background: #fff;
+  border: 1px solid rgba(28, 25, 23, 0.1);
+  box-shadow: 0 10px 28px rgba(28, 25, 23, 0.08);
+}
+
+.garson-unlock__code-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.garson-unlock__eyebrow {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+.garson-unlock__code-head h3 {
+  margin: 0.2rem 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 1.1rem;
+  font-weight: 850;
+  color: #1c1917;
+}
+
+.garson-unlock__x {
+  border: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(28, 25, 23, 0.06);
+  color: #57534e;
+  cursor: pointer;
+}
+
+.garson-unlock__lead {
+  margin: 0.55rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: #78716c;
+}
+
+.garson-unlock__error {
+  margin-top: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.75rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 0.82rem;
+}
+
+.garson-unlock__form {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0.85rem;
+}
+
+.garson-unlock__otp {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.garson-unlock__otp-cell {
+  width: 100%;
+  aspect-ratio: 0.85;
+  min-height: 2.85rem;
+  border: 1.5px solid rgba(28, 25, 23, 0.14);
+  border-radius: 0.75rem;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  color: #1c1917;
+  background: #fafaf9;
+}
+
+.garson-unlock__otp-cell.is-filled {
+  border-color: rgba(15, 118, 110, 0.45);
+  background: rgba(15, 118, 110, 0.06);
+}
+
+.garson-unlock__otp-cell:focus {
+  outline: none;
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
+}
+
+.garson-unlock__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 0;
+  border-radius: 0.95rem;
+  padding: 0.85rem 1rem;
+  background: #0f766e;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.garson-unlock__submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.garson-unlock--scan {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.garson-unlock__scan-stage {
+  position: relative;
+  flex: 1;
+  min-height: calc(100dvh - 3.75rem);
+  background: #0c0a09;
+  overflow: hidden;
+}
+
+.garson-unlock__scan-stage video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.garson-unlock__canvas {
+  display: none;
+}
+
+.garson-unlock__scan-ui {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.85rem;
+  padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, transparent 22%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.62) 0%, transparent 28%);
+  pointer-events: none;
+}
+
+.garson-unlock__back {
+  pointer-events: auto;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1c1917;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.garson-unlock__scan-frame {
+  width: min(72vw, 18rem);
+  aspect-ratio: 1;
+  margin: auto;
+  border-radius: 1.25rem;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.88),
+    0 0 0 999px rgba(0, 0, 0, 0.28);
+}
+
+.garson-unlock__scan-foot {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  text-align: center;
+  color: #fff;
+}
+
+.garson-unlock__scan-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.92);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.garson-unlock__scan-foot p {
+  margin: 0;
+  max-width: 22rem;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+}
+
+.garson-unlock__err {
+  color: #fecaca;
+  font-size: 0.84rem;
+}
+
+.garson-unlock__busy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+@media (min-width: 768px) {
+  .garson-unlock__scan-stage {
+    max-width: 720px;
+    margin: 0 auto;
+    border-radius: 0 0 1.25rem 1.25rem;
+    overflow: hidden;
+  }
+
+  .garson-unlock__otp-cell {
+    min-height: 3.2rem;
+  }
 }

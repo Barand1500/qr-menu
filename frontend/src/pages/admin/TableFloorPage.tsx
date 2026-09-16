@@ -1665,7 +1665,7 @@ export default function TableFloorPage() {
               >
                 <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.5} />
               </button>
-              <p>{panelMode === 'garson' ? 'Garson' : 'Masa görünümü'}</p>
+              <p>{panelMode === 'garson' ? user?.fullName || 'Garson' : 'Masa görünümü'}</p>
               <button
                 type="button"
                 className="table-floor__skin-btn"

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Camera, Download, Hash, LogOut, Smartphone } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import GarsonCallsPanel from '@/components/admin/GarsonCallsPanel';
-import CustomerUnlockModal from '@/components/admin/CustomerUnlockModal';
+import GarsonUnlockDock from '@/components/admin/GarsonUnlockDock';
 import { Input } from '@/components/ui';
 import { adminPath } from '@/lib/adminPath';
 import { applyDocumentTitle, getSiteTitle } from '@/lib/siteTitle';
@@ -23,7 +23,8 @@ import { formatTableServiceLabel } from '@/lib/tableContext';
 import type { GarsonCallRow } from '@/components/admin/GarsonCallsPanel';
 import '@/garson-panel.css';
 import '@/garson-app.css';
-import '@/menu-customer.css';
+
+type UnlockMode = 'scan' | 'code' | null;
 
 export default function GarsonAppPage() {
   const { user, loading, login, logout } = useAuth();
@@ -36,8 +37,7 @@ export default function GarsonAppPage() {
   const [installReady, setInstallReady] = useState(false);
   const [iosHint, setIosHint] = useState(false);
   const [notifState, setNotifState] = useState<string>('default');
-  const [unlockOpen, setUnlockOpen] = useState(false);
-  const [unlockMode, setUnlockMode] = useState<'menu' | 'code' | 'scan'>('menu');
+  const [unlockMode, setUnlockMode] = useState<UnlockMode>(null);
   const lastUnread = useRef<number | null>(null);
   const knownIds = useRef<Set<number>>(new Set());
 
@@ -132,7 +132,7 @@ export default function GarsonAppPage() {
             <div>
               <p className="garson-app__eyebrow">Menu QR</p>
               <h1>Garson uygulaması</h1>
-              <p>Kullanıcılar kısmındaki e-posta ve şifre ile giriş yapın.</p>
+              <p>Kullanıcılar kısmındaki e-posta ve şifre ile giriş yapın. Ana ekrana ekleyerek telefonda uygulama gibi kullanın.</p>
             </div>
           </div>
 
@@ -186,36 +186,30 @@ export default function GarsonAppPage() {
   }
 
   return (
-    <div className="garson-app">
+    <div className={`garson-app${unlockMode === 'scan' ? ' is-scanning' : ''}`}>
       <header className="garson-app__topbar">
         <div className="garson-app__topbar-brand">
           <span className="garson-app__logo is-sm" aria-hidden>
             <Smartphone className="w-4 h-4" />
           </span>
           <div>
-            <strong>Garson</strong>
-            <small>{user.restaurant?.name || user.fullName}</small>
+            <strong>{user.fullName}</strong>
+            <small>{user.restaurant?.name || 'Garson'}</small>
           </div>
         </div>
         <div className="garson-app__topbar-actions">
           <button
             type="button"
-            className="garson-app__chip is-accent"
-            onClick={() => {
-              setUnlockMode('menu');
-              setUnlockOpen(true);
-            }}
+            className={`garson-app__chip is-accent${unlockMode === 'scan' ? ' is-on' : ''}`}
+            onClick={() => setUnlockMode((m) => (m === 'scan' ? null : 'scan'))}
           >
             <Camera className="w-3.5 h-3.5" />
             Kod oku
           </button>
           <button
             type="button"
-            className="garson-app__chip"
-            onClick={() => {
-              setUnlockMode('code');
-              setUnlockOpen(true);
-            }}
+            className={`garson-app__chip${unlockMode === 'code' ? ' is-on' : ''}`}
+            onClick={() => setUnlockMode((m) => (m === 'code' ? null : 'code'))}
           >
             <Hash className="w-3.5 h-3.5" />
             Kod yaz
@@ -252,19 +246,29 @@ export default function GarsonAppPage() {
         </div>
       ) : null}
 
-      <div className="garson-app__body">
+      {unlockMode === 'code' ? (
+        <GarsonUnlockDock
+          mode="code"
+          onClose={() => setUnlockMode(null)}
+          onUnlocked={(customerId) => {
+            navigate(`${adminPath('customers')}?open=${customerId}`);
+          }}
+        />
+      ) : null}
+
+      <div className={`garson-app__body${unlockMode === 'scan' ? ' is-hidden' : ''}`}>
         <GarsonCallsPanel onCallsSnapshot={handleCallsSnapshot} />
       </div>
 
-      <CustomerUnlockModal
-        open={unlockOpen}
-        initialMode={unlockMode}
-        title="Müşteri kodunu oku"
-        onClose={() => setUnlockOpen(false)}
-        onUnlocked={(customerId) => {
-          navigate(`${adminPath('customers')}?open=${customerId}`);
-        }}
-      />
+      {unlockMode === 'scan' ? (
+        <GarsonUnlockDock
+          mode="scan"
+          onClose={() => setUnlockMode(null)}
+          onUnlocked={(customerId) => {
+            navigate(`${adminPath('customers')}?open=${customerId}`);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
