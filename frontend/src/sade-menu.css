@@ -55,20 +55,24 @@
 }
 
 .sade-home__logo {
-  width: 5.5rem;
-  height: 5.5rem;
+  width: auto;
+  height: auto;
+  max-width: min(12rem, 72vw);
+  max-height: 5.5rem;
   object-fit: contain;
-  border-radius: 50%;
-  background: #fff;
-  padding: 0.35rem;
-  box-shadow: 0 8px 24px rgba(61, 44, 41, 0.1);
-  border: 3px solid rgba(196, 164, 148, 0.45);
+  object-position: center;
+  display: block;
+  background: transparent;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .sade-home__logo-fallback {
   width: 5.5rem;
   height: 5.5rem;
-  border-radius: 50%;
+  border-radius: 0.85rem;
   display: grid;
   place-items: center;
   font-size: 1.75rem;
@@ -76,16 +80,11 @@
   color: #fff;
   background: linear-gradient(145deg, #5a433c, #3d2c29);
   box-shadow: 0 8px 24px rgba(61, 44, 41, 0.15);
-  border: 3px solid rgba(196, 164, 148, 0.45);
+  border: 0;
 }
 
 .sade-home__brand-name {
-  margin: 0;
-  font-size: 0.7rem;
-  font-weight: 750;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--menu-text);
+  display: none;
 }
 
 .sade-home__campaign {
@@ -214,7 +213,11 @@
     max-width: calc((100% - 1.8rem) / 3);
   }
 
-  .sade-home__logo,
+  .sade-home__logo {
+    max-width: min(14rem, 60vw);
+    max-height: 6.5rem;
+  }
+
   .sade-home__logo-fallback {
     width: 6.5rem;
     height: 6.5rem;

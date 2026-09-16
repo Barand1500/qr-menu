@@ -51,11 +51,11 @@ export default function SadeHome({
     <div className="sade-home" ref={rootRef}>
       {allergyBanner}
 
-      <header className="sade-home__brand">
+      <header className="sade-home__brand" aria-label={menu.restaurant.name}>
         {menu.restaurant.logoUrl ? (
           <img
             src={imageUrl(menu.restaurant.logoUrl)}
-            alt=""
+            alt={menu.restaurant.name}
             className="sade-home__logo"
           />
         ) : (
@@ -63,7 +63,6 @@ export default function SadeHome({
             {menu.restaurant.name.charAt(0)}
           </div>
         )}
-        <p className="sade-home__brand-name">{menu.restaurant.name}</p>
         {menu.campaign?.name ? (
           <p className="sade-home__campaign">{menu.campaign.name}</p>
         ) : null}
