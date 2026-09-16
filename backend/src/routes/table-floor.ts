@@ -573,6 +573,7 @@ router.post('/payment', async (req, res) => {
     groupSlug,
     sessionId,
     itemIds,
+    itemQtys,
     includeSeatingFee,
     method,
     note,
@@ -583,6 +584,8 @@ router.post('/payment', async (req, res) => {
     groupSlug?: string;
     sessionId?: number;
     itemIds?: string[];
+    /** Satır id → ödenecek adet (eksikse satır bölünür) */
+    itemQtys?: Record<string, number>;
     includeSeatingFee?: boolean;
     method?: string;
     note?: string;
@@ -629,13 +632,32 @@ router.post('/payment', async (req, res) => {
   let itemsAmount = 0;
   const settledIds: string[] = [];
   for (const id of ids) {
-    const item = orders.find((o) => o.id === id);
-    if (!item) return res.status(400).json({ message: 'Kalem bulunamadı' });
+    const idx = orders.findIndex((o) => o.id === id);
+    if (idx < 0) return res.status(400).json({ message: 'Kalem bulunamadı' });
+    const item = orders[idx];
     if (item.settledAt) {
       return res.status(400).json({ message: `"${item.name}" zaten ödenmiş` });
     }
-    itemsAmount += lineTotal(item);
-    settledIds.push(id);
+    const rawQty =
+      itemQtys && itemQtys[id] != null ? Number(itemQtys[id]) : item.qty;
+    const payQty = Math.min(item.qty, Math.max(1, Math.round(rawQty) || item.qty));
+    if (payQty < item.qty) {
+      const remainQty = item.qty - payQty;
+      orders[idx] = { ...item, qty: remainQty };
+      const sliceId = `pay-slice-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const slice: FloorOrderItem = {
+        ...item,
+        id: sliceId,
+        qty: payQty,
+        settledAt: null,
+      };
+      orders.push(slice);
+      itemsAmount += lineTotal(slice);
+      settledIds.push(sliceId);
+    } else {
+      itemsAmount += lineTotal(item);
+      settledIds.push(id);
+    }
   }
 
   let seatPart = 0;

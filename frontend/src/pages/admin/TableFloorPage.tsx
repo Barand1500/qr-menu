@@ -10,6 +10,8 @@ import {
   Copy,
   NotebookPen,
   Plus,
+  Pin,
+  PinOff,
   Timer,
   UtensilsCrossed,
   X,
@@ -52,7 +54,16 @@ type StaffUser = { id: number; fullName: string; role: string };
 
 const FLOOR_SKIN_KEY = 'menu_qr_table_floor_skin';
 const FLOOR_SOUND_KEY = 'menu_qr_floor_notify_sound';
+const ORDER_RAIL_PIN_KEY = 'tf-order-rail-pinned';
 const FLOOR_SKIN_COUNT = 5;
+
+function readOrderRailPinned() {
+  try {
+    return localStorage.getItem(ORDER_RAIL_PIN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 function readFloorSkin(): number {
   try {
@@ -123,11 +134,6 @@ type CartLine = {
   /** groupId → seçimler */
   selections: Record<string, { optionId: string; qty: number }[]>;
 };
-
-const emptyCartLine = (): CartLine => ({
-  qty: 0,
-  selections: {},
-});
 
 function defaultSelections(groups: ProductOptionGroup[]): CartLine['selections'] {
   const out: CartLine['selections'] = {};
@@ -391,12 +397,15 @@ export default function TableFloorPage() {
   soundOnRef.current = soundOn;
   const [busy, setBusy] = useState(false);
   const [codeTtlMenuOpen, setCodeTtlMenuOpen] = useState(false);
-  const [orderOpen, setOrderOpen] = useState(false);
+  const [orderRailOpen, setOrderRailOpen] = useState(false);
+  const [orderRailPinned, setOrderRailPinned] = useState(readOrderRailPinned);
   const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
-  const [cart, setCart] = useState<Record<number, CartLine>>({});
   const [orderSaving, setOrderSaving] = useState(false);
-  const [productQuery, setProductQuery] = useState('');
-  const [catalogGroup, setCatalogGroup] = useState<string>('all');
+  const [railStep, setRailStep] = useState<'categories' | 'products'>('categories');
+  const [railCategoryId, setRailCategoryId] = useState<string | null>(null);
+  const [railProduct, setRailProduct] = useState<CatalogProduct | null>(null);
+  const [railQty, setRailQty] = useState(1);
+  const [railSelections, setRailSelections] = useState<CartLine['selections']>({});
   const [guestName, setGuestName] = useState('');
   const [expectedAt, setExpectedAt] = useState('');
   const [reservationNote, setReservationNote] = useState('');
@@ -405,13 +414,14 @@ export default function TableFloorPage() {
   const [feeUnit, setFeeUnit] = useState<'minute' | 'hour'>('minute');
   const [feePanelOpen, setFeePanelOpen] = useState(false);
   const [notePanelOpen, setNotePanelOpen] = useState(false);
+  const [waiterPopOpen, setWaiterPopOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<FloorOrder | null>(null);
   const [editQty, setEditQty] = useState(1);
   const [editFreeNote, setEditFreeNote] = useState('');
   const [billOpen, setBillOpen] = useState(false);
   const [kitchenOpen, setKitchenOpen] = useState(false);
   const [payMode, setPayMode] = useState(false);
-  const [paySelected, setPaySelected] = useState<Set<string>>(new Set());
+  const [payUnits, setPayUnits] = useState<Record<string, number>>({});
   const [payIncludeSeat, setPayIncludeSeat] = useState(false);
   const [payMethod, setPayMethod] = useState<PaymentMethod>('cash');
   const [payTendered, setPayTendered] = useState('');
@@ -501,6 +511,11 @@ export default function TableFloorPage() {
     setKitchenOpen(false);
     setBillOpen(false);
     setOpsPanelOpen(false);
+    setWaiterPopOpen(false);
+    setFeePanelOpen(false);
+    setNotePanelOpen(false);
+    if (!orderRailPinned) setOrderRailOpen(false);
+    resetOrderRailDraft();
     setReceiptFocus(null);
     exitPayMode();
     clearTableFocusParams();
@@ -789,19 +804,20 @@ export default function TableFloorPage() {
   const paySelectedAmount = useMemo(() => {
     if (!selected) return 0;
     let sum = 0;
+    let payingAllUnits = true;
     for (const o of selected.orders) {
-      if (!o.settledAt && paySelected.has(o.id)) sum += lineTotal(o);
+      if (o.settledAt) continue;
+      const units = Math.max(0, Math.min(o.qty, payUnits[o.id] || 0));
+      if (units < o.qty) payingAllUnits = false;
+      if (units > 0) sum += lineTotal({ ...o, qty: units });
     }
     if (payIncludeSeat) sum += seatLeft;
-    const unpaidIds = selected.orders.filter((o) => !o.settledAt).map((o) => o.id);
-    const payingAll =
-      unpaidIds.every((id) => paySelected.has(id)) &&
-      (seatLeft <= 0.009 || payIncludeSeat);
-    if (payingAll && liveDiscountAmount > 0) {
+    else if (seatLeft > 0.009) payingAllUnits = false;
+    if (payingAllUnits && liveDiscountAmount > 0) {
       sum = Math.max(0, sum - liveDiscountAmount);
     }
     return Math.round(sum * 100) / 100;
-  }, [selected, paySelected, payIncludeSeat, seatLeft, liveDiscountAmount]);
+  }, [selected, payUnits, payIncludeSeat, seatLeft, liveDiscountAmount]);
 
   const payTipAmt = Math.max(0, Math.round((Number(String(payTip).replace(',', '.')) || 0) * 100) / 100);
   const payTenderedAmt = Math.round((Number(String(payTendered).replace(',', '.')) || 0) * 100) / 100;
@@ -809,6 +825,11 @@ export default function TableFloorPage() {
     payMethod === 'cash' && payTenderedAmt > 0
       ? Math.max(0, Math.round((payTenderedAmt - paySelectedAmount - payTipAmt) * 100) / 100)
       : 0;
+
+  useEffect(() => {
+    if (!payMode || payMethod !== 'cash') return;
+    setPayTendered(String(paySelectedAmount || ''));
+  }, [payMode, payMethod, paySelectedAmount]);
 
   function methodLabel(m: PaymentMethod) {
     if (m === 'card') return 'Kart';
@@ -818,8 +839,11 @@ export default function TableFloorPage() {
 
   function enterPayMode() {
     if (!selected) return;
-    const unpaidIds = selected.orders.filter((o) => !o.settledAt).map((o) => o.id);
-    setPaySelected(new Set(unpaidIds));
+    const next: Record<string, number> = {};
+    for (const o of selected.orders) {
+      if (!o.settledAt) next[o.id] = o.qty;
+    }
+    setPayUnits(next);
     setPayIncludeSeat(seatLeft > 0.009);
     setPayMethod('cash');
     setPayTendered('');
@@ -829,29 +853,38 @@ export default function TableFloorPage() {
 
   function exitPayMode() {
     setPayMode(false);
-    setPaySelected(new Set());
+    setPayUnits({});
     setPayIncludeSeat(false);
     setPayTendered('');
     setPayTip('');
   }
 
-  function togglePayItem(id: string) {
-    setPaySelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+  function togglePayItem(id: string, maxQty: number) {
+    setPayUnits((prev) => {
+      const cur = prev[id] || 0;
+      const nextUnits = cur >= maxQty ? 0 : cur + 1;
+      const next = { ...prev };
+      if (nextUnits <= 0) delete next[id];
+      else next[id] = nextUnits;
       return next;
     });
   }
 
   async function submitPayment(payload?: {
     itemIds: string[];
+    itemQtys?: Record<string, number>;
     includeSeatingFee: boolean;
     method: PaymentMethod;
   }) {
     if (!selected?.sessionId) return;
+    const itemQtys =
+      payload?.itemQtys ||
+      Object.fromEntries(
+        Object.entries(payUnits).filter(([, q]) => q > 0)
+      );
     const body = payload || {
-      itemIds: [...paySelected],
+      itemIds: Object.keys(itemQtys),
+      itemQtys,
       includeSeatingFee: payIncludeSeat && seatLeft > 0.009,
       method: payMethod,
     };
@@ -868,6 +901,7 @@ export default function TableFloorPage() {
           tableNumber: selected.code,
           groupSlug: selectedGroupSlug,
           itemIds: body.itemIds,
+          itemQtys: body.itemQtys,
           includeSeatingFee: body.includeSeatingFee,
           method: body.method,
           tendered: body.method === 'cash' && payTenderedAmt > 0 ? payTenderedAmt : undefined,
@@ -1233,11 +1267,15 @@ export default function TableFloorPage() {
     }
   }
 
-  async function openOrderModal() {
-    setOrderOpen(true);
-    setCart({});
-    setProductQuery('');
-    setCatalogGroup('all');
+  function resetOrderRailDraft() {
+    setRailStep('categories');
+    setRailCategoryId(null);
+    setRailProduct(null);
+    setRailQty(1);
+    setRailSelections({});
+  }
+
+  async function ensureCatalog() {
     try {
       const list = await api<CatalogProduct[]>('/api/admin/table-floor/products');
       setCatalog(list);
@@ -1246,32 +1284,67 @@ export default function TableFloorPage() {
     }
   }
 
-  async function submitOrder() {
-    if (!selected || !activeGroup) return;
-    const items = Object.entries(cart)
-      .filter(([, line]) => line.qty > 0)
-      .map(([id, line]) => {
-        const p = catalog.find((c) => c.id === Number(id));
-        const groups = p?.optionGroups || [];
-        const selections = Object.entries(line.selections).flatMap(([groupId, picks]) =>
-          picks.map((pick) => ({
-            groupId,
-            optionId: pick.optionId,
-            qty: pick.qty,
-          }))
-        );
-        const unit = groups.length
-          ? computePreviewUnitPrice(p?.price || 0, groups, line.selections)
-          : p?.price;
-        return {
-          productId: Number(id),
-          name: p?.name,
-          qty: line.qty,
-          price: unit,
-          ...(selections.length ? { selections } : {}),
-        };
-      });
-    if (!items.length) return;
+  async function openOrderRail() {
+    setOrderRailOpen(true);
+    resetOrderRailDraft();
+    await ensureCatalog();
+  }
+
+  function closeOrderRail() {
+    if (orderRailPinned) return;
+    setOrderRailOpen(false);
+    resetOrderRailDraft();
+  }
+
+  function toggleOrderRailPin() {
+    setOrderRailPinned((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(ORDER_RAIL_PIN_KEY, next ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
+      if (next) setOrderRailOpen(true);
+      return next;
+    });
+  }
+
+  function pickRailCategory(id: string) {
+    setRailCategoryId(id);
+    setRailStep('products');
+    setRailProduct(null);
+    setRailQty(1);
+    setRailSelections({});
+  }
+
+  function pickRailProduct(p: CatalogProduct) {
+    const groups = p.optionGroups || [];
+    setRailProduct(p);
+    setRailQty(1);
+    setRailSelections(defaultSelections(groups));
+  }
+
+  async function addRailProduct() {
+    if (!selected || !railProduct || railQty < 1) return;
+    const groups = railProduct.optionGroups || [];
+    for (const g of groups) {
+      if (!g.required) continue;
+      const picks = railSelections[g.id] || [];
+      if (!picks.length) {
+        window.alert(`${g.name || 'Seçenek'} zorunlu`);
+        return;
+      }
+    }
+    const selections = Object.entries(railSelections).flatMap(([groupId, picks]) =>
+      picks.map((pick) => ({
+        groupId,
+        optionId: pick.optionId,
+        qty: pick.qty,
+      }))
+    );
+    const unit = groups.length
+      ? computePreviewUnitPrice(railProduct.price, groups, railSelections)
+      : railProduct.price;
     setOrderSaving(true);
     try {
       await api('/api/admin/table-floor/orders', {
@@ -1279,11 +1352,20 @@ export default function TableFloorPage() {
         body: JSON.stringify({
           tableNumber: selected.code,
           groupSlug: selectedGroupSlug,
-          items,
+          items: [
+            {
+              productId: railProduct.id,
+              name: railProduct.name,
+              qty: railQty,
+              price: unit,
+              ...(selections.length ? { selections } : {}),
+            },
+          ],
         }),
       });
-      setOrderOpen(false);
-      setCart({});
+      setRailProduct(null);
+      setRailQty(1);
+      setRailSelections({});
       await load(true);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Sipariş eklenemedi');
@@ -1292,39 +1374,9 @@ export default function TableFloorPage() {
     }
   }
 
-  function setCartQty(productId: number, qty: number) {
-    setCart((c) => {
-      const prev = c[productId] || emptyCartLine();
-      if (qty <= 0) {
-        const next = { ...c };
-        delete next[productId];
-        return next;
-      }
-      const product = catalog.find((p) => p.id === productId);
-      const groups = product?.optionGroups || [];
-      const selections =
-        prev.qty <= 0 && Object.keys(prev.selections).length === 0
-          ? defaultSelections(groups)
-          : prev.selections;
-      return {
-        ...c,
-        [productId]: { ...prev, qty, selections },
-      };
-    });
-  }
-
-  function patchCart(productId: number, patch: Partial<CartLine>) {
-    setCart((c) => {
-      const prev = c[productId] || emptyCartLine();
-      if (prev.qty <= 0 && !patch.qty) return c;
-      const product = catalog.find((p) => p.id === productId);
-      const groups = product?.optionGroups || [];
-      const next = { ...prev, ...patch };
-      if (patch.selections) {
-        next.selections = withPrunedSelections(groups, patch.selections);
-      }
-      return { ...c, [productId]: next };
-    });
+  function setRailOptionSelections(next: CartLine['selections']) {
+    if (!railProduct) return;
+    setRailSelections(withPrunedSelections(railProduct.optionGroups || [], next));
   }
 
   const catalogGroups = useMemo(() => {
@@ -1339,15 +1391,33 @@ export default function TableFloorPage() {
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
   }, [catalog]);
 
-  const filteredCatalog = catalog.filter((p) => {
-    if (catalogGroup !== 'all') {
+  const railProducts = useMemo(() => {
+    if (!railCategoryId) return [];
+    return catalog.filter((p) => {
       const id = p.groupId != null ? String(p.groupId) : p.groupName.trim() || 'other';
-      if (id !== catalogGroup) return false;
+      return id === railCategoryId;
+    });
+  }, [catalog, railCategoryId]);
+
+  const railPreviewUnit = useMemo(() => {
+    if (!railProduct) return 0;
+    const groups = railProduct.optionGroups || [];
+    if (!groups.length) return railProduct.price;
+    return computePreviewUnitPrice(railProduct.price, groups, railSelections);
+  }, [railProduct, railSelections]);
+
+  useEffect(() => {
+    const inRoomNow = Boolean(selectedCode && !pickMode);
+    if (!inRoomNow) {
+      if (!orderRailPinned) setOrderRailOpen(false);
+      setWaiterPopOpen(false);
+      return;
     }
-    const q = productQuery.trim().toLowerCase();
-    if (!q) return true;
-    return p.name.toLowerCase().includes(q) || p.groupName.toLowerCase().includes(q);
-  });
+    if (orderRailPinned) {
+      setOrderRailOpen(true);
+      void ensureCatalog();
+    }
+  }, [selectedCode, selectedGroupSlug, pickMode, orderRailPinned]);
 
   const cycleFloorSkin = (dir: -1 | 1) => {
     setFloorSkin((prev) => {
@@ -1419,7 +1489,7 @@ export default function TableFloorPage() {
           </span>
           {table.occupied ? (
             <span className="floor-table__meta-stack">
-              <span className="floor-table__meta">
+              <span className="floor-table__meta" title="Oturum süresi">
                 <Clock3 className="w-3 h-3" />
                 {formatDurationMinutes(table.openedAt, now)}
               </span>
@@ -1428,6 +1498,7 @@ export default function TableFloorPage() {
                   lastOrderAtIso(table.orders),
                   now
                 )}`}
+                title="Son siparişten beri"
               >
                 <Timer className="w-3 h-3" />
                 {lastOrderAtIso(table.orders)
@@ -1529,7 +1600,7 @@ export default function TableFloorPage() {
             <span className="floor-table__meta">Birleşik</span>
           ) : table.occupied ? (
             <span className="floor-table__meta-stack">
-              <span className="floor-table__meta">
+              <span className="floor-table__meta" title="Oturum süresi">
                 <Clock3 className="w-3 h-3" />
                 {formatDurationMinutes(table.openedAt, now)}
               </span>
@@ -1538,6 +1609,7 @@ export default function TableFloorPage() {
                   lastOrderAtIso(table.orders),
                   now
                 )}`}
+                title="Son siparişten beri"
               >
                 <Timer className="w-3 h-3" />
                 {lastOrderAtIso(table.orders)
@@ -1644,33 +1716,83 @@ export default function TableFloorPage() {
                 </span>
               </>
             ) : (
-              <p className="table-floor__room-title">
-                {selected.name}
+              <p className="table-floor__room-title is-inline">
                 <em>{sourceGroupName || activeGroup?.name}</em>
+                <span className="table-floor__room-title-sep" aria-hidden>
+                  ·
+                </span>
+                <strong>{selected.name}</strong>
               </p>
             )}
           </div>
-          <div className="table-floor__brand-row">
-            <strong>{data?.restaurant?.name || user?.restaurant?.name || 'Restoran'}</strong>
-            <button
-              type="button"
-              className={`table-floor__sound-btn${soundOn ? '' : ' is-muted'}`}
-              onClick={toggleFloorSound}
-              title={soundOn ? 'Bildirim sesi açık' : 'Bildirim sesi kapalı'}
-              aria-label={soundOn ? 'Bildirim sesini kapat' : 'Bildirim sesini aç'}
-            >
-              {soundOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-            </button>
-            <button
-              type="button"
-              className={`table-floor__garson-icon${panelMode === 'garson' ? ' is-active' : ''}`}
-              onClick={panelMode === 'garson' ? openFloorPanel : openGarsonPanel}
-              title={panelMode === 'garson' ? 'Masalara dön' : 'Garson'}
-              aria-label={panelMode === 'garson' ? 'Masalara dön' : 'Garson paneli'}
-            >
-              G
-            </button>
-          </div>
+          {selected && !pickMode && panelMode === 'floor' ? (
+            <div className="table-floor__header-status" aria-label="Masa durumu">
+              <span
+                className={`table-floor__pill is-compact${
+                  selected.status === 'reserved'
+                    ? ' is-wait'
+                    : selected.occupied
+                      ? ' is-busy'
+                      : ''
+                }`}
+              >
+                {selected.status === 'reserved'
+                  ? 'Rezerve'
+                  : selected.status === 'merged'
+                    ? mergePrimaryTarget
+                      ? `Birleşik · ${mergePrimaryTarget.table.name}`
+                      : 'Birleşik'
+                    : selected.occupied
+                      ? 'Dolu'
+                      : 'Boş'}
+              </span>
+              {selected.waiterAlertMs > 0 ? (
+                <span className="table-floor__pill is-wait is-compact">
+                  <HandHelping className="w-3.5 h-3.5" />
+                  Garson
+                </span>
+              ) : null}
+              {selected.codeStatus === 'pending' ? (
+                <span className="table-floor__pill is-code-pending is-compact">Kod bekleniyor</span>
+              ) : null}
+              {selected.codeStatus === 'verified' ? (
+                <span className="table-floor__pill is-code-ok is-compact">Kod girildi</span>
+              ) : null}
+              {selected.codeStatus === 'expired' ? (
+                <span className="table-floor__pill is-code-expired is-compact">Kod süresi doldu</span>
+              ) : null}
+              {selected.openedBy ? (
+                <span className="table-floor__pill is-muted is-compact">
+                  {selected.openedBy === 'admin' ? 'Admin açtı' : 'QR okutuldu'}
+                </span>
+              ) : null}
+              {selected.seatingFee?.enabled ? (
+                <span className="table-floor__pill is-fee is-compact">Ücretli</span>
+              ) : null}
+            </div>
+          ) : (
+            <div className="table-floor__brand-row">
+              <strong>{data?.restaurant?.name || user?.restaurant?.name || 'Restoran'}</strong>
+              <button
+                type="button"
+                className={`table-floor__sound-btn${soundOn ? '' : ' is-muted'}`}
+                onClick={toggleFloorSound}
+                title={soundOn ? 'Bildirim sesi açık' : 'Bildirim sesi kapalı'}
+                aria-label={soundOn ? 'Bildirim sesini kapat' : 'Bildirim sesini aç'}
+              >
+                {soundOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                type="button"
+                className={`table-floor__garson-icon${panelMode === 'garson' ? ' is-active' : ''}`}
+                onClick={panelMode === 'garson' ? openFloorPanel : openGarsonPanel}
+                title={panelMode === 'garson' ? 'Masalara dön' : 'Garson'}
+                aria-label={panelMode === 'garson' ? 'Masalara dön' : 'Garson paneli'}
+              >
+                G
+              </button>
+            </div>
+          )}
         </div>
         {panelMode === 'floor' && !(selected && !pickMode) ? (
           <div className="table-floor__nav-filters">
@@ -1881,100 +2003,39 @@ export default function TableFloorPage() {
       >
         {selected && activeGroup && !pickMode ? (
           <>
-            <div className="table-floor__room-head">
-              <div className="table-floor__room-head-copy">
-                <p className="table-floor__drawer-eyebrow">
-                  {sourceGroupName || activeGroup.name}
-                </p>
-                <h2>{selected.name}</h2>
-              </div>
-              {selected.occupied && selected.status === 'open' ? (
-                <div className="table-floor__timers" aria-label="Masa sayaçları">
-                  <div
-                    className={`table-floor__timer is-${idleUrgency(selected.openedAt, now)}`}
-                    title="Masa açılışından beri"
-                  >
-                    <Clock3 className="w-4 h-4" aria-hidden />
-                    <div>
-                      <span>Oturum</span>
-                      <strong>{formatDurationMinutes(selected.openedAt, now)}</strong>
-                    </div>
-                  </div>
-                  <div
-                    className={`table-floor__timer is-${idleUrgency(
-                      lastOrderAtIso(selected.orders),
-                      now
-                    )}`}
-                    title="Son siparişten beri"
-                  >
-                    <Timer className="w-4 h-4" aria-hidden />
-                    <div>
-                      <span>Son sipariş</span>
-                      <strong>
-                        {lastOrderAtIso(selected.orders)
-                          ? formatDurationMinutes(lastOrderAtIso(selected.orders), now)
-                          : '—'}
-                      </strong>
-                    </div>
+            {selected.occupied && selected.status === 'open' ? (
+              <div className="table-floor__timers is-slim" aria-label="Masa sayaçları">
+                <div
+                  className={`table-floor__timer is-${idleUrgency(selected.openedAt, now)}`}
+                  title="Oturum süresi"
+                >
+                  <Clock3 className="w-4 h-4" aria-hidden />
+                  <div>
+                    <span>Oturum</span>
+                    <strong>{formatDurationMinutes(selected.openedAt, now)}</strong>
                   </div>
                 </div>
-              ) : null}
-              <button
-                type="button"
-                className="table-floor__room-back"
-                aria-label="Masalara dön"
-                onClick={closeTableDrawer}
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Masalara dön
-              </button>
-            </div>
+                <div
+                  className={`table-floor__timer is-${idleUrgency(
+                    lastOrderAtIso(selected.orders),
+                    now
+                  )}`}
+                  title="Son siparişten beri"
+                >
+                  <Timer className="w-4 h-4" aria-hidden />
+                  <div>
+                    <span>Son sipariş</span>
+                    <strong>
+                      {lastOrderAtIso(selected.orders)
+                        ? formatDurationMinutes(lastOrderAtIso(selected.orders), now)
+                        : '—'}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             <div className="table-floor__status-row">
-              <div className="table-floor__status-pills">
-                <span
-                  className={`table-floor__pill${
-                    selected.status === 'reserved'
-                      ? ' is-wait'
-                      : selected.occupied
-                        ? ' is-busy'
-                        : ''
-                  }`}
-                >
-                  {selected.status === 'reserved'
-                    ? 'Rezerve'
-                    : selected.status === 'merged'
-                      ? mergePrimaryTarget
-                        ? `Birleşik · ${mergePrimaryTarget.table.name}`
-                        : 'Birleşik'
-                      : selected.occupied
-                        ? 'Dolu'
-                        : 'Boş'}
-                </span>
-                {selected.waiterAlertMs > 0 ? (
-                  <span className="table-floor__pill is-wait">
-                    <HandHelping className="w-3.5 h-3.5" />
-                    Garson
-                  </span>
-                ) : null}
-                {selected.codeStatus === 'pending' ? (
-                  <span className="table-floor__pill is-code-pending">Kod bekleniyor</span>
-                ) : null}
-                {selected.codeStatus === 'verified' ? (
-                  <span className="table-floor__pill is-code-ok">Kod girildi</span>
-                ) : null}
-                {selected.codeStatus === 'expired' ? (
-                  <span className="table-floor__pill is-code-expired">Kod süresi doldu</span>
-                ) : null}
-                {selected.openedBy ? (
-                  <span className="table-floor__pill is-muted">
-                    {selected.openedBy === 'admin' ? 'Admin açtı' : 'QR okutuldu'}
-                  </span>
-                ) : null}
-                {selected.seatingFee?.enabled ? (
-                  <span className="table-floor__pill is-fee">Ücretli</span>
-                ) : null}
-              </div>
               {selected.status !== 'merged' ? (
                 <div className="table-floor__status-actions">
                   {selected.reservationNote?.trim() && selected.status === 'open' ? (
@@ -1987,6 +2048,7 @@ export default function TableFloorPage() {
                       onClick={() => {
                         setNotePanelOpen((v) => !v);
                         setFeePanelOpen(false);
+                        setWaiterPopOpen(false);
                       }}
                     >
                       <NotebookPen className="w-4 h-4" />
@@ -2003,10 +2065,66 @@ export default function TableFloorPage() {
                     onClick={() => {
                       setFeePanelOpen((v) => !v);
                       setNotePanelOpen(false);
+                      setWaiterPopOpen(false);
                     }}
                   >
                     <Timer className="w-4 h-4" />
                   </button>
+                  {selected.occupied && selected.status === 'open' ? (
+                    <div className="table-floor__waiter-wrap">
+                      <button
+                        type="button"
+                        className={`table-floor__waiter-chip${waiterPopOpen ? ' is-open' : ''}${
+                          selected.meta?.waiterName ? ' has-waiter' : ''
+                        }`}
+                        aria-expanded={waiterPopOpen}
+                        disabled={metaBusy}
+                        onClick={() => {
+                          setWaiterPopOpen((v) => !v);
+                          setFeePanelOpen(false);
+                          setNotePanelOpen(false);
+                        }}
+                      >
+                        <HandHelping className="w-3.5 h-3.5" />
+                        <span>{selected.meta?.waiterName || 'Garson'}</span>
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                      {waiterPopOpen ? (
+                        <div className="table-floor__waiter-pop" role="listbox" aria-label="Garson seç">
+                          <button
+                            type="button"
+                            role="option"
+                            className={!selected.meta?.waiterUserId ? 'is-on' : undefined}
+                            onClick={() => {
+                              void saveSessionMeta({ waiterUserId: null, waiterName: null });
+                              setWaiterPopOpen(false);
+                            }}
+                          >
+                            Atanmadı
+                          </button>
+                          {staffUsers.map((u) => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              role="option"
+                              className={
+                                selected.meta?.waiterUserId === u.id ? 'is-on' : undefined
+                              }
+                              onClick={() => {
+                                void saveSessionMeta({
+                                  waiterUserId: u.id,
+                                  waiterName: u.fullName,
+                                });
+                                setWaiterPopOpen(false);
+                              }}
+                            >
+                              {u.fullName}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -2080,6 +2198,294 @@ export default function TableFloorPage() {
               </div>
             ) : null}
 
+            <div className="table-floor__room-body">
+              {orderRailOpen ? (
+                <aside className="table-floor__order-rail" aria-label="Yemek ekle">
+                  <header className="table-floor__order-rail-head">
+                    <div>
+                      <p>Sipariş ekle</p>
+                      <h3>
+                        {railStep === 'categories'
+                          ? 'Kategoriler'
+                          : catalogGroups.find((g) => g.id === railCategoryId)?.name || 'Ürünler'}
+                      </h3>
+                    </div>
+                    <div className="table-floor__order-rail-tools">
+                      <button
+                        type="button"
+                        className={`table-floor__icon-btn is-tiny${orderRailPinned ? ' is-active' : ''}`}
+                        title={orderRailPinned ? 'Sabitlemeyi kaldır' : 'Paneli sabitle'}
+                        aria-label={orderRailPinned ? 'Sabitlemeyi kaldır' : 'Paneli sabitle'}
+                        onClick={toggleOrderRailPin}
+                      >
+                        {orderRailPinned ? (
+                          <PinOff className="w-3.5 h-3.5" />
+                        ) : (
+                          <Pin className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      {!orderRailPinned ? (
+                        <button
+                          type="button"
+                          className="table-floor__icon-btn is-tiny"
+                          aria-label="Kapat"
+                          onClick={closeOrderRail}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      ) : null}
+                    </div>
+                  </header>
+                  {railStep === 'products' ? (
+                    <button
+                      type="button"
+                      className="table-floor__order-rail-back"
+                      onClick={() => {
+                        setRailStep('categories');
+                        setRailCategoryId(null);
+                        setRailProduct(null);
+                      }}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Kategoriler
+                    </button>
+                  ) : null}
+                  <div className="table-floor__order-rail-body">
+                    {railStep === 'categories' ? (
+                      <div className="table-floor__order-rail-cats">
+                        {catalogGroups.length === 0 ? (
+                          <p className="table-floor__hint">Ürün yok.</p>
+                        ) : (
+                          catalogGroups.map((g) => (
+                            <button
+                              key={g.id}
+                              type="button"
+                              className="table-floor__order-rail-cat"
+                              onClick={() => pickRailCategory(g.id)}
+                            >
+                              <span>{g.name}</span>
+                              <em>{g.count}</em>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        className={`table-floor__order-rail-split${
+                          railProduct ? ' has-config' : ''
+                        }`}
+                      >
+                        <div className="table-floor__order-rail-products">
+                          {railProducts.length === 0 ? (
+                            <p className="table-floor__hint">Bu kategoride ürün yok.</p>
+                          ) : (
+                            railProducts.map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                className={`table-floor__order-rail-product${
+                                  railProduct?.id === p.id ? ' is-on' : ''
+                                }`}
+                                onClick={() => pickRailProduct(p)}
+                              >
+                                <strong>{p.name}</strong>
+                                <span>{formatMoney(p.price)}</span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                        {railProduct ? (
+                          <div className="table-floor__order-rail-config">
+                            <h4>{railProduct.name}</h4>
+                            {(railProduct.optionGroups || []).map((g) => {
+                              const picks = railSelections[g.id] || [];
+                              const blocked = blockedOptionIds(
+                                railProduct.optionGroups || [],
+                                railSelections
+                              );
+                              const activeOpts = g.options.filter((o) => o.isActive !== false);
+                              if (g.type === 'single') {
+                                const visible = activeOpts.filter(
+                                  (o) => !blocked.has(o.id) || picks[0]?.optionId === o.id
+                                );
+                                return (
+                                  <label key={g.id} className="table-floor__field">
+                                    <span>
+                                      {g.name}
+                                      {g.required ? ' *' : ''}
+                                    </span>
+                                    <select
+                                      className="table-floor__input"
+                                      value={picks[0]?.optionId || ''}
+                                      onChange={(e) => {
+                                        const optionId = e.target.value;
+                                        const next = { ...railSelections };
+                                        if (!optionId) delete next[g.id];
+                                        else next[g.id] = [{ optionId, qty: 1 }];
+                                        setRailOptionSelections(next);
+                                      }}
+                                    >
+                                      {!g.required ? <option value="">Seçilmedi</option> : null}
+                                      {visible.map((o) => (
+                                        <option key={o.id} value={o.id}>
+                                          {o.name}
+                                          {g.pricing === 'replace'
+                                            ? ` · ${formatMoney(o.price)}`
+                                            : o.price
+                                              ? ` · +${formatMoney(o.price)}`
+                                              : ''}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                );
+                              }
+                              if (g.type === 'choice') {
+                                const visible = activeOpts.filter((o) => !blocked.has(o.id));
+                                return (
+                                  <div key={g.id} className="table-floor__order-rail-choice">
+                                    <span>
+                                      {g.name}
+                                      {g.required ? ' *' : ''}
+                                    </span>
+                                    <div className="table-floor__order-rail-chips">
+                                      {visible.map((o) => {
+                                        const on = picks.some((x) => x.optionId === o.id);
+                                        return (
+                                          <button
+                                            key={o.id}
+                                            type="button"
+                                            className={on ? 'is-on' : undefined}
+                                            onClick={() => {
+                                              const nextPicks = on
+                                                ? picks.filter((x) => x.optionId !== o.id)
+                                                : [...picks, { optionId: o.id, qty: 1 }];
+                                              const next = { ...railSelections };
+                                              if (nextPicks.length) next[g.id] = nextPicks;
+                                              else delete next[g.id];
+                                              setRailOptionSelections(next);
+                                            }}
+                                          >
+                                            {o.name}
+                                            {o.price > 0 ? (
+                                              <small>+{formatMoney(o.price)}</small>
+                                            ) : null}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              const groupQty = groupSelectedQty(railSelections, g.id);
+                              const maxQty = effectiveMultiMaxTotalQty(
+                                railProduct.optionGroups || [],
+                                railSelections,
+                                g
+                              );
+                              const atMax = maxQty > 0 && groupQty >= maxQty;
+                              const visible = activeOpts.filter((o) => !blocked.has(o.id));
+                              return (
+                                <div key={g.id} className="table-floor__order-rail-multi">
+                                  <span>
+                                    {g.name}
+                                    {g.required ? ' *' : ''}
+                                    {maxQty > 0 ? ` · max ${maxQty}` : ''}
+                                  </span>
+                                  {visible.map((o) => {
+                                    const cur = picks.find((x) => x.optionId === o.id);
+                                    const q = cur?.qty || 0;
+                                    return (
+                                      <div key={o.id} className="table-floor__order-rail-multi-row">
+                                        <div>
+                                          <strong>{o.name}</strong>
+                                          <em>
+                                            {o.price > 0
+                                              ? `+${formatMoney(o.price)}`
+                                              : 'Ücretsiz'}
+                                          </em>
+                                        </div>
+                                        <div className="table-floor-modal__qty table-floor-modal__qty--sm">
+                                          <button
+                                            type="button"
+                                            disabled={q <= 0}
+                                            onClick={() => {
+                                              const nextPicks = picks.filter(
+                                                (x) => x.optionId !== o.id
+                                              );
+                                              if (q > 1)
+                                                nextPicks.push({ optionId: o.id, qty: q - 1 });
+                                              const next = { ...railSelections };
+                                              if (nextPicks.length) next[g.id] = nextPicks;
+                                              else delete next[g.id];
+                                              setRailOptionSelections(next);
+                                            }}
+                                          >
+                                            −
+                                          </button>
+                                          <em>{q}</em>
+                                          <button
+                                            type="button"
+                                            disabled={atMax}
+                                            onClick={() => {
+                                              if (atMax) return;
+                                              const nextPicks = picks.filter(
+                                                (x) => x.optionId !== o.id
+                                              );
+                                              nextPicks.push({ optionId: o.id, qty: q + 1 });
+                                              setRailOptionSelections({
+                                                ...railSelections,
+                                                [g.id]: nextPicks,
+                                              });
+                                            }}
+                                          >
+                                            +
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })}
+                            <div className="table-floor__order-rail-qty">
+                              <span>Adet</span>
+                              <div className="table-floor-modal__qty">
+                                <button
+                                  type="button"
+                                  onClick={() => setRailQty((q) => Math.max(1, q - 1))}
+                                >
+                                  −
+                                </button>
+                                <em>{railQty}</em>
+                                <button
+                                  type="button"
+                                  onClick={() => setRailQty((q) => Math.min(99, q + 1))}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                            <p className="table-floor__order-rail-price">
+                              Birim <strong>{formatMoney(railPreviewUnit)}</strong>
+                            </p>
+                            <button
+                              type="button"
+                              className="table-floor__primary"
+                              disabled={orderSaving}
+                              onClick={() => void addRailProduct()}
+                            >
+                              {orderSaving ? 'Ekleniyor…' : 'Ekle'}
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                </aside>
+              ) : null}
+
+              <div className="table-floor__room-main">
             {selected.status === 'merged' ? (
               <div className="table-floor__merge-callout">
                 <p className="table-floor__merge-callout-kicker">Birleşmiş masa</p>
@@ -2166,7 +2572,7 @@ export default function TableFloorPage() {
                       className="table-floor__ops-toggle"
                       onClick={() => setOpsPanelOpen((v) => !v)}
                     >
-                      <span>Masa bilgisi · kişi / garson / indirim</span>
+                      <span>Masa bilgisi · kişi / indirim</span>
                       <ChevronDown
                         className={`table-floor__section-chevron${opsPanelOpen ? ' is-open' : ''}`}
                       />
@@ -2184,30 +2590,6 @@ export default function TableFloorPage() {
                             onChange={(e) => setPaxDraft(e.target.value)}
                             placeholder="örn. 4"
                           />
-                        </label>
-                        <label className="table-floor__field">
-                          <span>Garson</span>
-                          <select
-                            className="table-floor__input"
-                            value={selected.meta?.waiterUserId ?? ''}
-                            disabled={metaBusy}
-                            onChange={(e) => {
-                              const id = e.target.value ? Number(e.target.value) : null;
-                              void saveSessionMeta({
-                                waiterUserId: id,
-                                waiterName: id
-                                  ? staffUsers.find((u) => u.id === id)?.fullName || null
-                                  : null,
-                              });
-                            }}
-                          >
-                            <option value="">Atanmadı</option>
-                            {staffUsers.map((u) => (
-                              <option key={u.id} value={u.id}>
-                                {u.fullName}
-                              </option>
-                            ))}
-                          </select>
                         </label>
                         <label className="table-floor__field">
                           <span>Servis notu</span>
@@ -2272,7 +2654,7 @@ export default function TableFloorPage() {
                 ) : null}
 
                 {!selected.occupied || selected.status === 'reserved' ? (
-                  <div className="table-floor__tool">
+                  <div className="table-floor__tool is-reserve-compact">
                     <h3>Rezervasyon</h3>
                     <input
                       type="text"
@@ -2289,7 +2671,7 @@ export default function TableFloorPage() {
                     />
                     <textarea
                       className="table-floor__input table-floor__textarea"
-                      rows={3}
+                      rows={2}
                       maxLength={1000}
                       placeholder="Not (telefonla istenenler, alerji, özel istek…)"
                       value={reservationNote}
@@ -2345,11 +2727,11 @@ export default function TableFloorPage() {
                           type="button"
                           className="table-floor__text-btn"
                           onClick={() => {
-                            setPaySelected(
-                              new Set(
-                                selected.orders.filter((o) => !o.settledAt).map((o) => o.id)
-                              )
-                            );
+                            const next: Record<string, number> = {};
+                            for (const o of selected.orders) {
+                              if (!o.settledAt) next[o.id] = o.qty;
+                            }
+                            setPayUnits(next);
                             setPayIncludeSeat(seatLeft > 0.009);
                           }}
                         >
@@ -2359,7 +2741,7 @@ export default function TableFloorPage() {
                           type="button"
                           className="table-floor__text-btn"
                           onClick={() => {
-                            setPaySelected(new Set());
+                            setPayUnits({});
                             setPayIncludeSeat(false);
                           }}
                         >
@@ -2369,8 +2751,11 @@ export default function TableFloorPage() {
                     ) : (
                       <button
                         type="button"
-                        className="table-floor__text-btn"
-                        onClick={() => void openOrderModal()}
+                        className={`table-floor__text-btn${orderRailOpen ? ' is-on' : ''}`}
+                        onClick={() => {
+                          if (orderRailOpen && !orderRailPinned) closeOrderRail();
+                          else void openOrderRail();
+                        }}
                       >
                         <Plus className="w-4 h-4" />
                         Yemek ekle
@@ -2383,7 +2768,8 @@ export default function TableFloorPage() {
                     <ul className={payMode ? 'is-pay-mode' : undefined}>
                       {selected.orders.map((o) => {
                         const opted = orderOptionsLine(o);
-                        const checked = paySelected.has(o.id);
+                        const units = payUnits[o.id] || 0;
+                        const checked = units > 0;
                         const canPick = payMode && !o.settledAt;
                         return (
                           <li
@@ -2393,7 +2779,7 @@ export default function TableFloorPage() {
                             }${canPick ? ' is-pay-pick' : ''}`.trim()}
                             onClick={() => {
                               if (canPick) {
-                                togglePayItem(o.id);
+                                togglePayItem(o.id, o.qty);
                                 return;
                               }
                               if (selected.status === 'open' && !o.settledAt && !payMode) {
@@ -2404,7 +2790,7 @@ export default function TableFloorPage() {
                               o.settledAt
                                 ? 'Ödendi'
                                 : payMode
-                                  ? 'Ödemeye dahil et'
+                                  ? 'Birim seç (adet)'
                                   : selected.status === 'open'
                                     ? 'Düzenlemek için dokun'
                                     : undefined
@@ -2422,6 +2808,11 @@ export default function TableFloorPage() {
                               <strong>
                                 {o.qty}× {o.name}
                                 {o.settledAt ? ' · ödendi' : ''}
+                                {canPick && checked ? (
+                                  <span className="table-floor__pay-units">
+                                    {units}/{o.qty}
+                                  </span>
+                                ) : null}
                               </strong>
                               <span>
                                 {o.source === 'admin' ? 'Admin' : 'Müşteri'}
@@ -2432,7 +2823,13 @@ export default function TableFloorPage() {
                               ) : null}
                             </div>
                             <div className="table-floor__order-side">
-                              <em className="table-floor__order-price">{formatMoney(lineTotal(o))}</em>
+                              <em className="table-floor__order-price">
+                                {formatMoney(
+                                  canPick && units > 0
+                                    ? lineTotal({ ...o, qty: units })
+                                    : lineTotal(o)
+                                )}
+                              </em>
                               {!payMode && selected.status === 'open' && !o.settledAt ? (
                                 <div className="table-floor__order-actions">
                                   <button
@@ -2511,7 +2908,7 @@ export default function TableFloorPage() {
                 </div>
 
                 <div className="table-floor__drawer-actions">
-                  {selected.occupied ? (
+                  {selected.occupied && selected.status === 'open' ? (
                     <div className="table-floor__access-code">
                       <div className="table-floor__access-code-row">
                         <div
@@ -2600,37 +2997,33 @@ export default function TableFloorPage() {
                     </div>
                   ) : null}
                   {selected.occupied && selected.status === 'open' ? (
-                    <>
-                      <div className="table-floor__action-row">
-                        <button
-                          type="button"
-                          className="table-floor__secondary"
-                          onClick={() => {
-                            setReceiptFocus(null);
-                            setBillOpen(true);
-                          }}
-                        >
-                          Hesap yazdır
-                        </button>
-                        <button
-                          type="button"
-                          className="table-floor__secondary"
-                          onClick={() => setKitchenOpen(true)}
-                        >
-                          Mutfak fişi
-                        </button>
-                      </div>
-                      <div className="table-floor__action-row">
-                        <button
-                          type="button"
-                          className={`table-floor__primary${payMode ? ' is-active-pay' : ''}`}
-                          disabled={busy}
-                          onClick={() => (payMode ? exitPayMode() : enterPayMode())}
-                        >
-                          {payMode ? 'Ödemeyi kapat' : 'Ödeme al'}
-                        </button>
-                      </div>
-                    </>
+                    <div className="table-floor__action-grid">
+                      <button
+                        type="button"
+                        className="table-floor__secondary"
+                        onClick={() => {
+                          setReceiptFocus(null);
+                          setBillOpen(true);
+                        }}
+                      >
+                        Hesap yazdır
+                      </button>
+                      <button
+                        type="button"
+                        className="table-floor__secondary"
+                        onClick={() => setKitchenOpen(true)}
+                      >
+                        Mutfak fişi
+                      </button>
+                      <button
+                        type="button"
+                        className={`table-floor__primary${payMode ? ' is-active-pay' : ''}`}
+                        disabled={busy}
+                        onClick={() => (payMode ? exitPayMode() : enterPayMode())}
+                      >
+                        {payMode ? 'Ödemeyi kapat' : 'Ödeme al'}
+                      </button>
+                    </div>
                   ) : null}
                   {!selected.occupied || selected.status === 'reserved' ? (
                     <button
@@ -2642,7 +3035,7 @@ export default function TableFloorPage() {
                       <UtensilsCrossed className="w-4 h-4" />
                       {selected.status === 'reserved' ? 'Misafir geldi · Aç' : 'Masayı aç'}
                     </button>
-                  ) : (
+                  ) : selected.occupied && selected.status === 'open' ? (
                     <button
                       type="button"
                       className="table-floor__danger"
@@ -2655,10 +3048,153 @@ export default function TableFloorPage() {
                         ? 'Masayı kapat (ödendi)'
                         : 'Masayı kapat / boşalt'}
                     </button>
-                  )}
+                  ) : null}
                 </div>
+
+                {payMode ? (
+                  <aside className="table-floor__pay-dock is-float" aria-label="Seçilen ödeme özeti">
+                    <header className="table-floor__pay-dock-head">
+                      <p>Ödeme özeti</p>
+                      <h3>{selected.name}</h3>
+                    </header>
+                    <div className="table-floor__pay-dock-stats">
+                      <div>
+                        <span>Seçilen</span>
+                        <strong>{formatMoney(paySelectedAmount)}</strong>
+                      </div>
+                      <div>
+                        <span>Kalan</span>
+                        <strong
+                          className={
+                            liveRemaining - paySelectedAmount > 0.009 ? 'is-warn' : 'is-ok'
+                          }
+                        >
+                          {formatMoney(
+                            Math.max(
+                              0,
+                              Math.round((liveRemaining - paySelectedAmount) * 100) / 100
+                            )
+                          )}
+                        </strong>
+                      </div>
+                    </div>
+                    <div
+                      className="table-floor__pay-dock-methods"
+                      role="group"
+                      aria-label="Ödeme yöntemi"
+                    >
+                      {(
+                        [
+                          ['cash', 'Nakit'],
+                          ['card', 'Kart'],
+                          ['mixed', 'Karışık'],
+                        ] as const
+                      ).map(([id, label]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          className={payMethod === id ? 'is-on' : undefined}
+                          onClick={() => setPayMethod(id)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    {liveDiscountAmount > 0.009 ? (
+                      <p className="table-floor__hint" style={{ margin: 0 }}>
+                        Hesap indirimi: −{formatMoney(liveDiscountAmount)} (tümü seçiliyse uygulanır)
+                      </p>
+                    ) : null}
+                    <div className="table-floor__fee-row">
+                      <label className="table-floor__field" style={{ flex: 1, margin: 0 }}>
+                        <span>Bahşiş</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          className="table-floor__input"
+                          value={payTip}
+                          onChange={(e) => setPayTip(e.target.value)}
+                          placeholder="0"
+                        />
+                      </label>
+                      {payMethod === 'cash' ? (
+                        <label className="table-floor__field" style={{ flex: 1, margin: 0 }}>
+                          <span>Alınan</span>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            className="table-floor__input"
+                            value={payTendered}
+                            onChange={(e) => setPayTendered(e.target.value)}
+                            placeholder={String(paySelectedAmount + payTipAmt || '')}
+                          />
+                        </label>
+                      ) : null}
+                    </div>
+                    {payMethod === 'cash' && payTenderedAmt > 0 ? (
+                      <div className="table-floor__pay-dock-stats">
+                        <div>
+                          <span>Para üstü</span>
+                          <strong className="is-ok">{formatMoney(payChangeAmt)}</strong>
+                        </div>
+                      </div>
+                    ) : null}
+                    <div className="table-floor__pay-dock-actions">
+                      <div className="table-floor__pay-dock-row">
+                        <button
+                          type="button"
+                          className="table-floor__pay-dock-btn"
+                          disabled={paySelectedAmount <= 0.009}
+                          onClick={() => {
+                            const lines = selected.orders
+                              .filter((o) => (payUnits[o.id] || 0) > 0)
+                              .map((o) => ({
+                                ...o,
+                                qty: payUnits[o.id] || o.qty,
+                              }));
+                            const seat = payIncludeSeat ? seatLeft : 0;
+                            setReceiptFocus({
+                              orders: lines,
+                              seatingFee: seat,
+                              total: paySelectedAmount,
+                              paidTotal: paySelectedAmount,
+                              remaining: Math.max(
+                                0,
+                                Math.round((liveRemaining - paySelectedAmount) * 100) / 100
+                              ),
+                              methodLabel: methodLabel(payMethod),
+                              docTitle: 'ÖDEME FİŞİ',
+                            });
+                            setBillOpen(true);
+                          }}
+                        >
+                          Fiş
+                        </button>
+                        <button
+                          type="button"
+                          className="table-floor__pay-dock-btn"
+                          onClick={exitPayMode}
+                        >
+                          Vazgeç
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        className="table-floor__pay-dock-submit"
+                        disabled={busy || paySelectedAmount <= 0.009}
+                        onClick={() => void submitPayment()}
+                      >
+                        {busy ? '…' : 'Ödemeyi kaydet'}
+                      </button>
+                    </div>
+                  </aside>
+                ) : null}
               </>
             )}
+              </div>
+            </div>
           </>
         ) : null}
       </aside>
@@ -2714,265 +3250,6 @@ export default function TableFloorPage() {
                 onClick={() => void (confirm.kind === 'move' ? moveTable() : mergeTables())}
               >
                 {busy ? 'İşleniyor…' : 'Onayla'}
-              </button>
-            </footer>
-          </div>
-        </div>
-      ) : null}
-
-      {orderOpen ? (
-        <div className="table-floor-modal" role="dialog" aria-modal="true" aria-label="Yemek ekle">
-          <button
-            type="button"
-            className="table-floor-modal__backdrop"
-            aria-label="Kapat"
-            onClick={() => setOrderOpen(false)}
-          />
-          <div className="table-floor-modal__panel">
-            <header>
-              <div>
-                <p>Sipariş ekle</p>
-                <h3>{selected?.name}</h3>
-              </div>
-              <button type="button" className="table-floor__icon-btn" onClick={() => setOrderOpen(false)}>
-                <X className="w-5 h-5" />
-              </button>
-            </header>
-            <input
-              type="search"
-              className="table-floor-modal__search"
-              placeholder="Ürün ara…"
-              value={productQuery}
-              onChange={(e) => setProductQuery(e.target.value)}
-            />
-            <div className="table-floor-modal__body">
-              {catalogGroups.length > 0 ? (
-                <nav className="table-floor-modal__cats" aria-label="Ürün grupları">
-                  <button
-                    type="button"
-                    className={`table-floor-modal__cat${catalogGroup === 'all' ? ' is-active' : ''}`}
-                    onClick={() => setCatalogGroup('all')}
-                  >
-                    <span>Tümü</span>
-                    <em>{catalog.length}</em>
-                  </button>
-                  {catalogGroups.map((g) => (
-                    <button
-                      key={g.id}
-                      type="button"
-                      className={`table-floor-modal__cat${catalogGroup === g.id ? ' is-active' : ''}`}
-                      onClick={() => setCatalogGroup(g.id)}
-                    >
-                      <span>{g.name}</span>
-                      <em>{g.count}</em>
-                    </button>
-                  ))}
-                </nav>
-              ) : null}
-              <div className="table-floor-modal__list">
-                {filteredCatalog.length === 0 ? (
-                  <p className="table-floor__hint" style={{ padding: '0.5rem 0.25rem' }}>
-                    Ürün bulunamadı.
-                  </p>
-                ) : (
-                  filteredCatalog.map((p) => {
-                    const line = cart[p.id] || emptyCartLine();
-                    const qty = line.qty;
-                    return (
-                      <div
-                        key={p.id}
-                        className={`table-floor-modal__row${qty > 0 ? ' is-selected' : ''}`}
-                      >
-                        <div className="table-floor-modal__row-main">
-                          <div className="table-floor-modal__row-top">
-                            <div>
-                              <strong>{p.name}</strong>
-                              <span>
-                                {p.groupName} · {formatMoney(p.price)}
-                              </span>
-                            </div>
-                            <div className="table-floor-modal__qty">
-                              <button type="button" onClick={() => setCartQty(p.id, qty - 1)}>
-                                −
-                              </button>
-                              <em>{qty}</em>
-                              <button type="button" onClick={() => setCartQty(p.id, qty + 1)}>
-                                +
-                              </button>
-                            </div>
-                          </div>
-                          {qty > 0 && (p.optionGroups?.length || 0) > 0 ? (
-                            <div className="table-floor-modal__extras">
-                              {(p.optionGroups || []).map((g) => {
-                                const picks = line.selections[g.id] || [];
-                                const blocked = blockedOptionIds(p.optionGroups || [], line.selections);
-                                const activeOpts = g.options.filter((o) => o.isActive !== false);
-                                if (g.type === 'single') {
-                                  const visible = activeOpts.filter(
-                                    (o) => !blocked.has(o.id) || picks[0]?.optionId === o.id
-                                  );
-                                  return (
-                                    <label key={g.id}>
-                                      <span>
-                                        {g.name}
-                                        {g.required ? ' *' : ''}
-                                      </span>
-                                      <select
-                                        value={picks[0]?.optionId || ''}
-                                        onChange={(e) => {
-                                          const optionId = e.target.value;
-                                          const next = { ...line.selections };
-                                          if (!optionId) delete next[g.id];
-                                          else next[g.id] = [{ optionId, qty: 1 }];
-                                          patchCart(p.id, { selections: next });
-                                        }}
-                                      >
-                                        {!g.required ? <option value="">Seçilmedi</option> : null}
-                                        {visible.map((o) => (
-                                          <option key={o.id} value={o.id}>
-                                            {o.name}
-                                            {g.pricing === 'replace'
-                                              ? ` · ${formatMoney(o.price)}`
-                                              : o.price
-                                                ? ` · +${formatMoney(o.price)}`
-                                                : ''}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    </label>
-                                  );
-                                }
-                                if (g.type === 'choice') {
-                                  const visible = activeOpts.filter((o) => !blocked.has(o.id));
-                                  return (
-                                    <div key={g.id} className="table-floor-modal__choice">
-                                      <span className="table-floor-modal__multi-title">
-                                        {g.name}
-                                        {g.required ? ' *' : ''}
-                                      </span>
-                                      <div className="table-floor-modal__choice-chips">
-                                        {visible.map((o) => {
-                                          const on = picks.some((x) => x.optionId === o.id);
-                                          return (
-                                            <button
-                                              key={o.id}
-                                              type="button"
-                                              className={`table-floor-modal__choice-chip${on ? ' is-on' : ''}`}
-                                              onClick={() => {
-                                                const nextPicks = on
-                                                  ? picks.filter((x) => x.optionId !== o.id)
-                                                  : [...picks, { optionId: o.id, qty: 1 }];
-                                                const next = { ...line.selections };
-                                                if (nextPicks.length) next[g.id] = nextPicks;
-                                                else delete next[g.id];
-                                                patchCart(p.id, { selections: next });
-                                              }}
-                                            >
-                                              {o.name}
-                                              {o.price > 0 ? (
-                                                <small>+{formatMoney(o.price)}</small>
-                                              ) : null}
-                                            </button>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  );
-                                }
-                                const groupQty = groupSelectedQty(line.selections, g.id);
-                                const maxQty = effectiveMultiMaxTotalQty(
-                                  p.optionGroups || [],
-                                  line.selections,
-                                  g
-                                );
-                                const atMax = maxQty > 0 && groupQty >= maxQty;
-                                const visible = activeOpts.filter((o) => !blocked.has(o.id));
-                                return (
-                                  <div key={g.id} className="table-floor-modal__multi">
-                                    <span className="table-floor-modal__multi-title">
-                                      {g.name}
-                                      {g.required ? ' *' : ''}
-                                      {maxQty > 0 ? (
-                                        <em className="table-floor-modal__max-hint">
-                                          {' '}
-                                          · en fazla {maxQty}
-                                          {groupQty > 0 ? ` (${groupQty})` : ''}
-                                        </em>
-                                      ) : null}
-                                    </span>
-                                    {visible.map((o) => {
-                                      const cur = picks.find((x) => x.optionId === o.id);
-                                      const q = cur?.qty || 0;
-                                      return (
-                                        <div key={o.id} className="table-floor-modal__multi-row">
-                                          <div>
-                                            <strong>{o.name}</strong>
-                                            <em>
-                                              {o.price > 0 ? `+${formatMoney(o.price)} / adet` : 'Ücretsiz'}
-                                            </em>
-                                          </div>
-                                          <div className="table-floor-modal__qty table-floor-modal__qty--sm">
-                                            <button
-                                              type="button"
-                                              disabled={q <= 0}
-                                              onClick={() => {
-                                                const nextPicks = picks.filter((x) => x.optionId !== o.id);
-                                                if (q > 1) nextPicks.push({ optionId: o.id, qty: q - 1 });
-                                                const next = { ...line.selections };
-                                                if (nextPicks.length) next[g.id] = nextPicks;
-                                                else delete next[g.id];
-                                                patchCart(p.id, { selections: next });
-                                              }}
-                                            >
-                                              −
-                                            </button>
-                                            <em>{q}</em>
-                                            <button
-                                              type="button"
-                                              disabled={atMax}
-                                              onClick={() => {
-                                                if (atMax) return;
-                                                const nextPicks = picks.filter((x) => x.optionId !== o.id);
-                                                nextPicks.push({ optionId: o.id, qty: q + 1 });
-                                                patchCart(p.id, {
-                                                  selections: { ...line.selections, [g.id]: nextPicks },
-                                                });
-                                              }}
-                                            >
-                                              +
-                                            </button>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                );
-                              })}
-                              <p className="table-floor-modal__line-price">
-                                Birim:{' '}
-                                <strong>
-                                  {formatMoney(
-                                    computePreviewUnitPrice(p.price, p.optionGroups || [], line.selections)
-                                  )}
-                                </strong>
-                              </p>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-            <footer>
-              <button
-                type="button"
-                className="table-floor__primary"
-                disabled={orderSaving || !Object.values(cart).some((line) => line.qty > 0)}
-                onClick={() => void submitOrder()}
-              >
-                {orderSaving ? 'Kaydediliyor…' : 'Siparişi kaydet'}
               </button>
             </footer>
           </div>
@@ -3341,130 +3618,6 @@ export default function TableFloorPage() {
         />
       ) : null}
 
-      {selected && payMode ? (
-        <aside className="table-floor__pay-dock" aria-label="Seçilen ödeme özeti">
-          <header className="table-floor__pay-dock-head">
-            <p>Ödeme özeti</p>
-            <h3>{selected.name}</h3>
-          </header>
-          <div className="table-floor__pay-dock-stats">
-            <div>
-              <span>Seçilen</span>
-              <strong>{formatMoney(paySelectedAmount)}</strong>
-            </div>
-            <div>
-              <span>Kalan</span>
-              <strong className={liveRemaining - paySelectedAmount > 0.009 ? 'is-warn' : 'is-ok'}>
-                {formatMoney(
-                  Math.max(0, Math.round((liveRemaining - paySelectedAmount) * 100) / 100)
-                )}
-              </strong>
-            </div>
-          </div>
-          <div className="table-floor__pay-dock-methods" role="group" aria-label="Ödeme yöntemi">
-            {(
-              [
-                ['cash', 'Nakit'],
-                ['card', 'Kart'],
-                ['mixed', 'Karışık'],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                className={payMethod === id ? 'is-on' : undefined}
-                onClick={() => setPayMethod(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {liveDiscountAmount > 0.009 ? (
-            <p className="table-floor__hint" style={{ margin: 0 }}>
-              Hesap indirimi: −{formatMoney(liveDiscountAmount)} (tümü seçiliyse uygulanır)
-            </p>
-          ) : null}
-          <div className="table-floor__fee-row">
-            <label className="table-floor__field" style={{ flex: 1, margin: 0 }}>
-              <span>Bahşiş</span>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                className="table-floor__input"
-                value={payTip}
-                onChange={(e) => setPayTip(e.target.value)}
-                placeholder="0"
-              />
-            </label>
-            {payMethod === 'cash' ? (
-              <label className="table-floor__field" style={{ flex: 1, margin: 0 }}>
-                <span>Alınan</span>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  className="table-floor__input"
-                  value={payTendered}
-                  onChange={(e) => setPayTendered(e.target.value)}
-                  placeholder={String(paySelectedAmount + payTipAmt || '')}
-                />
-              </label>
-            ) : null}
-          </div>
-          {payMethod === 'cash' && payTenderedAmt > 0 ? (
-            <div className="table-floor__pay-dock-stats">
-              <div>
-                <span>Para üstü</span>
-                <strong className="is-ok">{formatMoney(payChangeAmt)}</strong>
-              </div>
-            </div>
-          ) : null}
-          <div className="table-floor__pay-dock-actions">
-            <div className="table-floor__pay-dock-row">
-              <button
-                type="button"
-                className="table-floor__pay-dock-btn"
-                disabled={paySelectedAmount <= 0.009}
-                onClick={() => {
-                  const lines = selected.orders.filter((o) => paySelected.has(o.id));
-                  const seat = payIncludeSeat ? seatLeft : 0;
-                  setReceiptFocus({
-                    orders: lines,
-                    seatingFee: seat,
-                    total: paySelectedAmount,
-                    paidTotal: paySelectedAmount,
-                    remaining: Math.max(
-                      0,
-                      Math.round((liveRemaining - paySelectedAmount) * 100) / 100
-                    ),
-                    methodLabel: methodLabel(payMethod),
-                    docTitle: 'ÖDEME FİŞİ',
-                  });
-                  setBillOpen(true);
-                }}
-              >
-                Fiş
-              </button>
-              <button
-                type="button"
-                className="table-floor__pay-dock-btn"
-                onClick={exitPayMode}
-              >
-                Vazgeç
-              </button>
-            </div>
-            <button
-              type="button"
-              className="table-floor__pay-dock-submit"
-              disabled={busy || paySelectedAmount <= 0.009}
-              onClick={() => void submitPayment()}
-            >
-              {busy ? '…' : 'Ödemeyi kaydet'}
-            </button>
-          </div>
-        </aside>
-      ) : null}
     </div>
   );
 }
