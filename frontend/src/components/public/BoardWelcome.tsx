@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 import { imageUrl } from '@/lib/api';
 import { catalogByCode } from '@/lib/languageCatalog';
@@ -60,6 +61,20 @@ function CheckMark({ className }: { className?: string }) {
   );
 }
 
+function ChevronIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M4 6.2 8 10l4-3.8"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function nativeLangLabel(code: string, fallback: string) {
   return catalogByCode(code)?.nativeName || fallback || code;
 }
@@ -109,6 +124,35 @@ export default function BoardWelcome({
 }: BoardWelcomeProps) {
   const t = welcomeUi(selectedLang);
   const prefUi = preferenceUi(selectedLang);
+  const [openPanel, setOpenPanel] = useState<'allergens' | 'diets' | 'both'>(() =>
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 720px)').matches
+      ? 'both'
+      : 'allergens'
+  );
+
+  const allergenCount = dietaryPrefs.allergens.length;
+  const dietCount = dietaryPrefs.diets.length;
+  const allergensOpen = openPanel === 'allergens' || openPanel === 'both';
+  const dietsOpen = openPanel === 'diets' || openPanel === 'both';
+
+  function togglePanel(panel: 'allergens' | 'diets') {
+    setOpenPanel((prev) => {
+      // Desktop (both open possible): toggle independently via 'both'
+      const wide = typeof window !== 'undefined' && window.matchMedia('(min-width: 720px)').matches;
+      if (wide) {
+        const aOpen = prev === 'allergens' || prev === 'both';
+        const dOpen = prev === 'diets' || prev === 'both';
+        const nextA = panel === 'allergens' ? !aOpen : aOpen;
+        const nextD = panel === 'diets' ? !dOpen : dOpen;
+        if (nextA && nextD) return 'both';
+        if (nextA) return 'allergens';
+        if (nextD) return 'diets';
+        return panel;
+      }
+      // Mobile: one at a time
+      return prev === panel ? panel : panel;
+    });
+  }
 
   return (
     <div
@@ -189,50 +233,88 @@ export default function BoardWelcome({
               <LeafIcon className="board-welcome__divider-icon" />
             </div>
 
-            <div className="board-welcome__block">
-              <p className="board-welcome__label">{prefUi.avoidTitle}</p>
-              <div className="board-welcome__rows">
-                {prefCatalog.allergens.map((opt) => {
-                  const active = dietaryPrefs.allergens.includes(opt.id);
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      className={`board-welcome__row${active ? ' is-active' : ''}`}
-                      onClick={() => onToggleAllergen(opt.id)}
-                      aria-pressed={active}
-                    >
-                      <span className="board-welcome__check">
-                        <CheckMark className="board-welcome__check-mark" />
-                      </span>
-                      <span>{catalogLabel(prefCatalog, 'allergen', opt.id, selectedLang)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <div className="board-welcome__accordion">
+              <section
+                className={`board-welcome__acc${allergensOpen ? ' is-open' : ''}`}
+              >
+                <button
+                  type="button"
+                  className="board-welcome__acc-head"
+                  onClick={() => togglePanel('allergens')}
+                  aria-expanded={allergensOpen}
+                >
+                  <span className="board-welcome__acc-title">{prefUi.avoidTitle}</span>
+                  {allergenCount > 0 ? (
+                    <span className="board-welcome__acc-count">{allergenCount}</span>
+                  ) : null}
+                  <ChevronIcon className="board-welcome__acc-chevron" />
+                </button>
+                {allergensOpen ? (
+                  <div className="board-welcome__acc-body">
+                    <div className="board-welcome__pills">
+                      {prefCatalog.allergens.map((opt) => {
+                        const active = dietaryPrefs.allergens.includes(opt.id);
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            className={`board-welcome__pill${active ? ' is-active' : ''}`}
+                            onClick={() => onToggleAllergen(opt.id)}
+                            aria-pressed={active}
+                          >
+                            <span className="board-welcome__check">
+                              <CheckMark className="board-welcome__check-mark" />
+                            </span>
+                            <span>
+                              {catalogLabel(prefCatalog, 'allergen', opt.id, selectedLang)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </section>
 
-            <div className="board-welcome__block">
-              <p className="board-welcome__label">{prefUi.dietTitle}</p>
-              <div className="board-welcome__rows">
-                {prefCatalog.diets.map((opt) => {
-                  const active = dietaryPrefs.diets.includes(opt.id);
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      className={`board-welcome__row${active ? ' is-active' : ''}`}
-                      onClick={() => onToggleDiet(opt.id)}
-                      aria-pressed={active}
-                    >
-                      <span className="board-welcome__check">
-                        <CheckMark className="board-welcome__check-mark" />
-                      </span>
-                      <span>{catalogLabel(prefCatalog, 'diet', opt.id, selectedLang)}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              <section className={`board-welcome__acc${dietsOpen ? ' is-open' : ''}`}>
+                <button
+                  type="button"
+                  className="board-welcome__acc-head"
+                  onClick={() => togglePanel('diets')}
+                  aria-expanded={dietsOpen}
+                >
+                  <span className="board-welcome__acc-title">{prefUi.dietTitle}</span>
+                  {dietCount > 0 ? (
+                    <span className="board-welcome__acc-count">{dietCount}</span>
+                  ) : null}
+                  <ChevronIcon className="board-welcome__acc-chevron" />
+                </button>
+                {dietsOpen ? (
+                  <div className="board-welcome__acc-body">
+                    <div className="board-welcome__pills">
+                      {prefCatalog.diets.map((opt) => {
+                        const active = dietaryPrefs.diets.includes(opt.id);
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            className={`board-welcome__pill${active ? ' is-active' : ''}`}
+                            onClick={() => onToggleDiet(opt.id)}
+                            aria-pressed={active}
+                          >
+                            <span className="board-welcome__check">
+                              <CheckMark className="board-welcome__check-mark" />
+                            </span>
+                            <span>
+                              {catalogLabel(prefCatalog, 'diet', opt.id, selectedLang)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </section>
             </div>
 
             <div className="board-welcome__actions">
