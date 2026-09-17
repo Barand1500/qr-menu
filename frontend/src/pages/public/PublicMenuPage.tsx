@@ -915,6 +915,7 @@ function PublicMenuPageInner({
         searchOpen={searchOpen}
         onSearchToggle={toggleSearch}
         showMobileSearch={isSiparis}
+        brandAsMenu={isStandart}
         extraIcons={headerExtraIcons}
         colorMode={hideColorToggle ? undefined : colorMode}
         onColorModeToggle={hideColorToggle ? undefined : toggleColorMode}

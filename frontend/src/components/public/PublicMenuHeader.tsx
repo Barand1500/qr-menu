@@ -21,6 +21,8 @@ interface PublicMenuHeaderProps {
   tableServiceSlot?: ReactNode;
   /** Örn. PC sepet ikonu (Sipariş teması) */
   extraIcons?: ReactNode;
+  /** Sol tarafta altın çerçeveli MENU markası (Standart PC) */
+  brandAsMenu?: boolean;
 }
 
 export default function PublicMenuHeader({
@@ -37,6 +39,7 @@ export default function PublicMenuHeader({
   onColorModeToggle,
   tableServiceSlot,
   extraIcons,
+  brandAsMenu = false,
 }: PublicMenuHeaderProps) {
   const searchBtnClass = showMobileSearch
     ? `public-menu-header__icon-btn ${searchOpen ? 'is-active' : ''}`
@@ -50,6 +53,28 @@ export default function PublicMenuHeader({
             <button type="button" onClick={onBack} className="public-menu-header__icon-btn" aria-label="Geri">
               <ArrowLeft className="w-5 h-5" />
             </button>
+          ) : brandAsMenu ? (
+            <>
+              <button
+                type="button"
+                onClick={onMenuOpen}
+                className="public-menu-header__menu-brand"
+                aria-label="Menüyü aç"
+              >
+                MENU
+              </button>
+              {restaurant.logoUrl ? (
+                <img
+                  src={imageUrl(restaurant.logoUrl)}
+                  alt=""
+                  className="w-10 h-10 rounded-xl object-contain bg-white/10 shrink-0 public-menu-header__brand-logo-mobile"
+                />
+              ) : (
+                <div className="public-menu-header__logo-fallback shrink-0 public-menu-header__brand-logo-mobile">
+                  {restaurant.name.charAt(0)}
+                </div>
+              )}
+            </>
           ) : (
             <>
               {restaurant.logoUrl ? (
@@ -66,14 +91,20 @@ export default function PublicMenuHeader({
             </>
           )}
 
-          <div className="min-w-0 flex-1">
-            <h1 className="public-menu-header__title truncate">
-              {title || restaurant.name}
-            </h1>
-            {title && (
-              <p className="text-xs text-white/70 truncate">{restaurant.name}</p>
-            )}
-          </div>
+          {brandAsMenu ? (
+            <div className="min-w-0 flex-1 public-menu-header__brand-logo-mobile">
+              <h1 className="public-menu-header__title truncate">{restaurant.name}</h1>
+            </div>
+          ) : (
+            <div className="min-w-0 flex-1">
+              <h1 className="public-menu-header__title truncate">
+                {title || restaurant.name}
+              </h1>
+              {title && (
+                <p className="text-xs text-white/70 truncate">{restaurant.name}</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="public-menu-header__actions">
