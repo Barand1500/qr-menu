@@ -1,0 +1,401 @@
+/* Standart / Menü Tahtası karşılama — animasyonsuz, klasik */
+
+.board-welcome {
+  --board-bg: #181818;
+  --board-bg-2: #222222;
+  --board-cream: #e6dcc8;
+  --board-cream-dim: rgba(230, 220, 200, 0.55);
+  --board-cream-soft: rgba(230, 220, 200, 0.18);
+  --board-line: rgba(230, 220, 200, 0.35);
+  --board-serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  position: relative;
+  min-height: 100dvh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: max(1.25rem, env(safe-area-inset-top)) 1.25rem max(1.5rem, env(safe-area-inset-bottom));
+  color: var(--board-cream);
+  font-family: var(--board-serif);
+  background: var(--board-bg);
+  overflow: hidden;
+}
+
+body:has(.board-welcome) {
+  background: #181818;
+}
+
+.board-welcome__texture {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(255, 255, 255, 0.035), transparent 70%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.012) 2px,
+      rgba(255, 255, 255, 0.012) 3px
+    );
+  opacity: 0.9;
+}
+
+.board-welcome__vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.45) 100%);
+}
+
+.board-welcome__music {
+  position: absolute;
+  top: max(0.85rem, env(safe-area-inset-top));
+  right: max(0.85rem, env(safe-area-inset-right));
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--board-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--board-cream);
+  font-family: var(--board-serif);
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.board-welcome__music:hover {
+  background: var(--board-cream-soft);
+}
+
+.board-welcome__stage {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 22rem);
+  max-height: calc(100dvh - 2.5rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(230, 220, 200, 0.25) transparent;
+}
+
+.board-welcome__logo-wrap {
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--board-cream);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+  margin-bottom: 1.1rem;
+}
+
+.board-welcome__logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.board-welcome__logo-fallback {
+  width: 2.4rem;
+  height: 2.4rem;
+  color: var(--board-cream);
+}
+
+.board-welcome__title {
+  margin: 0;
+  font-size: clamp(1.85rem, 6vw, 2.35rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  color: var(--board-cream);
+}
+
+.board-welcome__context {
+  margin-top: 0.65rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+}
+
+.board-welcome__chip {
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--board-line);
+  color: var(--board-cream-dim);
+}
+
+.board-welcome__divider {
+  width: min(100%, 14rem);
+  margin: 1.15rem 0 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--board-cream-dim);
+}
+
+.board-welcome__divider::before,
+.board-welcome__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--board-line);
+}
+
+.board-welcome__divider-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+}
+
+.board-welcome__langs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+.board-welcome__lang {
+  position: relative;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0.15rem 0.35rem 0.45rem;
+  color: var(--board-cream);
+  font-family: var(--board-serif);
+  font-size: clamp(1.2rem, 4.2vw, 1.45rem);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.board-welcome__lang::after {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 0.1rem;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.45;
+  transform: rotate(-0.6deg);
+}
+
+.board-welcome__lang:hover,
+.board-welcome__lang:focus-visible {
+  outline: none;
+  color: #f3ecdc;
+}
+
+.board-welcome__lang:hover::after,
+.board-welcome__lang:focus-visible::after {
+  opacity: 0.85;
+}
+
+.board-welcome__lang.is-active::after {
+  opacity: 1;
+  height: 1.5px;
+}
+
+.board-welcome__footer-ornament {
+  width: min(100%, 12rem);
+  margin-top: 1.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--board-cream-dim);
+}
+
+.board-welcome__footer-ornament::before,
+.board-welcome__footer-ornament::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--board-line);
+}
+
+.board-welcome__cup {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+/* —— Tercihler adımı —— */
+.board-welcome__prefs {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+}
+
+.board-welcome__back {
+  align-self: flex-start;
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--board-cream-dim);
+  font-family: var(--board-serif);
+  font-size: 1.35rem;
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+  margin: 0 0 0.75rem -0.35rem;
+  cursor: pointer;
+}
+
+.board-welcome__back:hover {
+  color: var(--board-cream);
+}
+
+.board-welcome__prefs-title {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(1.35rem, 4.5vw, 1.65rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+}
+
+.board-welcome__prefs-hint {
+  margin: 0.45rem 0 1.15rem;
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--board-cream-dim);
+  font-style: italic;
+}
+
+.board-welcome__block {
+  margin-bottom: 1.15rem;
+}
+
+.board-welcome__label {
+  margin: 0 0 0.55rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--board-cream-dim);
+  text-align: center;
+}
+
+.board-welcome__rows {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--board-line);
+}
+
+.board-welcome__row {
+  appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.15rem;
+  border: none;
+  border-bottom: 1px solid var(--board-line);
+  background: transparent;
+  color: var(--board-cream);
+  font-family: var(--board-serif);
+  font-size: 1.05rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.board-welcome__row:hover {
+  background: var(--board-cream-soft);
+}
+
+.board-welcome__check {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+  border: 1px solid var(--board-cream-dim);
+  border-radius: 2px;
+  display: grid;
+  place-items: center;
+}
+
+.board-welcome__row.is-active .board-welcome__check {
+  border-color: var(--board-cream);
+  background: var(--board-cream);
+  color: var(--board-bg);
+}
+
+.board-welcome__check-mark {
+  width: 0.65rem;
+  height: 0.65rem;
+  opacity: 0;
+}
+
+.board-welcome__row.is-active .board-welcome__check-mark {
+  opacity: 1;
+}
+
+.board-welcome__actions {
+  margin-top: 1.35rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.board-welcome__enter {
+  appearance: none;
+  width: 100%;
+  max-width: 14rem;
+  padding: 0.7rem 1.25rem;
+  border: 1.5px solid var(--board-cream);
+  border-radius: 0.55rem;
+  background: transparent;
+  color: var(--board-cream);
+  font-family: var(--board-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.board-welcome__enter:hover {
+  background: var(--board-cream-soft);
+}
+
+.board-welcome__skip {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--board-cream-dim);
+  font-family: var(--board-serif);
+  font-size: 0.95rem;
+  font-style: italic;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.board-welcome__skip:hover {
+  color: var(--board-cream);
+}
+
+.board-welcome.is-entering {
+  opacity: 0.35;
+  transition: opacity 0.35s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-welcome.is-entering {
+    transition: none;
+  }
+}

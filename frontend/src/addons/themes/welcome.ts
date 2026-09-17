@@ -1,8 +1,15 @@
 import type { MenuThemeOption } from './types';
 
-export const DEFAULT_WELCOME_THEME = 'vibrant';
+export const DEFAULT_WELCOME_THEME = 'board';
 
 export const WELCOME_THEMES: MenuThemeOption[] = [
+  {
+    id: 'board',
+    name: 'Standart',
+    description: 'Koyu tahta, krem yazı — animasyonsuz klasik karşılama.',
+    locked: false,
+    previewClass: 'theme-preview--board',
+  },
   {
     id: 'vibrant',
     name: 'Renkli Animasyonlu',

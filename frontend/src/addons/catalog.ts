@@ -3,6 +3,15 @@ import type { AddonProduct } from './types';
 /** Frontend katalog — kilit durumu API'deki owned listesine göre hesaplanır */
 export const ADDON_CATALOG: AddonProduct[] = [
   {
+    id: 'welcome-board',
+    category: 'welcome',
+    name: 'Standart',
+    description: 'Koyu tahta, krem yazı — animasyonsuz klasik karşılama.',
+    themeId: 'board',
+    previewClass: 'theme-preview--board',
+    free: true,
+  },
+  {
     id: 'welcome-vibrant',
     category: 'welcome',
     name: 'Renkli Animasyonlu',

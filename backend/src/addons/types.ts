@@ -1,4 +1,5 @@
 export type AddonProductId =
+  | 'welcome-board'
   | 'welcome-vibrant'
   | 'welcome-cinema'
   | 'welcome-neon'

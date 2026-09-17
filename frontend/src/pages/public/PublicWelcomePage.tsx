@@ -32,6 +32,7 @@ import {
 import { resolveWelcomeMusic, youtubeEmbedSrc } from '@/lib/welcomeMusic';
 import BasketballWelcomeGame from '@/components/public/BasketballWelcomeGame';
 import CupsWelcomeGame from '@/components/public/CupsWelcomeGame';
+import BoardWelcome from '@/components/public/BoardWelcome';
 import type { WelcomeBasketballConfig } from '@/lib/welcomeBasketballConfig';
 import type { WelcomeCupsConfig } from '@/lib/welcomeCupsConfig';
 
@@ -310,10 +311,15 @@ function PublicWelcomePageInner({
     });
   }
 
-  function goToPrefs() {
-    localStorage.setItem('menu_lang', selectedLang);
+  function goToPrefs(lang = selectedLang) {
+    localStorage.setItem('menu_lang', lang);
+    setSelectedLang(lang);
     setWelcomeStep('prefs');
     requestAnimationFrame(() => setPrefsPanelIn(true));
+  }
+
+  function pickBoardLanguage(code: string) {
+    goToPrefs(code);
   }
 
   function toggleWelcomeAllergen(id: string) {
@@ -356,7 +362,7 @@ function PublicWelcomePageInner({
   const t = welcomeUi(selectedLang);
   const prefUi = preferenceUi(selectedLang);
   const prefCatalog = resolvePrefCatalog(data?.prefCatalog ?? null);
-  const welcomeTheme = data?.theme || 'vibrant';
+  const welcomeTheme = data?.theme || 'board';
   const hideBrandTitle =
     welcomeTheme === 'vibrant' || welcomeTheme === 'cinema' || welcomeTheme === 'neon';
 
@@ -415,6 +421,57 @@ function PublicWelcomePageInner({
           ? t.musicOn
           : t.musicLoading
         : t.musicOff;
+
+  if (data.theme === 'board') {
+    const tableLabel =
+      tableNo || groupSlug
+        ? groupSlug
+          ? `${groupSlug.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase())}${
+              tableNo ? ` · ${t.table} ${tableNo}` : ''
+            }`
+          : `${t.table} ${tableNo}`
+        : null;
+    const campaignLabel = campaignSlug ? data.campaign?.name || t.campaign : null;
+
+    return (
+      <>
+        <GeoCheckInBridge slug={slug} masa={tableNo} grup={groupSlug} coords={coords} />
+        {ytEmbedSrc ? (
+          <iframe
+            className="welcome-scene__yt-audio"
+            src={ytEmbedSrc}
+            title="Karşılama müziği"
+            allow="autoplay; encrypted-media"
+            tabIndex={-1}
+          />
+        ) : null}
+        <BoardWelcome
+          restaurant={data.restaurant}
+          languages={data.languages}
+          selectedLang={selectedLang}
+          welcomeStep={welcomeStep}
+          dietaryPrefs={dietaryPrefs}
+          prefCatalog={prefCatalog}
+          tableLabel={tableLabel}
+          campaignLabel={campaignLabel}
+          musicOn={musicOn}
+          musicBlocked={musicBlocked}
+          musicLabel={musicLabel}
+          entering={entering}
+          onToggleMusic={toggleMusic}
+          onPickLanguage={pickBoardLanguage}
+          onBackToLang={() => {
+            setPrefsPanelIn(false);
+            setWelcomeStep('lang');
+          }}
+          onToggleAllergen={toggleWelcomeAllergen}
+          onToggleDiet={toggleWelcomeDiet}
+          onContinue={() => enterMenu(selectedLang)}
+          onSkip={() => enterMenu(selectedLang, { allergens: [], diets: [] })}
+        />
+      </>
+    );
+  }
 
   if (data.theme === 'basketball') {
     return (

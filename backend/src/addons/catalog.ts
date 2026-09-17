@@ -2,6 +2,14 @@ import type { AddonProductDef, AddonProductId } from './types.js';
 
 export const ADDON_PRODUCTS: AddonProductDef[] = [
   {
+    id: 'welcome-board',
+    category: 'welcome',
+    name: 'Standart',
+    description: 'Koyu tahta, krem yazı — animasyonsuz klasik karşılama.',
+    themeId: 'board',
+    free: true,
+  },
+  {
     id: 'welcome-vibrant',
     category: 'welcome',
     name: 'Renkli Animasyonlu',
