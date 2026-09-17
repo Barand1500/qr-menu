@@ -13,9 +13,9 @@ export type StandartChatProduct = SiparisAddPayload & {
   hasOptions?: boolean;
 };
 
-const SWIPE_OPEN = 88;
-const SWIPE_TRIGGER = 72;
-const HINT_OFFSET = -42;
+const SWIPE_OPEN = 112;
+const SWIPE_TRIGGER = 98;
+const HINT_OFFSET = -48;
 
 export default function StandartChatRow({
   product,
@@ -128,11 +128,12 @@ export default function StandartChatRow({
       reset();
       return;
     }
-    if (offset <= -SWIPE_TRIGGER) {
+    if (offset <= -SWIPE_TRIGGER && axisLocked.current === 'h') {
       doAdd();
       return;
     }
-    if (Math.abs(offset) < 12 && axisLocked.current !== 'h') {
+    // Küçük kaydırma / dokunuş = sepete ekleme; detaya git
+    if (Math.abs(offset) < 28) {
       navigate(menuProductPath(product.productId));
     }
     reset();

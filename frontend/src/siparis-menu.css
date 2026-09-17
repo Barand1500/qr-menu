@@ -822,11 +822,11 @@
 
 .siparis-fly {
   position: fixed;
-  z-index: 90;
+  z-index: 120;
   border-radius: 999px;
   overflow: hidden;
   pointer-events: none;
-  box-shadow: 0 10px 28px rgba(185, 28, 28, 0.35);
+  box-shadow: 0 10px 28px rgba(13, 148, 136, 0.4);
   border: 2px solid #fff;
   will-change: transform, opacity;
 }

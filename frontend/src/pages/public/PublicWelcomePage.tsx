@@ -356,6 +356,9 @@ function PublicWelcomePageInner({
   const t = welcomeUi(selectedLang);
   const prefUi = preferenceUi(selectedLang);
   const prefCatalog = resolvePrefCatalog(data?.prefCatalog ?? null);
+  const welcomeTheme = data?.theme || 'vibrant';
+  const hideBrandTitle =
+    welcomeTheme === 'vibrant' || welcomeTheme === 'cinema' || welcomeTheme === 'neon';
 
   if (loading && !data) {
     return (
@@ -524,7 +527,9 @@ function PublicWelcomePageInner({
               )}
             </div>
 
-            <h1 className="welcome-card__title">{data.restaurant.name}</h1>
+            {hideBrandTitle ? null : (
+              <h1 className="welcome-card__title">{data.restaurant.name}</h1>
+            )}
             {(tableNo || groupSlug || campaignSlug) && (
               <div className="welcome-card__context">
                 {(tableNo || groupSlug) && (
@@ -573,23 +578,6 @@ function PublicWelcomePageInner({
             )}
 
             <p className="welcome-card__hint">{t.hint}</p>
-
-            <div className="welcome-card__feedback-links">
-              <button
-                type="button"
-                className="welcome-card__feedback-link welcome-card__feedback-link--suggestion"
-                onClick={() => setSuggestionOpen(true)}
-              >
-                {t.suggestionCta}
-              </button>
-              <button
-                type="button"
-                className="welcome-card__feedback-link"
-                onClick={() => setComplaintOpen(true)}
-              >
-                {t.complaintCta}
-              </button>
-            </div>
           </div>
 
           <div

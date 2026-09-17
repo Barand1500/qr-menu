@@ -63,6 +63,7 @@ import SiparisCartButton from '@/components/public/siparis/SiparisCartButton';
 import SiparisCartSheet from '@/components/public/siparis/SiparisCartSheet';
 import AnimasyonCartSheet from '@/components/public/animasyon/AnimasyonCartSheet';
 import SiparisMobileNav from '@/components/public/siparis/SiparisMobileNav';
+import StandartMobileNav from '@/components/public/standart/StandartMobileNav';
 import { SiparisCartProvider } from '@/hooks/useSiparisCart';
 import {
   loadDietaryPrefs,
@@ -662,8 +663,12 @@ function PublicMenuPageInner({
   const headerExtraIcons = (
     <>
       {profileIcon}
-      {cartTheme ? (
-        <SiparisCartButton alwaysShow={isStandart || isAnimasyon || isSade || isAlive || isLuxury || isLinear} />
+      {cartTheme && !isStandart ? (
+        <SiparisCartButton alwaysShow={isAnimasyon || isSade || isAlive || isLuxury || isLinear} />
+      ) : cartTheme && isStandart ? (
+        <span className="std-header-cart-desktop">
+          <SiparisCartButton alwaysShow />
+        </span>
       ) : null}
     </>
   );
@@ -751,7 +756,11 @@ function PublicMenuPageInner({
     </>
   ) : null;
 
-  const tableServiceSlot = (
+  const tableServiceSlot = isStandart ? (
+    <span className="std-header-waiter-desktop">
+      <TableServiceButtons lang={lang} slug={slug} enabled={tableServiceOn} />
+    </span>
+  ) : (
     <TableServiceButtons lang={lang} slug={slug} enabled={tableServiceOn} />
   );
 
@@ -862,6 +871,20 @@ function PublicMenuPageInner({
             }}
             onSearchOpen={toggleSearch}
             onMenuOpen={() => setSideMenuOpen(true)}
+            {...mobileNavChrome}
+          />
+        ) : isStandart ? (
+          <StandartMobileNav
+            tab="home"
+            onTab={(t) => {
+              setTab(t);
+              if (t === 'home') navigate(menuHomePath());
+            }}
+            onSearchOpen={toggleSearch}
+            onMenuOpen={() => setSideMenuOpen(true)}
+            lang={lang}
+            slug={slug}
+            tableServiceEnabled={tableServiceOn}
             {...mobileNavChrome}
           />
         ) : (
@@ -1069,6 +1092,17 @@ function PublicMenuPageInner({
             onTab={setTab}
             onSearchOpen={toggleSearch}
             onMenuOpen={() => setSideMenuOpen(true)}
+            {...mobileNavChrome}
+          />
+        ) : isStandart ? (
+          <StandartMobileNav
+            tab={tab}
+            onTab={setTab}
+            onSearchOpen={toggleSearch}
+            onMenuOpen={() => setSideMenuOpen(true)}
+            lang={lang}
+            slug={slug}
+            tableServiceEnabled={tableServiceOn}
             {...mobileNavChrome}
           />
         ) : (

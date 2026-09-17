@@ -4,15 +4,19 @@ const CART_SEL = '[data-siparis-cart-target]';
 
 function visibleCartTarget(): HTMLElement | null {
   const nodes = Array.from(document.querySelectorAll<HTMLElement>(CART_SEL));
+  const visible: HTMLElement[] = [];
   for (const el of nodes) {
     const style = window.getComputedStyle(el);
     if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
       continue;
     }
     const r = el.getBoundingClientRect();
-    if (r.width > 0 && r.height > 0) return el;
+    if (r.width > 0 && r.height > 0) visible.push(el);
   }
-  return nodes[0] ?? null;
+  if (visible.length === 0) return nodes[0] ?? null;
+  // Alt nav / ekranın altına yakın hedefi tercih et (uçuş görünsün)
+  visible.sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top);
+  return visible[0];
 }
 
 /** Ürün görseli / butondan sepet ikonuna uçuş */
@@ -58,14 +62,22 @@ export function siparisFlyToCart(
   gsap.to(flyer, {
     x: dx,
     y: dy,
-    scale: 0.28,
-    opacity: 0.35,
-    duration: 0.65,
-    ease: 'power2.in',
+    scale: 0.42,
+    opacity: 1,
+    duration: 0.85,
+    ease: 'power2.inOut',
     onComplete: () => {
-      flyer.remove();
-      target.classList.add('is-cart-bump');
-      window.setTimeout(() => target.classList.remove('is-cart-bump'), 420);
+      gsap.to(flyer, {
+        scale: 0.2,
+        opacity: 0,
+        duration: 0.18,
+        ease: 'power1.in',
+        onComplete: () => {
+          flyer.remove();
+          target.classList.add('is-cart-bump');
+          window.setTimeout(() => target.classList.remove('is-cart-bump'), 420);
+        },
+      });
     },
   });
 }

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Home, Menu, Moon, Search, ShoppingBag, Sun, UserRound } from 'lucide-react';
 import type { MenuColorMode } from '@/lib/menuColorMode';
 
@@ -19,6 +20,14 @@ interface PublicMobileNavProps {
   showProfile?: boolean;
   profileActive?: boolean;
   onProfileOpen?: () => void;
+  /**
+   * Standart: arama ortada kalır; solunda garson, sağında sepet.
+   */
+  centerExtras?: {
+    left?: ReactNode;
+    cartCount?: number;
+    onCartOpen?: () => void;
+  };
 }
 
 export default function PublicMobileNav({
@@ -34,12 +43,17 @@ export default function PublicMobileNav({
   showProfile = false,
   profileActive = false,
   onProfileOpen,
+  centerExtras,
 }: PublicMobileNavProps) {
   const showColor = Boolean(colorMode && onColorModeToggle);
   const isNight = colorMode === 'night';
+  const clustered = Boolean(centerExtras) && !cartMode;
 
   return (
-    <nav className="public-mobile-nav md:hidden" aria-label="Ana menü">
+    <nav
+      className={`public-mobile-nav md:hidden${clustered ? ' public-mobile-nav--cluster' : ''}`}
+      aria-label="Ana menü"
+    >
       <div className="public-mobile-nav__inner">
         <svg
           className="public-mobile-nav__shape"
@@ -118,6 +132,42 @@ export default function PublicMobileNav({
               </span>
             ) : null}
           </button>
+        ) : clustered ? (
+          <div className="public-mobile-nav__cluster">
+            {centerExtras?.left ? (
+              <div className="public-mobile-nav__cluster-side public-mobile-nav__cluster-side--left">
+                {centerExtras.left}
+              </div>
+            ) : (
+              <span className="public-mobile-nav__cluster-spacer" aria-hidden />
+            )}
+            <button
+              type="button"
+              onClick={onSearchOpen}
+              className="public-mobile-nav__fab"
+              aria-label="Ara"
+            >
+              <Search className="w-5 h-5" strokeWidth={2.15} />
+            </button>
+            {centerExtras?.onCartOpen ? (
+              <button
+                type="button"
+                onClick={centerExtras.onCartOpen}
+                data-siparis-cart-target
+                className="public-mobile-nav__cluster-cart"
+                aria-label="Sepet"
+              >
+                <ShoppingBag className="w-[1.15rem] h-[1.15rem]" strokeWidth={2.1} />
+                {(centerExtras.cartCount || 0) > 0 ? (
+                  <span className="siparis-nav-cart__badge">
+                    {(centerExtras.cartCount || 0) > 99 ? '99+' : centerExtras.cartCount}
+                  </span>
+                ) : null}
+              </button>
+            ) : (
+              <span className="public-mobile-nav__cluster-spacer" aria-hidden />
+            )}
+          </div>
         ) : (
           <button
             type="button"
