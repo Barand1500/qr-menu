@@ -140,6 +140,7 @@ interface ProductData {
     isDiabetic?: boolean;
     stockQty?: number | null;
     soldOut?: boolean;
+    hasOptions?: boolean;
   }[];
   children?: {
     id: number;
@@ -818,6 +819,8 @@ function PublicMenuPageInner({
               products={filteredGroupProducts}
               subgroups={filteredGroupChildren}
               groupName={products.group.name}
+              lang={lang}
+              campaignSlug={campaignSlug}
             />
           ) : isAnimasyon ? (
             <AnimasyonHome

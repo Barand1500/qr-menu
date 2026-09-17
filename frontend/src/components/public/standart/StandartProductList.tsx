@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import StandartChatRow, {
   type StandartChatProduct,
 } from '@/components/public/standart/StandartChatRow';
+import StandartOptionsModal from '@/components/public/standart/StandartOptionsModal';
 import { useSiparisCart } from '@/hooks/useSiparisCart';
+import { useStandartSwipeAdd, useStandartSwipeHint } from '@/hooks/useStandartSwipe';
 
 export type StandartListProduct = {
   id: number;
@@ -13,6 +15,7 @@ export type StandartListProduct = {
   imageUrl?: string | null;
   calories?: number | null;
   soldOut?: boolean;
+  hasOptions?: boolean;
 };
 
 export type StandartSubgroup = {
@@ -26,14 +29,24 @@ export default function StandartProductList({
   products,
   subgroups = [],
   groupName,
+  lang = 'tr',
+  campaignSlug,
 }: {
   products: StandartListProduct[];
   subgroups?: StandartSubgroup[];
   groupName?: string;
+  lang?: string;
+  campaignSlug?: string;
 }) {
   const { enabled: cartOn } = useSiparisCart();
   const [activeSub, setActiveSub] = useState<number | 'all'>('all');
   const hasSubs = subgroups.length > 0;
+  const { onSwipeAdd, modalOpen, modalLoading, modalProduct, closeModal } = useStandartSwipeAdd(
+    lang,
+    campaignSlug
+  );
+  const listKey = `list-${groupName || 'g'}-${activeSub}`;
+  const { hintId, maybeHint } = useStandartSwipeHint(listKey);
 
   useEffect(() => {
     setActiveSub('all');
@@ -54,6 +67,7 @@ export default function StandartProductList({
           imageUrl: p.imageUrl,
           calories: p.calories ?? null,
           soldOut: Boolean(p.soldOut),
+          hasOptions: Boolean(p.hasOptions),
         }))
       : []),
     ...visibleSubs.flatMap((s) =>
@@ -66,9 +80,14 @@ export default function StandartProductList({
         imageUrl: p.imageUrl,
         calories: p.calories ?? null,
         soldOut: Boolean(p.soldOut),
+        hasOptions: Boolean(p.hasOptions),
       }))
     ),
   ];
+
+  useEffect(() => {
+    maybeHint(flat[0]?.productId ?? null);
+  }, [listKey, flat[0]?.productId, maybeHint]);
 
   return (
     <section className="std-list" aria-label={groupName || 'Ürünler'}>
@@ -101,10 +120,22 @@ export default function StandartProductList({
       <ul className="std-chat__list">
         {flat.map((p) => (
           <li key={p.productId}>
-            <StandartChatRow product={p} swipeEnabled={cartOn} />
+            <StandartChatRow
+              product={p}
+              swipeEnabled={cartOn}
+              showSwipeHint={hintId === p.productId}
+              onSwipeAdd={onSwipeAdd}
+            />
           </li>
         ))}
       </ul>
+
+      <StandartOptionsModal
+        open={modalOpen}
+        product={modalProduct}
+        loading={modalLoading}
+        onClose={closeModal}
+      />
     </section>
   );
 }

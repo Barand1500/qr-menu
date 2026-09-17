@@ -6,8 +6,10 @@ import StandartChatRow, {
   type StandartChatProduct,
 } from '@/components/public/standart/StandartChatRow';
 import StandartPcBoard from '@/components/public/standart/StandartPcBoard';
+import StandartOptionsModal from '@/components/public/standart/StandartOptionsModal';
 import type { PopularProduct } from '@/components/public/PopularSearchProducts';
 import { useSiparisCart } from '@/hooks/useSiparisCart';
+import { useStandartSwipeAdd, useStandartSwipeHint } from '@/hooks/useStandartSwipe';
 
 type ShowcaseUnused = unknown;
 
@@ -34,6 +36,7 @@ type GroupProduct = {
   imageUrl?: string | null;
   calories?: number | null;
   soldOut?: boolean;
+  hasOptions?: boolean;
 };
 
 export default function StandartHome({
@@ -46,7 +49,7 @@ export default function StandartHome({
 }: {
   menu: MenuData;
   displayStories?: MenuStory[] | null;
-  popularProducts: PopularProduct[];
+  popularProducts: (PopularProduct & { hasOptions?: boolean })[];
   allergyBanner?: ReactNode;
   lang: string;
   campaignSlug?: string;
@@ -57,6 +60,12 @@ export default function StandartHome({
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
   const [groupProducts, setGroupProducts] = useState<GroupProduct[] | null>(null);
   const [loadingGroup, setLoadingGroup] = useState(false);
+  const { onSwipeAdd, modalOpen, modalLoading, modalProduct, closeModal } = useStandartSwipeAdd(
+    lang,
+    campaignSlug
+  );
+  const listKey = `home-${activeGroupId ?? 'picks'}`;
+  const { hintId, maybeHint } = useStandartSwipeHint(listKey);
 
   const hasStories = Boolean(displayStories && displayStories.length > 0);
   const en = (lang || 'tr').split('-')[0] === 'en';
@@ -103,6 +112,7 @@ export default function StandartHome({
           imageUrl: p.imageUrl,
           calories: p.calories ?? null,
           soldOut: Boolean(p.soldOut),
+          hasOptions: Boolean((p as { hasOptions?: boolean }).hasOptions),
         }))
       : (groupProducts || []).map((p) => ({
           productId: p.id,
@@ -113,7 +123,14 @@ export default function StandartHome({
           imageUrl: p.imageUrl,
           calories: p.calories ?? null,
           soldOut: Boolean(p.soldOut),
+          hasOptions: Boolean(p.hasOptions),
         }));
+
+  useEffect(() => {
+    if (loadingGroup) return;
+    const firstId = listItems[0]?.productId ?? null;
+    maybeHint(firstId);
+  }, [listKey, loadingGroup, listItems[0]?.productId, maybeHint]);
 
   const sectionTitle =
     activeGroupId == null
@@ -126,7 +143,6 @@ export default function StandartHome({
     <div className="std-home">
       {allergyBanner}
 
-      {/* Mobil yüzey */}
       <div className="std-home__mobile">
         <header className="std-home__brand" aria-label={menu.restaurant.name}>
           {menu.restaurant.logoUrl ? (
@@ -181,7 +197,12 @@ export default function StandartHome({
             <ul className="std-chat__list">
               {listItems.map((p) => (
                 <li key={p.productId}>
-                  <StandartChatRow product={p} swipeEnabled={cartOn} />
+                  <StandartChatRow
+                    product={p}
+                    swipeEnabled={cartOn}
+                    showSwipeHint={hintId === p.productId}
+                    onSwipeAdd={onSwipeAdd}
+                  />
                 </li>
               ))}
             </ul>
@@ -189,10 +210,16 @@ export default function StandartHome({
         </section>
       </div>
 
-      {/* PC bento board */}
       <div className="std-home__desktop">
         <StandartPcBoard groups={boardGroups} lang={lang} campaignSlug={campaignSlug} />
       </div>
+
+      <StandartOptionsModal
+        open={modalOpen}
+        product={modalProduct}
+        loading={modalLoading}
+        onClose={closeModal}
+      />
     </div>
   );
 }

@@ -21,7 +21,7 @@ interface PublicMenuHeaderProps {
   tableServiceSlot?: ReactNode;
   /** Örn. PC sepet ikonu (Sipariş teması) */
   extraIcons?: ReactNode;
-  /** Sol tarafta altın çerçeveli MENU markası (Standart PC) */
+  /** PC’de sol tarafta altın çerçeveli restoran logosu */
   brandAsMenu?: boolean;
 }
 
@@ -61,7 +61,13 @@ export default function PublicMenuHeader({
                 className="public-menu-header__menu-brand"
                 aria-label="Menüyü aç"
               >
-                MENU
+                {restaurant.logoUrl ? (
+                  <img src={imageUrl(restaurant.logoUrl)} alt={restaurant.name} />
+                ) : (
+                  <span className="public-menu-header__menu-brand-fallback">
+                    {restaurant.name.charAt(0)}
+                  </span>
+                )}
               </button>
               {restaurant.logoUrl ? (
                 <img

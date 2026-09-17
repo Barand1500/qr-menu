@@ -967,6 +967,7 @@ router.get('/:slug/groups/:groupId/products', async (req, res) => {
       isDiabetic: p.isDiabetic,
       groupId: p.groupId,
       sortOrder: campaign?.itemByProductId.get(p.id)?.sortOrder ?? p.sortOrder,
+      hasOptions: activeOptionGroups(p.optionGroups).length > 0,
       ...stockPublicFields(p),
       _hidden: patch?.hidden === true,
     };
@@ -1101,6 +1102,7 @@ router.get('/:slug/popular-products', async (req, res) => {
         isDiabetic: p.isDiabetic,
         groupId: p.groupId,
         groupName: getGroupName(p.group.i18n, activeLang),
+        hasOptions: activeOptionGroups(p.optionGroups).length > 0,
         ...stockPublicFields(p),
         _featOrder: featuredOrder.has(p.id)
           ? featuredOrder.get(p.id)!

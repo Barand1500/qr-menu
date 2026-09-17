@@ -1,4 +1,4 @@
-import { useRef, useState, type MouseEvent, type TouchEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type TouchEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart } from 'lucide-react';
 import { formatMoney, imageUrl } from '@/lib/api';
@@ -10,17 +10,25 @@ import type { SiparisAddPayload } from '@/lib/siparisCart';
 export type StandartChatProduct = SiparisAddPayload & {
   description?: string | null;
   soldOut?: boolean;
+  hasOptions?: boolean;
 };
 
 const SWIPE_OPEN = 88;
 const SWIPE_TRIGGER = 72;
+const HINT_OFFSET = -42;
 
 export default function StandartChatRow({
   product,
   swipeEnabled = true,
+  showSwipeHint = false,
+  onSwipeAdd,
 }: {
   product: StandartChatProduct;
   swipeEnabled?: boolean;
+  /** İlk girişte hafif sola kaydır ipucu */
+  showSwipeHint?: boolean;
+  /** Varyantlı ürün için parent modal açabilir; yoksa direkt sepete ekler */
+  onSwipeAdd?: (product: StandartChatProduct, fromEl: HTMLElement | null) => void;
 }) {
   const navigate = useNavigate();
   const { addItem, enabled } = useSiparisCart();
@@ -31,8 +39,27 @@ export default function StandartChatRow({
   const axisLocked = useRef<'h' | 'v' | null>(null);
   const [offset, setOffset] = useState(0);
   const [flash, setFlash] = useState(false);
+  const [hinting, setHinting] = useState(false);
   const soldOut = Boolean(product.soldOut);
   const canSwipe = swipeEnabled && enabled && !soldOut;
+
+  useEffect(() => {
+    if (!showSwipeHint || !canSwipe) return;
+    let t1 = 0;
+    let t2 = 0;
+    t1 = window.setTimeout(() => {
+      setHinting(true);
+      setOffset(HINT_OFFSET);
+      t2 = window.setTimeout(() => {
+        setOffset(0);
+        setHinting(false);
+      }, 900);
+    }, 380);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [showSwipeHint, canSwipe, product.productId]);
 
   function reset() {
     setOffset(0);
@@ -42,6 +69,11 @@ export default function StandartChatRow({
 
   function doAdd(fromEl?: HTMLElement | null) {
     if (!canSwipe) return;
+    if (onSwipeAdd) {
+      onSwipeAdd(product, fromEl || rowRef.current);
+      reset();
+      return;
+    }
     addItem(
       {
         productId: product.productId,
@@ -65,6 +97,7 @@ export default function StandartChatRow({
     startY.current = t.clientY;
     dragging.current = true;
     axisLocked.current = null;
+    setHinting(false);
   }
 
   function onTouchMove(e: TouchEvent) {
@@ -82,7 +115,6 @@ export default function StandartChatRow({
       return;
     }
     e.preventDefault();
-    // sola kaydır → negatif
     const next = Math.max(-SWIPE_OPEN - 24, Math.min(0, dx));
     setOffset(next);
   }
@@ -100,7 +132,6 @@ export default function StandartChatRow({
       doAdd();
       return;
     }
-    // küçük hareket = tık say
     if (Math.abs(offset) < 12 && axisLocked.current !== 'h') {
       navigate(menuProductPath(product.productId));
     }
@@ -108,8 +139,7 @@ export default function StandartChatRow({
   }
 
   function onClick(e: MouseEvent) {
-    // masaüstü: satıra tık = detay; sağdaki fiyat alanı normal
-    if (dragging.current || Math.abs(offset) > 8) {
+    if (dragging.current || Math.abs(offset) > 8 || hinting) {
       e.preventDefault();
       return;
     }
@@ -122,9 +152,13 @@ export default function StandartChatRow({
     doAdd(e.currentTarget as HTMLElement);
   }
 
+  const revealing = offset < -4 || hinting;
+
   return (
     <div
-      className={`std-row${soldOut ? ' is-sold-out' : ''}${flash ? ' is-added' : ''}`}
+      className={`std-row${soldOut ? ' is-sold-out' : ''}${flash ? ' is-added' : ''}${
+        revealing ? ' is-revealing' : ''
+      }${hinting ? ' is-hinting' : ''}`}
       ref={rowRef}
     >
       <div className="std-row__action" aria-hidden>
