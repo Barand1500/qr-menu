@@ -626,7 +626,7 @@ function PublicWelcomePageInner({
               </div>
             </div>
 
-            <button type="button" className="welcome-card__enter" onClick={goToPrefs}>
+            <button type="button" className="welcome-card__enter" onClick={() => goToPrefs()}>
               {t.enterMenu}
             </button>
 
