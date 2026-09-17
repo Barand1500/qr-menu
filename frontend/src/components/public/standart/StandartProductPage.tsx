@@ -111,6 +111,8 @@ export default function StandartProductPage({
     setSheetOpen(true);
   }
 
+  const heroSrc = activeImg || product.imageUrl || null;
+
   return (
     <div className={`std-detail${showCart ? ' std-detail--cart' : ''}`} ref={rootRef}>
       <div className="std-detail__top">
@@ -125,9 +127,9 @@ export default function StandartProductPage({
       </div>
 
       <main className="std-detail__main">
-        {galleryImages.length > 0 ? (
+        {heroSrc ? (
           <div className="std-detail__hero std-detail__reveal">
-            <img src={imageUrl(activeImg)} alt="" key={activeImg} />
+            <img src={imageUrl(heroSrc)} alt="" key={heroSrc} />
             {multi ? (
               <div className="std-detail__thumbs" role="tablist" aria-label="Görseller">
                 {galleryImages.map((src, i) => (
@@ -169,19 +171,6 @@ export default function StandartProductPage({
           </div>
         ) : null}
 
-        {showCart ? (
-          <button
-            ref={addBtnRef}
-            type="button"
-            className="std-detail__add std-detail__reveal"
-            onClick={onAdd}
-          >
-            <Plus className="w-4 h-4" strokeWidth={2.5} />
-            Sepete ekle ·{' '}
-            {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
-          </button>
-        ) : null}
-
         {product.ingredients ? (
           <section className="std-detail__block std-detail__reveal">
             <h2>İçindekiler</h2>
@@ -215,6 +204,21 @@ export default function StandartProductPage({
           </section>
         ) : null}
       </main>
+
+      {showCart ? (
+        <div className="std-detail__footer">
+          <button
+            ref={addBtnRef}
+            type="button"
+            className="std-detail__add"
+            onClick={onAdd}
+          >
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
+            Sepete ekle ·{' '}
+            {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

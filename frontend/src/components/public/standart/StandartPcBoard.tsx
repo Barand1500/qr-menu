@@ -25,7 +25,7 @@ type PanelData = {
   products: GroupProduct[];
 };
 
-/** PC bento board — koyu paneller, tipografi listesi, yuvarlak foto */
+/** PC board — simetrik kartlar, içeride kalan yuvarlak foto */
 export default function StandartPcBoard({
   groups,
   lang,
@@ -38,8 +38,6 @@ export default function StandartPcBoard({
   const { slug } = useMenuSlug();
   const [panels, setPanels] = useState<PanelData[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // groups array identity — id listesi değişince yenile
   const groupKey = groups.map((g) => g.id).join(',');
 
   useEffect(() => {
@@ -93,22 +91,29 @@ export default function StandartPcBoard({
   return (
     <div className="std-board" aria-label="Menü">
       {panels.map((panel, index) => {
-        const items = panel.products.slice(0, 8);
-        const photos = [
-          panel.group.imageUrl,
-          ...panel.products.map((p) => p.imageUrl),
-        ].filter((src): src is string => Boolean(src && String(src).trim()));
-        const uniquePhotos = [...new Set(photos)].slice(0, 2);
-        const variant = index % 5;
+        const items = panel.products.slice(0, 6);
+        const photo =
+          panel.group.imageUrl ||
+          panel.products.find((p) => p.imageUrl)?.imageUrl ||
+          null;
+        const photoRight = index % 2 === 1;
 
         return (
           <section
             key={panel.group.id}
-            className={`std-panel std-panel--v${variant}`}
+            className={`std-panel${photoRight ? ' std-panel--photo-right' : ''}${
+              photo ? '' : ' std-panel--no-photo'
+            }`}
           >
             <h2 className="std-panel__title">{panel.group.name}</h2>
 
             <div className="std-panel__body">
+              {photo ? (
+                <div className="std-panel__photo">
+                  <img src={imageUrl(photo)} alt="" />
+                </div>
+              ) : null}
+
               <ul className="std-panel__items">
                 {items.length === 0 ? (
                   <li className="std-panel__empty">Ürün yok</li>
@@ -131,16 +136,6 @@ export default function StandartPcBoard({
                   ))
                 )}
               </ul>
-
-              {uniquePhotos.length > 0 ? (
-                <div className="std-panel__photos" aria-hidden>
-                  {uniquePhotos.map((src, i) => (
-                    <span key={`${src}-${i}`} className={`std-panel__photo std-panel__photo--${i}`}>
-                      <img src={imageUrl(src)} alt="" />
-                    </span>
-                  ))}
-                </div>
-              ) : null}
             </div>
           </section>
         );
