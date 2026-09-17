@@ -5,6 +5,7 @@ export type AddonProductId =
   | 'welcome-kitty'
   | 'welcome-basketball'
   | 'welcome-cups'
+  | 'menu-standart'
   | 'menu-sade'
   | 'menu-siparis'
   | 'menu-alive'

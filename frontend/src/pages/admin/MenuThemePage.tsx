@@ -5,7 +5,7 @@ export default function MenuThemePage() {
     <ThemePickerPage
       kind="menu"
       title="Menü Ekranı"
-      subtitle="Kategori ve ürün listesi görünümünün temasını seçin. Şu anki varsayılan tema: Sade."
+      subtitle="Kategori ve ürün listesi görünümünün temasını seçin. Şu anki varsayılan tema: Standart."
     />
   );
 }

@@ -52,6 +52,16 @@ export const ADDON_CATALOG: AddonProduct[] = [
     previewClass: 'theme-preview--cups',
   },
   {
+    id: 'menu-standart',
+    category: 'menu',
+    name: 'Standart',
+    description:
+      'PC’de koyu lacivert kart menü; mobilde WhatsApp tarzı ürün listesi ve kaydırarak sepete ekle.',
+    themeId: 'standart',
+    previewClass: 'theme-preview--standart',
+    free: true,
+  },
+  {
     id: 'menu-sade',
     category: 'menu',
     name: 'Sade',

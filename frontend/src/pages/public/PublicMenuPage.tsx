@@ -48,6 +48,8 @@ import { parseMenuAssistantStyle } from '@/lib/menuAssistantStyle';
 import { sideMenuUi } from '@/lib/menuChromeUi';
 import { customerProfileUi } from '@/lib/customerProfileUi';
 import type { PublicSocialLink } from '@/lib/socialCatalog';
+import StandartHome from '@/components/public/standart/StandartHome';
+import StandartProductList from '@/components/public/standart/StandartProductList';
 import SadeHome from '@/components/public/sade/SadeHome';
 import SadeProductList from '@/components/public/sade/SadeProductList';
 import AliveHome from '@/components/public/alive/AliveHome';
@@ -103,6 +105,7 @@ interface MenuData {
     tableService?: boolean;
     menuGames?: PublicMenuGames | boolean;
     animasyon?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
+    standart?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
     sade?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
     alive?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
     luxury?: { cartEnabled?: boolean; variantsEnabled?: boolean; userProfileEnabled?: boolean };
@@ -245,7 +248,7 @@ function PublicMenuPageInner({
     refresh: refreshCustomer,
   } = useCustomerAuth();
   const sessionId = getSessionId();
-  const menuThemeForMode = menu?.theme || 'sade';
+  const menuThemeForMode = menu?.theme || 'standart';
   const { colorMode, toggleColorMode } = useMenuColorMode(menuThemeForMode);
 
   usePublicRtl(lang);
@@ -430,7 +433,8 @@ function PublicMenuPageInner({
   if (!menu) return null;
 
   const allergyCopy = preferenceUi(lang);
-  const menuTheme = menu.theme || 'sade';
+  const menuTheme = menu.theme || 'standart';
+  const isStandart = menuTheme === 'standart';
   const isSade = menuTheme === 'sade';
   const isAlive = menuTheme === 'alive';
   const isLuxury = menuTheme === 'luxury';
@@ -439,6 +443,7 @@ function PublicMenuPageInner({
   const isSiparis = menuTheme === 'siparis';
 
   const profileEnabled =
+    (isStandart && menu.features?.standart?.userProfileEnabled === true) ||
     (isSade && menu.features?.sade?.userProfileEnabled === true) ||
     (isAlive && menu.features?.alive?.userProfileEnabled === true) ||
     (isLuxury && menu.features?.luxury?.userProfileEnabled === true) ||
@@ -616,19 +621,21 @@ function PublicMenuPageInner({
   const searchPanelExtra = search.trim() ? searchResultsList : popularList;
   const animasyonCartOn = menu.features?.animasyon?.cartEnabled !== false;
   const animasyonVariantsOn = menu.features?.animasyon?.variantsEnabled !== false;
+  const standartCartOn = menu.features?.standart?.cartEnabled !== false;
   const sadeCartOn = menu.features?.sade?.cartEnabled === true;
   const aliveCartOn = menu.features?.alive?.cartEnabled === true;
   const luxuryCartOn = menu.features?.luxury?.cartEnabled === true;
   const linearCartOn = menu.features?.linear?.cartEnabled === true;
   const siparisCartOn = menu.features?.siparis?.cartEnabled !== false;
   const cartTheme =
+    (isStandart && standartCartOn) ||
     (isSiparis && siparisCartOn) ||
     (isAnimasyon && animasyonCartOn) ||
     (isSade && sadeCartOn) ||
     (isAlive && aliveCartOn) ||
     (isLuxury && luxuryCartOn) ||
     (isLinear && linearCartOn);
-  const hideColorToggle = isAnimasyon || isLinear;
+  const hideColorToggle = isAnimasyon || isLinear || isStandart;
   const menuAssistantOn = Boolean(menu.features?.menuAssistant);
   const assistantStyle = parseMenuAssistantStyle(menu.features?.menuAssistantStyle);
   const tableServiceOn = menu.features?.tableService !== false;
@@ -655,7 +662,7 @@ function PublicMenuPageInner({
     <>
       {profileIcon}
       {cartTheme ? (
-        <SiparisCartButton alwaysShow={isAnimasyon || isSade || isAlive || isLuxury || isLinear} />
+        <SiparisCartButton alwaysShow={isStandart || isAnimasyon || isSade || isAlive || isLuxury || isLinear} />
       ) : null}
     </>
   );
@@ -804,6 +811,12 @@ function PublicMenuPageInner({
           ) : isSiparis ? (
             <SiparisProductList
               products={filteredGroupProducts}
+              groupName={products.group.name}
+            />
+          ) : isStandart ? (
+            <StandartProductList
+              products={filteredGroupProducts}
+              subgroups={filteredGroupChildren}
               groupName={products.group.name}
             />
           ) : isAnimasyon ? (
@@ -968,6 +981,15 @@ function PublicMenuPageInner({
             <SiparisHome
               menu={menu}
               displayShowcase={displayShowcase}
+              popularProducts={filteredPopular}
+              allergyBanner={allergyBanner}
+              lang={lang}
+              campaignSlug={campaignSlug}
+            />
+          ) : isStandart ? (
+            <StandartHome
+              menu={menu}
+              displayStories={displayStories}
               popularProducts={filteredPopular}
               allergyBanner={allergyBanner}
               lang={lang}

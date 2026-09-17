@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./standart-menu.css";
 @import "./sade-menu.css";
 @import "./siparis-menu.css";
 @import "./alive-menu.css";
@@ -4907,23 +4908,68 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
 }
 
 /* ─── Karşılama ekranı ─── */
-.welcome-scene {
-  min-height: 100dvh;
-  background: #0a0f1e;
-  position: relative;
+/* iPhone: document scroll / rubber-band gövde rengi (beyaz) sızmasın —
+   basketbol & üç bardak host gibi viewport’a sabitle */
+html:has(.welcome-scene),
+body:has(.welcome-scene) {
+  height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
+  background: #0a0f1e;
+}
+
+#root:has(.welcome-scene) {
+  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body:has(.welcome-scene[data-theme-welcome='cinema']) {
+  background: #07060a;
+}
+
+body:has(.welcome-scene[data-theme-welcome='neon']) {
+  background: #050510;
+}
+
+body:has(.welcome-scene[data-theme-welcome='kitty']) {
+  background: #fff;
+}
+
+body:has(.welcome-scene[data-theme-welcome='vibrant']) {
+  background: #0a0f1e;
+}
+
+.welcome-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: 100svh;
+  background: #0a0f1e;
+  overflow: hidden;
+  overscroll-behavior: none;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
+  padding-top: max(1.5rem, env(safe-area-inset-top));
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  box-sizing: border-box;
   transition: opacity 0.45s ease, transform 0.45s ease;
 }
 
 .welcome-scene__bg {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   pointer-events: none;
+  z-index: 0;
 }
 
 .welcome-scene__gradient {
@@ -5916,15 +5962,18 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   --kitty-split: 30dvh;
   background: #fff;
   color: var(--kitty-ink);
-  height: 100dvh;
-  max-height: 100dvh;
-  min-height: 100dvh;
+  height: 100%;
+  max-height: none;
+  min-height: 100%;
+  min-height: 100svh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
   padding: 0 1.1rem 0.75rem;
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0));
   overscroll-behavior: none;
 }
 
@@ -5990,8 +6039,11 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   padding-bottom: 0;
   position: relative;
   z-index: 3;
-  max-height: calc(100dvh - var(--kitty-split));
-  overflow: hidden;
+  max-height: calc(100% - var(--kitty-split));
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -6296,6 +6348,11 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   z-index: 1;
   width: 100%;
   max-width: 28rem;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .welcome-card {
@@ -9097,6 +9154,10 @@ html[dir='rtl'] .public-menu-page .rtl-mirror {
   transform: translate(-50%, -96%);
   background: url('/welcome/kitty-mascot-transparent.png') center bottom / contain no-repeat;
   pointer-events: none;
+}
+
+.theme-preview--standart {
+  background: linear-gradient(135deg, #0b1220 0%, #151d2e 42%, #d4a84b 100%);
 }
 
 .theme-preview--sade {

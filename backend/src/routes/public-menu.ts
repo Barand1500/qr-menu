@@ -25,6 +25,10 @@ import {
   parseSadeThemeConfig,
 } from '../lib/menu-sade-config.js';
 import {
+  MENU_STANDART_CONFIG_KEY,
+  parseStandartThemeConfig,
+} from '../lib/menu-standart-config.js';
+import {
   MENU_ALIVE_CONFIG_KEY,
   parseAliveThemeConfig,
 } from '../lib/menu-alive-config.js';
@@ -382,7 +386,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
     : null;
   const themes = await getRestaurantThemes(restaurant.id);
   const prefCatalog = await loadPrefCatalog(restaurant.id);
-  const [tableServiceSetting, gamesConfigSetting, gamesLegacySetting, animasyonConfigSetting, sadeConfigSetting, aliveConfigSetting, luxuryConfigSetting, linearConfigSetting, siparisConfigSetting] =
+  const [tableServiceSetting, gamesConfigSetting, gamesLegacySetting, animasyonConfigSetting, sadeConfigSetting, standartConfigSetting, aliveConfigSetting, luxuryConfigSetting, linearConfigSetting, siparisConfigSetting] =
     await Promise.all([
     prisma.setting.findFirst({
       where: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
@@ -401,6 +405,11 @@ router.get('/:slug/products/:productId', async (req, res) => {
     prisma.setting.findUnique({
       where: {
         restaurantId_key: { restaurantId: restaurant.id, key: MENU_SADE_CONFIG_KEY },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurant.id, key: MENU_STANDART_CONFIG_KEY },
       },
     }),
     prisma.setting.findUnique({
@@ -426,6 +435,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
   ]);
 
   const sadeCfg = parseSadeThemeConfig(sadeConfigSetting?.value);
+  const standartCfg = parseStandartThemeConfig(standartConfigSetting?.value);
   const aliveCfg = parseAliveThemeConfig(aliveConfigSetting?.value);
   const animasyonCfg = parseAnimasyonThemeConfig(animasyonConfigSetting?.value);
   const luxuryCfg = parseLuxuryThemeConfig(luxuryConfigSetting?.value);
@@ -469,6 +479,8 @@ router.get('/:slug/products/:productId', async (req, res) => {
       menuGames: publicMenuGamesPayload(gamesCfg),
       animasyonCart: animasyonCfg.cartEnabled,
       animasyonVariants: animasyonCfg.variantsEnabled,
+      standartCart: standartCfg.cartEnabled,
+      standartVariants: standartCfg.variantsEnabled,
       sadeCart: sadeCfg.cartEnabled,
       sadeVariants: sadeCfg.variantsEnabled,
       aliveCart: aliveCfg.cartEnabled,
@@ -519,6 +531,7 @@ router.get('/:slug', async (req, res) => {
     linearConfigSetting,
     animasyonConfigSetting,
     sadeConfigSetting,
+    standartConfigSetting,
     aliveConfigSetting,
     luxuryConfigSetting,
     siparisConfigSetting,
@@ -608,6 +621,11 @@ router.get('/:slug', async (req, res) => {
     prisma.setting.findUnique({
       where: {
         restaurantId_key: { restaurantId: restaurant.id, key: MENU_SADE_CONFIG_KEY },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurant.id, key: MENU_STANDART_CONFIG_KEY },
       },
     }),
     prisma.setting.findUnique({
@@ -742,6 +760,7 @@ router.get('/:slug', async (req, res) => {
       ),
       linear: parseLinearThemeConfig(linearConfigSetting?.value),
       animasyon: parseAnimasyonThemeConfig(animasyonConfigSetting?.value),
+      standart: parseStandartThemeConfig(standartConfigSetting?.value),
       sade: parseSadeThemeConfig(sadeConfigSetting?.value),
       alive: parseAliveThemeConfig(aliveConfigSetting?.value),
       luxury: parseLuxuryThemeConfig(luxuryConfigSetting?.value),

@@ -1,8 +1,16 @@
 import type { MenuThemeOption } from './types';
 
-export const DEFAULT_MENU_THEME = 'sade';
+export const DEFAULT_MENU_THEME = 'standart';
 
 export const MENU_THEMES: MenuThemeOption[] = [
+  {
+    id: 'standart',
+    name: 'Standart',
+    description:
+      'PC’de koyu lacivert kart menü; mobilde WhatsApp tarzı ürün listesi ve kaydırarak sepete ekle.',
+    locked: false,
+    previewClass: 'theme-preview--standart',
+  },
   {
     id: 'sade',
     name: 'Sade',

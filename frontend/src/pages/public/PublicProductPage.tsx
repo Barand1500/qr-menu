@@ -26,6 +26,7 @@ import TableServiceButtons from '@/components/public/TableServiceButtons';
 import MenuColorModeToggle from '@/components/public/MenuColorModeToggle';
 import { useMenuColorMode } from '@/hooks/useMenuColorMode';
 import SadeProductPage from '@/components/public/sade/SadeProductPage';
+import StandartProductPage from '@/components/public/standart/StandartProductPage';
 import AliveProductPage from '@/components/public/alive/AliveProductPage';
 import LuxuryProductPage from '@/components/public/luxury/LuxuryProductPage';
 import AnimasyonProductPage from '@/components/public/animasyon/AnimasyonProductPage';
@@ -57,6 +58,8 @@ interface ProductDetail {
     tableService?: boolean;
     animasyonCart?: boolean;
     animasyonVariants?: boolean;
+    standartCart?: boolean;
+    standartVariants?: boolean;
     sadeCart?: boolean;
     sadeVariants?: boolean;
     aliveCart?: boolean;
@@ -190,6 +193,29 @@ function PublicProductPageInner() {
       <div className="public-menu-page min-h-screen flex items-center justify-center" data-theme-menu="linear">
         <div className="w-9 h-9 border-2 border-[#3f4730] border-t-transparent rounded-full animate-spin" />
       </div>
+    );
+  }
+
+  if (theme === 'standart') {
+    const standartCartOn = product.menuFeatures?.standartCart !== false;
+    return (
+      <SiparisCartProvider slug={slug} enabled={standartCartOn}>
+        <div
+          className="public-menu-page public-product-page public-product-page--standart"
+          data-theme-menu="standart"
+          data-color-mode={colorMode}
+        >
+          <StandartProductPage
+            product={product}
+            related={related}
+            galleryImages={galleryImages}
+            lang={lang}
+            slug={slug}
+            onBack={onBack}
+          />
+          {standartCartOn ? <SiparisCartSheet lang={lang} /> : null}
+        </div>
+      </SiparisCartProvider>
     );
   }
 

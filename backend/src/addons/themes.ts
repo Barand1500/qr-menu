@@ -1,10 +1,10 @@
 import { prisma } from '../lib/prisma.js';
 
 export const DEFAULT_WELCOME_THEME = 'vibrant';
-export const DEFAULT_MENU_THEME = 'sade';
+export const DEFAULT_MENU_THEME = 'standart';
 
 export const FREE_WELCOME_THEMES = new Set(['vibrant']);
-export const FREE_MENU_THEMES = new Set(['sade', 'siparis']);
+export const FREE_MENU_THEMES = new Set(['standart', 'sade', 'siparis']);
 
 export async function getRestaurantThemes(restaurantId: number) {
   const rows = await prisma.setting.findMany({
