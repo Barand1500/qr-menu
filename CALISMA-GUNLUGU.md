@@ -45,3 +45,18 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - `frontend/src/pages/admin/ShowcasePage.tsx` içinde yalnızca bu açıklamanın genişliği düzeltildi: metin Yeni Hikaye butonundan kalan alanı kullanır. Dar alanda doğal satır kaydırma korunur.
 - Sayfanın diğer alanlarına ve işlevlerine dokunulmadı. Canlı tarayıcıda görsel kontrol yapılmadı.
 - Doğrulama: frontend TypeScript ve üretim derlemesi başarılı; Git fark kontrolü temiz. Vite mevcut büyük paket boyutu uyarısını verdi. Commit, push ve deploy yapılmadı.
+
+## 2026-11-13 — Toplu çeviri sayfasının yeniden tasarlanması
+
+- Kullanıcının isteği: mevcut çeviri işlevlerini koruyarak daha sade, minimal ve özgün bir masaüstü tasarımı oluşturmak.
+- Yeni düzen: solda hedef diller, sağda ince kategori sekmeleri ve doğrudan seçilebilen metin listesi. Önceki ayrı seçim penceresi ve dört büyük istatistik kartı kaldırıldı; seçim ve çeviri tek çalışma alanında toplandı.
+- Tek ana çeviri düğmesi seçime göre tümünü veya seçilenleri çevirir. Kategori bazında toplu seçim, tümünü seçme ve seçimi temizleme desteklenir. Seçili alan sayısı tüm kategorileri kapsar.
+- Başarılı sonuçların otomatik kaydı korundu. Kısmi veya hatalı sonuçlarda kaynak metin ve düzenlenebilir çeviri yan yana gösterilir; yalnızca dolu ve hatasız alanlar kaydedilir. Sonuç paneline otomatik kaydırma ve klavye odağı eklendi.
+- Kayıt isteği başarısız olursa hazırlanmış çeviriler korunur ve tekrar kaydedilebilir. Hızlı dil değişikliklerinde eski API yanıtlarının yeni dili ezmesi önlendi; hatalı eksik-alan isteği için yeniden deneme görünümü eklendi.
+- Tarayıcı alert pencereleri yerine sayfa içi bildirimler, yüzdesi ölçülmeyen ilerleme animasyonu yerine açık işlem durumu kullanıldı. İşlem sürerken çalışma alanı etkileşime kapatılır; eşzamanlı tekrar istekleri engellenir.
+- Dil Paketi kilidi, kodla etkinleştirme ve ayarlardan dil yönetimi bağlantıları korundu. Kilitli ve boş durumlar da yeni görünüme uyarlandı.
+- Sayfa stilleri `frontend/src/pages/admin/bulk-translate.css` içine alındı; yalnızca eski toplu çeviri sayfasının artık kullanılmayan stilleri `frontend/src/index.css` içinden temizlendi. Backend/API ve veritabanı şeması değiştirilmedi.
+- Doğrulama: TypeScript ve üretim derlemesi başarılı; Vite mevcut büyük paket boyutu uyarısını verdi. Yerel Chrome/Playwright ile gerçek sayfa bileşeni, taklit API ve basitleştirilmiş yönetim çerçevesi içinde sınandı; açık/koyu tema ve sonuç ekran görüntüleri görsel olarak incelendi.
+- Tarayıcı kontrolleri başarılı: kategori/alan seçimi, kısmi seçim işareti, tümünü ve seçilenleri çevirme, otomatik kaydetme, kısmi sonuçları düzenleyip kaydetme, başarısız kayıtta çeviriyi koruma ve yeniden deneme, çeviri servisi hatası, eksik-alan isteğini tekrar deneme, dil değiştirme yarışı, aktif hedef dil olmaması, kilitli paket ve aktivasyon penceresi. Tarayıcı çalışma zamanı hatası görülmedi.
+- Geçici fixture, test ve görseller `frontend/node_modules/.qr-check/bulk-*` altında Git dışında tutulur. Gerçek çeviri servisine veya veritabanına istek gönderilmedi; canlı sunucuda uçtan uca doğrulama yapılmadı. Mobil için temel taşma koruması var; ayrıntılı mobil tasarım incelemesi kullanıcının istediği gibi sona bırakılmıştır.
+- Commit, push ve deploy yapılmadı; kullanıcı gerçekleştirecek.
