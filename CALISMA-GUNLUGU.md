@@ -26,3 +26,15 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Gerçek bileşenlerin JSDOM üzerinde, taklit API yanıtlarıyla çalıştırıldığı geçici kontroller başarılı: görsele çift tıklamanın düzenleme penceresinden ayrılması, normal satır düzenleme, görseli olmayan alt grup, klavye erişimi, otomatik yükleme, sessionStorage tokenı, yükleme göstergesi, başarı, sunucu hatasında eski görseli koruma, geçersiz/büyük dosya, iptal, sıralama modu ve ana grup seçimi. Test araçları `frontend/node_modules/.qr-check/` altında, Git dışında tutulur.
 - Sınırlama: gerçek backend/MySQL ile uçtan uca ve canlı tarayıcıda görsel kontrol yapılmadı. Mobil düzenleme yapılmadı.
 - Commit, push ve deploy yapılmadı; kullanıcı gerçekleştirecek.
+
+## 2026-11-13 — Ürünlerde hızlı ek görsel ve galeri önizlemesi
+
+- Ürün listesindeki görsele çift tıklama doğrudan dosya seçiciyi açar; seçilen görseller otomatik olarak mevcut listenin sonuna eklenir. Mevcut kapak ve görsel sırası korunur. Görseli olmayan üründe ilk yüklenen fotoğraf kapak olur.
+- Birden fazla fotoğrafı olan ürünlerde küçük bir fotoğraf sayısı rozeti gösterilir. Görselin üzerine gelince fotoğraflar yan yana kartlar halinde açılır; ilk kart Kapak olarak belirtilir. Çok sayıda fotoğraf yatay kaydırılabilir.
+- Galeri tablonun taşma alanından bağımsız gösterilir; ekran kenarlarına göre konumlanır. Fareyle galerinin üzerine geçildiğinde açık kalır, ayrılınca kapanır. Klavyeden odakla önizleme ve Enter/boşluk ile dosya seçimi desteklenir.
+- Ürünün diğer bilgi alanlarına çift tıklama düzenleme penceresini açmaya devam eder. Görsel yüklenirken düzenleme açılması engellenir; böylece eski görsel listesiyle düzenleme yapılmaz.
+- Hızlı yüklemede tek seferde 12 dosya ve dosya başına 5 MB sınırı, yükleme göstergesi, başarı/hata bildirimi eklendi. Hata veya iptalde mevcut fotoğraflar korunur.
+- Görsel hücresi ayrı `frontend/src/components/admin/ProductImageCell.tsx` bileşenine alındı. `ProductsPage.tsx` mevcut ekleme API'sini ortak API yardımcısıyla kullanır; sessionStorage tokenı da desteklenir. Backend ve veritabanı değiştirilmedi.
+- Doğrulama: frontend TypeScript ve üretim derlemesi başarılı; Vite mevcut büyük paket boyutu uyarısını verdi. Gerçek sayfa bileşenini taklit API ile çalıştıran JSDOM kontrolleri başarılı: çift tıklama ayrımı, düzenleme, tek/çok görsel önizlemesi, tablo dışında galeri, ekran kenarı konumlama, galeriye geçiş/kapanma, çoklu ekleme ve kapak/sıra korunması, yükleme göstergesi, oturum tokenı, sunucu hatası, geçersiz/büyük/fazla dosya, iptal ve ilk fotoğraf yükleme.
+- Geçici kontrol dosyası `frontend/node_modules/.qr-check/products-test.mjs` altında Git dışında tutulur. Gerçek backend/MySQL ve canlı tarayıcıda görsel kontrol yapılmadı. Mobil tasarım çalışması hâlâ en sona bırakılmıştır.
+- Commit, push ve deploy yapılmadı; kullanıcı gerçekleştirecek.

@@ -10,8 +10,9 @@ import {
   RotateCcw,
   Clock,
   Trash2,
+  X,
 } from 'lucide-react';
-import { api, formatMoney, formatPrice, imageUrl } from '@/lib/api';
+import { api, formatMoney, formatPrice } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
 import { getActiveLanguages, type AdminLanguage } from '@/lib/languages';
 import {
@@ -24,7 +25,7 @@ import {
   Select,
   Spinner,
 } from '@/components/ui';
-import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
+import ProductImageCell from '@/components/admin/ProductImageCell';
 import { AdminListPager } from '@/components/AdminListPager';
 import ProductModal, {
   type ProductFormState,
@@ -310,6 +311,9 @@ export default function ProductsPage() {
   const [form, setForm] = useState<ProductFormState>(emptyForm());
   const [productImages, setProductImages] = useState<string[]>([]);
   const [pendingFiles, setPendingFiles] = useState<{ id: string; file: File; url: string }[]>([]);
+  const [imageUploadingId, setImageUploadingId] = useState<number | null>(null);
+  const imageUploadBusy = useRef(false);
+  const [imageFeedback, setImageFeedback] = useState<{ error: boolean; message: string } | null>(null);
   const [prefCatalog, setPrefCatalog] = useState<PrefCatalog>(() => defaultPrefCatalog());
 
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -622,6 +626,7 @@ export default function ProductsPage() {
   }
 
   function openEdit(product: Product) {
+    if (imageUploadBusy.current) return;
     setModalMode('edit');
     setEditing(product);
     setForm(buildFormFromProduct(product));
@@ -744,13 +749,34 @@ export default function ProductsPage() {
     if (files.length === 0) return;
     const fd = new FormData();
     files.forEach((file) => fd.append('images', file));
-    const res = await fetch(`/api/admin/products/${id}/images`, {
+    return api<Product>(`/api/admin/products/${id}/images`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       body: fd,
     });
-    if (!res.ok) throw new Error('Görsel yüklenemedi');
-    return res.json() as Promise<Product>;
+  }
+
+  async function handleQuickImageUpload(product: Product, files: File[]) {
+    if (imageUploadBusy.current || !files.length) return;
+    if (files.length > 12 || files.some((file) => !file.type.startsWith('image/') || file.size > 5 * 1024 * 1024)) {
+      setImageFeedback({ error: true, message: 'Tek seferde en fazla 12 görsel seçin. Her görsel en fazla 5 MB olmalıdır.' });
+      return;
+    }
+    imageUploadBusy.current = true;
+    setImageUploadingId(product.id);
+    setImageFeedback(null);
+    try {
+      const updated = await uploadImages(product.id, files);
+      if (!updated) return;
+      setProducts((prev) => prev.map((p) => p.id === product.id ? {
+        ...p, imageUrl: updated.imageUrl, images: updated.images, isValid: updated.isValid,
+      } : p));
+      setImageFeedback({ error: false, message: `${product.name}: ${files.length} görsel eklendi.` });
+    } catch (err) {
+      setImageFeedback({ error: true, message: err instanceof Error ? err.message : 'Görsel yüklenemedi.' });
+    } finally {
+      imageUploadBusy.current = false;
+      setImageUploadingId(null);
+    }
   }
 
   async function handleSave() {
@@ -956,6 +982,20 @@ export default function ProductsPage() {
         }
       />
 
+      {imageFeedback && (
+        <div
+          role={imageFeedback.error ? 'alert' : 'status'}
+          className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm ${
+            imageFeedback.error ? 'bg-red-500/10 text-red-600' : 'bg-emerald-500/10 text-emerald-600'
+          }`}
+        >
+          <span>{imageFeedback.message}</span>
+          <button type="button" aria-label="Bildirimi kapat" onClick={() => setImageFeedback(null)}>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <Card className="overflow-hidden !p-0">
         <AdminFilterBar
           search={
@@ -1033,18 +1073,14 @@ export default function ProductsPage() {
                     }}
                   >
                     <td className="py-3.5 px-4">
-                      {product.imageUrl ? (
-                        <img
-                          src={imageUrl(product.imageUrl)}
-                          alt=""
-                          className="w-12 h-12 rounded-xl object-cover"
-                          style={{ background: 'var(--admin-input-bg)' }}
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">
-                          <MenuMediaPlaceholder kind="product" size="sm" label={product.name} />
-                        </div>
-                      )}
+                      <ProductImageCell
+                        name={product.name}
+                        cover={product.imageUrl}
+                        images={product.images}
+                        busy={imageUploadingId === product.id}
+                        disabled={imageUploadingId !== null || bulkAnimating}
+                        onUpload={(files) => handleQuickImageUpload(product, files)}
+                      />
                     </td>
                     <td className="py-3.5 px-4">
                       <p className="font-semibold text-[var(--admin-text)]">{product.name}</p>
