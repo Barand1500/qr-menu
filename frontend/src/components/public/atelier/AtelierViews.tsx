@@ -1,11 +1,11 @@
-import { useEffect, useState, type ComponentProps } from 'react';
+import { useEffect, useState, useRef, type ComponentProps } from 'react';
 import { ArrowLeft, ArrowRight, BookOpen, Search } from 'lucide-react';
 import type { SofraMenuClassic, SofraWelcomeClassic } from '../sofra/SofraCanvas';
 import { SofraBrand, SofraText } from '../sofra/SofraElements';
 import { sofraCopy } from '@/lib/sofra';
 import { api, imageUrl, formatMoney } from '@/lib/api';
 import { resolveMenuSlug } from '@/lib/menuPaths';
-import LanguageFlag from '@/components/LanguageFlag';
+import AtelierLanguage from './AtelierLanguage';
 import SketchPhoto from './SketchPhoto';
 import './atelier.css';
 
@@ -34,21 +34,11 @@ export function AtelierWelcome(p: ComponentProps<typeof SofraWelcomeClassic>) {
       cancelled = true;
     };
   }, [p.lang, p.onTextEdit]);
-  const [intro, setIntro] = useState(() => {
-    try {
-      return !sessionStorage.getItem('atelier-intro');
-    } catch {
-      return false;
-    }
-  });
+  const [intro, setIntro] = useState(true);
   useEffect(() => {
-    if (!intro) return;
-    try {
-      sessionStorage.setItem('atelier-intro', '1');
-    } catch {}
-    const timer = setTimeout(() => setIntro(false), 1400);
+    const timer = setTimeout(() => setIntro(false), 2800);
     return () => clearTimeout(timer);
-  }, [intro]);
+  }, []);
   return (
     <div
       className={`atelier atelier-welcome${p.entering ? ' is-entering' : ''}`}
@@ -56,20 +46,7 @@ export function AtelierWelcome(p: ComponentProps<typeof SofraWelcomeClassic>) {
     >
       <header className="atelier-header">
         <SofraBrand {...p} />
-        <label>
-          <LanguageFlag code={p.lang} />
-          <select
-            aria-label="Dil / Language"
-            value={p.lang}
-            onChange={(e) => p.onLangChange?.(e.target.value)}
-          >
-            {p.languages.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <AtelierLanguage lang={p.lang} languages={p.languages} onChange={p.onLangChange} />
         {p.tableLabel && <span>{p.tableLabel}</span>}
       </header>
       <main className="atelier-cover">
@@ -125,6 +102,7 @@ export function AtelierWelcome(p: ComponentProps<typeof SofraWelcomeClassic>) {
 export function AtelierMenu(p: ComponentProps<typeof SofraMenuClassic>) {
   const copy = sofraCopy(p.config, p.lang),
     en = p.lang.startsWith('en');
+  const root = useRef<HTMLDivElement>(null);
   const key = `atelier-book:${p.restaurant.name}:${p.activeGroup ?? 'picks'}:${p.search || ''}`;
   const [page, setPage] = useState(0),
     [contents, setContents] = useState(false);
@@ -139,6 +117,40 @@ export function AtelierMenu(p: ComponentProps<typeof SofraMenuClassic>) {
       );
     } catch {}
   }, [key, p.search]);
+
+  useEffect(() => {
+    const node = root.current,
+      view = node?.ownerDocument.defaultView;
+    if (!node || !view) return;
+    const media = view.matchMedia('(min-width:1024px) and (prefers-reduced-motion:no-preference)');
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      node.querySelectorAll<HTMLElement>('.atelier-dish').forEach((dish) => {
+        const scene = dish.querySelector<HTMLElement>('.atelier-dish__scene');
+        if (!scene) return;
+        const span = Math.max(1, dish.offsetHeight - scene.offsetHeight);
+        const progress = Math.max(0, Math.min(1, (96 - dish.getBoundingClientRect().top) / span));
+        dish.style.setProperty('--reveal', media.matches ? progress * 100 + '%' : '100%');
+      });
+    };
+    const schedule = () => {
+      if (!frame) frame = view.requestAnimationFrame(update);
+    };
+    const observer = new ResizeObserver(schedule);
+    observer.observe(node);
+    view.addEventListener('scroll', schedule, { passive: true });
+    view.addEventListener('resize', schedule);
+    media.addEventListener('change', schedule);
+    update();
+    return () => {
+      view.cancelAnimationFrame(frame);
+      observer.disconnect();
+      view.removeEventListener('scroll', schedule);
+      view.removeEventListener('resize', schedule);
+      media.removeEventListener('change', schedule);
+    };
+  }, [p.loading, p.products, p.subgroups]);
   const current = Math.min(page, Math.max(0, rows.length - 1));
   function turn(next: number) {
     setPage(next);
@@ -193,6 +205,7 @@ export function AtelierMenu(p: ComponentProps<typeof SofraMenuClassic>) {
   }, [p.loading]);
   return (
     <div
+      ref={root}
       className="atelier atelier-menu"
       dir={['ar', 'he', 'fa', 'ur'].includes(p.lang.split('-')[0]) ? 'rtl' : 'ltr'}
     >
@@ -275,55 +288,59 @@ export function AtelierMenu(p: ComponentProps<typeof SofraMenuClassic>) {
                 key={dish.id}
                 className={`atelier-dish${i === current ? ' is-book-page' : ''}`}
               >
-                <button
-                  className="atelier-dish__image"
-                  onClick={() => open(dish.id)}
-                  aria-label={dish.name}
-                >
-                  <SketchPhoto src={dish.imageUrl} name={dish.name} />
-                </button>
-                <div className="atelier-dish__text">
-                  {p.subgroups?.find((g) =>
-                    g.products.some((product) => product.id === dish.id),
-                  ) && (
-                    <h3 className="atelier-subgroup">
-                      {
-                        p.subgroups.find((g) =>
-                          g.products.some((product) => product.id === dish.id),
-                        )?.name
-                      }
-                    </h3>
-                  )}
-                  <span className="atelier-kicker">
-                    {String(i + 1).padStart(2, '0')} / {String(rows.length).padStart(2, '0')}
-                  </span>
-                  <button className="atelier-dish__title" onClick={() => open(dish.id)}>
-                    <h2>{dish.name}</h2>
+                <div className="atelier-dish__scene">
+                  <button
+                    className="atelier-dish__image"
+                    onClick={() => open(dish.id)}
+                    aria-label={dish.name}
+                  >
+                    <SketchPhoto src={dish.imageUrl} name={dish.name} />
                   </button>
-                  <p>{dish.description}</p>
-                  {dish.calories != null && <small>{dish.calories} kcal</small>}
-                  <div className="atelier-dish__order">
-                    <strong>{formatMoney(dish.price, dish.currency)}</strong>
-                    {p.onAdd && (
-                      <button
-                        className="atelier-primary"
-                        disabled={dish.soldOut}
-                        onClick={() => dish.hasOptions !== false ? open(dish.id) : p.onAdd?.(dish)}
-                      >
-                        {dish.soldOut
-                          ? en
-                            ? 'Sold out'
-                            : 'Bugün bitti'
-                          : dish.hasOptions
-                            ? en
-                              ? 'Choose options'
-                              : 'Seçenekleri seç'
-                            : en
-                              ? 'Add to cart'
-                              : 'Sepete ekle'}
-                        <ArrowRight size={18} />
-                      </button>
+                  <div className="atelier-dish__text">
+                    {p.subgroups?.find((g) =>
+                      g.products.some((product) => product.id === dish.id),
+                    ) && (
+                      <h3 className="atelier-subgroup">
+                        {
+                          p.subgroups.find((g) =>
+                            g.products.some((product) => product.id === dish.id),
+                          )?.name
+                        }
+                      </h3>
                     )}
+                    <span className="atelier-kicker">
+                      {String(i + 1).padStart(2, '0')} / {String(rows.length).padStart(2, '0')}
+                    </span>
+                    <button className="atelier-dish__title" onClick={() => open(dish.id)}>
+                      <h2>{dish.name}</h2>
+                    </button>
+                    <p>{dish.description}</p>
+                    {dish.calories != null && <small>{dish.calories} kcal</small>}
+                    <div className="atelier-dish__order">
+                      <strong>{formatMoney(dish.price, dish.currency)}</strong>
+                      {p.onAdd && (
+                        <button
+                          className="atelier-primary"
+                          disabled={dish.soldOut}
+                          onClick={() =>
+                            dish.hasOptions !== false ? open(dish.id) : p.onAdd?.(dish)
+                          }
+                        >
+                          {dish.soldOut
+                            ? en
+                              ? 'Sold out'
+                              : 'Bugün bitti'
+                            : dish.hasOptions
+                              ? en
+                                ? 'Choose options'
+                                : 'Seçenekleri seç'
+                              : en
+                                ? 'Add to cart'
+                                : 'Sepete ekle'}
+                          <ArrowRight size={18} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </article>

@@ -1,3 +1,4 @@
+import AtelierLanguage from '@/components/public/atelier/AtelierLanguage';
 import { useEffect, useState, type ReactNode, type ComponentProps } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, UserRound, X } from 'lucide-react';
@@ -43,7 +44,6 @@ import '@/about-page.css';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import MenuAssistantModal from '@/components/public/MenuAssistantModal';
 import { Sparkles } from 'lucide-react';
-import LanguageFlag from '@/components/LanguageFlag';
 import TableServiceButtons from '@/components/public/TableServiceButtons';
 import { parseMenuAssistantStyle } from '@/lib/menuAssistantStyle';
 import { sideMenuUi } from '@/lib/menuChromeUi';
@@ -835,17 +835,7 @@ function PublicMenuPageInner({
               }}
               headerTools={
                 <>
-                  <label className="sofra-language">
-                    <LanguageFlag code={lang} size={20} />
-                    <span className="sr-only">Dil / Language</span>
-                    <select value={lang} onChange={(e) => changeLang(e.target.value)}>
-                      {menu.languages.map((l) => (
-                        <option key={l.code} value={l.code}>
-                          {l.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <AtelierLanguage lang={lang} languages={menu.languages} onChange={changeLang}/>
                   {(searchParams.get('masa') || sessionStorage.getItem('menu_masa')) && (
                     <span className="sofra-table">
                       {en ? 'Table' : 'Masa'}{' '}
