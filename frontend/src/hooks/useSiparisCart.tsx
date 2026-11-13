@@ -100,11 +100,7 @@ export function SiparisCartProvider({
     setState((prev) => addToSiparisCart(prev, payload, qty));
 
     const flySrc = options.flyImageUrl ?? payload.imageUrl;
-    if (document.querySelector('.table-menu, .table-product-hero')) {
-      window.dispatchEvent(
-        new CustomEvent('table-order-added', { detail: { ...payload, fromEl: options.fromEl } })
-      );
-    } else siparisFlyToCart(options.fromEl, flySrc ? imageUrl(flySrc) : null);
+    siparisFlyToCart(options.fromEl, flySrc ? imageUrl(flySrc) : null);
     setToast(`${payload.name} sepete eklendi`);
   }, []);
 

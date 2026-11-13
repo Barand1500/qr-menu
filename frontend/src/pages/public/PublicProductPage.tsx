@@ -40,7 +40,6 @@ import { useEffect, useState } from 'react';
 import type { ProductOptionGroup } from '@/lib/productOptions';
 import '@/components/public/sofra/sofra.css';
 import type { SofraConfig } from '@/lib/sofra';
-import TableProductHero from '@/components/public/table/TableProductHero';
 
 interface ProductDetail {
   id: number;
@@ -201,7 +200,19 @@ function PublicProductPageInner() {
     (product.calories != null && product.calories > 0);
 
   const theme = product.theme || 'sade';
-  const onBack = () => navigate(menuGroupPath(product.group.id));
+  const onBack = () => {
+    if (product.theme === 'sofra') {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem('atelier-return') || 'null');
+        if (saved?.productId === product.id && /^\/menu\/(home|group\/\d+)(\?|$)/.test(saved.url)) {
+          sessionStorage.setItem('atelier-restore', '1');
+          navigate(saved.url);
+          return;
+        }
+      } catch {}
+    }
+    navigate(menuGroupPath(product.group.id));
+  };
 
   if (theme === 'linear') {
     return (
@@ -353,16 +364,6 @@ function PublicProductPageInner() {
             colorMode="day"
             toggleColorMode={() => {}}
             hideColorToggle
-            renderHero={(gallery, image) => (
-              <TableProductHero
-                fallback={gallery}
-                image={image}
-                name={product.name}
-                id={product.id}
-                ingredients={product.ingredients}
-                lang={lang}
-              />
-            )}
             lang={lang}
             slug={slug}
             onBack={onBack}

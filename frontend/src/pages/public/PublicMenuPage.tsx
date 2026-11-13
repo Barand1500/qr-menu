@@ -224,7 +224,7 @@ function PublicMenuPageInner({
   const [groupRetry, setGroupRetry] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => searchParams.get('q') || '');
   const [searchResults, setSearchResults] = useState<
     {
       id: number;

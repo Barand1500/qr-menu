@@ -12,27 +12,14 @@ import {
   type SofraGroup,
   type SofraProduct,
 } from './SofraElements';
-import DesktopTableSurface from '../table/DesktopTableSurface';
-import { TableWelcome, TableMenu } from '../table/TableViews';
+import { AtelierWelcome, AtelierMenu } from '../atelier/AtelierViews';
 import './sofra.css';
 import './sofra-overlays.css';
 export { SofraText, SofraBrand } from './SofraElements';
 export type { SofraEditing, SofraRestaurant, SofraGroup, SofraProduct } from './SofraElements';
 import type { SofraConfig } from '@/lib/sofra';
-export function SofraWelcomeView(props: ComponentProps<typeof SofraWelcomeClassic>) {
-  return (
-    <DesktopTableSurface fallback={<SofraWelcomeClassic {...props} />}>
-      <TableWelcome {...props} />
-    </DesktopTableSurface>
-  );
-}
-export function SofraMenuView(props: ComponentProps<typeof SofraMenuClassic>) {
-  return (
-    <DesktopTableSurface fallback={<SofraMenuClassic {...props} />}>
-      <TableMenu {...props} />
-    </DesktopTableSurface>
-  );
-}
+export function SofraWelcomeView(props: ComponentProps<typeof SofraWelcomeClassic>) { return <AtelierWelcome {...props} />; }
+export function SofraMenuView(props: ComponentProps<typeof SofraMenuClassic>) { return <AtelierMenu {...props} />; }
 export function SofraWelcomeClassic({
   config,
   restaurant,
