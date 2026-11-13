@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus,
   Pencil,
@@ -10,6 +10,7 @@ import {
   Package,
   CornerDownRight,
   Trash2,
+  LoaderCircle,
 } from 'lucide-react';
 import {
   DndContext,
@@ -106,6 +107,8 @@ function SortableRow({
   onDelete,
   onPickParent,
   onShowProducts,
+  onImageUpload,
+  imageUploadingId,
 }: {
   group: Group;
   layout: RowLayout;
@@ -117,7 +120,11 @@ function SortableRow({
   onDelete: (g: Group) => void;
   onPickParent: (g: Group) => void;
   onShowProducts: (g: Group) => void;
+  onImageUpload: (g: Group, file: File) => Promise<void>;
+  imageUploadingId: number | null;
 }) {
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const imageBusy = imageUploadingId === group.id;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: group.id,
     disabled: !sortMode,
@@ -143,7 +150,7 @@ function SortableRow({
       ref={setNodeRef}
       onClick={() => canPick && onPickParent(group)}
       onDoubleClick={() => {
-        if (!pickMode) onEdit(group);
+        if (!pickMode && !sortMode) onEdit(group);
       }}
       className={`transition-all duration-300 admin-table-row--editable ${
         hideBottomBorder ? '' : 'border-b'
@@ -181,20 +188,59 @@ function SortableRow({
               style={{ color: 'var(--admin-accent)' }}
             />
           )}
-          {group.imageUrl ? (
-            <img
-              src={imageUrl(group.imageUrl)}
-              alt=""
-              className={`${isSub ? 'w-10 h-10' : 'w-12 h-12'} rounded-xl object-cover`}
-              style={{ background: 'var(--admin-input-bg)' }}
-            />
-          ) : (
-            <div
-              className={`${isSub ? 'w-10 h-10' : 'w-12 h-12'} rounded-xl overflow-hidden shrink-0`}
-            >
-              <MenuMediaPlaceholder kind="group" size="sm" label={group.name} />
-            </div>
-          )}
+          <button
+            type="button"
+            disabled={sortMode || imageUploadingId !== null}
+            tabIndex={pickMode ? -1 : 0}
+            aria-label={`${group.name} görselini değiştir`}
+            aria-busy={imageBusy}
+            title="Görsel eklemek veya değiştirmek için çift tıklayın"
+            className="relative rounded-xl shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--admin-accent)]"
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              if (!pickMode) imageInputRef.current?.click();
+            }}
+            onKeyDown={(e) => {
+              if (!pickMode && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                imageInputRef.current?.click();
+              }
+            }}
+          >
+            {group.imageUrl ? (
+              <img
+                src={imageUrl(group.imageUrl)}
+                alt=""
+                className={`${isSub ? 'w-10 h-10' : 'w-12 h-12'} rounded-xl object-cover`}
+                style={{ background: 'var(--admin-input-bg)' }}
+              />
+            ) : (
+              <div
+                className={`${isSub ? 'w-10 h-10' : 'w-12 h-12'} rounded-xl overflow-hidden shrink-0`}
+              >
+                <MenuMediaPlaceholder kind="group" size="sm" label={group.name} />
+              </div>
+            )}
+            {imageBusy && (
+              <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 text-white">
+                <LoaderCircle className="w-5 h-5 animate-spin" />
+              </span>
+            )}
+          </button>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            aria-label={`${group.name} için görsel seç`}
+            onClick={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
+            onChange={(e) => {
+              const file = e.currentTarget.files?.[0];
+              e.currentTarget.value = '';
+              if (file) void onImageUpload(group, file);
+            }}
+          />
         </div>
       </td>
       <td className="py-3.5 px-4 min-w-[180px]">
@@ -227,7 +273,7 @@ function SortableRow({
       <td className="py-3.5 px-4 hidden sm:table-cell text-sm admin-text-muted">
         {group.sortOrder}
       </td>
-      <td className="py-3.5 px-4 hidden lg:table-cell">
+      <td className="py-3.5 px-4 hidden lg:table-cell" onDoubleClick={(e) => e.stopPropagation()}>
         <button
           type="button"
           onClick={(e) => {
@@ -310,6 +356,9 @@ export default function GroupsPage() {
   const [form, setForm] = useState<GroupFormState>(emptyForm);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageUploadingId, setImageUploadingId] = useState<number | null>(null);
+  const imageUploadBusy = useRef(false);
+  const [imageFeedback, setImageFeedback] = useState<{ error: boolean; message: string } | null>(null);
 
   const [subGroupPickMode, setSubGroupPickMode] = useState(false);
   const [pickParent, setPickParent] = useState<Group | null>(null);
@@ -463,7 +512,7 @@ export default function GroupsPage() {
           method: 'PUT',
           body: JSON.stringify({ translations, isActive: form.isActive }),
         });
-        if (imageFile) await uploadImage(editing.id);
+        if (imageFile) await uploadImage(editing.id, imageFile);
       } else {
         const created = await api<Group>('/api/admin/groups', {
           method: 'POST',
@@ -473,24 +522,47 @@ export default function GroupsPage() {
             parentId: form.parentId,
           }),
         });
-        if (imageFile) await uploadImage(created.id);
+        if (imageFile) await uploadImage(created.id, imageFile);
       }
 
       closeModal();
       await load();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Grup kaydedilemedi.');
     } finally {
       setSaving(false);
     }
   }
 
-  async function uploadImage(id: number) {
+  async function uploadImage(id: number, file: File) {
     const fd = new FormData();
-    fd.append('image', imageFile!);
-    await fetch(`/api/admin/groups/${id}/image`, {
+    fd.append('image', file);
+    return api<Group>(`/api/admin/groups/${id}/image`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       body: fd,
     });
+  }
+
+  async function handleQuickImageUpload(group: Group, file: File) {
+    if (imageUploadBusy.current) return;
+    if (!file.type.startsWith('image/') || file.size > 5 * 1024 * 1024) {
+      setImageFeedback({ error: true, message: 'Lütfen en fazla 5 MB boyutunda bir görsel seçin.' });
+      return;
+    }
+
+    imageUploadBusy.current = true;
+    setImageUploadingId(group.id);
+    setImageFeedback(null);
+    try {
+      const updated = await uploadImage(group.id, file);
+      setAllGroups((prev) => prev.map((g) => g.id === group.id ? { ...g, imageUrl: updated.imageUrl } : g));
+      setImageFeedback({ error: false, message: `${group.name} görseli kaydedildi.` });
+    } catch (err) {
+      setImageFeedback({ error: true, message: err instanceof Error ? err.message : 'Görsel yüklenemedi.' });
+    } finally {
+      imageUploadBusy.current = false;
+      setImageUploadingId(null);
+    }
   }
 
   async function handleToggle(group: Group) {
@@ -617,6 +689,20 @@ export default function GroupsPage() {
         </div>
       )}
 
+      {imageFeedback && (
+        <div
+          role={imageFeedback.error ? 'alert' : 'status'}
+          className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm ${
+            imageFeedback.error ? 'bg-red-500/10 text-red-600' : 'bg-emerald-500/10 text-emerald-600'
+          }`}
+        >
+          <span>{imageFeedback.message}</span>
+          <button type="button" aria-label="Bildirimi kapat" onClick={() => setImageFeedback(null)}>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <Card className="overflow-hidden !p-0">
         <AdminFilterBar
           search={
@@ -709,6 +795,8 @@ export default function GroupsPage() {
                         onDelete={handleDelete}
                         onPickParent={handlePickParent}
                         onShowProducts={setProductsModalGroup}
+                        onImageUpload={handleQuickImageUpload}
+                        imageUploadingId={imageUploadingId}
                       />
                     ))
                   )}
