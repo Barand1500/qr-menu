@@ -300,6 +300,7 @@ function SearchableSelect({
 }
 
 export default function CustomersPage() {
+  const [workspace, setWorkspace] = useState<'customers' | 'rewards'>('customers');
   const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState<CustomerRow[]>([]);
   const [debtorCount, setDebtorCount] = useState(0);
@@ -623,6 +624,7 @@ export default function CustomersPage() {
   }
 
   function handleUnlocked(customerId: number) {
+    setWorkspace('customers');
     markCustomerUnlocked(customerId);
     void openCustomer(customerId, { skipAnim: true });
   }
@@ -1090,7 +1092,24 @@ export default function CustomersPage() {
 
   return (
     <div className="admin-customers">
-      <PageHeader title="Müşteriler" />
+      <PageHeader
+        title="Müşteriler"
+        actions={<>
+          <button type="button" className="admin-customers__header-action"
+            onClick={() => { setUnlockMode('scan'); setUnlockOpen(true); }}>
+            <Camera size={17} /> QR okut
+          </button>
+          <button type="button" className="admin-customers__header-action is-primary"
+            onClick={() => { setUnlockMode('code'); setUnlockOpen(true); }}>
+            <Hash size={17} /> Kod ile aç
+          </button>
+        </>}
+      />
+      <p className="admin-customers__intro">Müşteri kartları, puanlar ve hesap hareketleri.</p>
+      <div className="admin-customers__workspace" role="group" aria-label="Müşteri yönetimi">
+        <button type="button" aria-pressed={workspace === 'customers'} onClick={() => setWorkspace('customers')}><UserRound size={16} /> Müşteri listesi</button>
+        <button type="button" aria-pressed={workspace === 'rewards'} onClick={() => setWorkspace('rewards')}><Gift size={16} /> Puan ödülleri</button>
+      </div>
 
       {toast ? (
         <div className="admin-customers__toast" role="status">
@@ -1098,20 +1117,23 @@ export default function CustomersPage() {
         </div>
       ) : null}
 
-      <div className={`admin-customers__layout${selectedId ? ' is-open' : ''}`}>
+      <div hidden={workspace !== 'customers'} className={`admin-customers__layout${selectedId ? ' is-open' : ''}`}>
         <section className="admin-customers__list-panel">
           <div className="admin-customers__toolbar">
             <label className="admin-customers__search">
               <Search className="w-4 h-4" />
               <input
+                type="search"
+                aria-label="Müşteri ara"
                 value={searchDraft}
                 onChange={(e) => setSearchDraft(e.target.value)}
                 placeholder="Ad, e-posta veya telefon ara…"
               />
             </label>
-            <div className="admin-customers__filters" role="tablist">
+            <div className="admin-customers__filters" role="group" aria-label="Müşteri filtresi">
               <button
                 type="button"
+                aria-pressed={filter === 'all'}
                 className={filter === 'all' ? 'is-active' : ''}
                 onClick={() => {
                   setFilter('all');
@@ -1122,6 +1144,7 @@ export default function CustomersPage() {
               </button>
               <button
                 type="button"
+                aria-pressed={filter === 'debtors'}
                 className={filter === 'debtors' ? 'is-active' : ''}
                 onClick={() => {
                   setFilter('debtors');
@@ -1235,14 +1258,13 @@ export default function CustomersPage() {
               <div className="admin-customers__detail-empty" ref={emptyHintRef}>
                 <div className="admin-customers__empty-hint admin-customers__empty-hint--unlock">
                   <div className="admin-customers__empty-visual" aria-hidden>
-                    <span className="admin-customers__empty-ring" />
                     <span className="admin-customers__empty-icon">
                       <Lock className="w-7 h-7" />
                     </span>
                   </div>
 
                   <div className="admin-customers__empty-copy">
-                    <h3>Kod ile aç</h3>
+                    <h3>Müşteri kartını açın</h3>
                     <p>
                       Müşteri kartı için kişisel QR veya 6 haneli kod gerekli. Liste
                       sadece özet gösterir.
@@ -1683,7 +1705,7 @@ export default function CustomersPage() {
         </aside>
       </div>
 
-      <section className="admin-customers__rewards">
+      <section hidden={workspace !== 'rewards'} className="admin-customers__rewards">
         <header className="admin-customers__rewards-head">
           <div>
             <h2>
@@ -1691,8 +1713,7 @@ export default function CustomersPage() {
               Puan ödülleri
             </h2>
             <p>
-              Ürün, grup veya tutar indirimi tanımlayın. Masa görünümünde temaya
-              bağlanacak.
+              Müşterilerin puanlarıyla kullanabileceği ödülleri düzenleyin.
             </p>
           </div>
           <button

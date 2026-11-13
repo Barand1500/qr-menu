@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Camera, KeyRound, Loader2, X } from 'lucide-react';
 import { lookupCustomerByCodeOrQr } from '@/lib/customerUnlock';
+import './customer-unlock.css';
 
 type Mode = 'menu' | 'code' | 'scan';
 
@@ -16,9 +18,7 @@ type BarcodeDetectorLike = {
   detect: (source: ImageBitmapSource) => Promise<Array<{ rawValue?: string }>>;
 };
 
-function getBarcodeDetector():
-  | (new (opts?: { formats?: string[] }) => BarcodeDetectorLike)
-  | null {
+function getBarcodeDetector(): (new (opts?: { formats?: string[] }) => BarcodeDetectorLike) | null {
   const w = window as Window & {
     BarcodeDetector?: new (opts?: { formats?: string[] }) => BarcodeDetectorLike;
   };
@@ -42,6 +42,52 @@ export default function CustomerUnlockModal({
   const rafRef = useRef<number>(0);
   const handledRef = useRef(false);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const busyRef = useRef(false);
+  const generation = useRef(0);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
+  useEffect(() => {
+    if (!open) return;
+    const active = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    panelRef.current?.focus();
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !busyRef.current) closeRef.current();
+      if (e.key !== 'Tab') return;
+      const nodes = Array.from(
+        panelRef.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled)'
+        ) || []
+      );
+      const first = nodes[0],
+        last = nodes[nodes.length - 1];
+      if (!first) {
+        e.preventDefault();
+        return;
+      }
+      if (
+        e.shiftKey &&
+        (document.activeElement === first || document.activeElement === panelRef.current)
+      ) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', key);
+    return () => {
+      generation.current++;
+      busyRef.current = false;
+      document.body.style.overflow = overflow;
+      document.removeEventListener('keydown', key);
+      active?.focus();
+    };
+  }, [open]);
 
   const codeValue = digits.join('');
 
@@ -136,18 +182,26 @@ export default function CustomerUnlockModal({
   }
 
   async function submit(body: { code?: string; qr?: string }) {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    const current = generation.current;
     setBusy(true);
     setError('');
     try {
       const res = await lookupCustomerByCodeOrQr(body);
+      if (current !== generation.current) return;
       stopScan();
       onUnlocked(res.customerId);
       onClose();
     } catch (err) {
+      if (current !== generation.current) return;
       handledRef.current = false;
       setError(err instanceof Error ? err.message : 'Doğrulama başarısız');
     } finally {
-      setBusy(false);
+      if (current === generation.current) {
+        busyRef.current = false;
+        setBusy(false);
+      }
     }
   }
 
@@ -181,23 +235,33 @@ export default function CustomerUnlockModal({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="mc-unlock" role="dialog" aria-modal="true" aria-label={title}>
-      <button type="button" className="mc-unlock__scrim" aria-label="Kapat" onClick={onClose} />
-      <div className="mc-unlock__panel">
-        <div className="mc-unlock__accent" aria-hidden />
-
+      <button
+        type="button"
+        className="mc-unlock__scrim"
+        aria-label="Kapat"
+        tabIndex={-1}
+        disabled={busy}
+        onClick={onClose}
+      />
+      <div className="mc-unlock__panel" ref={panelRef} tabIndex={-1}>
         <header className="mc-unlock__head">
           <div className="mc-unlock__brand">
             <span className="mc-unlock__brand-icon" aria-hidden>
               <KeyRound className="w-4 h-4" />
             </span>
             <div>
-              <p className="mc-unlock__eyebrow">Müşteri kartı</p>
               <h3>{title}</h3>
             </div>
           </div>
-          <button type="button" className="mc-unlock__close" onClick={onClose} aria-label="Kapat">
+          <button
+            type="button"
+            className="mc-unlock__close"
+            disabled={busy}
+            onClick={onClose}
+            aria-label="Kapat"
+          >
             <X className="w-4 h-4" />
           </button>
         </header>
@@ -207,6 +271,7 @@ export default function CustomerUnlockModal({
             <button
               type="button"
               role="tab"
+              disabled={busy}
               className={mode === 'scan' ? 'is-active' : ''}
               aria-selected={mode === 'scan'}
               onClick={() => {
@@ -220,6 +285,7 @@ export default function CustomerUnlockModal({
             <button
               type="button"
               role="tab"
+              disabled={busy}
               className={mode === 'code' ? 'is-active' : ''}
               aria-selected={mode === 'code'}
               onClick={() => {
@@ -233,7 +299,11 @@ export default function CustomerUnlockModal({
           </div>
         ) : null}
 
-        {error ? <div className="mc-unlock__error">{error}</div> : null}
+        {error ? (
+          <div className="mc-unlock__error" role="alert">
+            {error}
+          </div>
+        ) : null}
 
         {mode === 'menu' ? (
           <div className="mc-unlock__actions">
@@ -277,7 +347,9 @@ export default function CustomerUnlockModal({
               void submit({ code: codeValue });
             }}
           >
-            <p className="mc-unlock__hint">Profildeki 6 haneli kodu gir</p>
+            <p className="mc-unlock__hint">
+              {scanHint || 'Müşterinin profilindeki 6 haneli kodu girin.'}
+            </p>
             <div className="mc-unlock__otp" onPaste={onDigitPaste}>
               {digits.map((d, i) => (
                 <input
@@ -287,6 +359,7 @@ export default function CustomerUnlockModal({
                   }}
                   className={`mc-unlock__otp-cell${d ? ' is-filled' : ''}`}
                   inputMode="numeric"
+                  disabled={busy}
                   autoComplete={i === 0 ? 'one-time-code' : 'off'}
                   maxLength={1}
                   value={d}
@@ -323,6 +396,7 @@ export default function CustomerUnlockModal({
           </div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

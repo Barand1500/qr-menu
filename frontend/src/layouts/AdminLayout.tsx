@@ -22,7 +22,7 @@ import AdminAIChat, { AdminAIButton } from '@/components/admin/AdminAIChat';
 import type { TourOpenGroup } from '@/lib/adminTourSteps';
 import { adminPreviewMenuUrl } from '@/lib/tableContext';
 import { adminPath } from '@/lib/adminPath';
-import { SHOW_LEGACY_THEME_SETTINGS } from '@/lib/adminThemeSettings';
+import { SHOW_LEGACY_THEME_SETTINGS, SHOW_EXTENSIONS_ENTRY } from '@/lib/adminThemeSettings';
 import { moveSidebarNavIndicator, isSidebarNavIndicatorAnimating } from '@/lib/sidebarNavIndicator';
 import AdminPageTransition from '@/components/admin/AdminPageTransition';
 import '@/admin-tour.css';
@@ -366,7 +366,7 @@ export default function AdminLayout() {
           >
             <Construction className="w-[18px] h-[18px]" strokeWidth={1.75} />
           </button>
-          <NavLink
+          {SHOW_EXTENSIONS_ENTRY && <NavLink
             to={adminPath('extensions')}
             onClick={closeMobile}
             data-tour="extensions"
@@ -375,7 +375,7 @@ export default function AdminLayout() {
             className={`sidebar-footer-btn${extensionsActive ? ' sidebar-footer-btn--active' : ''}`}
           >
             <Puzzle className="w-[18px] h-[18px]" strokeWidth={1.75} />
-          </NavLink>
+          </NavLink>}
           <AdminAIButton onClick={() => setAiOpen(true)} />
         </div>
       </div>

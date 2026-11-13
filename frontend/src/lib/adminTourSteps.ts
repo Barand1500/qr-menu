@@ -1,5 +1,5 @@
 import { adminPath } from '@/lib/adminPath';
-import { SHOW_LEGACY_THEME_SETTINGS } from '@/lib/adminThemeSettings';
+import { SHOW_LEGACY_THEME_SETTINGS, SHOW_EXTENSIONS_ENTRY } from '@/lib/adminThemeSettings';
 
 export type TourOpenGroup = 'startup' | 'reports' | 'management';
 
@@ -243,7 +243,8 @@ const TOUR_STEP_DEFS: TourStepDef[] = [
 
 export function getAdminTourSteps(): TourStep[] {
   return TOUR_STEP_DEFS.filter((step) =>
-    SHOW_LEGACY_THEME_SETTINGS || !['nav-welcome-theme', 'nav-menu-theme'].includes(step.id)
+    (SHOW_LEGACY_THEME_SETTINGS || !['nav-welcome-theme', 'nav-menu-theme'].includes(step.id)) &&
+    (SHOW_EXTENSIONS_ENTRY || step.id !== 'extensions')
   ).map(({ pathSegments, ...rest }) => {
     if (pathSegments === undefined) return rest;
     return { ...rest, path: adminPath(...pathSegments) };

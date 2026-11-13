@@ -146,7 +146,10 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .admin-customers__filters button.is-active {
@@ -229,7 +232,10 @@
   color: var(--admin-text-muted);
   cursor: pointer;
   opacity: 0.55;
-  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .admin-customers__row:hover .admin-customers__row-delete,
@@ -284,7 +290,9 @@
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .admin-customers__pager-btns button:hover:not(:disabled) {
@@ -642,7 +650,9 @@
   color: var(--admin-text-muted);
   font-size: 0.62rem;
   font-weight: 700;
-  transition: transform 0.28s ease, box-shadow 0.28s ease;
+  transition:
+    transform 0.28s ease,
+    box-shadow 0.28s ease;
 }
 
 .admin-customers__stat strong {
@@ -697,7 +707,10 @@
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .admin-customers__tabs button.is-active {
@@ -843,7 +856,10 @@
   display: inline-flex;
   align-items: center;
   gap: 0.15rem;
-  transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .admin-customers__quick button:hover:not(:disabled) {
@@ -876,7 +892,9 @@
   background: transparent;
   color: var(--admin-text-muted);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .admin-customers__discount-type button.is-active {
@@ -1083,7 +1101,10 @@
   display: inline-flex;
   align-items: center;
   gap: 0.28rem;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .admin-customers__ledger-undo:hover:not(:disabled) {
@@ -1204,7 +1225,9 @@
   background: var(--admin-input-bg);
   color: var(--admin-text-muted);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .admin-customers__modal-close:hover:not(:disabled) {
@@ -1283,7 +1306,9 @@
   color: var(--admin-text);
   font-size: 0.95rem;
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .admin-customers__modal-field input:focus {
@@ -1492,7 +1517,10 @@
   color: var(--admin-text-muted);
   border: 1px solid var(--admin-card-border);
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .admin-customers__reward-card-actions button:hover:not(:disabled) {
@@ -1559,7 +1587,10 @@
   background: var(--admin-card);
   color: var(--admin-text);
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
 }
 
 .admin-customers__reward-kinds button span {
@@ -1791,4 +1822,346 @@
   background: color-mix(in srgb, var(--admin-accent-soft, #ecfdf5) 80%, #fff);
   color: var(--admin-accent-text, #0f766e);
   border: 1px solid color-mix(in srgb, var(--admin-accent, #0f766e) 25%, transparent);
+}
+
+/* Customer workspace: quiet list, readable card and a separate rewards view. */
+.admin-customers__intro {
+  margin: -15px 0 24px;
+  color: var(--admin-text-muted);
+  font-size: 13px;
+}
+.admin-customers__header-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 1px solid var(--admin-card-border);
+  border-radius: 9px;
+  background: var(--admin-card);
+  color: var(--admin-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+.admin-customers__header-action.is-primary {
+  color: var(--admin-btn-primary-text, #fff);
+  background: var(--admin-accent);
+  border-color: var(--admin-accent);
+}
+.admin-customers__workspace {
+  display: flex;
+  gap: 25px;
+  border-bottom: 1px solid var(--admin-card-border);
+  margin-bottom: 24px;
+}
+.admin-customers__workspace button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 0 15px;
+  margin-bottom: -1px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--admin-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+.admin-customers__workspace button[aria-pressed='true'] {
+  color: var(--admin-accent);
+  border-bottom-color: var(--admin-accent);
+}
+.admin-customers__layout[hidden],
+.admin-customers__rewards[hidden] {
+  display: none;
+}
+.admin-customers__layout {
+  gap: 24px;
+}
+.admin-customers__list-panel,
+.admin-customers__detail {
+  border-radius: 14px;
+  box-shadow: none;
+  height: clamp(620px, calc(100svh - 280px), 880px);
+  max-height: 880px;
+  min-height: 620px;
+}
+.admin-customers__toolbar {
+  padding: 20px;
+  gap: 18px;
+  background: var(--admin-card);
+}
+.admin-customers__search {
+  border-radius: 9px;
+  padding: 11px 12px;
+  gap: 9px;
+}
+.admin-customers__search:focus-within {
+  border-color: var(--admin-accent);
+}
+.admin-customers__search input {
+  font-size: 13px;
+  min-width: 0;
+}
+.admin-customers__filters {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  gap: 6px;
+}
+.admin-customers__filters button {
+  border-radius: 7px;
+  min-height: 34px;
+  font-weight: 500;
+}
+.admin-customers__filters button.is-active {
+  color: var(--admin-accent-text, var(--admin-accent));
+  background: var(--admin-accent-soft);
+  box-shadow: none;
+}
+.admin-customers__row {
+  padding: 19px 18px;
+  gap: 12px;
+}
+.admin-customers__avatar {
+  border-radius: 11px;
+  background: var(--admin-input-bg);
+  color: var(--admin-text-muted);
+  font-weight: 500;
+}
+.admin-customers__meta strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.admin-customers__meta small {
+  font-size: 11px;
+  margin-top: 5px;
+}
+.admin-customers__chip {
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: 5px;
+}
+.admin-customers__pager {
+  padding: 15px 20px;
+}
+.admin-customers__detail-empty {
+  background: var(--admin-card);
+}
+.admin-customers__empty-hint {
+  width: min(100%, 320px);
+  gap: 22px;
+}
+.admin-customers__empty-visual {
+  width: 60px;
+  height: 60px;
+}
+.admin-customers__empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--admin-input-bg);
+  color: var(--admin-text-muted);
+  box-shadow: none;
+}
+.admin-customers__empty-copy h3 {
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+.admin-customers__detail-empty p {
+  max-width: 290px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.admin-customers__unlock-actions {
+  gap: 10px;
+}
+.admin-customers__unlock-btn {
+  border-radius: 9px;
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.admin-customers__detail-inner {
+  padding: 24px;
+  gap: 20px;
+}
+.admin-customers__detail-head {
+  margin-bottom: 0;
+}
+.admin-customers__detail-title h2 {
+  font-size: 20px;
+  font-weight: 600;
+}
+.admin-customers__detail-title p {
+  font-size: 12px;
+  margin-top: 6px;
+}
+.admin-customers__stats {
+  gap: 12px;
+}
+.admin-customers__stat {
+  padding: 15px;
+  border: 0;
+  border-radius: 10px;
+  font-size: 11px;
+  gap: 7px;
+}
+.admin-customers__stat strong {
+  font-size: 21px;
+  font-weight: 600;
+}
+.admin-customers__stat svg {
+  width: 16px;
+  height: 16px;
+}
+.admin-customers__tabs {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  gap: 22px;
+  border-radius: 0;
+}
+.admin-customers__tabs button {
+  flex: 0 1 auto;
+  padding: 10px 0;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+}
+.admin-customers__tabs button.is-active {
+  background: transparent;
+  color: var(--admin-accent);
+  border-bottom-color: var(--admin-accent);
+  box-shadow: none;
+}
+.admin-customers__tabs-wrap {
+  padding: 0;
+}
+.admin-customers__manage {
+  overflow: auto;
+  justify-content: flex-start;
+  gap: 18px;
+  padding: 0 4px 12px 0;
+}
+.admin-customers__block {
+  gap: 14px;
+  padding: 0 0 22px;
+}
+.admin-customers__block h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.admin-customers__inline {
+  gap: 8px;
+}
+.admin-customers__inline input {
+  font-size: 13px;
+  padding: 11px;
+}
+.admin-customers__quick button {
+  min-height: 32px;
+}
+.admin-customers__primary,
+.admin-customers__ghost,
+.admin-customers__ok,
+.admin-customers__warn {
+  min-height: 38px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.admin-customers__rewards {
+  margin: 0;
+  padding: 24px;
+  box-shadow: none;
+  border-radius: 14px;
+  animation: none;
+}
+.admin-customers__rewards-head {
+  margin-bottom: 24px;
+}
+.admin-customers__rewards-head h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+.admin-customers__rewards-grid {
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+.admin-customers__reward-card {
+  padding: 20px;
+  box-shadow: none;
+  border-radius: 12px;
+  gap: 10px;
+}
+.admin-customers__reward-card strong {
+  font-size: 17px;
+  font-weight: 600;
+}
+.admin-customers__rewards-add {
+  box-shadow: none;
+  min-height: 38px;
+  font-weight: 500;
+}
+.admin-customers button:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 3px;
+}
+@media (min-width: 1024px) {
+  .admin-customers__layout {
+    grid-template-columns: minmax(330px, 0.8fr) minmax(0, 1.5fr);
+  }
+}
+@media (max-width: 1023px) {
+  .admin-customers__list-panel {
+    height: auto;
+    min-height: 320px;
+    max-height: 680px;
+  }
+  .admin-customers__detail.is-visible {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+  .admin-customers__detail-inner {
+    height: auto;
+    overflow: visible;
+  }
+  .admin-customers__detail-shell,
+  .admin-customers__detail-body,
+  .admin-customers__tab-body,
+  .admin-customers__manage {
+    overflow: visible;
+  }
+}
+@media (max-width: 600px) {
+  .admin-customers__intro {
+    margin-top: -8px;
+  }
+  .admin-customers__detail-inner {
+    padding: 18px;
+  }
+  .admin-customers__row {
+    padding: 16px 12px;
+    gap: 8px;
+  }
+  .admin-customers__stats {
+    gap: 7px;
+  }
+  .admin-customers__stat {
+    padding: 12px 9px;
+  }
+  .admin-customers__stat strong {
+    font-size: 17px;
+  }
+  .admin-customers__rewards {
+    padding: 18px;
+  }
+  .admin-customers__rewards-head {
+    flex-wrap: wrap;
+  }
 }

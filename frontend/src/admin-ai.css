@@ -583,10 +583,11 @@
   color: rgba(230, 240, 236, 0.32);
 }
 
-/* Sidebar footer — 4 equal actions */
+/* Sidebar footer — equal widths for the visible actions */
 .sidebar-footer-actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 0.45rem;
   width: 100%;
 }
