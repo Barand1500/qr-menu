@@ -19,3 +19,13 @@ Görüntüler taklit API/ZEEN örneğiyle alındı. Test verisinde bütün ürü
 Kaydırma araştırması: [MDN scroll timeline](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Scroll-driven_animations/Timelines), [hareket azaltma](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/%40media/prefers-reduced-motion).
 
 - [Sabit sahnede eskizden fotoğrafa geçiş](scroll-progress.png)
+
+## Son düzenleme — karşılama ve ürün seçenekleri
+
+Karşılamadaki SOFRA/rozet satırı kaldırıldı. Şikayet Kutusu / Öneri Kutusu bağlantıları yan yana gösterilir. Canlı karşılamada menü API'sinin showcase alanındaki ilk geçerli işletme görseli ana fotoğraf olarak kullanılır; vitrin boşsa tema karşılama fotoğrafı yedektir. Açılış kompozisyonu da aynı vitrin listesini kullanır. Tema editörü kendi taslak karşılama fotoğrafını göstermeye devam eder.
+
+Masaüstü menüde fotoğraf/bilgi tarafları ürün sırasına göre dönüşümlüdür. Alt araç çubuğunun yazı, ikon ve dokunma alanları büyütüldü. Seçenekli Sofra ürünlerinde masaüstünde bölüm düğmeleri vardır; aynı anda bir seçenek grubu görünür, diğer gruplardaki seçimler korunur. Ekstralar geniş ekranda iki sütuna yayılır; uzun gruplar kendi alanında kaydırılabilir. Seçim özeti/fiyat, yan yana içerik ve alerjen bilgisi ve sepete ekleme alanı panelin altında yer alır. Fiyat, limit ve sepet hesaplamaları aynı fonksiyonları kullanır. Mobilde seçenek grupları eski şekilde birlikte gösterilir; bölüm düğmeleri gizlidir. Diğer temalarda kompakt görünüm varsayılan olarak kapalıdır.
+
+Doğrulama: üretim derlemesi, TypeScript ve fark kontrolü; Chrome/taklit API ile vitrin önceliği ve boş vitrin yedeği, rozetin kaldırılması/bağlantılar, dönüşümlü yerleşim/alt düğme boyutu, seçenek bölümleri arasında geçiş/seçimlerin korunması, Double + ekstralar için fiyat, maksimum adet engeli ve sepette seçenek isimleri; 1024/1280/1920 px ürün taşması ve 390 px mobilde tüm seçeneklerin görünmesi kontrol edildi. Gerçek sunucu ve fiziksel cihaz testi yapılmadı. Geçici harness frontend/node_modules/.qr-check/atelier-refine.mjs içinde Git dışındadır.
+
+[Seçenekli ürün detayı](product-options.png). Örnek API bütün ürünlerde aynı kahvaltı fotoğrafını kullanır; bu, gerçek işletmenin ürün görseli değiştirildiği anlamına gelmez.

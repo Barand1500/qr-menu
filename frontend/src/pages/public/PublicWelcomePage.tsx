@@ -440,8 +440,9 @@ function PublicWelcomePageInner({
           tableLabel={tableNo ? `${t.table} ${tableNo}` : null}
           extra={
             <>
-              <div>
-                <button onClick={() => setComplaintOpen(true)}>{t.openComplaint}</button>
+              <div className="atelier-feedback-links">
+                <button onClick={() => setComplaintOpen(true)}>{selectedLang === 'en' ? 'Complaint Box' : 'Şikayet Kutusu'}</button>
+                <span aria-hidden="true">/</span>
                 <button onClick={() => setSuggestionOpen(true)}>{t.suggestionBox}</button>
               </div>
               <button onClick={() => setWelcomeStep(welcomeStep === 'prefs' ? 'lang' : 'prefs')}>

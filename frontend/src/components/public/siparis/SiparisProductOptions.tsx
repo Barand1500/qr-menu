@@ -26,7 +26,7 @@ function defaultSelections(groups: ProductOptionGroup[]): SelectionMap {
 function optionPriceLabel(
   group: ProductOptionGroup,
   price: number,
-  currency?: { code?: string; symbol?: string } | null
+  currency?: { code?: string; symbol?: string } | null,
 ) {
   if (group.pricing === 'replace') return formatMoney(price, currency);
   if (price > 0) return `+${formatMoney(price, currency)}`;
@@ -38,7 +38,9 @@ export default function SiparisProductOptions({
   basePrice,
   currency,
   onChange,
+  compact = false,
 }: {
+  compact?: boolean;
   groups: ProductOptionGroup[];
   basePrice: number;
   currency?: { code?: string; symbol?: string } | null;
@@ -53,17 +55,19 @@ export default function SiparisProductOptions({
         }))
         .filter((g) => g.options.length > 0)
         .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)),
-    [groups]
+    [groups],
   );
 
-  const [selections, setSelections] = useState<SelectionMap>(() =>
-    defaultSelections(activeGroups)
-  );
+  const [activeGroupId, setActiveGroupId] = useState(activeGroups[0]?.id);
+  const [selections, setSelections] = useState<SelectionMap>(() => defaultSelections(activeGroups));
 
   useEffect(() => {
     setSelections(defaultSelections(activeGroups));
   }, [activeGroups]);
 
+  const visibleGroupId = activeGroups.some((group) => group.id === activeGroupId)
+    ? activeGroupId
+    : activeGroups[0]?.id;
   const unitPrice = computePreviewUnitPrice(basePrice, activeGroups, selections);
   const priceChanged = Math.abs(unitPrice - basePrice) > 0.001;
 
@@ -90,12 +94,31 @@ export default function SiparisProductOptions({
   }
 
   return (
-    <section className="siparis-opts" aria-label="Ürün seçenekleri">
+    <section
+      className={`siparis-opts${compact ? ' siparis-opts--compact' : ''}`}
+      aria-label="Ürün seçenekleri"
+    >
       <header className="siparis-opts__head">
         <h2>Seçenekler</h2>
         <p>Boy, ekstra ve isteklerini buradan seç.</p>
       </header>
 
+      {compact && (
+        <div className="siparis-opts__navigation" aria-label="Seçenek bölümleri">
+          {activeGroups.map((g, i) => (
+            <button
+              type="button"
+              key={g.id}
+              aria-pressed={visibleGroupId === g.id}
+              onClick={() => setActiveGroupId(g.id)}
+            >
+              <span>{String(i + 1).padStart(2, '0')}</span>
+              {g.name}
+              <small>{groupSelectedQty(selections, g.id) || (g.required ? '*' : '')}</small>
+            </button>
+          ))}
+        </div>
+      )}
       <div className="siparis-opts__groups">
         {activeGroups.map((g) => {
           const picks = selections[g.id] || [];
@@ -103,10 +126,13 @@ export default function SiparisProductOptions({
 
           if (g.type === 'single') {
             const visible = g.options.filter(
-              (o) => !blocked.has(o.id) || picks[0]?.optionId === o.id
+              (o) => !blocked.has(o.id) || picks[0]?.optionId === o.id,
             );
             return (
-              <div key={g.id} className="siparis-opts__group">
+              <div
+                key={g.id}
+                className={`siparis-opts__group${visibleGroupId === g.id ? ' is-active' : ''}`}
+              >
                 <div className="siparis-opts__label">
                   <span>
                     {g.name}
@@ -148,7 +174,10 @@ export default function SiparisProductOptions({
                           });
                         }}
                       >
-                        <span>{o.name}{o.stockQty === 0 ? ' · bitti' : ''}</span>
+                        <span>
+                          {o.name}
+                          {o.stockQty === 0 ? ' · bitti' : ''}
+                        </span>
                         {priceText ? <small>{priceText}</small> : null}
                       </button>
                     );
@@ -161,7 +190,10 @@ export default function SiparisProductOptions({
           if (g.type === 'choice') {
             const visible = g.options.filter((o) => !blocked.has(o.id));
             return (
-              <div key={g.id} className="siparis-opts__group">
+              <div
+                key={g.id}
+                className={`siparis-opts__group${visibleGroupId === g.id ? ' is-active' : ''}`}
+              >
                 <div className="siparis-opts__label">
                   <span>
                     {g.name}
@@ -190,7 +222,10 @@ export default function SiparisProductOptions({
                           patch(next);
                         }}
                       >
-                        <span>{o.name}{o.stockQty === 0 ? ' · bitti' : ''}</span>
+                        <span>
+                          {o.name}
+                          {o.stockQty === 0 ? ' · bitti' : ''}
+                        </span>
                         {priceText ? <small>{priceText}</small> : null}
                       </button>
                     );
@@ -205,7 +240,10 @@ export default function SiparisProductOptions({
           const visible = g.options.filter((o) => !blocked.has(o.id));
 
           return (
-            <div key={g.id} className="siparis-opts__group">
+            <div
+              key={g.id}
+              className={`siparis-opts__group${visibleGroupId === g.id ? ' is-active' : ''}`}
+            >
               <div className="siparis-opts__label">
                 <span>
                   {g.name}
@@ -224,9 +262,16 @@ export default function SiparisProductOptions({
                   const q = cur?.qty || 0;
                   const priceText = optionPriceLabel(g, o.price, currency);
                   return (
-                    <li key={o.id} className="siparis-opts__multi-row" data-sold-out={o.stockQty === 0 ? 'true' : undefined}>
+                    <li
+                      key={o.id}
+                      className="siparis-opts__multi-row"
+                      data-sold-out={o.stockQty === 0 ? 'true' : undefined}
+                    >
                       <div className="siparis-opts__multi-copy">
-                        <strong>{o.name}{o.stockQty === 0 ? ' · bitti' : ''}</strong>
+                        <strong>
+                          {o.name}
+                          {o.stockQty === 0 ? ' · bitti' : ''}
+                        </strong>
                         {priceText ? <span>{priceText}</span> : null}
                       </div>
                       <div className="siparis-opts__stepper">
@@ -242,7 +287,7 @@ export default function SiparisProductOptions({
                               else delete next[g.id];
                             } else {
                               next[g.id] = picks.map((x) =>
-                                x.optionId === o.id ? { ...x, qty: q - 1 } : x
+                                x.optionId === o.id ? { ...x, qty: q - 1 } : x,
                               );
                             }
                             patch(next);
@@ -261,7 +306,7 @@ export default function SiparisProductOptions({
                             if (q === 0) next[g.id] = [...picks, { optionId: o.id, qty: 1 }];
                             else {
                               next[g.id] = picks.map((x) =>
-                                x.optionId === o.id ? { ...x, qty: q + 1 } : x
+                                x.optionId === o.id ? { ...x, qty: q + 1 } : x,
                               );
                             }
                             patch(next);
@@ -279,6 +324,11 @@ export default function SiparisProductOptions({
         })}
       </div>
 
+      {compact && selectionLabel && (
+        <p className="siparis-opts__selection" aria-live="polite">
+          {selectionLabel}
+        </p>
+      )}
       <div className={`siparis-opts__total${priceChanged ? ' is-live' : ''}`}>
         <span>Seçime göre</span>
         <strong>{formatMoney(unitPrice, currency)}</strong>

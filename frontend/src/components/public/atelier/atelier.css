@@ -893,3 +893,292 @@
     clip-path: none;
   }
 }
+.atelier-feedback-links {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.atelier-feedback-links > span {
+  color: #a28d74;
+}
+.siparis-opts__navigation {
+  display: none;
+}
+.siparis-opts__selection {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .atelier-dish:nth-child(even) .atelier-dish__image {
+    order: 2;
+  }
+  .atelier-dish:nth-child(even) .atelier-dish__text {
+    order: 1;
+  }
+  .atelier-dish:nth-child(even) .atelier-dish__scene {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  }
+  .sofra-public-shell .sofra-bottom {
+    min-height: 78px;
+    gap: 14px;
+    padding-block: 10px;
+  }
+  .sofra-public-shell .sofra-bottom > button,
+  .sofra-public-shell .sofra-bottom .table-service-header-btn,
+  .sofra-public-shell .sofra-bottom .siparis-cart-btn {
+    font-size: 15px;
+    min-height: 50px;
+    padding: 12px 20px;
+    gap: 10px;
+    white-space: nowrap;
+  }
+  .sofra-public-shell .sofra-bottom svg {
+    width: 21px;
+    height: 21px;
+    flex-shrink: 0;
+  }
+  .sofra-public-shell .siparis-detail {
+    --siparis-red: #293e34;
+    --siparis-red-deep: #1e3027;
+    --siparis-cream: #f6f0e5;
+  }
+  .sofra-public-shell .siparis-detail__layout {
+    grid-template-columns: minmax(0, 1fr) minmax(440px, 1.12fr);
+    gap: 4vw;
+    max-width: 1600px;
+    padding-top: 28px;
+  }
+  .sofra-public-shell .siparis-detail__body {
+    padding: 0 0 25px;
+    background: transparent;
+  }
+  .sofra-public-shell .siparis-detail__hero {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+  }
+  .sofra-public-shell .siparis-detail__body h1 {
+    font-size: clamp(34px, 3.3vw, 56px);
+    margin-bottom: 12px;
+  }
+  .sofra-public-shell .siparis-detail__desc {
+    font-size: 14px;
+    line-height: 1.6;
+    margin-block: 12px;
+  }
+  .sofra-public-shell .siparis-detail__stats {
+    gap: 8px;
+    margin-block: 12px;
+  }
+  .sofra-public-shell .siparis-opts--compact {
+    border: 1px solid #d5c8b4;
+    background: #fffaf0;
+    border-radius: 12px;
+    padding: 18px;
+    margin-block: 18px;
+  }
+  .sofra-public-shell .siparis-opts--compact .siparis-opts__head {
+    margin-bottom: 14px;
+  }
+  .sofra-public-shell .siparis-opts--compact .siparis-opts__head h2 {
+    font:
+      24px Georgia,
+      serif;
+    letter-spacing: -0.02em;
+    color: #293e34;
+  }
+  .sofra-public-shell .siparis-opts--compact .siparis-opts__head p {
+    display: none;
+  }
+  .siparis-opts--compact .siparis-opts__navigation {
+    display: flex;
+    gap: 6px;
+    overflow: auto;
+    border-bottom: 1px solid #d5c8b4;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+    scrollbar-width: thin;
+  }
+  .siparis-opts--compact .siparis-opts__navigation button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    padding: 10px 13px;
+    min-height: 44px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: #62705e;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .siparis-opts--compact .siparis-opts__navigation button[aria-pressed='true'] {
+    background: #293e34;
+    color: #fffaf0;
+  }
+  .siparis-opts__navigation button > span {
+    font-size: 10px;
+    opacity: 0.7;
+  }
+  .siparis-opts__navigation button > small {
+    font-size: 11px;
+  }
+  .siparis-opts--compact .siparis-opts__group:not(.is-active) {
+    display: none;
+  }
+  .siparis-opts--compact .siparis-opts__groups {
+    max-height: 285px;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    padding: 3px 3px 6px;
+  }
+  .sofra-public-shell .siparis-opts--compact .siparis-opts__multi {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .sofra-public-shell .siparis-opts--compact .siparis-opts__multi-row {
+    padding: 10px;
+    gap: 8px;
+    border: 1px solid #ddd4c4;
+    background: #f6f0e5;
+    border-radius: 7px;
+    min-width: 0;
+  }
+  .sofra-public-shell .siparis-opts--compact .siparis-opts__multi-copy {
+    min-width: 0;
+  }
+  .sofra-public-shell .siparis-opts--compact .siparis-opts__multi-copy strong {
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+  .sofra-public-shell .siparis-opts--compact .siparis-opts__stepper {
+    gap: 6px;
+  }
+  .sofra-public-shell .siparis-opts--compact .siparis-opts__stepper button {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    background: #293e34;
+  }
+  .sofra-public-shell .siparis-opts--compact .siparis-opts__chip {
+    border: 1px solid #c7cebd;
+    background: #f8f5ed;
+    color: #293e34;
+    border-radius: 7px;
+    padding: 12px;
+    font-size: 13px;
+  }
+  .sofra-public-shell .siparis-opts--compact .siparis-opts__chip.is-on {
+    background: #293e34;
+    border-color: #293e34;
+    color: #fffaf0;
+    box-shadow: none;
+  }
+  .siparis-opts--compact .siparis-opts__selection {
+    display: block;
+    font:
+      12px/1.5 Arial,
+      sans-serif;
+    color: #67735e;
+    padding-top: 12px;
+    margin: 10px 0 0;
+    border-top: 1px solid #ddd4c4;
+    max-height: 65px;
+    overflow: auto;
+  }
+  .sofra-public-shell .siparis-opts--compact .siparis-opts__total {
+    background: transparent;
+    border: 0;
+    border-top: 1px solid #ddd4c4;
+    border-radius: 0;
+    padding: 12px 0 0;
+    margin-top: 10px;
+  }
+  .sofra-public-shell .siparis-detail__actions {
+    position: sticky;
+    bottom: 12px;
+    z-index: 5;
+    background: #f6f0e5f5;
+    border: 1px solid #d5c8b4;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 8px 28px #302a2310;
+    gap: 8px;
+  }
+  .sofra-public-shell .siparis-detail__add {
+    min-height: 48px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  .sofra-public-shell .siparis-detail__add--ghost {
+    background: transparent;
+    color: #293e34;
+    border-color: #9da98e;
+  }
+}
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .sofra-public-shell .siparis-detail__layout {
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 1.2fr);
+    gap: 24px;
+    padding-inline: 25px;
+  }
+  .sofra-public-shell .siparis-opts--compact .siparis-opts__multi {
+    grid-template-columns: 1fr;
+  }
+}
+.siparis-detail__information {
+  display: contents;
+}
+@media (min-width: 1024px) {
+  .sofra-public-shell.public-product-page .siparis-detail__body {
+    background: transparent;
+    min-height: 0;
+    padding: 0;
+  }
+  .sofra-public-shell.public-product-page .siparis-detail h1,
+  .sofra-public-shell.public-product-page .siparis-detail__price {
+    color: #293e34;
+  }
+  .sofra-public-shell.public-product-page .siparis-detail__actions {
+    position: relative;
+    bottom: auto;
+    margin-top: 15px;
+    background: #f6f0e5;
+    box-shadow: none;
+  }
+  .sofra-public-shell.public-product-page .siparis-detail__add {
+    background: #293e34;
+    border-color: #293e34;
+    color: #fffaf0;
+    box-shadow: none;
+  }
+  .sofra-public-shell.public-product-page .siparis-detail__add--ghost {
+    background: transparent;
+    color: #293e34;
+    border-color: #a3ae97;
+  }
+  .sofra-public-shell.public-product-page .siparis-detail__information.is-compact {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+  }
+  .sofra-public-shell.public-product-page
+    .siparis-detail__information.is-compact
+    .siparis-detail__block {
+    margin: 0;
+    padding: 12px 0;
+    background: transparent;
+    border: 0;
+    border-top: 1px solid #d5c8b4;
+    border-radius: 0;
+    min-width: 0;
+  }
+  .sofra-public-shell.public-product-page .siparis-detail__information.is-compact p {
+    font-size: 12px;
+    line-height: 1.6;
+    margin-top: 7px;
+    overflow-wrap: anywhere;
+  }
+}

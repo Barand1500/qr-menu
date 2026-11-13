@@ -364,6 +364,7 @@ function PublicProductPageInner() {
             colorMode="day"
             toggleColorMode={() => {}}
             hideColorToggle
+            compactOptions
             lang={lang}
             slug={slug}
             onBack={onBack}

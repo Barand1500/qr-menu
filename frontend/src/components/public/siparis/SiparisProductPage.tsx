@@ -61,6 +61,7 @@ export default function SiparisProductPage({
   onBack,
   hideColorToggle = false,
   renderHero,
+  compactOptions = false,
 }: {
   product: ProductDetail;
   related: RelatedProduct[];
@@ -71,6 +72,7 @@ export default function SiparisProductPage({
   slug: string | null | undefined;
   onBack: () => void;
   hideColorToggle?: boolean;
+  compactOptions?: boolean;
   renderHero?: (gallery: ReactNode, image: string | undefined) => ReactNode;
 }) {
   const { addItem, setSheetOpen, enabled: cartCtxOn } = useSiparisCart();
@@ -201,6 +203,7 @@ export default function SiparisProductPage({
           {optionGroups.length > 0 ? (
             <SiparisProductOptions
               key={product.id}
+              compact={compactOptions}
               groups={optionGroups}
               basePrice={product.price}
               currency={product.currency}
@@ -208,6 +211,7 @@ export default function SiparisProductPage({
             />
           ) : null}
 
+          <div className={compactOptions ? 'siparis-detail__information is-compact' : 'siparis-detail__information'}>
           {product.ingredients ? (
             <div className="siparis-detail__block">
               <h2>{en ? 'Ingredients' : 'İçindekiler'}</h2>
@@ -222,6 +226,7 @@ export default function SiparisProductPage({
             </div>
           ) : null}
 
+          </div>
           {showCart ? (
             <div className="siparis-detail__actions">
               {soldOut ? (

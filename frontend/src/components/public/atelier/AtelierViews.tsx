@@ -14,16 +14,16 @@ export function AtelierWelcome(p: ComponentProps<typeof SofraWelcomeClassic>) {
     en = p.lang.startsWith('en');
   const [photos, setPhotos] = useState<string[]>([]);
   useEffect(() => {
-    if (p.onTextEdit || !window.matchMedia('(min-width: 1024px)').matches) return;
+    if (p.onTextEdit) return;
     let cancelled = false;
     resolveMenuSlug()
       .then((slug) =>
-        api<{ imageUrl?: string }[]>(`/api/menu/${slug}/popular-products?lang=${p.lang}`),
+        api<{ showcase?: { imageUrl?: string }[] }>(`/api/menu/${slug}?lang=${p.lang}`),
       )
       .then((items) => {
-        if (!cancelled && Array.isArray(items))
+        if (!cancelled)
           setPhotos(
-            items
+            (items.showcase || [])
               .map((item) => item.imageUrl)
               .filter((src): src is string => Boolean(src))
               .slice(0, 4),
@@ -71,14 +71,13 @@ export function AtelierWelcome(p: ComponentProps<typeof SofraWelcomeClassic>) {
             <SofraText field="enterLabel" value={copy.enterLabel} onTextEdit={p.onTextEdit} />
             <ArrowRight size={19} />
           </button>
-          <SofraText field="sealText" value={copy.sealText} onTextEdit={p.onTextEdit} />
         </div>
         <button
           className="atelier-cover__image"
           onClick={() => (p.onImageEdit ? p.onImageEdit('welcomeImage') : p.onEnter?.())}
           aria-label={en ? 'Open menu' : 'Menüyü aç'}
         >
-          <SketchPhoto src={p.config.welcomeImage} name={p.restaurant.name} />
+          <SketchPhoto src={photos[0] || p.config.welcomeImage} name={p.restaurant.name} />
         </button>
       </main>
       <footer className="atelier-footer">
