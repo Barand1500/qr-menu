@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Sparkles, X } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { api, formatMoney, imageUrl } from '@/lib/api';
 import { menuProductPath } from '@/lib/menuPaths';
-import MenuMascot, { type MenuMascotMood } from '@/components/public/MenuMascot';
+import SofraSheet from './sofra/SofraSheet';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 
 type Hunger = 'light' | 'hungry' | 'stuffed';
@@ -112,9 +112,13 @@ export default function MenuAssistantModal({
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<SuggestProduct[]>([]);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState(false);
+  const request = useRef(0);
 
   useEffect(() => {
+    request.current += 1;
     if (!open) return;
+    setError(false);
     setStep(0);
     setHunger(null);
     setTaste(null);
@@ -124,28 +128,9 @@ export default function MenuAssistantModal({
     setLoading(false);
   }, [open]);
 
-  if (!open) return null;
-
-  const mood: MenuMascotMood = loading
-    ? 'thinking'
-    : done
-      ? 'excited'
-      : step === 0
-        ? 'neutral'
-        : 'happy';
-
-  const bubble =
-    loading
-      ? t.loading
-      : done
-        ? t.results
-        : step === 0
-          ? t.q1
-          : step === 1
-            ? t.q2
-            : t.q3;
-
   async function fetchSuggestions(h: Hunger, ta: Taste, b: Budget) {
+    const id = ++request.current;
+    setError(false);
     setLoading(true);
     setDone(false);
     try {
@@ -159,17 +144,19 @@ export default function MenuAssistantModal({
       const res = await api<{ products: SuggestProduct[] }>(
         `/api/menu/${slug}/assistant-suggest?${params}`
       );
+      if (id !== request.current) return;
       setProducts(res.products || []);
       setDone(true);
     } catch {
-      setProducts([]);
-      setDone(true);
+      if (id !== request.current) return;
+      setError(true);
     } finally {
-      setLoading(false);
+      if (id === request.current) setLoading(false);
     }
   }
 
   function reset() {
+    setError(false);
     setStep(0);
     setHunger(null);
     setTaste(null);
@@ -179,161 +166,159 @@ export default function MenuAssistantModal({
   }
 
   return (
-    <div className="menu-assistant-overlay" onClick={onClose}>
-      <div
-        className="menu-assistant-modal login-glass"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-labelledby="menu-assistant-title"
-      >
-        <button type="button" className="menu-assistant-modal__close" onClick={onClose} aria-label={t.close}>
-          <X className="w-5 h-5" />
-        </button>
+    <SofraSheet open={open} onClose={onClose} title={t.title} subtitle={t.subtitle}>
+      <div className="sofra-assistant">
+        {error && (
+          <p className="sofra-sheet-error" role="alert">
+            {lang.startsWith('en')
+              ? 'Could not load picks. Please try again.'
+              : 'Öneriler yüklenemedi. Lütfen tekrar deneyin.'}
+          </p>
+        )}
+        {!done && !loading && (
+          <>
+            <div className="menu-assistant-steps" aria-hidden>
+              {[0, 1, 2].map((i) => (
+                <span key={i} className={i <= step ? 'is-on' : ''} />
+              ))}
+            </div>
 
-        <div className="menu-assistant-modal__hero">
-          <MenuMascot mood={mood} size="md" />
-          <div className="menu-assistant-bubble">{bubble}</div>
-        </div>
-
-        <div className="menu-assistant-modal__body">
-          <h2 id="menu-assistant-title" className="menu-assistant-modal__title">
-            <Sparkles className="w-4 h-4" />
-            {t.title}
-          </h2>
-          <p className="menu-assistant-modal__sub">{t.subtitle}</p>
-
-          {!done && !loading && (
-            <>
-              <div className="menu-assistant-steps" aria-hidden>
-                {[0, 1, 2].map((i) => (
-                  <span key={i} className={i <= step ? 'is-on' : ''} />
+            <h3>{step === 0 ? t.q1 : step === 1 ? t.q2 : t.q3}</h3>
+            {step === 0 && (
+              <div className="menu-assistant-choices">
+                {(Object.keys(t.hunger) as Hunger[]).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={hunger === key}
+                    className={`menu-assistant-choice${hunger === key ? ' is-active' : ''}`}
+                    onClick={() => setHunger(key)}
+                  >
+                    {t.hunger[key]}
+                  </button>
                 ))}
               </div>
-
-              {step === 0 && (
-                <div className="menu-assistant-choices">
-                  {(Object.keys(t.hunger) as Hunger[]).map((key) => (
-                    <button
-                      key={key}
-                      type="button"
-                      className={`menu-assistant-choice${hunger === key ? ' is-active' : ''}`}
-                      onClick={() => setHunger(key)}
-                    >
-                      {t.hunger[key]}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {step === 1 && (
-                <div className="menu-assistant-choices">
-                  {(Object.keys(t.taste) as Taste[]).map((key) => (
-                    <button
-                      key={key}
-                      type="button"
-                      className={`menu-assistant-choice${taste === key ? ' is-active' : ''}`}
-                      onClick={() => setTaste(key)}
-                    >
-                      {t.taste[key]}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {step === 2 && (
-                <div className="menu-assistant-choices">
-                  {(Object.keys(t.budget) as Budget[]).map((key) => (
-                    <button
-                      key={key}
-                      type="button"
-                      className={`menu-assistant-choice${budget === key ? ' is-active' : ''}`}
-                      onClick={() => setBudget(key)}
-                    >
-                      {t.budget[key]}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div className="menu-assistant-actions">
-                {step > 0 && (
-                  <button type="button" className="menu-assistant-btn menu-assistant-btn--ghost" onClick={() => setStep((s) => s - 1)}>
-                    <ArrowLeft className="w-4 h-4" />
-                    {t.back}
-                  </button>
-                )}
-                {step < 2 ? (
+            )}
+            {step === 1 && (
+              <div className="menu-assistant-choices">
+                {(Object.keys(t.taste) as Taste[]).map((key) => (
                   <button
+                    key={key}
                     type="button"
-                    className="menu-assistant-btn"
-                    disabled={step === 0 ? !hunger : !taste}
-                    onClick={() => setStep((s) => s + 1)}
+                    aria-pressed={taste === key}
+                    className={`menu-assistant-choice${taste === key ? ' is-active' : ''}`}
+                    onClick={() => setTaste(key)}
                   >
-                    {t.next}
+                    {t.taste[key]}
                   </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="menu-assistant-btn"
-                    disabled={!budget || !hunger || !taste}
-                    onClick={() => {
-                      if (hunger && taste && budget) void fetchSuggestions(hunger, taste, budget);
-                    }}
-                  >
-                    {t.find}
-                  </button>
-                )}
+                ))}
               </div>
-            </>
-          )}
+            )}
+            {step === 2 && (
+              <div className="menu-assistant-choices">
+                {(Object.keys(t.budget) as Budget[]).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={budget === key}
+                    className={`menu-assistant-choice${budget === key ? ' is-active' : ''}`}
+                    onClick={() => setBudget(key)}
+                  >
+                    {t.budget[key]}
+                  </button>
+                ))}
+              </div>
+            )}
 
-          {loading && (
-            <div className="menu-assistant-loading">
-              <span className="menu-assistant-loading__dot" />
-              <span className="menu-assistant-loading__dot" />
-              <span className="menu-assistant-loading__dot" />
-            </div>
-          )}
-
-          {done && !loading && (
-            <>
-              {products.length === 0 ? (
-                <p className="menu-assistant-empty">{t.empty}</p>
+            <div className="menu-assistant-actions">
+              {step > 0 && (
+                <button
+                  type="button"
+                  className="menu-assistant-btn menu-assistant-btn--ghost"
+                  onClick={() => setStep((s) => s - 1)}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  {t.back}
+                </button>
+              )}
+              {step < 2 ? (
+                <button
+                  type="button"
+                  className="menu-assistant-btn"
+                  disabled={step === 0 ? !hunger : !taste}
+                  onClick={() => setStep((s) => s + 1)}
+                >
+                  {t.next}
+                </button>
               ) : (
-                <div className="menu-assistant-results">
-                  {products.map((p) => (
-                    <Link
-                      key={p.id}
-                      to={menuProductPath(p.id)}
-                      className="menu-assistant-result"
-                      onClick={onClose}
-                    >
-                      {p.imageUrl ? (
-                        <img src={imageUrl(p.imageUrl)} alt="" />
-                      ) : (
-                        <div className="menu-assistant-result__ph">
-                          <MenuMediaPlaceholder kind="product" size="sm" label={p.name} />
-                        </div>
-                      )}
-                      <div className="menu-assistant-result__meta">
-                        <strong>{p.name}</strong>
-                        {p.groupName ? <span>{p.groupName}</span> : null}
-                      </div>
-                      <em>{formatMoney(p.price, p.currency)}</em>
-                    </Link>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  className="menu-assistant-btn"
+                  disabled={!budget || !hunger || !taste}
+                  onClick={() => {
+                    if (hunger && taste && budget) void fetchSuggestions(hunger, taste, budget);
+                  }}
+                >
+                  {t.find}
+                </button>
               )}
-              <div className="menu-assistant-actions">
-                <button type="button" className="menu-assistant-btn menu-assistant-btn--ghost" onClick={reset}>
-                  {t.again}
-                </button>
-                <button type="button" className="menu-assistant-btn" onClick={onClose}>
-                  {t.close}
-                </button>
+            </div>
+          </>
+        )}
+
+        {loading && (
+          <div className="menu-assistant-loading" role="status">
+            {t.loading}
+            <span className="menu-assistant-loading__dot" />
+            <span className="menu-assistant-loading__dot" />
+            <span className="menu-assistant-loading__dot" />
+          </div>
+        )}
+
+        {done && !loading && (
+          <>
+            {products.length === 0 ? (
+              <p className="menu-assistant-empty">{t.empty}</p>
+            ) : (
+              <div className="menu-assistant-results">
+                {products.map((p) => (
+                  <Link
+                    key={p.id}
+                    to={menuProductPath(p.id)}
+                    className="menu-assistant-result"
+                    onClick={onClose}
+                  >
+                    {p.imageUrl ? (
+                      <img src={imageUrl(p.imageUrl)} alt="" />
+                    ) : (
+                      <div className="menu-assistant-result__ph">
+                        <MenuMediaPlaceholder kind="product" size="sm" label={p.name} />
+                      </div>
+                    )}
+                    <div className="menu-assistant-result__meta">
+                      <strong>{p.name}</strong>
+                      {p.groupName ? <span>{p.groupName}</span> : null}
+                    </div>
+                    <em>{formatMoney(p.price, p.currency)}</em>
+                  </Link>
+                ))}
               </div>
-            </>
-          )}
-        </div>
+            )}
+            <div className="menu-assistant-actions">
+              <button
+                type="button"
+                className="menu-assistant-btn menu-assistant-btn--ghost"
+                onClick={reset}
+              >
+                {t.again}
+              </button>
+              <button type="button" className="menu-assistant-btn" onClick={onClose}>
+                {t.close}
+              </button>
+            </div>
+          </>
+        )}
       </div>
-    </div>
+    </SofraSheet>
   );
 }

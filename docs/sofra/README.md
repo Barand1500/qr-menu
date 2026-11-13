@@ -6,7 +6,7 @@ Sofra, 13 Kasım 2026 tarihinde seçilen karşılama ve menü tasarımıdır. M�
 
 1. Yönetim panelinde **Başlangıç Ayarları → Tema Ayarları** açılır. Oyun Ekranı aynı menüde kalır.
 2. Karşılama veya Menü seçilir. Telefon/masaüstü ve düzenlenecek dil seçilebilir.
-3. Önizlemedeki yazıya tıklanıp doğrudan yazılır. İşletme adı da önizlemeden düzenlenebilir. Fotoğrafa tıklayınca dosya seçimi açılır.
+3. Önizlemedeki yazıya tıklanıp doğrudan yazılır. İşletme adı, yuvarlak rozetin yazısı ve varsayılan **Şefin Yıldızı** başlığı da önizlemeden düzenlenebilir. Fotoğrafa tıklayınca dosya seçimi açılır.
 4. Çalışma saatleri isteğe bağlıdır. Ürünler ve fiyatlar, mevcut Ürünler ekranında yönetilir.
 5. **Kaydet** denene kadar değişiklikler yalnızca taslaktadır. Kaydetme başarısızsa taslak korunur; başarılı kayıttan sonra yeni açılan/yenilenen müşteri ekranları kayıtlı hali gösterir.
 
@@ -28,7 +28,17 @@ Görseller gerçek bileşenlerin yerel Chrome'da, örnek ZEEN verisi ve taklit A
 - Hikâyeler, vitrin duyuruları, beslenme tercihleri, müşteri profili, hakkında/sosyal bağlantılar, öneri ve şikâyet kutuları.
 - Mevcut oyun yapılandırması ve etkin olduğunda menü asistanı.
 
-Karşılama bir ana düğmeyle menüye açılır. Beslenme tercihleri zorunlu bir adım değildir. Mobilde kategori şeridi, arama, kompakt hikâye/duyuru alanı ve alt araç çubuğu kullanılır. Basit ürünler listeden eklenir; seçenekli veya seçenek bilgisi henüz bilinmeyen ürünler güvenli biçimde ürün detayına açılır.
+Karşılama bir ana düğmeyle menüye açılır. Beslenme tercihleri zorunlu bir adım değildir. Mobilde kategori şeridi, arama, tam genişlikte hikâyeler ve alt araç çubuğu kullanılır; vitrin bannerları yalnızca masaüstünde görünür. Basit ürünler listeden eklenir; seçenekli veya seçenek bilgisi henüz bilinmeyen ürünler güvenli biçimde ürün detayına açılır.
+
+## Sade paneller ve tarayıcı uyumu
+
+- Öneri, şikâyet ve menü asistanı maskotsuz, krem/bordo ortak tasarıma sahiptir. Geri bildirim formları `SofraFeedbackSheet.tsx`, ortak alt panel ve klavye/odak yönetimi `SofraSheet.tsx`, görünüm `sofra-overlays.css` içindedir. Mevcut API uçları ve zorunlu alanlar korunur; başarısız gönderimde metin kaybolmaz.
+- Sepet ve Diğer paneli masaüstünde de alttan açılır. Oyun, profil ve beslenme panellerinin açılışı da aşağıdan gelir. Hareket azaltma tercihi desteklenir. Diğer paneli artık Sofra'nın açık renklerini kullanır.
+- Uzun restoran adları telefonda tam genişliği kullanır. Masaüstü kategori sütunu genişletildi; kategori numaraları daralmaz ve uzun adlar kelime aralarından bölünür.
+- Bayraklar emoji veya dış CDN yerine `frontend/public/flags/` altındaki yerel SVG'lerdir. Kaynak: flag-icons; MIT lisansı aynı klasördedir. Yeni dil/ülke eşlemesi eklenirse ilgili SVG de eklenmelidir. Bilinmeyen/yüklenemeyen bayrak için küre simgesi gösterilir.
+- Yeni metin anahtarları `sealText` ve `picksLabel`, diğer yazılar gibi dil bazında kaydedilir. Eski kayıtlarda varsayılanlar SOFRA ve Şefin Yıldızı'dır. Frontend ve backend birlikte güncellenmelidir.
+
+Güncel panel örnekleri: [Öneri](feedback-mobile.png), [Şikâyet](complaint-mobile.png), [Diğer](menu-sheet-desktop.png), [Ne yesem?](assistant-desktop.png). Bunlar yerel örnek veriyle alınan ekran görüntüleridir.
 
 ## Kalıcı kayıt ve mimari
 

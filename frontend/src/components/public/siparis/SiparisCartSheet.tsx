@@ -10,6 +10,7 @@ import { notifyTableRequestCreated } from '@/lib/tableRequestNotify';
 import { notifyWaiterCalled } from '@/lib/menuGames';
 import { allergenLabel, loadDietaryPrefs } from '@/lib/dietAllergens';
 import { useTableSessionCode } from '@/components/public/TableSessionCodeGate';
+import { useSheetPresence, useSheetFocus } from '@/components/public/sofra/SofraSheet';
 
 export default function SiparisCartSheet({ lang }: { lang: string }) {
   const { slug: hookSlug } = useMenuSlug();
@@ -31,13 +32,15 @@ export default function SiparisCartSheet({ lang }: { lang: string }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState(false);
+  const mounted = useSheetPresence(enabled && sheetOpen);
+  const panelRef = useSheetFocus(enabled && sheetOpen, () => setSheetOpen(false));
 
   const allergyNames = useMemo(() => {
     const prefs = loadDietaryPrefs();
     return prefs.allergens.map((id) => allergenLabel(id, lang)).filter(Boolean);
   }, [lang, sheetOpen, items.length]);
 
-  if (!enabled || !sheetOpen) return null;
+  if (!mounted) return null;
 
   const en = (lang || 'tr').split('-')[0] === 'en';
   const currency = items[0]?.currency;
@@ -132,14 +135,14 @@ export default function SiparisCartSheet({ lang }: { lang: string }) {
   }
 
   return (
-    <div className="siparis-cart-sheet" role="dialog" aria-modal="true" aria-label={en ? 'Cart' : 'Sepet'}>
+    <div className={`siparis-cart-sheet${sheetOpen ? ' is-open' : ''}`} inert={!sheetOpen} role="dialog" aria-modal="true" aria-label={en ? 'Cart' : 'Sepet'}>
       <button
         type="button"
         className="siparis-cart-sheet__backdrop"
         aria-label={en ? 'Close' : 'Kapat'}
         onClick={() => setSheetOpen(false)}
       />
-      <div className="siparis-cart-sheet__panel">
+      <section ref={panelRef} tabIndex={-1} className="siparis-cart-sheet__panel">
         <header className="siparis-cart-sheet__head">
           <div>
             <p className="siparis-cart-sheet__eyebrow">{masaLabel}</p>
@@ -272,7 +275,7 @@ export default function SiparisCartSheet({ lang }: { lang: string }) {
             ? 'Sends products + note to the table — no online payment.'
             : 'Ürünler ve not masaya bildirim olarak gider — online ödeme yok.'}
         </p>
-      </div>
+      </section>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { X, Home, Info, Globe, Leaf, ChevronDown, Check, Gamepad2 } from 'lucide
 import PublicSocialLinks from '@/components/public/PublicSocialLinks';
 import type { PublicSocialLink } from '@/lib/socialCatalog';
 import LanguageFlag from '@/components/LanguageFlag';
+import { useSheetFocus } from './sofra/SofraSheet';
 import {
   preferenceUi,
   prefsActive,
@@ -65,6 +66,7 @@ export default function PublicSideMenu({
   const [langOpen, setLangOpen] = useState(false);
   const [allergyOpen, setAllergyOpen] = useState(() => prefsActive(dietaryPrefs));
   const langRef = useRef<HTMLDivElement>(null);
+  const panelRef = useSheetFocus(open, onClose);
   const gameIds = enabledMenuGames(gamesConfig ?? (gamesEnabled ? true : false));
   const gameCards = MENU_GAMES_CATALOG.filter((g) => gameIds.includes(g.id));
 
@@ -126,6 +128,11 @@ export default function PublicSideMenu({
       />
 
       <aside
+        ref={panelRef}
+        tabIndex={-1}
+        inert={!open}
+        role={open ? 'dialog' : undefined}
+        aria-modal={open ? true : undefined}
         className={`public-side-menu ${open ? 'is-open' : ''}`}
         aria-hidden={!open}
         aria-label={chrome.menu}

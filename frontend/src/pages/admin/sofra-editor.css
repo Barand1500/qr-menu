@@ -94,21 +94,7 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
-.sofra-editor-hint {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  padding: 14px 18px;
-  font-size: 11px;
-  color: var(--admin-text-muted);
-  background: var(--admin-card);
-  border-inline: 1px solid var(--admin-card-border);
-}
-.sofra-editor-hint strong {
-  color: var(--admin-text);
-  font-weight: 500;
-}
+
 .sofra-editor-stage {
   display: flex;
   justify-content: center;
@@ -190,14 +176,7 @@
   .sofra-editor-discard {
     margin: 0;
   }
-  .sofra-editor-hint {
-    align-items: flex-start;
-    line-height: 1.6;
-  }
-  .sofra-editor-hint svg {
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
+
   .sofra-editor-details {
     grid-template-columns: minmax(0, 1fr);
   }

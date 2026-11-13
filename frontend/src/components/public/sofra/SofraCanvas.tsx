@@ -4,6 +4,7 @@ import { imageUrl, formatMoney } from '@/lib/api';
 import LanguageFlag from '@/components/LanguageFlag';
 import { sofraCopy, type SofraConfig, type SofraTextField } from '@/lib/sofra';
 import './sofra.css';
+import './sofra-overlays.css';
 
 export interface SofraEditing {
   onTextEdit?: (field: SofraTextField, value: string) => void;
@@ -259,8 +260,8 @@ export function SofraWelcomeView({
           className="sofra-welcome-photo"
           onImageEdit={onImageEdit}
         />
-        <span className="sofra-seal" aria-hidden>
-          <span>SOFRA</span>
+        <span className="sofra-seal" aria-hidden={onTextEdit ? undefined : true}>
+          <SofraText field="sealText" value={copy.sealText} onTextEdit={onTextEdit} />
           <Utensils size={22} />
           <small>{config.brandName || restaurant.name}</small>
         </span>
@@ -372,8 +373,13 @@ export function SofraMenuView({
             className={activeGroup == null ? 'is-active' : ''}
             onClick={() => onGroupChange?.(null)}
           >
-            <span>00</span>
-            {en ? 'Picks' : 'Sofradan'}
+            <span className="sofra-category-number">00</span>
+            <SofraText
+              className="sofra-category-name"
+              field="picksLabel"
+              value={copy.picksLabel}
+              onTextEdit={onTextEdit}
+            />
           </button>
           {groups.map((g, i) => (
             <button
@@ -382,12 +388,13 @@ export function SofraMenuView({
               className={activeGroup === g.id ? 'is-active' : ''}
               onClick={() => onGroupChange?.(g.id)}
             >
-              <span>{String(i + 1).padStart(2, '0')}</span>
-              {g.name}
+              <span className="sofra-category-number">{String(i + 1).padStart(2, '0')}</span>
+              <span className="sofra-category-name">{g.name}</span>
             </button>
           ))}
-          <div className="sofra-category-seal" aria-hidden>
-            SOFRA<small>{restaurant.name}</small>
+          <div className="sofra-category-seal" aria-hidden={onTextEdit ? undefined : true}>
+            <SofraText field="sealText" value={copy.sealText} onTextEdit={onTextEdit} />
+            <small>{config.brandName || restaurant.name}</small>
           </div>
         </nav>
         <main className="sofra-menu-content">

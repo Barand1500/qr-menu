@@ -7,6 +7,8 @@ export const SOFRA_TEXT_FIELDS = [
   'menuTitle',
   'menuEyebrow',
   'footerText',
+  'sealText',
+  'picksLabel',
 ] as const;
 export type SofraTextField = (typeof SOFRA_TEXT_FIELDS)[number];
 export type SofraCopy = Record<SofraTextField, string>;
@@ -30,6 +32,8 @@ export const SOFRA_DEFAULTS: SofraConfig = {
       menuTitle: 'Bugün sofrada',
       menuEyebrow: 'MEVSİMİN EN İYİLERİ',
       footerText: 'Her tabakta biraz mutluluk.',
+      sealText: 'SOFRA',
+      picksLabel: 'Şefin Yıldızı',
     },
     en: {
       welcomeTitle: 'Good food.\nGreat company.',
@@ -38,6 +42,8 @@ export const SOFRA_DEFAULTS: SofraConfig = {
       menuTitle: 'At the table today',
       menuEyebrow: 'THE BEST OF THE SEASON',
       footerText: 'A little happiness on every plate.',
+      sealText: 'SOFRA',
+      picksLabel: "Chef’s Star",
     },
   },
 };

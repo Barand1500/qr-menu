@@ -42,7 +42,8 @@ import { parseAboutPage, type AboutPageConfig } from '@/lib/aboutPage';
 import '@/about-page.css';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import MenuAssistantModal from '@/components/public/MenuAssistantModal';
-import MenuMascot from '@/components/public/MenuMascot';
+import { Sparkles } from 'lucide-react';
+import LanguageFlag from '@/components/LanguageFlag';
 import TableServiceButtons from '@/components/public/TableServiceButtons';
 import { parseMenuAssistantStyle } from '@/lib/menuAssistantStyle';
 import { sideMenuUi } from '@/lib/menuChromeUi';
@@ -770,12 +771,12 @@ function PublicMenuPageInner({
       {!searchOpen && (
         <button
           type="button"
-          className={`menu-assistant-launcher menu-assistant-launcher--${assistantStyle}`}
+          className={`menu-assistant-launcher menu-assistant-launcher--${assistantStyle}${isSofra ? ' sofra-assistant-launcher' : ''}`}
           onClick={() => setAssistantOpen(true)}
           aria-label={assistantLabel.title}
         >
           <span className="menu-assistant-launcher__face" aria-hidden>
-            <MenuMascot mood="happy" size="sm" />
+            <Sparkles size={20} />
           </span>
           <span className="menu-assistant-launcher__copy">
             <strong>{assistantLabel.title}</strong>
@@ -835,6 +836,7 @@ function PublicMenuPageInner({
               headerTools={
                 <>
                   <label className="sofra-language">
+                    <LanguageFlag code={lang} size={20} />
                     <span className="sr-only">Dil / Language</span>
                     <select value={lang} onChange={(e) => changeLang(e.target.value)}>
                       {menu.languages.map((l) => (

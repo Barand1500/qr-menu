@@ -4,7 +4,6 @@ import {
   Monitor,
   Smartphone,
   Save,
-  MousePointer2,
   ImagePlus,
   RotateCcw,
 } from 'lucide-react';
@@ -301,13 +300,6 @@ export default function SofraThemePage() {
           {message.text}
         </p>
       )}
-      <div className="sofra-editor-hint">
-        <MousePointer2 size={16} />
-        <span>
-          <strong>Yazıya tıkla, düzenle.</strong> Fotoğrafa tıklayarak değiştirebilirsin. Kaydet
-          dediğinde yayınlanır.
-        </span>
-      </div>
       <div className="sofra-editor-stage" ref={stageRef} inert={saving}>
         <SofraPreviewFrame width={width} scale={scale}>
           {page === 'welcome' ? (

@@ -1,0 +1,661 @@
+/* Shared paper-and-burgundy sheets. Kept independent of .sofra for welcome portals. */
+.sofra-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  color: #281e1a;
+  font:
+    14px/1.5 Arial,
+    sans-serif;
+}
+.sofra-sheet-shade {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(37, 27, 23, 0.38);
+  opacity: 0;
+  transition: opacity 0.24s;
+}
+.sofra-sheet-panel {
+  position: relative;
+  width: min(100%, 540px);
+  max-height: 92svh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #fffaf2;
+  padding: 12px 26px max(26px, env(safe-area-inset-bottom));
+  border-radius: 25px 25px 0 0;
+  box-shadow: 0 -12px 60px #281e1a16;
+  transform: translateY(100%);
+  transition:
+    transform 0.24s ease,
+    opacity 0.24s;
+  opacity: 0;
+  outline: none;
+}
+.sofra-sheet.is-open .sofra-sheet-shade {
+  opacity: 1;
+}
+.sofra-sheet.is-open .sofra-sheet-panel {
+  transform: translateY(0);
+  opacity: 1;
+}
+@starting-style {
+  .sofra-sheet.is-open .sofra-sheet-panel {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  .sofra-sheet.is-open .sofra-sheet-shade {
+    opacity: 0;
+  }
+}
+.sofra-sheet-handle {
+  width: 34px;
+  height: 4px;
+  border-radius: 4px;
+  background: #d9c7b9;
+  margin: 0 auto 22px;
+}
+.sofra-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  justify-content: space-between;
+  margin-bottom: 25px;
+}
+.sofra-sheet-head h2 {
+  font:
+    normal 31px/1.15 Georgia,
+    serif;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+.sofra-sheet-head p {
+  font-size: 13px;
+  color: #76675e;
+  margin: 10px 0 0;
+}
+.sofra-sheet-close {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border: 1px solid #dfd1c5;
+  border-radius: 50%;
+  color: #76675e;
+  background: transparent;
+}
+.sofra-sheet button:focus-visible {
+  outline: 2px solid #781e23;
+  outline-offset: 3px;
+}
+.sofra-sheet-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: #781e23;
+  color: #fffaf2;
+  font-weight: 600;
+  padding: 12px 20px;
+  margin-top: 20px;
+}
+.sofra-sheet button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+.sofra-feedback-form fieldset {
+  display: grid;
+  gap: 20px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.sofra-feedback-form label {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #76675e;
+}
+.sofra-feedback-form input,
+.sofra-feedback-form textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #dfd1c5;
+  border-radius: 10px;
+  background: transparent;
+  color: #281e1a;
+  padding: 12px;
+  font:
+    16px/1.5 Arial,
+    sans-serif;
+  outline: none;
+}
+.sofra-feedback-form textarea {
+  resize: vertical;
+  min-height: 95px;
+}
+.sofra-feedback-form input:focus,
+.sofra-feedback-form textarea:focus {
+  border-color: #781e23;
+  box-shadow: 0 0 0 2px #781e2310;
+}
+.sofra-rating {
+  text-align: center;
+  border-block: 1px solid #e6dbd1;
+  padding: 20px 0;
+}
+.sofra-rating p {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+.sofra-rating > div {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.sofra-rating button {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  color: #9d763d;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+}
+.sofra-rating small {
+  display: block;
+  margin-top: 8px;
+  color: #76675e;
+  font-size: 12px;
+}
+.sofra-contact-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #e6dbd1;
+  text-align: start;
+  color: #281e1a;
+  font-size: 12px;
+}
+.sofra-contact-toggle > span {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: #76675e;
+  font-size: 11px;
+}
+.sofra-contact-fields {
+  display: grid;
+  gap: 15px;
+}
+.sofra-sheet-error {
+  color: #781e23;
+  background: #781e2309;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+}
+.sofra-feedback-done {
+  padding: 18px 0 4px;
+  text-align: center;
+}
+.sofra-feedback-done > svg {
+  margin: 0 auto 18px;
+  color: #781e23;
+}
+.sofra-feedback-done h3 {
+  font:
+    26px Georgia,
+    serif;
+  margin: 0 0 10px;
+}
+.sofra-feedback-done p {
+  color: #76675e;
+}
+.sofra-assistant h3 {
+  font:
+    23px/1.3 Georgia,
+    serif;
+  margin: 24px 0 17px;
+}
+.sofra-assistant .menu-assistant-steps {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+}
+.sofra-assistant .menu-assistant-steps span {
+  flex: 1;
+  height: 3px;
+  border-radius: 0;
+  background: #e6dbd1;
+}
+.sofra-assistant .menu-assistant-steps .is-on {
+  background: #781e23;
+}
+.sofra-assistant .menu-assistant-choices {
+  display: grid;
+  gap: 10px;
+}
+.sofra-assistant .menu-assistant-choice {
+  color: #281e1a;
+  background: transparent;
+  border: 1px solid #dfd1c5;
+  border-radius: 10px;
+  padding: 17px;
+  min-height: 52px;
+  font:
+    14px Arial,
+    sans-serif;
+  text-align: start;
+  box-shadow: none;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.sofra-assistant .menu-assistant-choice.is-active {
+  background: #781e2309;
+  color: #781e23;
+  border-color: #781e23;
+  box-shadow: none;
+}
+.sofra-assistant .menu-assistant-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+.sofra-assistant .menu-assistant-btn {
+  background: #781e23;
+  color: #fffaf2;
+  border: 1px solid #781e23;
+  border-radius: 10px;
+  min-height: 48px;
+  padding: 12px 18px;
+  box-shadow: none;
+  font:
+    600 14px Arial,
+    sans-serif;
+}
+.sofra-assistant .menu-assistant-btn--ghost {
+  background: transparent;
+  color: #781e23;
+  border-color: #dfd1c5;
+}
+.sofra-assistant .menu-assistant-result {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #dfd1c5;
+  border-radius: 0;
+  padding: 14px 0;
+  box-shadow: none;
+  color: #281e1a;
+}
+.sofra-assistant .menu-assistant-result__meta strong {
+  color: #281e1a;
+}
+.sofra-assistant .menu-assistant-result__meta span,
+.sofra-assistant .menu-assistant-empty {
+  color: #76675e;
+}
+.sofra-assistant .menu-assistant-result em {
+  color: #781e23;
+  white-space: nowrap;
+}
+.sofra-assistant .menu-assistant-loading {
+  color: #76675e;
+  padding: 30px 0;
+}
+.sofra-assistant .menu-assistant-loading__dot {
+  display: none;
+}
+.sofra-public-shell .sofra-assistant-launcher {
+  background: #fffaf2;
+  color: #781e23;
+  border: 1px solid #d9c7b9;
+  box-shadow: 0 3px 15px #281e1a0c;
+  border-radius: 50px;
+  padding: 10px 16px;
+  gap: 10px;
+}
+.sofra-public-shell .sofra-assistant-launcher .menu-assistant-launcher__face {
+  width: auto;
+  height: auto;
+}
+.sofra-public-shell .sofra-assistant-launcher .menu-assistant-launcher__copy {
+  color: #781e23;
+}
+.sofra-public-shell .sofra-assistant-launcher .menu-assistant-launcher__copy > span {
+  display: none;
+}
+
+.sofra-categories button {
+  overflow-wrap: normal;
+  gap: 12px;
+}
+.sofra-categories .sofra-category-number {
+  flex: 0 0 24px;
+}
+.sofra-categories .sofra-category-name {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: break-word;
+  font: inherit;
+  color: inherit;
+}
+.sofra-categories button.is-active::after {
+  width: 12px;
+}
+.sofra-seal > span,
+.sofra-category-seal > span {
+  max-width: 85%;
+  text-align: center;
+  overflow-wrap: anywhere;
+  line-height: 1.05;
+}
+.lang-flag {
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.sofra-public-shell .table-service-header-btn,
+.sofra-public-shell .table-service-header-btn:hover,
+.sofra-public-shell .table-service-header-btn:active,
+.sofra-public-shell .table-service-header-btn:focus {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #781e23;
+}
+.sofra-public-shell .siparis-cart-sheet {
+  align-items: flex-end;
+}
+.sofra-public-shell .siparis-cart-sheet__panel {
+  width: min(100%, 600px);
+  max-height: 90svh;
+  border-radius: 25px 25px 0 0;
+  background: #fffaf2;
+  padding: 26px 26px max(26px, env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  opacity: 0;
+  transition:
+    transform 0.24s ease,
+    opacity 0.24s;
+  overscroll-behavior: contain;
+  outline: none;
+}
+.sofra-public-shell .siparis-cart-sheet.is-open .siparis-cart-sheet__panel {
+  transform: translateY(0);
+  opacity: 1;
+}
+.sofra-public-shell .siparis-cart-sheet__backdrop {
+  opacity: 0;
+  transition: opacity 0.24s;
+}
+.sofra-public-shell .siparis-cart-sheet.is-open .siparis-cart-sheet__backdrop {
+  opacity: 1;
+}
+@starting-style {
+  .sofra-public-shell .siparis-cart-sheet.is-open .siparis-cart-sheet__panel {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+/* The menu is another bottom sheet, including on wide screens. */
+.sofra-public-shell .public-side-menu {
+  top: auto;
+  bottom: 0;
+  right: auto;
+  left: 50%;
+  width: min(100%, 640px);
+  height: auto;
+  max-height: 90svh;
+  padding: 26px;
+  border-radius: 25px 25px 0 0;
+  transform: translate(-50%, 100%);
+  background: #fffaf2;
+  color: #281e1a;
+  border: 0;
+  box-shadow: 0 -12px 60px #281e1a16;
+  transition:
+    transform 0.24s ease,
+    visibility 0.24s;
+  visibility: hidden;
+}
+.sofra-public-shell .public-side-menu.is-open {
+  transform: translate(-50%, 0);
+  visibility: visible;
+}
+.sofra-public-shell .public-side-menu__header {
+  padding: 0 0 20px;
+}
+.sofra-public-shell .public-side-menu__eyebrow {
+  color: #76675e;
+  letter-spacing: 0.12em;
+}
+.sofra-public-shell .public-side-menu__brand {
+  color: #281e1a;
+  font:
+    26px/1.2 Georgia,
+    serif;
+  white-space: normal;
+}
+.sofra-public-shell .public-side-menu__close {
+  background: transparent;
+  color: #76675e;
+  border: 1px solid #dfd1c5;
+  border-radius: 50%;
+}
+.sofra-public-shell .public-side-menu__nav {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  padding: 0 0 18px;
+}
+.sofra-public-shell .public-side-menu__link {
+  flex: 1;
+  color: #76675e;
+  background: transparent;
+  border-radius: 10px;
+  padding: 13px;
+}
+.sofra-public-shell .public-side-menu__link.is-active {
+  color: #781e23;
+  background: #781e2309;
+}
+.sofra-public-shell .public-side-menu__scroll {
+  padding: 0;
+}
+.sofra-public-shell .public-side-menu__section {
+  border-color: #e6dbd1;
+}
+.sofra-public-shell .public-side-menu__section-title {
+  color: #76675e;
+}
+.sofra-public-shell .public-side-menu__game-card {
+  background: transparent;
+  border: 1px solid #dfd1c5;
+  border-radius: 12px;
+  color: #281e1a;
+  box-shadow: none;
+}
+.sofra-public-shell .public-side-menu__game-card :is(strong, p, span) {
+  color: inherit;
+}
+.sofra-public-shell .public-side-menu__game-card small,
+.sofra-public-shell .public-side-menu__game-card em {
+  color: #76675e;
+}
+.sofra-public-shell :is(.public-side-menu__lang-trigger, .public-side-menu__accordion) {
+  background: transparent;
+  border: 1px solid #dfd1c5;
+  border-radius: 10px;
+  color: #281e1a;
+}
+.sofra-public-shell :is(.public-side-menu__lang-name, .public-side-menu__accordion-text strong) {
+  color: #281e1a;
+}
+.sofra-public-shell :is(.public-side-menu__accordion-text small, .public-side-menu__allergy-sub) {
+  color: #76675e;
+}
+.sofra-public-shell .public-side-menu__accordion-text > span {
+  color: #76675e;
+}
+.sofra-public-shell .public-side-menu__accordion-left > svg {
+  color: #781e23;
+}
+.sofra-public-shell .public-side-menu__lang-list {
+  background: #fffaf2;
+  border-color: #dfd1c5;
+  color: #281e1a;
+}
+.sofra-public-shell .public-side-menu__lang-option {
+  color: #281e1a;
+}
+.sofra-public-shell .public-side-menu__lang-option.is-active {
+  background: #781e2309;
+  color: #781e23;
+}
+.sofra-public-shell .public-side-menu__allergy-chip {
+  background: transparent;
+  color: #76675e;
+  border-color: #dfd1c5;
+}
+.sofra-public-shell .public-side-menu__allergy-chip.is-active {
+  background: #781e2309;
+  color: #781e23;
+  border-color: #781e23;
+}
+.sofra-public-shell .public-side-menu__social {
+  border-top: 1px solid #e6dbd1;
+  margin-top: 20px;
+}
+.sofra-public-shell :is(.menu-games, .mc-auth) {
+  align-items: flex-end;
+  padding-bottom: 0;
+}
+.sofra-public-shell .mc-auth:not(.mc-auth--profile) {
+  align-items: flex-end;
+  padding-bottom: 0;
+}
+.sofra-public-shell :is(.menu-games__panel, .mc-auth__panel) {
+  margin-bottom: 0;
+  border-radius: 25px 25px 0 0;
+  animation: sofra-sheet-enter 0.24s ease both;
+}
+.sofra-public-shell .mc-auth:not(.mc-auth--profile) .mc-auth__panel {
+  border-radius: 25px 25px 0 0;
+  animation-name: sofra-sheet-enter;
+}
+.sofra-public-shell .mc-auth--profile .mc-auth__panel {
+  width: min(100%, 720px);
+  height: auto;
+  max-height: 92svh;
+  background: #fffaf2;
+}
+.sofra-public-shell .menu-games__panel {
+  background: #fffaf2;
+}
+.sofra-prefs-backdrop {
+  align-items: end;
+  padding-bottom: 0;
+}
+.sofra-prefs {
+  border-radius: 25px 25px 0 0;
+  animation: sofra-sheet-enter 0.24s ease both;
+}
+@keyframes sofra-sheet-enter {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@media (max-width: 767px) {
+  .sofra .sofra-masthead {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+  }
+  .sofra .sofra-brand {
+    flex: 1 1 100%;
+    max-width: 100%;
+    font-size: clamp(25px, 6.8vw, 34px);
+    align-items: center;
+    overflow-wrap: normal;
+  }
+  .sofra .sofra-brand > span {
+    min-width: 0;
+    overflow-wrap: break-word;
+    line-height: 1.1;
+  }
+  .sofra .sofra-brand img {
+    flex-shrink: 0;
+  }
+  .sofra .sofra-header-tools {
+    flex: 1 1 100%;
+    max-width: 100%;
+    justify-content: flex-end;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .sofra .sofra-header-tools .sofra-language {
+    margin-inline-end: auto;
+  }
+  .sofra .sofra-seal {
+    top: 200px;
+  }
+  .sofra .sofra-updates {
+    display: block;
+  }
+  .sofra .sofra-stories {
+    width: 100%;
+    max-width: 100%;
+  }
+  .sofra .sofra-banner-note {
+    display: none;
+  }
+  .sofra .sofra-categories .sofra-category-name {
+    display: block;
+    flex: none;
+    max-width: none;
+  }
+  .sofra .sofra-categories button {
+    max-width: none;
+  }
+  .sofra-sheet-panel {
+    padding-inline: 20px;
+  }
+  .sofra-public-shell .public-side-menu {
+    padding: 22px 20px max(22px, env(safe-area-inset-bottom));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sofra-sheet *,
+  .sofra-public-shell .siparis-cart-sheet *,
+  .sofra-public-shell .public-side-menu,
+  .sofra-public-shell .menu-games__panel,
+  .sofra-public-shell .mc-auth__panel,
+  .sofra-prefs {
+    animation: none !important;
+    transition: none !important;
+  }
+}

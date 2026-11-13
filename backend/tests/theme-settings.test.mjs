@@ -100,7 +100,7 @@ try {
     ...initial.config,
     brandName: 'Sofra',
     texts: {
-      tr: { welcomeTitle: 'Yeni başlık', enterLabel: 'Başla' },
+      tr: { welcomeTitle: 'Yeni başlık', enterLabel: 'Başla', sealText: 'CHEF', picksLabel: 'Şefin Yıldızı' },
       en: { welcomeTitle: 'New title' },
     },
     welcomeImage: 'javascript:alert(1)',
@@ -109,6 +109,8 @@ try {
   assert.equal(res.status, 200);
   const saved = await res.json();
   assert.equal(saved.config.texts.tr.welcomeTitle, 'Yeni başlık');
+  assert.equal(saved.config.texts.tr.sealText, 'CHEF');
+  assert.equal(saved.config.texts.tr.picksLabel, 'Şefin Yıldızı');
   assert.equal(saved.config.welcomeImage, '/sofra/breakfast.webp');
   assert.ok(saved.revision);
   res = await call();

@@ -1,4 +1,6 @@
-import { languageCountryCode, languageFlagUrl } from '@/lib/languageFlags';
+import { useState } from 'react';
+import { Globe } from 'lucide-react';
+import { languageFlagUrl } from '@/lib/languageFlags';
 
 type Props = {
   code: string;
@@ -9,17 +11,17 @@ type Props = {
 };
 
 /**
- * Bayrak görseli — emoji yerine PNG (Chrome/Windows’ta TR harfi sorunu olmaz).
+ * Yerel SVG: emoji desteğine veya üçüncü taraf sunucuya ihtiyaç duymaz.
  */
 export default function LanguageFlag({ code, className, size = 22, title }: Props) {
-  const iso = languageCountryCode(code);
+  const [failed, setFailed] = useState('');
   const src = languageFlagUrl(code, size <= 22 ? 40 : 80);
   const cls = ['lang-flag', className].filter(Boolean).join(' ');
 
-  if (!iso || !src) {
+  if (!src || failed === src) {
     return (
       <span className={`${cls} lang-flag--globe`} title={title} aria-hidden>
-        🌐
+        <Globe size={size} />
       </span>
     );
   }
@@ -28,12 +30,11 @@ export default function LanguageFlag({ code, className, size = 22, title }: Prop
     <img
       className={cls}
       src={src}
-      srcSet={`https://flagcdn.com/w80/${iso}.png 2x`}
+      onError={() => setFailed(src)}
       alt=""
       title={title}
       width={size}
       height={Math.round(size * 0.75)}
-      loading="lazy"
       decoding="async"
       draggable={false}
       aria-hidden

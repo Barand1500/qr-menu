@@ -1,6 +1,6 @@
 import { catalogByCode } from './languageCatalog';
 
-/** Dil kodu → bayrak için ISO ülke kodu (flagcdn) */
+/** Dil kodu → bayrak için ISO ülke kodu (yerel SVG) */
 const LANG_TO_COUNTRY: Record<string, string> = {
   tr: 'tr',
   en: 'gb',
@@ -48,9 +48,8 @@ export function languageFlag(code: string) {
   return catalogByCode(code)?.flag || '🌐';
 }
 
-export function languageFlagUrl(code: string, width = 40) {
+export function languageFlagUrl(code: string, _width = 40) {
   const iso = languageCountryCode(code);
   if (!iso) return '';
-  const w = width <= 20 ? 20 : width <= 40 ? 40 : 80;
-  return `https://flagcdn.com/w${w}/${iso}.png`;
+  return `/flags/${iso}.svg`;
 }
