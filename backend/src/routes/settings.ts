@@ -106,7 +106,9 @@ router.get('/', async (req, res) => {
     languages,
     currencies,
     welcomeMessages,
-    settings: Object.fromEntries(settings.map((s) => [s.key, s.value])),
+    settings: Object.fromEntries(
+      settings.filter((s) => !s.key.startsWith('admin_login_code_')).map((s) => [s.key, s.value])
+    ),
   });
 });
 

@@ -76,6 +76,11 @@ PORT=3008
 CORS_ORIGIN=https://menu.guzelteknoloji.com,http://menu.guzelteknoloji.com
 UPLOAD_DIR=./uploads
 PUBLIC_DIR=./public
+LOGIN_SMTP_HOST=
+LOGIN_SMTP_PORT=587
+LOGIN_SMTP_USER=
+LOGIN_SMTP_PASSWORD=
+LOGIN_MAIL_FROM="Menu QR <giris@example.com>"
 `;
 fs.writeFileSync(path.join(deployDir, '.env.example'), envExample);
 

@@ -8,6 +8,7 @@
     "dev:setup": "prisma db push && prisma generate",
     "build": "tsc",
     "test:sofra": "node tests/theme-settings.test.mjs",
+    "test:login": "node tests/admin-login.test.mjs && node tests/login-mail.test.mjs",
     "start": "node dist/index.js",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -27,6 +28,7 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.2",
+    "nodemailer": "^10.5.0",
     "prisma": "^6.19.0"
   },
   "devDependencies": {
@@ -36,6 +38,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^1.4.13",
     "@types/node": "^22.19.1",
+    "@types/nodemailer": "^8.0.2",
     "tsx": "^4.20.6",
     "typescript": "^5.8.3"
   }

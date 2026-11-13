@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { QrCode, X, Building2 } from 'lucide-react';
-import { Input } from '@/components/ui';
-import { adminPath } from '@/lib/adminPath';
+import LoginWelcome from '@/components/auth/LoginWelcome';
+import { X, Building2 } from 'lucide-react';
 
 function ContactModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   useEffect(() => {
@@ -166,135 +163,9 @@ function ContactBlock({
 }
 
 export default function LoginPage() {
-  const { user, login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(true);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
-
-  if (user) return <Navigate to={adminPath()} replace />;
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      await login(email, password, remember);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Giriş başarısız');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="login-scene flex flex-col min-h-screen">
-      <header className="relative z-10 flex items-center justify-between px-6 sm:px-10 py-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full login-glass flex items-center justify-center">
-            <QrCode className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-white font-semibold text-lg tracking-wide">Menu QR</span>
-        </div>
-        <button
-          type="button"
-          onClick={() => setContactOpen(true)}
-          className="text-sm text-white/80 hover:text-white transition px-4 py-2 rounded-full login-glass hover:bg-white/10"
-        >
-          İletişim
-        </button>
-      </header>
-
-      <div className="absolute bottom-0 inset-x-0 h-48 pointer-events-none opacity-30">
-        <svg viewBox="0 0 1440 200" className="w-full h-full" preserveAspectRatio="none">
-          <path
-            d="M0,200 L0,120 Q200,60 400,100 T800,80 T1200,110 T1440,90 L1440,200 Z"
-            fill="rgba(0,0,0,0.3)"
-          />
-          <path
-            d="M0,200 L0,140 Q300,80 600,130 T1000,100 T1440,130 L1440,200 Z"
-            fill="rgba(0,0,0,0.2)"
-          />
-        </svg>
-      </div>
-
-      <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-8">
-        <div className="login-glass w-full max-w-md rounded-3xl p-8 sm:p-10">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white text-center mb-2">
-            Giriş Yap
-          </h1>
-          <p className="text-center text-white/60 text-sm mb-8">
-            Dijital menü panelinize hoş geldiniz
-          </p>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="rounded-xl bg-red-500/20 border border-red-400/30 px-4 py-3 text-sm text-red-100">
-                {error}
-              </div>
-            )}
-
-            <div className="float-field-stack">
-              <Input
-                variant="glass"
-                type="email"
-                label="E-posta"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-
-              <Input
-                variant="glass"
-                type="password"
-                label="Şifre"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-            </div>
-
-            <label className="flex items-center gap-2 text-sm text-white/60 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                className="rounded border-white/30 bg-white/10 text-blue-500 focus:ring-blue-400/50"
-              />
-              Beni hatırla
-            </label>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-semibold text-base transition disabled:opacity-60 shadow-lg shadow-blue-500/30"
-            >
-              {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
-            </button>
-          </form>
-
-          <p className="text-center text-white/40 text-xs mt-6">
-            Giriş yapamıyor musunuz?{' '}
-            <button
-              type="button"
-              onClick={() => setContactOpen(true)}
-              className="text-blue-300 hover:text-blue-200 underline underline-offset-2"
-            >
-              İletişime geçin
-            </button>
-          </p>
-
-          <p className="text-center text-white/40 text-xs mt-4">
-            Güzel Teknoloji © 2026
-          </p>
-        </div>
-      </main>
-
-      <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
-    </div>
-  );
+  return <>
+    <LoginWelcome onContact={() => setContactOpen(true)} />
+    <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
+  </>;
 }

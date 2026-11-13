@@ -20,6 +20,12 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string, remember?: boolean) => Promise<void>;
+  loginWithCode: (
+    email: string,
+    challengeId: string,
+    code: string,
+    remember?: boolean
+  ) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -60,9 +66,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
+    acceptSession(res, remember);
+  }
+
+  function acceptSession(res: { token: string; user: User }, remember: boolean) {
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
     if (remember) localStorage.setItem('token', res.token);
     else sessionStorage.setItem('token', res.token);
     setUser(res.user);
+  }
+
+  async function loginWithCode(email: string, challengeId: string, code: string, remember = true) {
+    const res = await api<{ token: string; user: User }>('/api/auth/login/code/verify', {
+      method: 'POST',
+      body: JSON.stringify({ email, challengeId, code }),
+    });
+    acceptSession(res, remember);
   }
 
   function logout() {
@@ -72,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithCode, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
