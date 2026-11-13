@@ -59,6 +59,7 @@ export default function SiparisProductPage({
   lang,
   slug,
   onBack,
+  hideColorToggle = false,
 }: {
   product: ProductDetail;
   related: RelatedProduct[];
@@ -68,6 +69,7 @@ export default function SiparisProductPage({
   lang: string;
   slug: string | null | undefined;
   onBack: () => void;
+  hideColorToggle?: boolean;
 }) {
   const { addItem, setSheetOpen, enabled: cartCtxOn } = useSiparisCart();
   const { index, setIndex } = useProductGalleryIndex(galleryImages.length);
@@ -127,7 +129,7 @@ export default function SiparisProductPage({
         <p className="siparis-detail__brand">{product.restaurant.name}</p>
         <div className="siparis-detail__top-actions">
           {showCart ? <SiparisCartButton alwaysShow /> : null}
-          <MenuColorModeToggle colorMode={colorMode} onToggle={toggleColorMode} />
+          {!hideColorToggle && <MenuColorModeToggle colorMode={colorMode} onToggle={toggleColorMode} />}
           <TableServiceButtons lang={lang} slug={slug} enabled={tableServiceOn} />
         </div>
       </div>

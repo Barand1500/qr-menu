@@ -44,6 +44,7 @@ function buildNav() {
         { to: adminPath('startup', 'menu'), label: 'Menü Ekranı', tourId: 'nav-menu-theme' },
       ] : []),
       { to: adminPath('startup', 'games'), label: 'Oyun Ekranı', tourId: 'nav-games-screen' },
+      { to: adminPath('startup', 'theme'), label: 'Tema Ayarları', tourId: 'nav-sofra-theme' },
     ],
     reportNav: [
       { to: adminPath('stats'), label: 'İstatistikler', tourId: 'nav-stats' },

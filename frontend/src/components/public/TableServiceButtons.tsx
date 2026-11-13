@@ -30,10 +30,12 @@ export default function TableServiceButtons({
   lang,
   slug: slugProp,
   enabled = true,
+  showLabel = false,
 }: {
   lang: string;
   slug?: string | null;
   enabled?: boolean;
+  showLabel?: boolean;
 }) {
   const { slug: resolvedSlug } = useMenuSlug();
   const slug = slugProp ?? resolvedSlug;
@@ -122,6 +124,7 @@ export default function TableServiceButtons({
       ) : (
         <HandHelping className="w-4 h-4" />
       )}
+      {showLabel && <span>{label}</span>}
     </button>
   );
 }

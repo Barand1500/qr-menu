@@ -35,6 +35,9 @@ import CupsWelcomeGame from '@/components/public/CupsWelcomeGame';
 import BoardWelcome from '@/components/public/BoardWelcome';
 import type { WelcomeBasketballConfig } from '@/lib/welcomeBasketballConfig';
 import type { WelcomeCupsConfig } from '@/lib/welcomeCupsConfig';
+import { SofraWelcomeView } from '@/components/public/sofra/SofraCanvas';
+import SofraDialog from '@/components/public/sofra/SofraDialog';
+import { normalizeSofraConfig, type SofraConfig } from '@/lib/sofra';
 
 interface WelcomeData {
   restaurant: { id: number; name: string; slug: string; logoUrl?: string | null };
@@ -42,6 +45,7 @@ interface WelcomeData {
   welcomeByLang: Record<string, string>;
   welcomeMusicUrl?: string | null;
   theme?: string;
+  sofra?: SofraConfig;
   campaign?: { name: string; slug: string; itemCount: number } | null;
   socialLinks?: PublicSocialLink[];
   prefCatalog?: PrefCatalog;
@@ -54,9 +58,8 @@ export default function PublicWelcomePage() {
 
   if (slugError) {
     return (
-      <div className="welcome-scene flex items-center justify-center p-6">
-        <WelcomeSceneBackground theme="vibrant" />
-        <div className="welcome-scene__error login-glass">
+      <div className="sofra sofra-state">
+        <div className="sofra-load-error">
           <p className="welcome-scene__error-title">Menü bulunamadı</p>
           <p className="welcome-scene__error-text">{slugError}</p>
         </div>
@@ -66,10 +69,9 @@ export default function PublicWelcomePage() {
 
   if (!slug) {
     return (
-      <div className="welcome-scene flex items-center justify-center">
-        <WelcomeSceneBackground theme="vibrant" />
-        <div className="welcome-scene__loading">
-          <div className="w-10 h-10 border-2 border-white/40 border-t-white rounded-full animate-spin mx-auto" />
+      <div className="sofra sofra-state">
+        <div>
+          <div className="sofra-loading-ring" />
         </div>
       </div>
     );
@@ -162,7 +164,7 @@ function PublicWelcomePageInner({
       })
       .catch(() => {
         if (!cancelled) {
-          setLoadError('Menü yüklenemedi. Sunucunun çalıştığından emin olun.');
+          setLoadError('Menü yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.');
           setLoading(false);
         }
       });
@@ -185,7 +187,7 @@ function PublicWelcomePageInner({
         setLoading(false);
       })
       .catch(() => {
-        setLoadError('Hâlâ bağlanamıyoruz. Backend: npm run dev');
+        setLoadError('Bağlantı henüz kurulamadı. Lütfen biraz sonra tekrar deneyin.');
         setLoading(false);
       });
   }
@@ -368,11 +370,10 @@ function PublicWelcomePageInner({
 
   if (loading && !data) {
     return (
-      <div className="welcome-scene flex items-center justify-center">
-        <WelcomeSceneBackground theme="vibrant" />
-        <div className="welcome-scene__loading">
-          <div className="w-10 h-10 border-2 border-white/40 border-t-white rounded-full animate-spin mx-auto" />
-          <p className="welcome-scene__loading-text">{t.loading}</p>
+      <div className="sofra sofra-state">
+        <div>
+          <div className="sofra-loading-ring" />
+          <p>{t.loading}</p>
         </div>
       </div>
     );
@@ -380,18 +381,17 @@ function PublicWelcomePageInner({
 
   if (loadError && !data) {
     return (
-      <div className="welcome-scene flex items-center justify-center p-6">
-        <WelcomeSceneBackground theme="vibrant" />
-        <div className="welcome-scene__error login-glass">
+      <div className="sofra sofra-state">
+        <div className="sofra-load-error">
           <p className="welcome-scene__error-title">{t.connectionFailed}</p>
           <p className="welcome-scene__error-text">{loadError}</p>
-          <button type="button" className="welcome-card__enter" onClick={retryLoad}>
+          <button type="button" className="sofra-primary" onClick={retryLoad}>
             {t.tryAgain}
           </button>
           {slug && (
             <button
               type="button"
-              className="welcome-card__complaint-link mt-3"
+              className="mt-3 min-h-11"
               onClick={() => setComplaintOpen(true)}
             >
               {t.openComplaint}
@@ -421,6 +421,96 @@ function PublicWelcomePageInner({
           ? t.musicOn
           : t.musicLoading
         : t.musicOff;
+
+  if (data.theme === 'sofra') {
+    return (
+      <>
+        <GeoCheckInBridge slug={slug} masa={tableNo} grup={groupSlug} coords={coords} />
+        <SofraWelcomeView
+          config={normalizeSofraConfig(data.sofra)}
+          restaurant={data.restaurant}
+          lang={selectedLang}
+          languages={data.languages}
+          onLangChange={(code) => {
+            setSelectedLang(code);
+            localStorage.setItem('menu_lang', code);
+          }}
+          onEnter={() => enterMenu(selectedLang)}
+          entering={entering}
+          tableLabel={tableNo ? `${t.table} ${tableNo}` : null}
+          extra={
+            <>
+              <div>
+                <button onClick={() => setComplaintOpen(true)}>{t.openComplaint}</button>
+                <button onClick={() => setSuggestionOpen(true)}>{t.suggestionBox}</button>
+              </div>
+              <button onClick={() => setWelcomeStep(welcomeStep === 'prefs' ? 'lang' : 'prefs')}>
+                {selectedLang === 'en' ? 'Dietary preferences' : 'Beslenme tercihlerim'}
+              </button>
+              {data.welcomeMusicUrl && <button onClick={toggleMusic}>{musicLabel}</button>}
+              <PublicSocialLinks links={data.socialLinks || []} />
+            </>
+          }
+        />
+        {welcomeStep === 'prefs' && (
+          <SofraDialog title={prefUi.title} onClose={() => setWelcomeStep('lang')}>
+            <p>{prefUi.hint}</p>
+            <div className="sofra-prefs-tags">
+              {prefCatalog.allergens.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  aria-pressed={dietaryPrefs.allergens.includes(item.id)}
+                  onClick={() => toggleWelcomeAllergen(item.id)}
+                >
+                  {catalogLabel(prefCatalog, 'allergen', item.id, selectedLang)}
+                </button>
+              ))}
+              {prefCatalog.diets.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  aria-pressed={dietaryPrefs.diets.includes(item.id)}
+                  onClick={() => toggleWelcomeDiet(item.id)}
+                >
+                  {catalogLabel(prefCatalog, 'diet', item.id, selectedLang)}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="sofra-primary"
+              onClick={() => {
+                saveDietaryPrefs(dietaryPrefs);
+                setWelcomeStep('lang');
+              }}
+            >
+              {selectedLang === 'en' ? 'Done' : 'Tamam'}
+            </button>
+          </SofraDialog>
+        )}
+        {ytEmbedSrc && (
+          <iframe
+            className="welcome-scene__yt-audio"
+            src={ytEmbedSrc}
+            title="Karşılama müziği"
+            allow="autoplay; encrypted-media"
+            tabIndex={-1}
+          />
+        )}
+        <ComplaintBoxModal
+          open={complaintOpen}
+          slug={slug}
+          onClose={() => setComplaintOpen(false)}
+        />
+        <SuggestionBoxModal
+          open={suggestionOpen}
+          slug={slug}
+          onClose={() => setSuggestionOpen(false)}
+        />
+      </>
+    );
+  }
 
   if (data.theme === 'board') {
     const tableLabel =

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode, type ComponentProps } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, UserRound, X } from 'lucide-react';
 import { api, formatMoney, getSessionId, imageUrl } from '@/lib/api';
@@ -65,6 +65,10 @@ import AnimasyonCartSheet from '@/components/public/animasyon/AnimasyonCartSheet
 import SiparisMobileNav from '@/components/public/siparis/SiparisMobileNav';
 import StandartMobileNav from '@/components/public/standart/StandartMobileNav';
 import { SiparisCartProvider } from '@/hooks/useSiparisCart';
+import { useSiparisCart } from '@/hooks/useSiparisCart';
+import { SofraMenuView, type SofraProduct } from '@/components/public/sofra/SofraCanvas';
+import SofraBottomBar from '@/components/public/sofra/SofraBottomBar';
+import { normalizeSofraConfig, type SofraConfig } from '@/lib/sofra';
 import {
   loadDietaryPrefs,
   preferenceUi,
@@ -98,6 +102,7 @@ interface MenuData {
     children?: { id: number; name: string; imageUrl?: string | null }[];
   }[];
   theme?: string;
+  sofra?: SofraConfig;
   campaign?: { name: string; slug: string; itemCount: number } | null;
   socialLinks?: PublicSocialLink[];
   features?: {
@@ -156,7 +161,7 @@ export default function PublicMenuPage() {
 
   if (slugError) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 text-center">
+      <div className="sofra sofra-state text-center">
         <p className="text-sm text-slate-600">{slugError}</p>
       </div>
     );
@@ -164,8 +169,8 @@ export default function PublicMenuPage() {
 
   if (!slug) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center public-menu-page gap-3 p-6">
-        <div className="w-9 h-9 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+      <div className="sofra sofra-state gap-3">
+        <div className="sofra-loading-ring" />
       </div>
     );
   }
@@ -213,6 +218,11 @@ function PublicMenuPageInner({
   const [lang, setLang] = useState(() => localStorage.getItem('menu_lang') || 'tr');
   const [menu, setMenu] = useState<MenuData | null>(null);
   const [products, setProducts] = useState<ProductData | null>(null);
+  const [groupLoading, setGroupLoading] = useState(false);
+  const [groupError, setGroupError] = useState<string | null>(null);
+  const [groupRetry, setGroupRetry] = useState(0);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<
     {
@@ -235,6 +245,8 @@ function PublicMenuPageInner({
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [popularProducts, setPopularProducts] = useState<PopularProduct[]>([]);
+  const [popularLoading, setPopularLoading] = useState(false);
+  const [popularError, setPopularError] = useState<string | null>(null);
   const [dietaryPrefs, setDietaryPrefs] = useState<DietaryPrefs>(() => loadDietaryPrefs());
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [customerAuthOpen, setCustomerAuthOpen] = useState(false);
@@ -310,8 +322,8 @@ function PublicMenuPageInner({
         if (!cancelled) {
           setMenuError(
             campaignSlug
-              ? 'Kampanya menüsü yüklenemedi. Linki kontrol edin veya backend’i çalıştırın.'
-              : 'Menü yüklenemedi. Backend sunucusu çalışmıyor olabilir.'
+              ? 'Kampanya menüsü açılamadı. Menü bağlantısını kontrol edip tekrar deneyin.'
+              : 'Menü yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.'
           );
           setMenuLoading(false);
         }
@@ -324,28 +336,45 @@ function PublicMenuPageInner({
   useEffect(() => {
     if (!slug || !groupId) {
       setProducts(null);
+      setGroupLoading(false);
       return;
     }
+    let cancelled = false;
+    setProducts(null);
+    setGroupError(null);
+    setGroupLoading(true);
     const params = new URLSearchParams({ lang, sessionId });
     if (campaignSlug) params.set('kampanya', campaignSlug);
-    api<ProductData>(`/api/menu/${slug}/groups/${groupId}/products?${params}`).then(setProducts);
-  }, [slug, groupId, lang, sessionId, campaignSlug]);
+    api<ProductData>(`/api/menu/${slug}/groups/${groupId}/products?${params}`)
+      .then((res) => { if (!cancelled) setProducts(res); })
+      .catch(() => { if (!cancelled) setGroupError('Ürünler yüklenemedi. Tekrar deneyin.'); })
+      .finally(() => { if (!cancelled) setGroupLoading(false); });
+    return () => { cancelled = true; };
+  }, [slug, groupId, lang, sessionId, campaignSlug, groupRetry]);
 
   useEffect(() => {
     if (!slug || !search.trim()) {
       setSearchResults([]);
+      setSearchLoading(false);
       return;
     }
+    let cancelled = false;
+    setSearchLoading(true);
+    setSearchError(null);
+    setSearchResults([]);
     const t = setTimeout(() => {
       const params = new URLSearchParams({
         q: search,
         lang,
       });
       if (campaignSlug) params.set('kampanya', campaignSlug);
-      api<typeof searchResults>(`/api/menu/${slug}/search?${params}`).then(setSearchResults);
+      api<typeof searchResults>(`/api/menu/${slug}/search?${params}`)
+        .then((res) => { if (!cancelled) setSearchResults(res); })
+        .catch(() => { if (!cancelled) setSearchError('Arama yapılamadı. Tekrar deneyin.'); })
+        .finally(() => { if (!cancelled) setSearchLoading(false); });
     }, 300);
-    return () => clearTimeout(t);
-  }, [search, slug, lang, campaignSlug]);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [search, slug, lang, campaignSlug, groupRetry]);
 
   useEffect(() => {
     if (!highlightProductId || !slug) return;
@@ -354,16 +383,22 @@ function PublicMenuPageInner({
 
   useEffect(() => {
     if (!slug) return;
+    let cancelled = false;
+    setPopularError(null);
     if (demoEnabled) {
       setPopularProducts(DEMO_POPULAR_PRODUCTS);
+      setPopularLoading(false);
       return;
     }
+    setPopularLoading(true);
     const params = new URLSearchParams({ lang, limit: '8' });
     if (campaignSlug) params.set('kampanya', campaignSlug);
-    api<PopularProduct[]>(`/api/menu/${slug}/popular-products?${params}`).then(
-      setPopularProducts
-    );
-  }, [slug, lang, demoEnabled, campaignSlug]);
+    api<PopularProduct[]>(`/api/menu/${slug}/popular-products?${params}`)
+      .then(res=>{ if (!cancelled) setPopularProducts(res); })
+      .catch(()=>{ if (!cancelled) { setPopularProducts([]); setPopularError('Önerilen ürünler yüklenemedi.'); } })
+      .finally(()=>{ if (!cancelled) setPopularLoading(false); });
+    return ()=>{ cancelled = true; };
+  }, [slug, lang, demoEnabled, campaignSlug, groupRetry]);
 
   function changeLang(code: string) {
     setLang(code);
@@ -386,8 +421,8 @@ function PublicMenuPageInner({
 
   if (menuLoading && !menu) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center public-menu-page gap-3 p-6">
-        <div className="w-9 h-9 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+      <div className="sofra sofra-state gap-3">
+        <div className="sofra-loading-ring" />
         <p className="text-sm text-slate-500">Menü yükleniyor…</p>
       </div>
     );
@@ -395,13 +430,12 @@ function PublicMenuPageInner({
 
   if (menuError && !menu) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center public-menu-page gap-4 p-6 text-center">
+      <div className="sofra sofra-state gap-4 text-center">
         <p className="text-lg font-semibold text-slate-800">Bağlantı kurulamadı</p>
         <p className="text-sm text-slate-500 max-w-sm">{menuError}</p>
-        <p className="text-xs text-slate-400">Proje klasöründe: npm run dev</p>
         <button
           type="button"
-          className="px-5 py-2.5 rounded-full bg-sky-500 text-white text-sm font-semibold"
+          className="sofra-primary"
           onClick={() => {
             setMenuLoading(true);
             setMenuError(null);
@@ -436,6 +470,7 @@ function PublicMenuPageInner({
 
   const allergyCopy = preferenceUi(lang);
   const menuTheme = menu.theme || 'standart';
+  const isSofra = menuTheme === 'sofra';
   const isStandart = menuTheme === 'standart';
   const isSade = menuTheme === 'sade';
   const isAlive = menuTheme === 'alive';
@@ -445,6 +480,7 @@ function PublicMenuPageInner({
   const isSiparis = menuTheme === 'siparis';
 
   const profileEnabled =
+    isSofra ||
     (isStandart && menu.features?.standart?.userProfileEnabled === true) ||
     (isSade && menu.features?.sade?.userProfileEnabled === true) ||
     (isAlive && menu.features?.alive?.userProfileEnabled === true) ||
@@ -630,6 +666,7 @@ function PublicMenuPageInner({
   const linearCartOn = menu.features?.linear?.cartEnabled === true;
   const siparisCartOn = menu.features?.siparis?.cartEnabled !== false;
   const cartTheme =
+    isSofra ||
     (isStandart && standartCartOn) ||
     (isSiparis && siparisCartOn) ||
     (isAnimasyon && animasyonCartOn) ||
@@ -637,7 +674,7 @@ function PublicMenuPageInner({
     (isAlive && aliveCartOn) ||
     (isLuxury && luxuryCartOn) ||
     (isLinear && linearCartOn);
-  const hideColorToggle = isAnimasyon || isLinear || isStandart;
+  const hideColorToggle = isSofra || isAnimasyon || isLinear || isStandart;
   const menuAssistantOn = Boolean(menu.features?.menuAssistant);
   const assistantStyle = parseMenuAssistantStyle(menu.features?.menuAssistantStyle);
   const tableServiceOn = menu.features?.tableService !== false;
@@ -685,7 +722,7 @@ function PublicMenuPageInner({
     <PublicSideMenu
       open={sideMenuOpen}
       tab={tab}
-      restaurantName={menu.restaurant.name}
+      restaurantName={isSofra ? menu.sofra?.brandName || menu.restaurant.name : menu.restaurant.name}
       languages={menu.languages}
       activeLang={lang}
       socialLinks={menu.socialLinks}
@@ -761,8 +798,143 @@ function PublicMenuPageInner({
       <TableServiceButtons lang={lang} slug={slug} enabled={tableServiceOn} />
     </span>
   ) : (
-    <TableServiceButtons lang={lang} slug={slug} enabled={tableServiceOn} />
+    <TableServiceButtons lang={lang} slug={slug} enabled={tableServiceOn} showLabel={isSofra} />
   );
+
+  if (isSofra) {
+    const config = normalizeSofraConfig(menu.sofra);
+    const en = lang.split('-')[0] === 'en';
+    const selectedId = groupId ? Number(groupId) : null;
+    const rows: SofraProduct[] = search.trim()
+      ? filteredSearchResults
+      : selectedId != null
+        ? filteredGroupProducts
+        : filteredPopular;
+    return (
+      <SiparisCartProvider slug={slug} enabled>
+        <div className="sofra-public-shell" data-theme-menu="sofra">
+          {tab === 'home' ? (
+            <SofraLiveMenu
+              config={config}
+              lang={lang}
+              menu={menu}
+              products={rows}
+              activeGroup={selectedId}
+              subgroups={!search.trim() && selectedId != null ? filteredGroupChildren : []}
+              search={search}
+              onSearchChange={setSearch}
+              loading={
+                search.trim() ? searchLoading : selectedId != null ? groupLoading : popularLoading
+              }
+              error={search.trim() ? searchError : selectedId != null ? groupError : popularError}
+              onRetry={() => setGroupRetry((n) => n + 1)}
+              onGroupChange={(id) => {
+                setSearch('');
+                navigate(id == null ? menuHomePath() : menuGroupPath(id));
+              }}
+              headerTools={
+                <>
+                  <label className="sofra-language">
+                    <span className="sr-only">Dil / Language</span>
+                    <select value={lang} onChange={(e) => changeLang(e.target.value)}>
+                      {menu.languages.map((l) => (
+                        <option key={l.code} value={l.code}>
+                          {l.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {(searchParams.get('masa') || sessionStorage.getItem('menu_masa')) && (
+                    <span className="sofra-table">
+                      {en ? 'Table' : 'Masa'}{' '}
+                      {searchParams.get('masa') || sessionStorage.getItem('menu_masa')}
+                    </span>
+                  )}
+                  {profileIcon}
+                </>
+              }
+              beforeContent={
+                <>
+                  {allergyBanner}
+                  <div className="sofra-updates">
+                    {displayStories && displayStories.length > 0 && (
+                      <div className="sofra-stories">
+                        <MobileStoriesStrip stories={displayStories} />
+                      </div>
+                    )}
+                    {!groupId &&
+                      !search.trim() &&
+                      displayShowcase &&
+                      displayShowcase.length > 0 && (
+                        <div className="sofra-banner-note">
+                          {displayShowcase.map((b) => (
+                            <div key={b.id}>
+                              {b.imageUrl && (
+                                <img src={imageUrl(b.imageUrl)} alt="" loading="lazy" />
+                              )}
+                              <span>
+                                <strong>{b.title1}</strong>
+                                <small>{b.title2}</small>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                  </div>
+                  {menu.campaign && <p className="sofra-overline">{menu.campaign.name}</p>}
+                </>
+              }
+            />
+          ) : (
+            <div className="sofra sofra-secondary-content">
+              <button type="button" className="sofra-primary" onClick={() => setTab('home')}>
+                {en ? 'Back to menu' : 'Menüye dön'}
+              </button>
+              {tab === 'about' ? (
+                <AboutPageView
+                  config={parseAboutPage(
+                    menu.aboutPage ? JSON.stringify(menu.aboutPage) : null,
+                    menu.about || menu.welcomeMessage || ''
+                  )}
+                  restaurantName={menu.restaurant.name}
+                  social={<PublicSocialLinks links={menu.socialLinks || []} />}
+                />
+              ) : (
+                <div className="public-lang-list">
+                  {menu.languages.map((l) => (
+                    <button
+                      key={l.code}
+                      className="public-lang-btn"
+                      onClick={() => changeLang(l.code)}
+                    >
+                      {l.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          <SofraBottomBar
+            lang={lang}
+            onMenu={() => setSideMenuOpen(true)}
+            onGames={gamesEnabled ? () => setGamesOpen(true) : undefined}
+            service={tableServiceSlot}
+          />
+          {sideMenu}
+          {gamesOverlay}
+          {assistantUi}
+          <SiparisCartSheet lang={lang} />
+          <MenuCustomerAuthModal
+            open={customerAuthOpen}
+            onClose={() => setCustomerAuthOpen(false)}
+            restaurantId={menu.restaurant.id}
+            restaurantName={menu.restaurant.name}
+            lang={lang}
+          />
+        </div>
+      </SiparisCartProvider>
+    );
+  }
 
   /* ── Ürün listesi ── */
   if (groupId && products) {
@@ -1143,6 +1315,42 @@ function PublicMenuPageInner({
       )}
     </div>
     </SiparisCartProvider>
+  );
+}
+
+function SofraLiveMenu({
+  menu,
+  ...props
+}: Omit<
+  ComponentProps<typeof SofraMenuView>,
+  'restaurant' | 'groups' | 'onProductOpen' | 'onAdd'
+> & { menu: MenuData }) {
+  const navigate = useNavigate();
+  const { addItem } = useSiparisCart();
+  return (
+    <SofraMenuView
+      {...props}
+      restaurant={menu.restaurant}
+      groups={menu.groups}
+      onProductOpen={(id) => navigate(menuProductPath(id))}
+      onAdd={(p) => {
+        if (p.soldOut) return;
+        if (p.hasOptions !== false) {
+          navigate(menuProductPath(p.id));
+          return;
+        }
+        addItem({
+          productId: p.id,
+          name: p.name,
+          price: p.price,
+          currency: p.currency
+            ? { code: p.currency.code || undefined, symbol: p.currency.symbol || undefined }
+            : null,
+          imageUrl: p.imageUrl,
+          calories: p.calories,
+        });
+      }}
+    />
   );
 }
 

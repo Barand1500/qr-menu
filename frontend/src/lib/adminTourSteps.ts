@@ -84,7 +84,7 @@ const TOUR_STEP_DEFS: TourStepDef[] = [
     title: 'Başlangıç ayarları',
     body: SHOW_LEGACY_THEME_SETTINGS
       ? 'Karşılama ekranı ve menü teması bu menünün altındadır.'
-      : 'Müşteri menüsündeki oyunları Oyun Ekranı bölümünden yönetebilirsiniz.',
+      : 'Oyun Ekranı ile oyunları, Tema Ayarları ile Sofra tasarımındaki yazıları ve fotoğrafları yönetebilirsiniz.',
     target: 'nav-startup',
     pathSegments: [],
     openGroup: 'startup',
@@ -106,6 +106,15 @@ const TOUR_STEP_DEFS: TourStepDef[] = [
     tip: 'Bazı temalar Eklentiler’den açılır.',
     target: 'nav-menu-theme',
     pathSegments: ['startup', 'menu'],
+    openGroup: 'startup',
+    placement: 'right',
+  },
+  {
+    id: 'nav-sofra-theme',
+    title: 'Tema Ayarları',
+    body: 'Sofra önizlemesindeki yazıya veya fotoğrafa tıklayarak düzenleyin. Telefon ve masaüstünü kontrol edin; Kaydet dediğinizde müşterilere yayınlanır.',
+    target: 'nav-sofra-theme',
+    pathSegments: ['startup', 'theme'],
     openGroup: 'startup',
     placement: 'right',
   },

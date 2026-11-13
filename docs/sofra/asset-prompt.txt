@@ -1,0 +1,5 @@
+Tool: image_gen (built-in)
+Output: frontend/public/sofra/breakfast.webp
+Conversion: original pixels preserved; encoded as WebP at quality 0.88.
+
+Photorealistic premium editorial food photography for the actual Sofra restaurant QR-menu website, NOT a UI mockup. Landscape 3:2 composition, authentic generous Turkish Mediterranean breakfast on a warm ivory linen table in natural morning sunlight. A large handmade cream ceramic plate with ripe tomatoes, cucumber, parsley, olives and white cheese at center-right; small copper pan of menemen behind, a Turkish tea glass, small honey bowl and torn sourdough bread partially visible at edges. Warm understated palette, genuine food textures, appealing imperfect styling, no artificial plastic food, soft real shadows, sophisticated food-magazine quality. Fill most of image with food but leave some warm neutral breathing space around dishes for responsive crops. Overhead slightly angled composition. Absolutely NO text, NO lettering, NO watermarks, NO UI, NO logos, NO borders, NO device. This is a final website hero photograph asset.

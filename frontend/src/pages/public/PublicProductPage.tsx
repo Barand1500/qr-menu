@@ -38,6 +38,8 @@ import MaintenanceGate from '@/components/public/MaintenanceGate';
 import TableSessionCodeGate from '@/components/public/TableSessionCodeGate';
 import { useEffect, useState } from 'react';
 import type { ProductOptionGroup } from '@/lib/productOptions';
+import '@/components/public/sofra/sofra.css';
+import type { SofraConfig } from '@/lib/sofra';
 
 interface ProductDetail {
   id: number;
@@ -54,6 +56,7 @@ interface ProductDetail {
   isRecommended?: boolean;
   features: string[];
   theme?: string;
+  sofra?: SofraConfig;
   menuFeatures?: {
     tableService?: boolean;
     animasyonCart?: boolean;
@@ -103,6 +106,8 @@ function PublicProductPageInner() {
   const [lang] = useState(() => localStorage.getItem('menu_lang') || 'tr');
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [related, setRelated] = useState<RelatedProduct[]>([]);
+  const [productError, setProductError] = useState(false);
+  const [retry, setRetry] = useState(0);
   const sessionId = getSessionId();
   const campaignSlug =
     (typeof sessionStorage !== 'undefined'
@@ -113,14 +118,21 @@ function PublicProductPageInner() {
 
   useEffect(() => {
     if (!slug || !productId) return;
+    let cancelled = false;
+    setProductError(false);
+    setProduct(null);
+    setRelated([]);
     if (demoEnabled) {
-      setProduct(getDemoProductDetail(Number(productId), lang));
+      setProduct({ ...getDemoProductDetail(Number(productId), lang), theme: 'sofra' });
       return;
     }
     const params = new URLSearchParams({ lang, sessionId });
     if (campaignSlug) params.set('kampanya', campaignSlug);
-    api<ProductDetail>(`/api/menu/${slug}/products/${productId}?${params}`).then(setProduct);
-  }, [slug, productId, lang, sessionId, demoEnabled, campaignSlug]);
+    api<ProductDetail>(`/api/menu/${slug}/products/${productId}?${params}`)
+      .then(res=>{ if (!cancelled) setProduct(res); })
+      .catch(()=>{ if (!cancelled) setProductError(true); });
+    return ()=>{ cancelled = true; };
+  }, [slug, productId, lang, sessionId, demoEnabled, campaignSlug, retry]);
 
   useEffect(() => {
     if (!product || !slug) return;
@@ -138,11 +150,13 @@ function PublicProductPageInner() {
 
     const params = new URLSearchParams({ lang, sessionId });
     if (campaignSlug) params.set('kampanya', campaignSlug);
+    let cancelled = false;
     api<{ products: RelatedProduct[] }>(
       `/api/menu/${slug}/groups/${product.group.id}/products?${params}`
     ).then((data) => {
-      setRelated(data.products.filter((p) => p.id !== product.id).slice(0, 8));
-    });
+      if (!cancelled) setRelated(data.products.filter((p) => p.id !== product.id).slice(0, 8));
+    }).catch(()=>{ if (!cancelled) setRelated([]); });
+    return ()=>{ cancelled = true; };
   }, [product, slug, lang, sessionId, demoEnabled, campaignSlug]);
 
   useEffect(() => {
@@ -166,8 +180,8 @@ function PublicProductPageInner() {
 
   if (!product) {
     return (
-      <div className="public-menu-page min-h-screen flex items-center justify-center" data-theme-menu="sade">
-        <div className="w-9 h-9 border-2 border-[#c4a494] border-t-transparent rounded-full animate-spin" />
+      <div className="sofra min-h-screen flex flex-col gap-5 items-center justify-center p-6">
+        {productError ? <><p>Ürün yüklenemedi. Tekrar deneyin.</p><button className="sofra-primary" onClick={()=>setRetry(n=>n+1)}>Tekrar dene</button><Link to={menuHomePath()}>Menüye dön</Link></> : <div className="w-9 h-9 border-2 border-[#c4a494] border-t-transparent rounded-full animate-spin" />}
       </div>
     );
   }
@@ -314,6 +328,35 @@ function PublicProductPageInner() {
             onBack={onBack}
           />
           {animasyonCartOn ? <AnimasyonCartSheet lang={lang} /> : null}
+        </div>
+      </SiparisCartProvider>
+    );
+  }
+
+  if (theme === 'sofra') {
+    return (
+      <SiparisCartProvider slug={slug} enabled>
+        <div className="sofra-public-shell public-product-page" data-theme-menu="sofra">
+          <SiparisProductPage
+            key={product.id}
+            product={{
+              ...product,
+              restaurant: {
+                ...product.restaurant,
+                name: product.sofra?.brandName || product.restaurant.name,
+              },
+              menuFeatures: { ...product.menuFeatures, siparisCart: true, siparisVariants: true },
+            }}
+            related={related}
+            galleryImages={galleryImages}
+            colorMode="day"
+            toggleColorMode={() => {}}
+            hideColorToggle
+            lang={lang}
+            slug={slug}
+            onBack={onBack}
+          />
+          <SiparisCartSheet lang={lang} />
         </div>
       </SiparisCartProvider>
     );

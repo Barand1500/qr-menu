@@ -1,5 +1,6 @@
 import { Router, type Request } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { loadSofraConfig } from '../lib/sofra.js';
 import { parseClientMeta } from '../lib/client-meta.js';
 import {
   getGroupName,
@@ -67,7 +68,6 @@ import {
   sanitizeAllergenTagsForCatalog,
   sanitizeDietTagsForCatalog,
 } from '../lib/pref-catalog.js';
-import { getRestaurantThemes } from '../addons/themes.js';
 import {
   applyCampaignPrice,
   getCampaignSlug,
@@ -156,14 +156,13 @@ async function trackView(
 router.get('/resolve', async (_req, res) => {
   const restaurant = await prisma.restaurant.findFirst({ orderBy: { id: 'asc' } });
   if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
-  const themes = await getRestaurantThemes(restaurant.id);
   const maintenance = await isMaintenanceEnabled(restaurant.id);
   res.json({
     id: restaurant.id,
     name: restaurant.name,
     slug: restaurant.slug,
     logoUrl: restaurant.logoUrl,
-    themes,
+    themes: { welcome: 'sofra', menu: 'sofra' },
     maintenance,
   });
 });
@@ -261,7 +260,6 @@ router.get('/:slug/welcome', async (req, res) => {
     languages,
     musicSetting,
     socialSetting,
-    themes,
     campaign,
     prefCatalog,
     basketballSetting,
@@ -278,7 +276,6 @@ router.get('/:slug/welcome', async (req, res) => {
         restaurantId_key: { restaurantId: restaurant.id, key: 'social_links' },
       },
     }),
-    getRestaurantThemes(restaurant.id),
     loadCampaignContext(restaurant.id, campaignSlug),
     loadPrefCatalog(restaurant.id),
     prisma.setting.findUnique({
@@ -314,7 +311,8 @@ router.get('/:slug/welcome', async (req, res) => {
     languages: languages.map((l) => ({ code: l.code, name: l.name })),
     welcomeByLang,
     welcomeMusicUrl: musicSetting?.value || null,
-    theme: themes.welcome,
+    theme: 'sofra',
+    sofra: await loadSofraConfig(restaurant.id, restaurant.welcomeI18n),
     campaign: campaignMeta(campaign),
     socialLinks: publicSocialLinks(parseSocialLinks(socialSetting?.value), 'welcome'),
     prefCatalog,
@@ -384,7 +382,6 @@ router.get('/:slug/products/:productId', async (req, res) => {
         timeMenu.rules.get(product.id)
       )
     : null;
-  const themes = await getRestaurantThemes(restaurant.id);
   const prefCatalog = await loadPrefCatalog(restaurant.id);
   const [tableServiceSetting, gamesConfigSetting, gamesLegacySetting, animasyonConfigSetting, sadeConfigSetting, standartConfigSetting, aliveConfigSetting, luxuryConfigSetting, linearConfigSetting, siparisConfigSetting] =
     await Promise.all([
@@ -464,7 +461,8 @@ router.get('/:slug/products/:productId', async (req, res) => {
     isRecommended: timePatch?.isRecommended ?? product.isRecommended,
     features: features.length > 0 ? features : legacyFeatures,
     campaign: campaignMeta(campaign),
-    theme: themes.menu,
+    theme: 'sofra',
+    sofra: await loadSofraConfig(restaurant.id, restaurant.welcomeI18n),
     group: {
       id: product.group.id,
       name: getGroupName(product.group.i18n, activeLang),
@@ -522,7 +520,6 @@ router.get('/:slug', async (req, res) => {
     aboutSetting,
     aboutPageSetting,
     socialSetting,
-    themes,
     menuAssistant,
     assistantStyleSetting,
     tableServiceSetting,
@@ -586,7 +583,6 @@ router.get('/:slug', async (req, res) => {
         restaurantId_key: { restaurantId: restaurant.id, key: 'social_links' },
       },
     }),
-    getRestaurantThemes(restaurant.id),
     isAddonActive(restaurant.id, 'menu-assistant'),
     prisma.setting.findUnique({
       where: {
@@ -747,7 +743,8 @@ router.get('/:slug', async (req, res) => {
     about: aboutSetting?.value || '',
     aboutPage: parseAboutPage(aboutPageSetting?.value, aboutSetting?.value || ''),
     languages: languages.map((l) => ({ code: l.code, name: l.name })),
-    theme: themes.menu,
+    theme: 'sofra',
+    sofra: await loadSofraConfig(restaurant.id, restaurant.welcomeI18n),
     campaign: campaignMeta(campaign),
     features: {
       menuAssistant,

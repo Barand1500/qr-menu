@@ -20,6 +20,7 @@ import AliveThemeSettingsModal from '@/components/AliveThemeSettingsModal';
 import LuxuryThemeSettingsModal from '@/components/LuxuryThemeSettingsModal';
 import SiparisThemeSettingsModal from '@/components/SiparisThemeSettingsModal';
 import { useAddons } from '@/hooks/useAddons';
+import { SHOW_LEGACY_THEME_SETTINGS } from '@/lib/adminThemeSettings';
 import MenuAssistantStylePicker from '@/components/MenuAssistantStylePicker';
 import type { AddonCategory, AddonProduct } from '@/addons';
 import type { MenuAssistantStyle } from '@/lib/menuAssistantStyle';
@@ -56,6 +57,7 @@ function categoryBadge(category: AddonCategory) {
 }
 
 function parseTab(raw: string | null): TabId {
+  if (!SHOW_LEGACY_THEME_SETTINGS && ['startup', 'welcome', 'menu'].includes(raw || '')) return 'all';
   if (
     raw === 'welcome' ||
     raw === 'menu' ||
@@ -112,10 +114,8 @@ export default function ExtensionsHubPage() {
   const [savingSiparis, setSavingSiparis] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
 
-  const list = useMemo(
-    () => products.filter((p) => matchesTab(p, tab)),
-    [products, tab]
-  );
+  const visibleProducts = useMemo(() => products.filter(p => SHOW_LEGACY_THEME_SETTINGS || (p.category !== 'welcome' && p.category !== 'menu')), [products]);
+  const list = useMemo(() => visibleProducts.filter(p => matchesTab(p, tab)), [visibleProducts, tab]);
 
   function setTab(next: TabId) {
     const params = new URLSearchParams(searchParams);
@@ -432,12 +432,12 @@ export default function ExtensionsHubPage() {
       </p>
 
       <div className="flex flex-wrap gap-1.5 mb-6">
-        {TABS.map((item) => {
+          {TABS.filter(item => SHOW_LEGACY_THEME_SETTINGS || (item.id !== 'welcome' && item.id !== 'menu')).map((item) => {
           const active = tab === item.id;
           const count =
             item.id === 'all'
-              ? products.length
-              : products.filter((p) => matchesTab(p, item.id)).length;
+              ? visibleProducts.length
+              : visibleProducts.filter((p) => matchesTab(p, item.id)).length;
           return (
             <button
               key={item.id}

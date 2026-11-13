@@ -7,6 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "dev:setup": "prisma db push && prisma generate",
     "build": "tsc",
+    "test:sofra": "node tests/theme-settings.test.mjs",
     "start": "node dist/index.js",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
