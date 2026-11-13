@@ -2,6 +2,8 @@
 
 Sofra, 13 Kasım 2026 tarihinde seçilen karşılama ve menü tasarımıdır. Müşteri ekranlarında tema seçimi yoktur.
 
+**Güncel PC görünümü:** Kullanıcı daha sonra Masaya Otur yönünü seçti. 1024 px ve üstünde 3D sofra uygulanır; aşağıdaki eski Sofra görünümü dar ekranlarda korunur. Güncel uygulama, sınırlar ve ekran görüntüleri [Masaya Otur notlarında](../masaya-otur/README.md) bulunur. Ayrı mobil tasarım henüz yapılmadı.
+
 ## Kullanım
 
 1. Yönetim panelinde **Başlangıç Ayarları → Tema Ayarları** açılır. Oyun Ekranı aynı menüde kalır.

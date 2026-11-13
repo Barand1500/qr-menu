@@ -40,6 +40,7 @@ import { useEffect, useState } from 'react';
 import type { ProductOptionGroup } from '@/lib/productOptions';
 import '@/components/public/sofra/sofra.css';
 import type { SofraConfig } from '@/lib/sofra';
+import TableProductHero from '@/components/public/table/TableProductHero';
 
 interface ProductDetail {
   id: number;
@@ -352,6 +353,16 @@ function PublicProductPageInner() {
             colorMode="day"
             toggleColorMode={() => {}}
             hideColorToggle
+            renderHero={(gallery, image) => (
+              <TableProductHero
+                fallback={gallery}
+                image={image}
+                name={product.name}
+                id={product.id}
+                ingredients={product.ingredients}
+                lang={lang}
+              />
+            )}
             lang={lang}
             slug={slug}
             onBack={onBack}

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, Clock, Plus } from 'lucide-react';
 import { formatMoney, imageUrl } from '@/lib/api';
 import { menuProductPath } from '@/lib/menuPaths';
@@ -60,6 +60,7 @@ export default function SiparisProductPage({
   slug,
   onBack,
   hideColorToggle = false,
+  renderHero,
 }: {
   product: ProductDetail;
   related: RelatedProduct[];
@@ -70,6 +71,7 @@ export default function SiparisProductPage({
   slug: string | null | undefined;
   onBack: () => void;
   hideColorToggle?: boolean;
+  renderHero?: (gallery: ReactNode, image: string | undefined) => ReactNode;
 }) {
   const { addItem, setSheetOpen, enabled: cartCtxOn } = useSiparisCart();
   const { index, setIndex } = useProductGalleryIndex(galleryImages.length);
@@ -139,12 +141,12 @@ export default function SiparisProductPage({
           {galleryImages.length > 0 ? (
             <>
               <div className="siparis-detail__media" ref={mediaRef}>
-                <ProductImageGallery
-                  images={galleryImages}
-                  index={index}
-                  onIndexChange={setIndex}
-                  alt={product.name}
-                />
+                {renderHero ? renderHero(
+                  <ProductImageGallery images={galleryImages} index={index} onIndexChange={setIndex} alt={product.name} />,
+                  galleryImages[index]
+                ) : (
+                  <ProductImageGallery images={galleryImages} index={index} onIndexChange={setIndex} alt={product.name} />
+                )}
               </div>
               {galleryImages.length > 1 ? (
                 <ProductGalleryThumbs
@@ -155,6 +157,10 @@ export default function SiparisProductPage({
                 />
               ) : null}
             </>
+          ) : renderHero ? renderHero(
+            <div className="siparis-detail__ph">
+              <MenuMediaPlaceholder kind="product" size="lg" label={product.name} />
+            </div>, undefined
           ) : (
             <div className="siparis-detail__ph">
               <MenuMediaPlaceholder kind="product" size="lg" label={product.name} />
