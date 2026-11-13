@@ -22,6 +22,7 @@ import AdminAIChat, { AdminAIButton } from '@/components/admin/AdminAIChat';
 import type { TourOpenGroup } from '@/lib/adminTourSteps';
 import { adminPreviewMenuUrl } from '@/lib/tableContext';
 import { adminPath } from '@/lib/adminPath';
+import { SHOW_LEGACY_THEME_SETTINGS } from '@/lib/adminThemeSettings';
 import { moveSidebarNavIndicator, isSidebarNavIndicatorAnimating } from '@/lib/sidebarNavIndicator';
 import AdminPageTransition from '@/components/admin/AdminPageTransition';
 import '@/admin-tour.css';
@@ -38,8 +39,10 @@ function buildNav() {
       { to: adminPath('barcode'), label: 'Barkod Yazdır', tourId: 'nav-barcode' },
     ],
     startupNav: [
-      { to: adminPath('startup', 'welcome'), label: 'Karşılama Ekranı', tourId: 'nav-welcome-theme' },
-      { to: adminPath('startup', 'menu'), label: 'Menü Ekranı', tourId: 'nav-menu-theme' },
+      ...(SHOW_LEGACY_THEME_SETTINGS ? [
+        { to: adminPath('startup', 'welcome'), label: 'Karşılama Ekranı', tourId: 'nav-welcome-theme' },
+        { to: adminPath('startup', 'menu'), label: 'Menü Ekranı', tourId: 'nav-menu-theme' },
+      ] : []),
       { to: adminPath('startup', 'games'), label: 'Oyun Ekranı', tourId: 'nav-games-screen' },
     ],
     reportNav: [

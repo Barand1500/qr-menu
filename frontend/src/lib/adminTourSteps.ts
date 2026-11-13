@@ -1,4 +1,5 @@
 import { adminPath } from '@/lib/adminPath';
+import { SHOW_LEGACY_THEME_SETTINGS } from '@/lib/adminThemeSettings';
 
 export type TourOpenGroup = 'startup' | 'reports' | 'management';
 
@@ -81,7 +82,9 @@ const TOUR_STEP_DEFS: TourStepDef[] = [
   {
     id: 'nav-startup',
     title: 'Başlangıç ayarları',
-    body: 'İlk izlenim burada şekillenir. Karşılama ekranı ve menü teması bu menünün altındadır — şimdi içine bakıyoruz.',
+    body: SHOW_LEGACY_THEME_SETTINGS
+      ? 'Karşılama ekranı ve menü teması bu menünün altındadır.'
+      : 'Müşteri menüsündeki oyunları Oyun Ekranı bölümünden yönetebilirsiniz.',
     target: 'nav-startup',
     pathSegments: [],
     openGroup: 'startup',
@@ -230,7 +233,9 @@ const TOUR_STEP_DEFS: TourStepDef[] = [
 ];
 
 export function getAdminTourSteps(): TourStep[] {
-  return TOUR_STEP_DEFS.map(({ pathSegments, ...rest }) => {
+  return TOUR_STEP_DEFS.filter((step) =>
+    SHOW_LEGACY_THEME_SETTINGS || !['nav-welcome-theme', 'nav-menu-theme'].includes(step.id)
+  ).map(({ pathSegments, ...rest }) => {
     if (pathSegments === undefined) return rest;
     return { ...rest, path: adminPath(...pathSegments) };
   });
