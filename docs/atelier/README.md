@@ -29,3 +29,7 @@ Masaüstü menüde fotoğraf/bilgi tarafları ürün sırasına göre dönüşü
 Doğrulama: üretim derlemesi, TypeScript ve fark kontrolü; Chrome/taklit API ile vitrin önceliği ve boş vitrin yedeği, rozetin kaldırılması/bağlantılar, dönüşümlü yerleşim/alt düğme boyutu, seçenek bölümleri arasında geçiş/seçimlerin korunması, Double + ekstralar için fiyat, maksimum adet engeli ve sepette seçenek isimleri; 1024/1280/1920 px ürün taşması ve 390 px mobilde tüm seçeneklerin görünmesi kontrol edildi. Gerçek sunucu ve fiziksel cihaz testi yapılmadı. Geçici harness frontend/node_modules/.qr-check/atelier-refine.mjs içinde Git dışındadır.
 
 [Seçenekli ürün detayı](product-options.png). Örnek API bütün ürünlerde aynı kahvaltı fotoğrafını kullanır; bu, gerçek işletmenin ürün görseli değiştirildiği anlamına gelmez.
+
+## Güncel mobil tasarım
+
+Mobil menü fotoğraflı içindekiler, ayrı kitap sayfaları ve alttan açılan kategori seçiciyle yeniden düzenlendi. Önceki mobil ekran görüntüsü tarihsel örnektir. [Güncel mobil notlar ve görüntüler](mobile-book/README.md).

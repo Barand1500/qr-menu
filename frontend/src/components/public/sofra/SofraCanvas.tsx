@@ -1,4 +1,5 @@
-import { type ComponentProps, type ReactNode } from 'react';
+import MobileBookMenu from '../atelier/MobileBookMenu';
+import { useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { ArrowRight, Clock, Search, Utensils } from 'lucide-react';
 import { imageUrl, formatMoney } from '@/lib/api';
 import LanguageFlag from '@/components/LanguageFlag';
@@ -18,8 +19,27 @@ import './sofra-overlays.css';
 export { SofraText, SofraBrand } from './SofraElements';
 export type { SofraEditing, SofraRestaurant, SofraGroup, SofraProduct } from './SofraElements';
 import type { SofraConfig } from '@/lib/sofra';
-export function SofraWelcomeView(props: ComponentProps<typeof SofraWelcomeClassic>) { return <AtelierWelcome {...props} />; }
-export function SofraMenuView(props: ComponentProps<typeof SofraMenuClassic>) { return <AtelierMenu {...props} />; }
+export function SofraWelcomeView(props: ComponentProps<typeof SofraWelcomeClassic>) {
+  return <AtelierWelcome {...props} />;
+}
+export function SofraMenuView(props: ComponentProps<typeof SofraMenuClassic>) {
+  const root = useRef<HTMLDivElement>(null);
+  const [mobile, setMobile] = useState(false);
+  useLayoutEffect(() => {
+    const view = root.current?.ownerDocument.defaultView;
+    if (!view) return;
+    const media = view.matchMedia('(max-width: 1023px)');
+    const update = () => setMobile(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  return (
+    <div ref={root} style={{ display: 'contents' }}>
+      {mobile ? <MobileBookMenu {...props} /> : <AtelierMenu {...props} />}
+    </div>
+  );
+}
 export function SofraWelcomeClassic({
   config,
   restaurant,

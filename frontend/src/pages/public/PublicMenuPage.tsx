@@ -1,3 +1,4 @@
+import { BookNavigationProvider } from '@/components/public/atelier/BookNavigation';
 import AtelierLanguage from '@/components/public/atelier/AtelierLanguage';
 import { useEffect, useState, type ReactNode, type ComponentProps } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
@@ -726,6 +727,7 @@ function PublicMenuPageInner({
       restaurantName={isSofra ? menu.sofra?.brandName || menu.restaurant.name : menu.restaurant.name}
       languages={menu.languages}
       activeLang={lang}
+      onAssistant={isSofra && menuAssistantOn && lang === "tr" ? () => setAssistantOpen(true) : undefined}
       socialLinks={menu.socialLinks}
       dietaryPrefs={dietaryPrefs}
       onClose={() => setSideMenuOpen(false)}
@@ -812,6 +814,7 @@ function PublicMenuPageInner({
         ? filteredGroupProducts
         : filteredPopular;
     return (
+      <BookNavigationProvider>
       <SiparisCartProvider slug={slug} enabled>
         <div className="sofra-public-shell" data-theme-menu="sofra">
           {tab === 'home' ? (
@@ -908,6 +911,7 @@ function PublicMenuPageInner({
             </div>
           )}
           <SofraBottomBar
+            onCategories={() => setTab("home")}
             lang={lang}
             onMenu={() => setSideMenuOpen(true)}
             onGames={gamesEnabled ? () => setGamesOpen(true) : undefined}
@@ -926,6 +930,7 @@ function PublicMenuPageInner({
           />
         </div>
       </SiparisCartProvider>
+      </BookNavigationProvider>
     );
   }
 

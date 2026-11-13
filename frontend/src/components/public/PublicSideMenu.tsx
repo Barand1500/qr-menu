@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Home, Info, Globe, Leaf, ChevronDown, Check, Gamepad2 } from 'lucide-react';
+import { X, Home, Info, Globe, Leaf, ChevronDown, Check, Gamepad2, Sparkles } from 'lucide-react';
 import PublicSocialLinks from '@/components/public/PublicSocialLinks';
 import type { PublicSocialLink } from '@/lib/socialCatalog';
 import LanguageFlag from '@/components/LanguageFlag';
@@ -39,6 +39,7 @@ interface PublicSideMenuProps {
   gamesPromo?: boolean;
   onGamesPromoDismiss?: () => void;
   onOpenGames?: (game?: MenuGameId) => void;
+  onAssistant?: () => void;
 }
 
 export default function PublicSideMenu({
@@ -58,6 +59,7 @@ export default function PublicSideMenu({
   gamesPromo = false,
   onGamesPromoDismiss,
   onOpenGames,
+  onAssistant,
 }: PublicSideMenuProps) {
   const ui = preferenceUi(activeLang);
   const chrome = sideMenuUi(activeLang);
@@ -156,6 +158,7 @@ export default function PublicSideMenu({
         </div>
 
         <nav className="public-side-menu__nav">
+          {onAssistant && <button type="button" className="public-side-menu__link public-side-menu__assistant" onClick={()=>{onClose();onAssistant();}}><Sparkles className="w-5 h-5"/>Ne yesem?</button>}
           <button
             type="button"
             onClick={() => selectTab('home')}
