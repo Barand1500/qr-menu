@@ -357,8 +357,16 @@
   font: inherit;
   color: inherit;
 }
-.sofra-categories button.is-active::after {
-  width: 12px;
+@media (min-width: 768px) {
+  .sofra-categories button.is-active::after {
+    width: 12px;
+  }
+  .sofra-public-shell .sofra-assistant-launcher {
+    bottom: calc(var(--sofra-tools-height) + env(safe-area-inset-bottom) - 22px);
+    min-height: 44px;
+    box-sizing: border-box;
+    animation: none;
+  }
 }
 .sofra-seal > span,
 .sofra-category-seal > span {
@@ -498,6 +506,26 @@
 }
 .sofra-public-shell .public-side-menu__game-card small,
 .sofra-public-shell .public-side-menu__game-card em {
+  color: #76675e;
+}
+.sofra-public-shell .public-side-menu__games-promo {
+  background: #f5ede3;
+  border: 1px solid #dfd1c5;
+  border-radius: 12px;
+  box-shadow: none;
+  animation: none;
+}
+.sofra-public-shell .public-side-menu__games-promo > p {
+  color: #781e23;
+}
+.sofra-public-shell .public-side-menu__games-promo-item {
+  color: #281e1a;
+  background: #fffaf2;
+  border: 1px solid #e6dbd1;
+  border-radius: 10px;
+  animation: none;
+}
+.sofra-public-shell .public-side-menu__games-promo-item small {
   color: #76675e;
 }
 .sofra-public-shell :is(.public-side-menu__lang-trigger, .public-side-menu__accordion) {

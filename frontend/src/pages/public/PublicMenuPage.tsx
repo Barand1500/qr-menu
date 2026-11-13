@@ -889,7 +889,8 @@ function PublicMenuPageInner({
             />
           ) : (
             <div className="sofra sofra-secondary-content">
-              <button type="button" className="sofra-primary" onClick={() => setTab('home')}>
+              <button type="button" className="sofra-back" onClick={() => setTab('home')}>
+                <ArrowLeft size={17} aria-hidden />
                 {en ? 'Back to menu' : 'Menüye dön'}
               </button>
               {tab === 'about' ? (

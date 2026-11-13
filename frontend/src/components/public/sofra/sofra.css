@@ -158,7 +158,7 @@
 }
 .sofra-welcome {
   min-height: 100svh;
-  max-width: 1800px;
+  width: 100%;
   margin: 0 auto;
 }
 .sofra-welcome-layout {
@@ -287,7 +287,7 @@
 }
 .sofra-menu {
   min-height: 100svh;
-  max-width: 1800px;
+  width: 100%;
   margin: auto;
   padding-bottom: 85px;
 }
@@ -412,9 +412,16 @@
   padding: 13px 0;
   outline: none;
 }
+.sofra .sofra-search input:focus,
+.sofra .sofra-search input:focus-visible {
+  outline: none;
+  outline-offset: 0;
+  border: 0;
+  box-shadow: none;
+}
 .sofra-search:focus-within {
   border-color: var(--sofra-wine);
-  box-shadow: 0 0 0 1px var(--sofra-wine);
+  box-shadow: none;
 }
 .sofra-spread {
   display: grid;
@@ -606,6 +613,7 @@
   outline-offset: 5px;
 }
 .sofra-public-shell {
+  --sofra-tools-height: 64px;
   background: #faf5ed;
   min-height: 100svh;
   --menu-accent: #781e23;
@@ -667,6 +675,8 @@
   background: #faf5edf5;
   backdrop-filter: blur(12px);
   border-top: 1px solid #d9c7b9;
+  height: calc(var(--sofra-tools-height) + env(safe-area-inset-bottom));
+  box-sizing: border-box;
   display: flex;
   justify-content: center;
   gap: 24px;
@@ -686,6 +696,22 @@
   padding: 30px 24px 110px;
   max-width: 900px;
   margin: auto;
+}
+.sofra-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 0;
+  margin-bottom: 20px;
+  background: transparent;
+  border: 0;
+  color: var(--sofra-wine);
+  font: 14px/1.4 Arial, sans-serif;
+}
+.sofra-back:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 .sofra-stories {
   margin: 0 0 20px;

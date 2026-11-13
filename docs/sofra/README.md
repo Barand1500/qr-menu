@@ -40,6 +40,10 @@ Karşılama bir ana düğmeyle menüye açılır. Beslenme tercihleri zorunlu bi
 
 Güncel panel örnekleri: [Öneri](feedback-mobile.png), [Şikâyet](complaint-mobile.png), [Diğer](menu-sheet-desktop.png), [Ne yesem?](assistant-desktop.png). Bunlar yerel örnek veriyle alınan ekran görüntüleridir.
 
+Son yerleşim düzeltmeleri: karşılama/menü geniş ekranın tamamını kullanır; önceki 1800 px sınırı kaldırılmıştır. Masaüstü asistan düğmesi alt araç çubuğunun üst çizgisini ortalar. Arama odağı yalnızca kapsayıcının yuvarlak kenarlığını vurgular; input'a ikinci çerçeve çizilmez. Mobil aktif kategori çizgisi kategori genişliğini kaplar. Hakkımızda dönüşü kompakt ok/metin düğmesidir; garson bildirimi koyu yazılı, sabit açık zeminlidir.
+
+Örnekler: [Geniş ekran](layout-desktop.png), [Mobil arama ve kategori çizgisi](search-mobile.png), [Hakkımızda](about-mobile.png), [Garson bildirimi](waiter-promo.png).
+
 ## Kalıcı kayıt ve mimari
 
 - Yeni tablo veya migration yoktur. `Setting` tablosundaki işletmeye özel `sofra_theme_v1` anahtarı kullanılır.
