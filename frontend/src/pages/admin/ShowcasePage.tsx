@@ -495,7 +495,7 @@ export default function ShowcasePage() {
       ) : (
         <>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <p className="text-sm admin-text-muted max-w-2xl">
+            <p className="text-sm admin-text-muted min-w-0 flex-1">
               Sadece mobil menüde görünür — Instagram hikayesi gibi yuvarlak görseller. Tıklanınca
               bağlı ürüne gider.
             </p>

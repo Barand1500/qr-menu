@@ -38,3 +38,10 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Doğrulama: frontend TypeScript ve üretim derlemesi başarılı; Vite mevcut büyük paket boyutu uyarısını verdi. Gerçek sayfa bileşenini taklit API ile çalıştıran JSDOM kontrolleri başarılı: çift tıklama ayrımı, düzenleme, tek/çok görsel önizlemesi, tablo dışında galeri, ekran kenarı konumlama, galeriye geçiş/kapanma, çoklu ekleme ve kapak/sıra korunması, yükleme göstergesi, oturum tokenı, sunucu hatası, geçersiz/büyük/fazla dosya, iptal ve ilk fotoğraf yükleme.
 - Geçici kontrol dosyası `frontend/node_modules/.qr-check/products-test.mjs` altında Git dışında tutulur. Gerçek backend/MySQL ve canlı tarayıcıda görsel kontrol yapılmadı. Mobil tasarım çalışması hâlâ en sona bırakılmıştır.
 - Commit, push ve deploy yapılmadı; kullanıcı gerçekleştirecek.
+
+## 2026-11-13 — Vitrin hikaye açıklamasının genişliği
+
+- Mobil Hikayeler sekmesindeki açıklamaya verilen `max-w-2xl` (42 rem) sınırı, geniş ekranda boş alan olmasına rağmen son sözcüğü alt satıra düşürüyordu.
+- `frontend/src/pages/admin/ShowcasePage.tsx` içinde yalnızca bu açıklamanın genişliği düzeltildi: metin Yeni Hikaye butonundan kalan alanı kullanır. Dar alanda doğal satır kaydırma korunur.
+- Sayfanın diğer alanlarına ve işlevlerine dokunulmadı. Canlı tarayıcıda görsel kontrol yapılmadı.
+- Doğrulama: frontend TypeScript ve üretim derlemesi başarılı; Git fark kontrolü temiz. Vite mevcut büyük paket boyutu uyarısını verdi. Commit, push ve deploy yapılmadı.
