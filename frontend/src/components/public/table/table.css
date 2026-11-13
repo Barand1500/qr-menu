@@ -61,14 +61,14 @@
 }
 .table-welcome__world {
   position: absolute;
-  inset: 0;
-  z-index: -2;
+  inset: 110px 4vw 100px 48%;
+  z-index: 0;
 }
 .table-welcome::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, #e9e4daf5 0%, #e9e4dae8 22%, #e9e4da60 46%, transparent 62%);
+  background: radial-gradient(ellipse at 75% 50%, #d5d0bd80, transparent 65%);
   z-index: -1;
   pointer-events: none;
 }
@@ -216,14 +216,7 @@
 .table-scene__canvas {
   position: absolute;
   inset: 0;
-  cursor: pointer;
-}
-.table-scene--detail .table-scene__canvas {
-  cursor: grab;
-  touch-action: pan-y;
-}
-.table-scene--detail .table-scene__canvas:active {
-  cursor: grabbing;
+  cursor: default;
 }
 .table-scene__canvas canvas {
   display: block;
@@ -256,39 +249,6 @@
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
-}
-.table-scene__labels {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.table-scene__labels > button {
-  position: absolute;
-  visibility: hidden;
-  transform: translate(-50%, 0);
-  width: max-content;
-  max-width: 180px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  align-items: center;
-  text-align: center;
-  background: transparent;
-  border: 0;
-  padding: 7px 5px;
-  pointer-events: auto;
-  color: #2f4030;
-  text-shadow: 0 1px 5px #e9e4da;
-}
-.table-scene__labels strong {
-  font:
-    normal 19px/1.15 Georgia,
-    serif;
-}
-.table-scene__labels span {
-  font:
-    11px Arial,
-    sans-serif;
 }
 .table-scene__guide {
   position: absolute;
@@ -498,7 +458,7 @@
 }
 .table-menu__body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 330px;
+  grid-template-columns: minmax(0, 1.6fr) minmax(360px, 1fr);
   min-height: 0;
   flex: 1;
   margin: 0 42px;
@@ -510,6 +470,8 @@
   min-height: 0;
   overflow: hidden;
   border-radius: 3px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto 64px;
 }
 .table-menu__stage > .table-scene {
   height: 100%;
@@ -866,5 +828,265 @@
   .table-world * {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* A quiet place setting: original food photos take priority over the optional 3D plate. */
+.table-presentation {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #e0ddcf;
+  border-radius: 8px;
+}
+.table-presentation__photo {
+  height: 100%;
+  padding: 24px 24px 68px;
+  display: grid;
+  place-items: center;
+}
+.table-presentation__photo > button {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.table-presentation__photo > button:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.table-presentation__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.table-presentation__empty {
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+  color: #65715e;
+  font:
+    italic 22px Georgia,
+    serif;
+}
+.table-presentation__switch {
+  position: absolute;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  padding: 4px;
+  background: #f8f5ed;
+  border: 1px solid #c2c6b6;
+  border-radius: 30px;
+  gap: 3px;
+  white-space: nowrap;
+}
+.table-presentation__switch button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  border-radius: 20px;
+  padding: 7px 13px;
+  background: transparent;
+  color: #53634c;
+  border: 0;
+  font:
+    11px Arial,
+    sans-serif;
+}
+.table-presentation__switch button[aria-pressed='true'] {
+  background: #34503d;
+  color: #fffaf0;
+}
+.table-presentation button:focus-visible,
+.table-directory button:focus-visible,
+.table-menu__featured button:focus-visible {
+  outline: 2px solid #34503d;
+  outline-offset: 3px;
+}
+.table-menu__stage > .table-presentation {
+  min-height: 120px;
+}
+.table-menu__featured {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 20px 3px 5px;
+}
+.table-menu__featured h2 {
+  font:
+    normal clamp(26px, 2.5vw, 42px)/1.1 Georgia,
+    serif;
+  letter-spacing: -0.035em;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.table-menu__featured p {
+  font:
+    13px/1.6 Arial,
+    sans-serif;
+  color: #67715f;
+  max-width: 450px;
+  margin: 10px 0 0;
+}
+.table-menu__featured-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
+  font:
+    17px Georgia,
+    serif;
+}
+.table-menu__featured-actions button {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  background: #34503d;
+  color: #fffaf0;
+  border: 0;
+  border-radius: 25px;
+  padding: 13px 20px;
+  font:
+    12px Arial,
+    sans-serif;
+}
+.table-directory .sofra-dish {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 17px 0;
+}
+.table-directory__preview {
+  flex: 0 0 78px;
+  width: 78px;
+  height: 78px;
+  border: 0;
+  background: #dad8c9;
+  color: #64735b;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.table-directory__preview[aria-pressed='true'] {
+  outline: 2px solid #687f59;
+  outline-offset: 4px;
+}
+.table-directory__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.table-directory .sofra-dish-main {
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  text-align: start;
+}
+.table-directory .sofra-dish-copy strong {
+  font-size: 23px;
+  color: #33462e;
+  overflow-wrap: anywhere;
+}
+.table-directory .sofra-dish-price {
+  font-size: 13px;
+  color: #58674e;
+}
+.table-directory .sofra-add {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border: 1px solid #b8c0aa;
+  border-radius: 50%;
+  font-size: 22px;
+}
+.table-directory .sofra-dish-copy small {
+  font-size: 11px;
+  color: #62715b;
+}
+.table-directory .is-sold-out {
+  opacity: 0.65;
+}
+.table-menu__index {
+  bottom: 20px;
+  inset-inline-start: 3px;
+}
+.table-menu__stepper {
+  inset-inline-end: 3px;
+}
+.table-menu__stage > .table-photo-edit {
+  top: 15px;
+  bottom: auto;
+}
+.table-product-hero .table-presentation__photo {
+  padding: 22px 22px 68px;
+}
+.table-product-hero .public-product-gallery,
+.table-product-hero .public-product-gallery__stage {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.table-product-hero .public-product-gallery__stage img {
+  object-fit: contain;
+}
+.table-ingredients {
+  top: 20px;
+  inset-inline-end: 20px;
+}
+.table-presentation .table-scene__guide {
+  bottom: 78px;
+  background: #f8f5ed;
+  border: 1px solid #c2c6b6;
+  color: #34503d;
+}
+.table-welcome__seal {
+  position: static;
+  writing-mode: horizontal-tb;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+.table-welcome__world .table-presentation {
+  background: transparent;
+}
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .table-menu__body {
+    grid-template-columns: minmax(0, 1.25fr) minmax(330px, 1fr);
+    gap: 22px;
+  }
+  .table-directory {
+    padding-inline-start: 20px;
+  }
+  .table-directory__preview {
+    flex-basis: 62px;
+    width: 62px;
+    height: 62px;
+  }
+  .table-directory .sofra-dish-copy strong {
+    font-size: 20px;
+  }
+  .table-menu__featured {
+    align-items: flex-start;
+  }
+  .table-menu__featured-actions button {
+    padding: 12px;
+  }
+  .table-welcome__world {
+    inset-inline-start: 50%;
   }
 }

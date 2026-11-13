@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Plus, X } from 'lucide-react';
 import DesktopTableSurface from './DesktopTableSurface';
-import TableScene from './TableScene';
+import TablePresentation from './TablePresentation';
 import TableReceipt from './TableReceipt';
 import './table.css';
 
@@ -25,7 +25,12 @@ export default function TableProductHero({
     <DesktopTableSurface fallback={fallback}>
       <div className="table-product-hero">
         <TableReceipt lang={lang} />
-        <TableScene variant="detail" items={[{ id, imageUrl: image, name }]} lang={lang} />
+        <TablePresentation
+          variant="detail"
+          item={{ id, imageUrl: image, name }}
+          lang={lang}
+          photo={fallback}
+        />
         {ingredients && (
           <div className="table-ingredients">
             <button

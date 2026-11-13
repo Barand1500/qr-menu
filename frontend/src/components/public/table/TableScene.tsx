@@ -7,9 +7,6 @@ export interface TableSceneProps {
   lang?: string;
   variant: TableVariant;
   items: TableItem[];
-  seed?: number;
-  entering?: boolean;
-  onActivate?: (id: number) => void;
 }
 export default function TableScene(props: TableSceneProps) {
   const host = useRef<HTMLDivElement>(null);
@@ -28,28 +25,9 @@ export default function TableScene(props: TableSceneProps) {
       .then(({ createTableRenderer }) => {
         if (cancelled) return;
         try {
-          const driver = createTableRenderer(node, props.variant, {
-            activate: (id) => latest.current.onActivate?.(id),
-            lost: () => setStatus('fallback'),
-            project: (points) => {
-              for (const point of points) {
-                const label = node.parentElement?.querySelector<HTMLElement>(
-                  `[data-table-label="${point.id}"]`
-                );
-                if (label) {
-                  label.style.left = `${point.x}px`;
-                  label.style.top = `${point.y}px`;
-                  label.style.visibility = point.visible ? 'visible' : 'hidden';
-                }
-              }
-            },
-          });
+          const driver = createTableRenderer(node, { lost: () => setStatus('fallback') });
           renderer.current = driver;
-          driver.update(
-            latest.current.items,
-            latest.current.seed || 0,
-            Boolean(latest.current.entering)
-          );
+          driver.update(latest.current.items);
           setStatus('ready');
         } catch {
           setStatus('fallback');
@@ -65,8 +43,14 @@ export default function TableScene(props: TableSceneProps) {
     };
   }, [props.variant]);
   useEffect(() => {
-    renderer.current?.update(props.items, props.seed || 0, Boolean(props.entering));
-  }, [signature, props.seed, props.entering]);
+    renderer.current?.update(props.items);
+  }, [signature]);
+  useEffect(() => {
+    if (status === 'fallback') {
+      renderer.current?.dispose();
+      renderer.current = null;
+    }
+  }, [status]);
   const first = props.items[0];
   return (
     <div
@@ -89,30 +73,10 @@ export default function TableScene(props: TableSceneProps) {
           </div>
         </div>
       )}
-      {props.variant === 'menu' && status === 'ready' && (
-        <div className="table-scene__labels">
-          {props.items.slice(0, 3).map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              data-table-label={item.id}
-              onClick={() => props.onActivate?.(item.id)}
-            >
-              <strong>{item.name}</strong>
-              <span>{item.meta}</span>
-            </button>
-          ))}
-        </div>
-      )}
       {status === 'ready' && props.variant === 'detail' && (
         <button
           type="button"
           className="table-scene__guide"
-          title={
-            props.lang?.startsWith('en')
-              ? 'You can also drag to rotate'
-              : 'Sürükleyerek de çevirebilirsiniz'
-          }
           onClick={() => renderer.current?.turn(Math.PI / 4)}
         >
           <RotateCcw size={14} />{' '}
