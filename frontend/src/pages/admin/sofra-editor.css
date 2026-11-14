@@ -99,19 +99,27 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  min-height: 300px;
-  padding: 25px 0 35px;
+  height: clamp(420px, calc(100dvh - 270px), 820px);
+  min-height: 0;
+  padding: 16px;
   overflow: hidden;
-  background-color: color-mix(in srgb, var(--admin-bg) 90%, var(--admin-text) 10%);
-  background-image: radial-gradient(var(--admin-card-border) 1px, transparent 1px);
+  background-color: color-mix(
+    in srgb,
+    var(--admin-bg) 90%,
+    var(--admin-text) 10%
+  );
+  background-image: radial-gradient(
+    var(--admin-card-border) 1px,
+    transparent 1px
+  );
   background-size: 17px 17px;
   border: 1px solid var(--admin-card-border);
-  border-radius: 0 0 15px 15px;
+  border-radius: 0 0 0 15px;
 }
 .sofra-editor-frame-space {
   flex-shrink: 0;
   position: relative;
-  background: #faf5ed;
+  background: #0e0b09;
   box-shadow: 0 15px 50px #0002;
   border-radius: 8px;
 }
@@ -120,15 +128,110 @@
   display: block;
   position: absolute;
   inset: 0 auto auto 0;
-  background: #faf5ed;
+  background: #0e0b09;
   border-radius: 8px;
 }
 .sofra-editor-details {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 15px;
   margin-top: 22px;
   align-items: center;
+}
+.sofra-editor-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  align-items: start;
+  background: var(--admin-card);
+  border: 1px solid var(--admin-card-border);
+  border-top: 0;
+  border-radius: 0 0 15px 15px;
+  overflow: hidden;
+}
+.sofra-editor-preview {
+  min-width: 0;
+}
+.sofra-editor-preview-meta {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 16px;
+  font-size: 11px;
+  color: var(--admin-text-muted);
+  border-bottom: 1px solid var(--admin-card-border);
+}
+.sofra-editor-inspector {
+  min-width: 0;
+  padding: 20px;
+  max-height: clamp(456px, calc(100dvh - 234px), 856px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.sofra-editor-inspector-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.sofra-editor-inspector-head h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.sofra-editor-inspector-head > span {
+  margin-inline-start: auto;
+  font-size: 10px;
+  color: var(--admin-text-muted);
+}
+.sofra-editor-fields {
+  display: grid;
+  gap: 16px;
+}
+.sofra-editor-field {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--admin-text-muted);
+}
+.sofra-editor-field :is(input, textarea) {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  min-height: 42px;
+  border: 1px solid var(--admin-card-border);
+  border-radius: 9px;
+  color: var(--admin-text);
+  background: var(--admin-input-bg);
+  font: inherit;
+  line-height: 1.5;
+}
+.sofra-editor-field textarea {
+  resize: vertical;
+}
+.sofra-editor-field :is(input, textarea):focus-visible {
+  outline: 2px solid var(--admin-accent-text);
+  outline-offset: 2px;
+}
+.sofra-editor-details {
+  border-top: 1px solid var(--admin-card-border);
+  padding-top: 20px;
+}
+@media (max-width: 1100px) {
+  .sofra-editor-workspace {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+}
+@media (max-width: 767px) {
+  .sofra-editor-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sofra-editor-inspector {
+    max-height: none;
+    overflow: visible;
+    border-top: 1px solid var(--admin-card-border);
+  }
+  .sofra-editor-stage {
+    height: 520px;
+    border-radius: 0;
+  }
 }
 .sofra-editor-details > button {
   display: flex;

@@ -15,7 +15,10 @@ import {
   type SofraConfig,
   type SofraTextField,
 } from '@/lib/sofra';
-import { SofraWelcomeView, SofraMenuView } from '@/components/public/sofra/SofraCanvas';
+import {
+  SofraWelcomeView,
+  SofraMenuView,
+} from '@/components/public/sofra/SofraCanvas';
 import SofraPreviewFrame from '@/components/admin/SofraPreviewFrame';
 import './sofra-editor.css';
 
@@ -43,15 +46,22 @@ export default function SofraThemePage() {
   const [lang, setLang] = useState('tr');
   const [saving, setSaving] = useState(false);
   const [pending, setPending] = useState<Partial<Record<ImageField, File>>>({});
-  const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    error: boolean;
+    text: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [stageWidth, setStageWidth] = useState(800);
+  const [stageHeight, setStageHeight] = useState(650);
+  const [activeGroup, setActiveGroup] = useState<number | null>(null);
+  const [previewSearch, setPreviewSearch] = useState('');
   const stageRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
   const imageFieldRef = useRef<ImageField>('welcomeImage');
   const urlsRef = useRef<Partial<Record<ImageField, string>>>({});
   const savingRef = useRef(false);
-  const dirty = JSON.stringify(draft) !== saved || Object.keys(pending).length > 0;
+  const dirty =
+    JSON.stringify(draft) !== saved || Object.keys(pending).length > 0;
 
   async function load() {
     setLoading(true);
@@ -63,10 +73,15 @@ export default function SofraThemePage() {
       setSaved(JSON.stringify(config));
       setMessage(null);
       setLang((prev) =>
-        res.languages.some((l) => l.code === prev) ? prev : res.languages[0]?.code || 'tr'
+        res.languages.some((l) => l.code === prev)
+          ? prev
+          : res.languages[0]?.code || 'tr',
       );
     } catch (err) {
-      setMessage({ error: true, text: err instanceof Error ? err.message : 'Tema yüklenemedi.' });
+      setMessage({
+        error: true,
+        text: err instanceof Error ? err.message : 'Tema yüklenemedi.',
+      });
     } finally {
       setLoading(false);
     }
@@ -77,13 +92,17 @@ export default function SofraThemePage() {
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
-    const observer = new ResizeObserver(([entry]) => setStageWidth(entry.contentRect.width));
+    const observer = new ResizeObserver(([entry]) => {
+      setStageWidth(entry.contentRect.width);
+      setStageHeight(entry.contentRect.height);
+    });
     observer.observe(stage);
     return () => observer.disconnect();
   }, [loading]);
   useEffect(
-    () => () => Object.values(urlsRef.current).forEach((url) => URL.revokeObjectURL(url)),
-    []
+    () => () =>
+      Object.values(urlsRef.current).forEach((url) => URL.revokeObjectURL(url)),
+    [],
   );
   useEffect(() => {
     if (!data || !dirty) return;
@@ -92,10 +111,20 @@ export default function SofraThemePage() {
       e.returnValue = '';
     };
     const leaving = (e: MouseEvent) => {
-      const anchor = (e.target as Element).closest?.('a[href]') as HTMLAnchorElement | null;
-      if (!anchor || anchor.target === '_blank' || anchor.pathname === window.location.pathname)
+      const anchor = (e.target as Element).closest?.(
+        'a[href]',
+      ) as HTMLAnchorElement | null;
+      if (
+        !anchor ||
+        anchor.target === '_blank' ||
+        anchor.pathname === window.location.pathname
+      )
         return;
-      if (!window.confirm('Kaydedilmemiş değişiklikler var. Sayfadan ayrılmak istiyor musunuz?')) {
+      if (
+        !window.confirm(
+          'Kaydedilmemiş değişiklikler var. Sayfadan ayrılmak istiyor musunuz?',
+        )
+      ) {
         e.preventDefault();
         e.stopPropagation();
       }
@@ -113,7 +142,13 @@ export default function SofraThemePage() {
     setDraft((prev) =>
       sofraCopy(prev, lang)[field] === value
         ? prev
-        : { ...prev, texts: { ...prev.texts, [locale]: { ...prev.texts[locale], [field]: value } } }
+        : {
+            ...prev,
+            texts: {
+              ...prev.texts,
+              [locale]: { ...prev.texts[locale], [field]: value },
+            },
+          },
     );
     setMessage(null);
   }
@@ -127,7 +162,10 @@ export default function SofraThemePage() {
       !['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
       file.size > 5 * 1024 * 1024
     ) {
-      setMessage({ error: true, text: 'En fazla 5 MB boyutunda PNG, JPG veya WebP görsel seçin.' });
+      setMessage({
+        error: true,
+        text: 'En fazla 5 MB boyutunda PNG, JPG veya WebP görsel seçin.',
+      });
       return;
     }
     const field = imageFieldRef.current;
@@ -150,31 +188,45 @@ export default function SofraThemePage() {
         if (!file) continue;
         const form = new FormData();
         form.append('image', file);
-        const result = await api<{ imageUrl: string }>('/api/admin/theme-settings/image', {
-          method: 'POST',
-          body: form,
-        });
+        const result = await api<{ imageUrl: string }>(
+          '/api/admin/theme-settings/image',
+          {
+            method: 'POST',
+            body: form,
+          },
+        );
         config[field] = result.imageUrl;
       }
       const result = await api<{ config: SofraConfig; revision: string }>(
         '/api/admin/theme-settings',
         {
           method: 'PUT',
-          body: JSON.stringify({ config: normalizeSofraConfig(config), revision: data.revision }),
-        }
+          body: JSON.stringify({
+            config: normalizeSofraConfig(config),
+            revision: data.revision,
+          }),
+        },
       );
       const next = normalizeSofraConfig(result.config);
-      setData((prev) => (prev ? { ...prev, config: next, revision: result.revision } : prev));
+      setData((prev) =>
+        prev ? { ...prev, config: next, revision: result.revision } : prev,
+      );
       setDraft(next);
       setSaved(JSON.stringify(next));
       setPending({});
       Object.values(urlsRef.current).forEach((url) => URL.revokeObjectURL(url));
       urlsRef.current = {};
-      setMessage({ error: false, text: 'Kaydedildi. Sofra artık bu haliyle yayında.' });
+      setMessage({
+        error: false,
+        text: 'Kaydedildi. Tema artık bu haliyle yayında.',
+      });
     } catch (err) {
       setMessage({
         error: true,
-        text: err instanceof Error ? err.message : 'Kaydedilemedi. Taslağınız korunuyor.',
+        text:
+          err instanceof Error
+            ? err.message
+            : 'Kaydedilemedi. Taslağınız korunuyor.',
       });
     } finally {
       savingRef.current = false;
@@ -182,7 +234,11 @@ export default function SofraThemePage() {
     }
   }
   function discard() {
-    if (!data || !window.confirm('Kaydedilmemiş değişiklikler geri alınsın mı?')) return;
+    if (
+      !data ||
+      !window.confirm('Kaydedilmemiş değişiklikler geri alınsın mı?')
+    )
+      return;
     Object.values(urlsRef.current).forEach((url) => URL.revokeObjectURL(url));
     urlsRef.current = {};
     setDraft(normalizeSofraConfig(data.config));
@@ -198,31 +254,67 @@ export default function SofraThemePage() {
       </div>
     );
   const width = device === 'phone' ? 390 : 1280;
-  const scale = Math.min(1, Math.max(0.2, (stageWidth - 36) / width));
+  const height = device === 'phone' ? 844 : 800;
+  const scale = Math.min(
+    1,
+    Math.max(
+      0.1,
+      Math.min((stageWidth - 32) / width, (stageHeight - 32) / height),
+    ),
+  );
   const groups = data.groups.map((g) => ({
     id: g.id,
     name: g.i18n[lang]?.name || g.i18n.tr?.name || 'Grup',
   }));
   const products = data.products.map((p) => ({
     id: p.id,
+    groupId: p.groupId,
     name: p.i18n[lang]?.name || p.i18n.tr?.name || 'Ürün',
     description: p.i18n[lang]?.description || p.i18n.tr?.description || '',
     price: Number(p.price),
     imageUrl: p.imageUrl,
   }));
-  const languages = data.languages.length ? data.languages : [{ code: 'tr', name: 'Türkçe' }];
-  const editing = saving
-    ? {}
-    : {
-        onTextEdit: editText,
-        onImageEdit: chooseImage,
-        onBrandEdit: (value: string) =>
-          setDraft((prev) =>
-            value === (prev.brandName || data.restaurant.name)
-              ? prev
-              : { ...prev, brandName: value }
-          ),
-      };
+  const languages = data.languages.length
+    ? data.languages
+    : [{ code: 'tr', name: 'Türkçe' }];
+  const copy = sofraCopy(draft, lang);
+  const fields: { key: SofraTextField; label: string; multiline?: boolean }[] =
+    page === 'welcome'
+      ? [
+          { key: 'welcomeTitle', label: 'Ana başlık', multiline: true },
+          {
+            key: 'welcomeSubtitle',
+            label: 'Karşılama yazısı',
+            multiline: true,
+          },
+          { key: 'enterLabel', label: 'Menüye giriş düğmesi' },
+          { key: 'sealText', label: 'Dekoratif yazı' },
+          { key: 'footerText', label: 'Alt yazı' },
+        ]
+      : [
+          { key: 'menuTitle', label: 'Menü başlığı' },
+          { key: 'menuEyebrow', label: 'Menü üst yazısı' },
+          { key: 'picksLabel', label: 'Önerilen ürünler başlığı' },
+          { key: 'footerText', label: 'Alt yazı' },
+        ];
+  const previewProducts = products.filter(
+    (p) =>
+      (activeGroup === null || p.groupId === activeGroup) &&
+      (!previewSearch.trim() ||
+        `${p.name} ${p.description}`
+          .toLocaleLowerCase(lang)
+          .includes(previewSearch.trim().toLocaleLowerCase(lang))),
+  );
+  const editing = {
+    onTextEdit: editText,
+    onImageEdit: chooseImage,
+    onBrandEdit: (value: string) =>
+      setDraft((prev) =>
+        value === (prev.brandName || data.restaurant.name)
+          ? prev
+          : { ...prev, brandName: value },
+      ),
+  };
   return (
     <div className="sofra-editor">
       <PageHeader
@@ -260,6 +352,7 @@ export default function SofraThemePage() {
           <button
             aria-label="Telefon önizlemesi"
             aria-pressed={device === 'phone'}
+            disabled={saving}
             onClick={() => setDevice('phone')}
           >
             <Smartphone size={18} />
@@ -267,6 +360,7 @@ export default function SofraThemePage() {
           <button
             aria-label="Masaüstü önizlemesi"
             aria-pressed={device === 'desktop'}
+            disabled={saving}
             onClick={() => setDevice('desktop')}
           >
             <Monitor size={18} />
@@ -287,7 +381,11 @@ export default function SofraThemePage() {
             ))}
           </select>
         </label>
-        <button className="sofra-editor-discard" onClick={discard} disabled={!dirty || saving}>
+        <button
+          className="sofra-editor-discard"
+          onClick={discard}
+          disabled={!dirty || saving}
+        >
           <RotateCcw size={14} /> Değişiklikleri geri al
         </button>
       </div>
@@ -300,57 +398,115 @@ export default function SofraThemePage() {
           {message.text}
         </p>
       )}
-      <div className="sofra-editor-stage" ref={stageRef} inert={saving}>
-        <SofraPreviewFrame width={width} scale={scale}>
-          {page === 'welcome' ? (
-            <SofraWelcomeView
-              config={draft}
-              restaurant={data.restaurant}
-              lang={lang}
-              languages={languages}
-              tableLabel="Masa 08"
-              {...editing}
-            />
-          ) : (
-            <SofraMenuView
-              config={draft}
-              restaurant={data.restaurant}
-              lang={lang}
-              groups={groups}
-              products={products}
-              {...editing}
-            />
-          )}
-        </SofraPreviewFrame>
-      </div>
-      <div className="sofra-editor-details">
-        <Input
-          label="Görünen işletme adı"
-          value={draft.brandName}
-          placeholder={data.restaurant.name}
-          disabled={saving}
-          maxLength={100}
-          onChange={(e) => setDraft((prev) => ({ ...prev, brandName: e.target.value }))}
-        />
-        <Input
-          label="Çalışma saatleri (isteğe bağlı)"
-          value={draft.openingHours}
-          disabled={saving}
-          maxLength={150}
-          onChange={(e) => setDraft((prev) => ({ ...prev, openingHours: e.target.value }))}
-        />
-        <button
-          onClick={() => chooseImage(page === 'welcome' ? 'welcomeImage' : 'menuImage')}
-          disabled={saving}
+      <div className="sofra-editor-workspace">
+        <section className="sofra-editor-preview" aria-label="Canlı taslak">
+          <div className="sofra-editor-preview-meta">
+            <span>
+              {device === 'phone' ? 'Telefon' : 'Masaüstü'} · {width} × {height}
+            </span>
+            <span>%{Math.round(scale * 100)}</span>
+          </div>
+          <div className="sofra-editor-stage" ref={stageRef} inert={saving}>
+            <SofraPreviewFrame width={width} height={height} scale={scale}>
+              {page === 'welcome' ? (
+                <SofraWelcomeView
+                  config={draft}
+                  restaurant={data.restaurant}
+                  lang={lang}
+                  languages={languages}
+                  tableLabel="Masa 08"
+                  {...editing}
+                />
+              ) : (
+                <SofraMenuView
+                  config={draft}
+                  restaurant={data.restaurant}
+                  lang={lang}
+                  groups={groups}
+                  products={previewProducts}
+                  activeGroup={activeGroup}
+                  onGroupChange={setActiveGroup}
+                  search={previewSearch}
+                  onSearchChange={setPreviewSearch}
+                  {...editing}
+                />
+              )}
+            </SofraPreviewFrame>
+          </div>
+        </section>
+        <aside
+          className="sofra-editor-inspector"
+          aria-label="Tema düzenleme alanları"
         >
-          <ImagePlus size={18} />
-          {page === 'welcome' ? 'Karşılama fotoğrafı' : 'Menü fotoğrafı'}
-        </button>
+          <div className="sofra-editor-inspector-head">
+            <h2>{page === 'welcome' ? 'Karşılama' : 'Menü'} yazıları</h2>
+            <span>{languages.find((l) => l.code === lang)?.name || lang}</span>
+          </div>
+          <div className="sofra-editor-fields">
+            {fields.map((field) => (
+              <label
+                key={`${lang}-${field.key}`}
+                className="sofra-editor-field"
+              >
+                <span>{field.label}</span>
+                {field.multiline ? (
+                  <textarea
+                    aria-label={field.label}
+                    rows={3}
+                    value={copy[field.key]}
+                    disabled={saving}
+                    maxLength={400}
+                    onChange={(e) => editText(field.key, e.target.value)}
+                  />
+                ) : (
+                  <input
+                    aria-label={field.label}
+                    value={copy[field.key]}
+                    disabled={saving}
+                    maxLength={field.key === 'enterLabel' ? 60 : 400}
+                    onChange={(e) => editText(field.key, e.target.value)}
+                  />
+                )}
+              </label>
+            ))}
+          </div>
+          <div className="sofra-editor-details">
+            <Input
+              label="Görünen işletme adı"
+              value={draft.brandName}
+              placeholder={data.restaurant.name}
+              disabled={saving}
+              maxLength={100}
+              onChange={(e) =>
+                setDraft((prev) => ({ ...prev, brandName: e.target.value }))
+              }
+            />
+            <Input
+              label="Çalışma saatleri (isteğe bağlı)"
+              value={draft.openingHours}
+              disabled={saving}
+              maxLength={150}
+              onChange={(e) =>
+                setDraft((prev) => ({ ...prev, openingHours: e.target.value }))
+              }
+            />
+            <button
+              onClick={() =>
+                chooseImage(page === 'welcome' ? 'welcomeImage' : 'menuImage')
+              }
+              disabled={saving}
+            >
+              <ImagePlus size={18} />
+              {page === 'welcome' ? 'Karşılama fotoğrafı' : 'Menü fotoğrafı'}
+            </button>
+          </div>
+          <p className="sofra-editor-note">
+            Değişiklikler Kaydet dediğinizde yayınlanır. Ürün adları ve fiyatlar
+            Ürünler sayfasından yönetilir. Önizlemedeki ürünler ve masa numarası
+            örnektir.
+          </p>
+        </aside>
       </div>
-      <p className="sofra-editor-note">
-        Sofra · Tek tasarım. Ürün adları ve fiyatlar Ürünler sayfasından yönetilir. Önizlemedeki
-        masa numarası örnektir.
-      </p>
       <input
         ref={imageRef}
         type="file"
