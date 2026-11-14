@@ -7,7 +7,7 @@ import GeoCheckInBridge from '@/components/public/GeoCheckInBridge';
 import MaintenanceGate from '@/components/public/MaintenanceGate';
 import TableSessionCodeGate from '@/components/public/TableSessionCodeGate';
 import type { GeoCoords } from '@/lib/geoLock';
-import { Volume2, VolumeX, Sparkles, MessageCircleHeart, Lightbulb } from 'lucide-react';
+import { Volume2, VolumeX, Sparkles, MessageCircleHeart, Lightbulb, Salad } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import LanguageFlag from '@/components/LanguageFlag';
 import ComplaintBoxModal from '@/components/public/ComplaintBoxModal';
@@ -356,9 +356,13 @@ function PublicWelcomePageInner({
     audioRef.current?.pause();
     setYtEmbedSrc(null);
     const qs = searchParams.toString();
-    setTimeout(() => {
-      navigate(qs ? `${menuHomePath()}?${qs}` : menuHomePath());
-    }, 450);
+    // Sofra plays a full-screen colour wipe before the menu opens.
+    setTimeout(
+      () => {
+        navigate(qs ? `${menuHomePath()}?${qs}` : menuHomePath());
+      },
+      data?.theme === 'sofra' ? 820 : 450
+    );
   }
 
   const t = welcomeUi(selectedLang);
@@ -440,15 +444,24 @@ function PublicWelcomePageInner({
           tableLabel={tableNo ? `${t.table} ${tableNo}` : null}
           extra={
             <>
-              <div className="atelier-feedback-links">
-                <button onClick={() => setComplaintOpen(true)}>{selectedLang === 'en' ? 'Complaint Box' : 'Şikayet Kutusu'}</button>
-                <span aria-hidden="true">/</span>
-                <button onClick={() => setSuggestionOpen(true)}>{t.suggestionBox}</button>
-              </div>
-              <button onClick={() => setWelcomeStep(welcomeStep === 'prefs' ? 'lang' : 'prefs')}>
+              <button type="button" className="sh-chip" onClick={() => setWelcomeStep('prefs')}>
+                <Salad size={15} aria-hidden />
                 {selectedLang === 'en' ? 'Dietary preferences' : 'Beslenme tercihlerim'}
               </button>
-              {data.welcomeMusicUrl && <button onClick={toggleMusic}>{musicLabel}</button>}
+              <button type="button" className="sh-chip" onClick={() => setSuggestionOpen(true)}>
+                <Lightbulb size={15} aria-hidden />
+                {t.suggestionBox}
+              </button>
+              <button type="button" className="sh-chip" onClick={() => setComplaintOpen(true)}>
+                <MessageCircleHeart size={15} aria-hidden />
+                {selectedLang === 'en' ? 'Complaint Box' : 'Şikayet Kutusu'}
+              </button>
+              {data.welcomeMusicUrl && (
+                <button type="button" className="sh-chip" onClick={toggleMusic}>
+                  {musicOn ? <Volume2 size={15} aria-hidden /> : <VolumeX size={15} aria-hidden />}
+                  {musicLabel}
+                </button>
+              )}
               <PublicSocialLinks links={data.socialLinks || []} />
             </>
           }

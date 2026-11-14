@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, Clock, Plus } from 'lucide-react';
 import { formatMoney, imageUrl } from '@/lib/api';
 import { menuProductPath } from '@/lib/menuPaths';
@@ -77,6 +77,17 @@ export default function SiparisProductPage({
 }) {
   const { addItem, setSheetOpen, enabled: cartCtxOn } = useSiparisCart();
   const { index, setIndex } = useProductGalleryIndex(galleryImages.length);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const [desktopSummary, setDesktopSummary] = useState(false);
+  useLayoutEffect(() => {
+    if (!compactOptions) return;
+    const media = pageRef.current?.ownerDocument.defaultView?.matchMedia('(min-width:1024px)');
+    if (!media) return;
+    const update = () => setDesktopSummary(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, [compactOptions]);
   const mediaRef = useRef<HTMLDivElement>(null);
   const addBtnRef = useRef<HTMLButtonElement>(null);
   const en = (lang || 'tr').split('-')[0] === 'en';
@@ -95,7 +106,7 @@ export default function SiparisProductPage({
       setUnitPrice(next.unitPrice);
       setOptionLabel(next.label);
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -115,7 +126,7 @@ export default function SiparisProductPage({
         imageUrl: product.imageUrl ?? galleryImages[0] ?? null,
         calories: product.calories ?? null,
       },
-      { fromEl: mediaRef.current || addBtnRef.current }
+      { fromEl: mediaRef.current || addBtnRef.current },
     );
   }
 
@@ -124,8 +135,83 @@ export default function SiparisProductPage({
     window.setTimeout(() => setSheetOpen(true), 380);
   }
 
+  const gallery = (
+    <div className="siparis-detail__hero">
+      {galleryImages.length > 0 ? (
+        <>
+          <div className="siparis-detail__media" ref={mediaRef}>
+            {renderHero ? (
+              renderHero(
+                <ProductImageGallery
+                  images={galleryImages}
+                  index={index}
+                  onIndexChange={setIndex}
+                  alt={product.name}
+                />,
+                galleryImages[index],
+              )
+            ) : (
+              <ProductImageGallery
+                images={galleryImages}
+                index={index}
+                onIndexChange={setIndex}
+                alt={product.name}
+              />
+            )}
+          </div>
+          {galleryImages.length > 1 ? (
+            <ProductGalleryThumbs
+              images={galleryImages}
+              alt={product.name}
+              index={index}
+              onSelect={setIndex}
+            />
+          ) : null}
+        </>
+      ) : renderHero ? (
+        renderHero(
+          <div className="siparis-detail__ph">
+            <MenuMediaPlaceholder kind="product" size="lg" label={product.name} />
+          </div>,
+          undefined,
+        )
+      ) : (
+        <div className="siparis-detail__ph">
+          <MenuMediaPlaceholder kind="product" size="lg" label={product.name} />
+        </div>
+      )}
+    </div>
+  );
+  const summary = (
+    <>
+      <p className="siparis-detail__group">{product.group.name}</p>
+      <h1>{product.name}</h1>
+      <p className="siparis-detail__price">
+        {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
+        {optionGroups.length > 0 ? (
+          <span className="siparis-detail__price-hint">{en ? 'by selection' : 'seçime göre'}</span>
+        ) : null}
+      </p>
+
+      <div className="siparis-detail__stats">
+        {product.calories != null && product.calories > 0 ? (
+          <span>
+            <SiparisKcal calories={product.calories} />
+          </span>
+        ) : null}
+        {product.prepTimeMinutes != null && product.prepTimeMinutes > 0 ? (
+          <span>
+            <Clock className="w-4 h-4" />
+            {product.prepTimeMinutes} dk
+          </span>
+        ) : null}
+      </div>
+
+      {product.description ? <p className="siparis-detail__desc">{product.description}</p> : null}
+    </>
+  );
   return (
-    <div className={`siparis-detail${showCart ? ' siparis-detail--cart' : ''}`}>
+    <div ref={pageRef} className={`siparis-detail${showCart ? ' siparis-detail--cart' : ''}`}>
       <div className="siparis-detail__topbar">
         <button type="button" className="siparis-detail__back" onClick={onBack} aria-label="Geri">
           <ArrowLeft className="w-5 h-5" />
@@ -133,72 +219,25 @@ export default function SiparisProductPage({
         <p className="siparis-detail__brand">{product.restaurant.name}</p>
         <div className="siparis-detail__top-actions">
           {showCart ? <SiparisCartButton alwaysShow /> : null}
-          {!hideColorToggle && <MenuColorModeToggle colorMode={colorMode} onToggle={toggleColorMode} />}
+          {!hideColorToggle && (
+            <MenuColorModeToggle colorMode={colorMode} onToggle={toggleColorMode} />
+          )}
           <TableServiceButtons lang={lang} slug={slug} enabled={tableServiceOn} />
         </div>
       </div>
 
       <div className="siparis-detail__layout">
-        <div className="siparis-detail__hero">
-          {galleryImages.length > 0 ? (
-            <>
-              <div className="siparis-detail__media" ref={mediaRef}>
-                {renderHero ? renderHero(
-                  <ProductImageGallery images={galleryImages} index={index} onIndexChange={setIndex} alt={product.name} />,
-                  galleryImages[index]
-                ) : (
-                  <ProductImageGallery images={galleryImages} index={index} onIndexChange={setIndex} alt={product.name} />
-                )}
-              </div>
-              {galleryImages.length > 1 ? (
-                <ProductGalleryThumbs
-                  images={galleryImages}
-                  alt={product.name}
-                  index={index}
-                  onSelect={setIndex}
-                />
-              ) : null}
-            </>
-          ) : renderHero ? renderHero(
-            <div className="siparis-detail__ph">
-              <MenuMediaPlaceholder kind="product" size="lg" label={product.name} />
-            </div>, undefined
-          ) : (
-            <div className="siparis-detail__ph">
-              <MenuMediaPlaceholder kind="product" size="lg" label={product.name} />
-            </div>
-          )}
-        </div>
+        {desktopSummary ? (
+          <div className="siparis-detail__visual">
+            {gallery}
+            <section className="siparis-detail__summary">{summary}</section>
+          </div>
+        ) : (
+          gallery
+        )}
 
         <div className="siparis-detail__body">
-          <p className="siparis-detail__group">{product.group.name}</p>
-          <h1>{product.name}</h1>
-          <p className="siparis-detail__price">
-            {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
-            {optionGroups.length > 0 ? (
-              <span className="siparis-detail__price-hint">
-                {en ? 'by selection' : 'seçime göre'}
-              </span>
-            ) : null}
-          </p>
-
-          <div className="siparis-detail__stats">
-            {product.calories != null && product.calories > 0 ? (
-              <span>
-                <SiparisKcal calories={product.calories} />
-              </span>
-            ) : null}
-            {product.prepTimeMinutes != null && product.prepTimeMinutes > 0 ? (
-              <span>
-                <Clock className="w-4 h-4" />
-                {product.prepTimeMinutes} dk
-              </span>
-            ) : null}
-          </div>
-
-          {product.description ? (
-            <p className="siparis-detail__desc">{product.description}</p>
-          ) : null}
+          {!desktopSummary && summary}
 
           {optionGroups.length > 0 ? (
             <SiparisProductOptions
@@ -211,21 +250,26 @@ export default function SiparisProductPage({
             />
           ) : null}
 
-          <div className={compactOptions ? 'siparis-detail__information is-compact' : 'siparis-detail__information'}>
-          {product.ingredients ? (
-            <div className="siparis-detail__block">
-              <h2>{en ? 'Ingredients' : 'İçindekiler'}</h2>
-              <p>{product.ingredients}</p>
-            </div>
-          ) : null}
+          <div
+            className={
+              compactOptions
+                ? 'siparis-detail__information is-compact'
+                : 'siparis-detail__information'
+            }
+          >
+            {product.ingredients ? (
+              <div className="siparis-detail__block">
+                <h2>{en ? 'Ingredients' : 'İçindekiler'}</h2>
+                <p>{product.ingredients}</p>
+              </div>
+            ) : null}
 
-          {product.allergens ? (
-            <div className="siparis-detail__block siparis-detail__block--warn">
-              <h2>{en ? 'Allergens' : 'Alerjenler'}</h2>
-              <p>{product.allergens}</p>
-            </div>
-          ) : null}
-
+            {product.allergens ? (
+              <div className="siparis-detail__block siparis-detail__block--warn">
+                <h2>{en ? 'Allergens' : 'Alerjenler'}</h2>
+                <p>{product.allergens}</p>
+              </div>
+            ) : null}
           </div>
           {showCart ? (
             <div className="siparis-detail__actions">
@@ -233,7 +277,12 @@ export default function SiparisProductPage({
                 <p className="siparis-detail__sold-out">{en ? 'Sold out today' : 'Bugün bitti'}</p>
               ) : (
                 <>
-                  <button ref={addBtnRef} type="button" className="siparis-detail__add" onClick={add}>
+                  <button
+                    ref={addBtnRef}
+                    type="button"
+                    className="siparis-detail__add"
+                    onClick={add}
+                  >
                     <Plus className="w-5 h-5" />
                     {en ? 'Add to cart' : 'Sepete ekle'}
                     {optionGroups.length > 0
@@ -257,7 +306,11 @@ export default function SiparisProductPage({
               <h2>{en ? 'You may also like' : 'Bunlar da olabilir'}</h2>
               <div className="siparis-detail__related-grid">
                 {related.map((r) => (
-                  <Link key={r.id} to={menuProductPath(r.id)} className="siparis-detail__related-card">
+                  <Link
+                    key={r.id}
+                    to={menuProductPath(r.id)}
+                    className="siparis-detail__related-card"
+                  >
                     {r.imageUrl ? (
                       <img src={imageUrl(r.imageUrl)} alt="" />
                     ) : (

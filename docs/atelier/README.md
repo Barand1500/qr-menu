@@ -33,3 +33,13 @@ Doğrulama: üretim derlemesi, TypeScript ve fark kontrolü; Chrome/taklit API i
 ## Güncel mobil tasarım
 
 Mobil menü fotoğraflı içindekiler, ayrı kitap sayfaları ve alttan açılan kategori seçiciyle yeniden düzenlendi. Önceki mobil ekran görüntüsü tarihsel örnektir. [Güncel mobil notlar ve görüntüler](mobile-book/README.md).
+
+## Web açılış görselleri ve ürün bilgisi yerleşimi
+
+Açılış panelleri sayfa bağlandığında bir kez seçilir. Vitrin ve popüler ürün görselleri benzersiz URL'lere ayrılır, rastgele sıralanır ve en fazla dört tanesi önceden yüklenir. Hazır olan bu liste animasyon boyunca dondurulur; geç API cevapları paneli değiştirmez. Son seçim sessionStorage ile karşılaştırılır; birden fazla fotoğraf varsa yenilemede aynı sıranın tekrar etmesi engellenir. Yeterli görsel yoksa aynı fotoğraf çoğaltılmaz, daha az panel gösterilir. Hazırlık ve görsel yüklemede sınırlı zaman aşımı bulunur. Karşılama ana fotoğrafında vitrin önceliği sürer. Editörde taslak fotoğrafı kullanılır ve açılış çalışmaz.
+
+Masaüstü Sofra ürününde kategori/isim/fiyat/seçime göre ibaresi/kalori/süre/açıklama, tek bir bilgi bloğu olarak galerinin ve küçük görsellerin altına taşındı. Sağ sütun doğrudan seçeneklerle başlar. Galeri sütunu tam genişliği kullanır; seçenek yazıları/işlem alanları büyütüldü. Bilgi bloğu DOM'da çoğaltılmaz; dar ekranda önceki yerinde kalır. Bunlar da olabilir Sofra ürününden kaldırıldı; ilgili ürün isteği de bu temada yapılmaz. Diğer temaların ilgili ürünleri korunur.
+
+Kontrol: üretim derlemesi ve TypeScript, Chrome/taklit API ile dört benzersiz panel/sabit sıra/yenilemede farklı sıra, zaman aşımından sonra gelen görselin paneli değiştirmemesi, az fotoğrafta tekrar edilmemesi; 1024/1440/1920 px galeri-küçük görseller-bilgi sırası ve üst seçenek hizası; ikinci galeri görseli, seçenek fiyatı/sepet, 390 px mobil bilgi sırası kontrol edildi. Fixture farklı dosya URL'lerine aynı kahvaltı test görselini servis eder; URL tekilliği gerçek işletme fotoğraflarının üretildiği/değiştirildiği anlamına gelmez. Fiziksel cihaz/Zen/canlı sunucu testi yapılmadı.
+
+[Yeni ürün yerleşimi](product-layout.png)

@@ -1,4 +1,4 @@
-/* Shared paper-and-burgundy sheets. Kept independent of .sofra for welcome portals. */
+/* Shared bottom sheets in the night palette. Kept independent of .sofra for welcome portals. */
 .sofra-sheet {
   position: fixed;
   inset: 0;
@@ -6,16 +6,15 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  color: #281e1a;
+  color: #f6eee4;
   font:
-    14px/1.5 Arial,
-    sans-serif;
+    14px/1.5 var(--sh-body);
 }
 .sofra-sheet-shade {
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(37, 27, 23, 0.38);
+  background: rgba(0, 0, 0, 0.62);
   opacity: 0;
   transition: opacity 0.24s;
 }
@@ -25,10 +24,10 @@
   max-height: 92svh;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: #fffaf2;
+  background: #18130f;
   padding: 12px 26px max(26px, env(safe-area-inset-bottom));
   border-radius: 25px 25px 0 0;
-  box-shadow: 0 -12px 60px #281e1a16;
+  box-shadow: 0 -12px 60px #00000070;
   transform: translateY(100%);
   transition:
     transform 0.24s ease,
@@ -56,7 +55,7 @@
   width: 34px;
   height: 4px;
   border-radius: 4px;
-  background: #d9c7b9;
+  background: #3a2f27;
   margin: 0 auto 22px;
 }
 .sofra-sheet-head {
@@ -68,14 +67,13 @@
 }
 .sofra-sheet-head h2 {
   font:
-    normal 31px/1.15 Georgia,
-    serif;
+    normal 31px/1.15 var(--sh-display);
   letter-spacing: -0.025em;
   margin: 0;
 }
 .sofra-sheet-head p {
   font-size: 13px;
-  color: #76675e;
+  color: #a99b8d;
   margin: 10px 0 0;
 }
 .sofra-sheet-close {
@@ -84,13 +82,13 @@
   width: 40px;
   height: 40px;
   flex: none;
-  border: 1px solid #dfd1c5;
+  border: 1px solid #3a2f27;
   border-radius: 50%;
-  color: #76675e;
+  color: #a99b8d;
   background: transparent;
 }
 .sofra-sheet button:focus-visible {
-  outline: 2px solid #781e23;
+  outline: 2px solid #ff6b2c;
   outline-offset: 3px;
 }
 .sofra-sheet-primary {
@@ -101,8 +99,8 @@
   width: 100%;
   border: 0;
   border-radius: 10px;
-  background: #781e23;
-  color: #fffaf2;
+  background: #ff6b2c;
+  color: #18130f;
   font-weight: 600;
   padding: 12px 20px;
   margin-top: 20px;
@@ -124,20 +122,19 @@
   gap: 8px;
   font-size: 12px;
   font-weight: 600;
-  color: #76675e;
+  color: #a99b8d;
 }
 .sofra-feedback-form input,
 .sofra-feedback-form textarea {
   width: 100%;
   min-width: 0;
-  border: 1px solid #dfd1c5;
+  border: 1px solid #3a2f27;
   border-radius: 10px;
   background: transparent;
-  color: #281e1a;
+  color: #f6eee4;
   padding: 12px;
   font:
-    16px/1.5 Arial,
-    sans-serif;
+    16px/1.5 var(--sh-body);
   outline: none;
 }
 .sofra-feedback-form textarea {
@@ -146,12 +143,12 @@
 }
 .sofra-feedback-form input:focus,
 .sofra-feedback-form textarea:focus {
-  border-color: #781e23;
-  box-shadow: 0 0 0 2px #781e2310;
+  border-color: #ff6b2c;
+  box-shadow: 0 0 0 2px #ff6b2c26;
 }
 .sofra-rating {
   text-align: center;
-  border-block: 1px solid #e6dbd1;
+  border-block: 1px solid #33291f;
   padding: 20px 0;
 }
 .sofra-rating p {
@@ -168,7 +165,7 @@
   height: 46px;
   display: grid;
   place-items: center;
-  color: #9d763d;
+  color: #ffb44a;
   background: transparent;
   border: 0;
   border-radius: 8px;
@@ -176,7 +173,7 @@
 .sofra-rating small {
   display: block;
   margin-top: 8px;
-  color: #76675e;
+  color: #a99b8d;
   font-size: 12px;
 }
 .sofra-contact-toggle {
@@ -188,16 +185,16 @@
   padding: 0;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid #e6dbd1;
+  border-bottom: 1px solid #33291f;
   text-align: start;
-  color: #281e1a;
+  color: #f6eee4;
   font-size: 12px;
 }
 .sofra-contact-toggle > span {
   display: flex;
   gap: 6px;
   align-items: center;
-  color: #76675e;
+  color: #a99b8d;
   font-size: 11px;
 }
 .sofra-contact-fields {
@@ -205,8 +202,8 @@
   gap: 15px;
 }
 .sofra-sheet-error {
-  color: #781e23;
-  background: #781e2309;
+  color: #ff6b2c;
+  background: #ff6b2c1a;
   border-radius: 8px;
   padding: 12px;
   font-size: 13px;
@@ -217,21 +214,19 @@
 }
 .sofra-feedback-done > svg {
   margin: 0 auto 18px;
-  color: #781e23;
+  color: #ff6b2c;
 }
 .sofra-feedback-done h3 {
   font:
-    26px Georgia,
-    serif;
+    26px var(--sh-display);
   margin: 0 0 10px;
 }
 .sofra-feedback-done p {
-  color: #76675e;
+  color: #a99b8d;
 }
 .sofra-assistant h3 {
   font:
-    23px/1.3 Georgia,
-    serif;
+    23px/1.3 var(--sh-display);
   margin: 24px 0 17px;
 }
 .sofra-assistant .menu-assistant-steps {
@@ -243,25 +238,24 @@
   flex: 1;
   height: 3px;
   border-radius: 0;
-  background: #e6dbd1;
+  background: #33291f;
 }
 .sofra-assistant .menu-assistant-steps .is-on {
-  background: #781e23;
+  background: #ff6b2c;
 }
 .sofra-assistant .menu-assistant-choices {
   display: grid;
   gap: 10px;
 }
 .sofra-assistant .menu-assistant-choice {
-  color: #281e1a;
+  color: #f6eee4;
   background: transparent;
-  border: 1px solid #dfd1c5;
+  border: 1px solid #3a2f27;
   border-radius: 10px;
   padding: 17px;
   min-height: 52px;
   font:
-    14px Arial,
-    sans-serif;
+    14px var(--sh-body);
   text-align: start;
   box-shadow: none;
   transition:
@@ -269,9 +263,9 @@
     border-color 0.15s;
 }
 .sofra-assistant .menu-assistant-choice.is-active {
-  background: #781e2309;
-  color: #781e23;
-  border-color: #781e23;
+  background: #ff6b2c1a;
+  color: #ff6b2c;
+  border-color: #ff6b2c;
   box-shadow: none;
 }
 .sofra-assistant .menu-assistant-actions {
@@ -280,100 +274,50 @@
   margin-top: 24px;
 }
 .sofra-assistant .menu-assistant-btn {
-  background: #781e23;
-  color: #fffaf2;
-  border: 1px solid #781e23;
+  background: #ff6b2c;
+  color: #18130f;
+  border: 1px solid #ff6b2c;
   border-radius: 10px;
   min-height: 48px;
   padding: 12px 18px;
   box-shadow: none;
   font:
-    600 14px Arial,
-    sans-serif;
+    600 14px var(--sh-body);
 }
 .sofra-assistant .menu-assistant-btn--ghost {
   background: transparent;
-  color: #781e23;
-  border-color: #dfd1c5;
+  color: #ff6b2c;
+  border-color: #3a2f27;
 }
 .sofra-assistant .menu-assistant-result {
   background: transparent;
   border: 0;
-  border-bottom: 1px solid #dfd1c5;
+  border-bottom: 1px solid #3a2f27;
   border-radius: 0;
   padding: 14px 0;
   box-shadow: none;
-  color: #281e1a;
+  color: #f6eee4;
 }
 .sofra-assistant .menu-assistant-result__meta strong {
-  color: #281e1a;
+  color: #f6eee4;
 }
 .sofra-assistant .menu-assistant-result__meta span,
 .sofra-assistant .menu-assistant-empty {
-  color: #76675e;
+  color: #a99b8d;
 }
 .sofra-assistant .menu-assistant-result em {
-  color: #781e23;
+  color: #ff6b2c;
   white-space: nowrap;
 }
 .sofra-assistant .menu-assistant-loading {
-  color: #76675e;
+  color: #a99b8d;
   padding: 30px 0;
 }
 .sofra-assistant .menu-assistant-loading__dot {
   display: none;
 }
 .sofra-public-shell .sofra-assistant-launcher {
-  background: #fffaf2;
-  color: #781e23;
-  border: 1px solid #d9c7b9;
-  box-shadow: 0 3px 15px #281e1a0c;
-  border-radius: 50px;
-  padding: 10px 16px;
-  gap: 10px;
-}
-.sofra-public-shell .sofra-assistant-launcher .menu-assistant-launcher__face {
-  width: auto;
-  height: auto;
-}
-.sofra-public-shell .sofra-assistant-launcher .menu-assistant-launcher__copy {
-  color: #781e23;
-}
-.sofra-public-shell .sofra-assistant-launcher .menu-assistant-launcher__copy > span {
   display: none;
-}
-
-.sofra-categories button {
-  overflow-wrap: normal;
-  gap: 12px;
-}
-.sofra-categories .sofra-category-number {
-  flex: 0 0 24px;
-}
-.sofra-categories .sofra-category-name {
-  min-width: 0;
-  flex: 1;
-  overflow-wrap: break-word;
-  font: inherit;
-  color: inherit;
-}
-@media (min-width: 768px) {
-  .sofra-categories button.is-active::after {
-    width: 12px;
-  }
-  .sofra-public-shell .sofra-assistant-launcher {
-    bottom: calc(var(--sofra-tools-height) + env(safe-area-inset-bottom) - 22px);
-    min-height: 44px;
-    box-sizing: border-box;
-    animation: none;
-  }
-}
-.sofra-seal > span,
-.sofra-category-seal > span {
-  max-width: 85%;
-  text-align: center;
-  overflow-wrap: anywhere;
-  line-height: 1.05;
 }
 .lang-flag {
   flex-shrink: 0;
@@ -386,7 +330,7 @@
   border: 0;
   background: transparent;
   box-shadow: none;
-  color: #781e23;
+  color: #ff6b2c;
 }
 .sofra-public-shell .siparis-cart-sheet {
   align-items: flex-end;
@@ -395,7 +339,7 @@
   width: min(100%, 600px);
   max-height: 90svh;
   border-radius: 25px 25px 0 0;
-  background: #fffaf2;
+  background: #18130f;
   padding: 26px 26px max(26px, env(safe-area-inset-bottom));
   transform: translateY(100%);
   opacity: 0;
@@ -435,10 +379,10 @@
   padding: 26px;
   border-radius: 25px 25px 0 0;
   transform: translate(-50%, 100%);
-  background: #fffaf2;
-  color: #281e1a;
+  background: #18130f;
+  color: #f6eee4;
   border: 0;
-  box-shadow: 0 -12px 60px #281e1a16;
+  box-shadow: 0 -12px 60px #00000070;
   transition:
     transform 0.24s ease,
     visibility 0.24s;
@@ -452,20 +396,19 @@
   padding: 0 0 20px;
 }
 .sofra-public-shell .public-side-menu__eyebrow {
-  color: #76675e;
+  color: #a99b8d;
   letter-spacing: 0.12em;
 }
 .sofra-public-shell .public-side-menu__brand {
-  color: #281e1a;
+  color: #f6eee4;
   font:
-    26px/1.2 Georgia,
-    serif;
+    26px/1.2 var(--sh-display);
   white-space: normal;
 }
 .sofra-public-shell .public-side-menu__close {
   background: transparent;
-  color: #76675e;
-  border: 1px solid #dfd1c5;
+  color: #a99b8d;
+  border: 1px solid #3a2f27;
   border-radius: 50%;
 }
 .sofra-public-shell .public-side-menu__nav {
@@ -476,29 +419,29 @@
 }
 .sofra-public-shell .public-side-menu__link {
   flex: 1;
-  color: #76675e;
+  color: #a99b8d;
   background: transparent;
   border-radius: 10px;
   padding: 13px;
 }
 .sofra-public-shell .public-side-menu__link.is-active {
-  color: #781e23;
-  background: #781e2309;
+  color: #ff6b2c;
+  background: #ff6b2c1a;
 }
 .sofra-public-shell .public-side-menu__scroll {
   padding: 0;
 }
 .sofra-public-shell .public-side-menu__section {
-  border-color: #e6dbd1;
+  border-color: #33291f;
 }
 .sofra-public-shell .public-side-menu__section-title {
-  color: #76675e;
+  color: #a99b8d;
 }
 .sofra-public-shell .public-side-menu__game-card {
   background: transparent;
-  border: 1px solid #dfd1c5;
+  border: 1px solid #3a2f27;
   border-radius: 12px;
-  color: #281e1a;
+  color: #f6eee4;
   box-shadow: none;
 }
 .sofra-public-shell .public-side-menu__game-card :is(strong, p, span) {
@@ -506,70 +449,70 @@
 }
 .sofra-public-shell .public-side-menu__game-card small,
 .sofra-public-shell .public-side-menu__game-card em {
-  color: #76675e;
+  color: #a99b8d;
 }
 .sofra-public-shell .public-side-menu__games-promo {
-  background: #f5ede3;
-  border: 1px solid #dfd1c5;
+  background: #221b16;
+  border: 1px solid #3a2f27;
   border-radius: 12px;
   box-shadow: none;
   animation: none;
 }
 .sofra-public-shell .public-side-menu__games-promo > p {
-  color: #781e23;
+  color: #ff6b2c;
 }
 .sofra-public-shell .public-side-menu__games-promo-item {
-  color: #281e1a;
-  background: #fffaf2;
-  border: 1px solid #e6dbd1;
+  color: #f6eee4;
+  background: #18130f;
+  border: 1px solid #33291f;
   border-radius: 10px;
   animation: none;
 }
 .sofra-public-shell .public-side-menu__games-promo-item small {
-  color: #76675e;
+  color: #a99b8d;
 }
 .sofra-public-shell :is(.public-side-menu__lang-trigger, .public-side-menu__accordion) {
   background: transparent;
-  border: 1px solid #dfd1c5;
+  border: 1px solid #3a2f27;
   border-radius: 10px;
-  color: #281e1a;
+  color: #f6eee4;
 }
 .sofra-public-shell :is(.public-side-menu__lang-name, .public-side-menu__accordion-text strong) {
-  color: #281e1a;
+  color: #f6eee4;
 }
 .sofra-public-shell :is(.public-side-menu__accordion-text small, .public-side-menu__allergy-sub) {
-  color: #76675e;
+  color: #a99b8d;
 }
 .sofra-public-shell .public-side-menu__accordion-text > span {
-  color: #76675e;
+  color: #a99b8d;
 }
 .sofra-public-shell .public-side-menu__accordion-left > svg {
-  color: #781e23;
+  color: #ff6b2c;
 }
 .sofra-public-shell .public-side-menu__lang-list {
-  background: #fffaf2;
-  border-color: #dfd1c5;
-  color: #281e1a;
+  background: #18130f;
+  border-color: #3a2f27;
+  color: #f6eee4;
 }
 .sofra-public-shell .public-side-menu__lang-option {
-  color: #281e1a;
+  color: #f6eee4;
 }
 .sofra-public-shell .public-side-menu__lang-option.is-active {
-  background: #781e2309;
-  color: #781e23;
+  background: #ff6b2c1a;
+  color: #ff6b2c;
 }
 .sofra-public-shell .public-side-menu__allergy-chip {
   background: transparent;
-  color: #76675e;
-  border-color: #dfd1c5;
+  color: #a99b8d;
+  border-color: #3a2f27;
 }
 .sofra-public-shell .public-side-menu__allergy-chip.is-active {
-  background: #781e2309;
-  color: #781e23;
-  border-color: #781e23;
+  background: #ff6b2c1a;
+  color: #ff6b2c;
+  border-color: #ff6b2c;
 }
 .sofra-public-shell .public-side-menu__social {
-  border-top: 1px solid #e6dbd1;
+  border-top: 1px solid #33291f;
   margin-top: 20px;
 }
 .sofra-public-shell :is(.menu-games, .mc-auth) {
@@ -593,10 +536,10 @@
   width: min(100%, 720px);
   height: auto;
   max-height: 92svh;
-  background: #fffaf2;
+  background: #18130f;
 }
 .sofra-public-shell .menu-games__panel {
-  background: #fffaf2;
+  background: #18130f;
 }
 .sofra-prefs-backdrop {
   align-items: end;
@@ -616,59 +559,22 @@
     opacity: 1;
   }
 }
+.sofra-public-shell .siparis-cart-sheet__qty button {
+  background: #f6eee41f;
+  color: var(--sh-text);
+  box-shadow: none;
+}
+.sofra-public-shell .siparis-cart-sheet__badge,
+.sofra-public-shell .siparis-header-cart__badge,
+.sofra-public-shell .siparis-detail__top-actions .siparis-header-cart__badge {
+  background: var(--sh-accent);
+  color: var(--sh-on-accent);
+}
+.sofra-public-shell .siparis-cart-sheet__allergy {
+  background: #ffb44a14;
+  color: var(--sh-text);
+}
 @media (max-width: 767px) {
-  .sofra .sofra-masthead {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
-    align-items: center;
-  }
-  .sofra .sofra-brand {
-    flex: 1 1 100%;
-    max-width: 100%;
-    font-size: clamp(25px, 6.8vw, 34px);
-    align-items: center;
-    overflow-wrap: normal;
-  }
-  .sofra .sofra-brand > span {
-    min-width: 0;
-    overflow-wrap: break-word;
-    line-height: 1.1;
-  }
-  .sofra .sofra-brand img {
-    flex-shrink: 0;
-  }
-  .sofra .sofra-header-tools {
-    flex: 1 1 100%;
-    max-width: 100%;
-    justify-content: flex-end;
-    gap: 14px;
-    flex-wrap: wrap;
-  }
-  .sofra .sofra-header-tools .sofra-language {
-    margin-inline-end: auto;
-  }
-  .sofra .sofra-seal {
-    top: 200px;
-  }
-  .sofra .sofra-updates {
-    display: block;
-  }
-  .sofra .sofra-stories {
-    width: 100%;
-    max-width: 100%;
-  }
-  .sofra .sofra-banner-note {
-    display: none;
-  }
-  .sofra .sofra-categories .sofra-category-name {
-    display: block;
-    flex: none;
-    max-width: none;
-  }
-  .sofra .sofra-categories button {
-    max-width: none;
-  }
   .sofra-sheet-panel {
     padding-inline: 20px;
   }
@@ -686,4 +592,24 @@
     animation: none !important;
     transition: none !important;
   }
+}
+.sofra-public-shell .public-side-menu__brand {
+  font-family: var(--sh-display) !important;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.sofra-public-shell .public-side-menu__nav {
+  flex-wrap: wrap;
+}
+.sofra-public-shell .public-side-menu__link {
+  flex: 1 1 130px;
+  white-space: nowrap;
+}
+.sofra-public-shell .public-side-menu__assistant {
+  width: auto;
+  margin: 0;
+  border: 1px solid var(--sh-line-strong);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--sh-text);
 }

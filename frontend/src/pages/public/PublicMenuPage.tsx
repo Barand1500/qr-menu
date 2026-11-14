@@ -1,5 +1,5 @@
-import { BookNavigationProvider } from '@/components/public/atelier/BookNavigation';
-import AtelierLanguage from '@/components/public/atelier/AtelierLanguage';
+import { SahneLanguage, SahneNavProvider } from '@/components/public/sahne/shared';
+import SahneDock from '@/components/public/sahne/SahneDock';
 import { useEffect, useState, type ReactNode, type ComponentProps } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, UserRound, X } from 'lucide-react';
@@ -69,7 +69,6 @@ import StandartMobileNav from '@/components/public/standart/StandartMobileNav';
 import { SiparisCartProvider } from '@/hooks/useSiparisCart';
 import { useSiparisCart } from '@/hooks/useSiparisCart';
 import { SofraMenuView, type SofraProduct } from '@/components/public/sofra/SofraCanvas';
-import SofraBottomBar from '@/components/public/sofra/SofraBottomBar';
 import { normalizeSofraConfig, type SofraConfig } from '@/lib/sofra';
 import {
   loadDietaryPrefs,
@@ -814,7 +813,7 @@ function PublicMenuPageInner({
         ? filteredGroupProducts
         : filteredPopular;
     return (
-      <BookNavigationProvider>
+      <SahneNavProvider>
       <SiparisCartProvider slug={slug} enabled>
         <div className="sofra-public-shell" data-theme-menu="sofra">
           {tab === 'home' ? (
@@ -838,7 +837,7 @@ function PublicMenuPageInner({
               }}
               headerTools={
                 <>
-                  <AtelierLanguage lang={lang} languages={menu.languages} onChange={changeLang}/>
+                  <SahneLanguage lang={lang} languages={menu.languages} onChange={changeLang} />
                   {(searchParams.get('masa') || sessionStorage.getItem('menu_masa')) && (
                     <span className="sofra-table">
                       {en ? 'Table' : 'Masa'}{' '}
@@ -848,36 +847,19 @@ function PublicMenuPageInner({
                   {profileIcon}
                 </>
               }
+              showcase={displayShowcase || []}
+              stories={
+                displayStories && displayStories.length > 0 ? (
+                  <MobileStoriesStrip stories={displayStories} />
+                ) : null
+              }
               beforeContent={
-                <>
-                  {allergyBanner}
-                  <div className="sofra-updates">
-                    {displayStories && displayStories.length > 0 && (
-                      <div className="sofra-stories">
-                        <MobileStoriesStrip stories={displayStories} />
-                      </div>
-                    )}
-                    {!groupId &&
-                      !search.trim() &&
-                      displayShowcase &&
-                      displayShowcase.length > 0 && (
-                        <div className="sofra-banner-note">
-                          {displayShowcase.map((b) => (
-                            <div key={b.id}>
-                              {b.imageUrl && (
-                                <img src={imageUrl(b.imageUrl)} alt="" loading="lazy" />
-                              )}
-                              <span>
-                                <strong>{b.title1}</strong>
-                                <small>{b.title2}</small>
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                  </div>
-                  {menu.campaign && <p className="sofra-overline">{menu.campaign.name}</p>}
-                </>
+                allergyBanner || menu.campaign ? (
+                  <>
+                    {allergyBanner}
+                    {menu.campaign && <p className="sofra-overline">{menu.campaign.name}</p>}
+                  </>
+                ) : null
               }
             />
           ) : (
@@ -910,11 +892,14 @@ function PublicMenuPageInner({
               )}
             </div>
           )}
-          <SofraBottomBar
-            onCategories={() => setTab("home")}
+          <SahneDock
+            onCategories={() => setTab('home')}
             lang={lang}
             onMenu={() => setSideMenuOpen(true)}
             onGames={gamesEnabled ? () => setGamesOpen(true) : undefined}
+            onAssistant={
+              menuAssistantOn && lang === 'tr' ? () => setAssistantOpen(true) : undefined
+            }
             service={tableServiceSlot}
           />
           {sideMenu}
@@ -930,7 +915,7 @@ function PublicMenuPageInner({
           />
         </div>
       </SiparisCartProvider>
-      </BookNavigationProvider>
+      </SahneNavProvider>
     );
   }
 
@@ -1331,7 +1316,7 @@ function SofraLiveMenu({
       restaurant={menu.restaurant}
       groups={menu.groups}
       onProductOpen={(id) => navigate(menuProductPath(id))}
-      onAdd={(p) => {
+      onAdd={(p, from) => {
         if (p.soldOut) return;
         if (p.hasOptions !== false) {
           navigate(menuProductPath(p.id));
@@ -1346,7 +1331,7 @@ function SofraLiveMenu({
             : null,
           imageUrl: p.imageUrl,
           calories: p.calories,
-        });
+        }, { fromEl: from });
       }}
     />
   );

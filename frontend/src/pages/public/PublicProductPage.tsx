@@ -39,6 +39,7 @@ import TableSessionCodeGate from '@/components/public/TableSessionCodeGate';
 import { useEffect, useState } from 'react';
 import type { ProductOptionGroup } from '@/lib/productOptions';
 import '@/components/public/sofra/sofra.css';
+import '@/components/public/sofra/sofra-product.css';
 import type { SofraConfig } from '@/lib/sofra';
 
 interface ProductDetail {
@@ -116,6 +117,11 @@ function PublicProductPageInner() {
 
   usePublicRtl(lang);
 
+  // A product always opens from its top, whatever the scroll position of the list was.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [productId]);
+
   useEffect(() => {
     if (!slug || !productId) return;
     let cancelled = false;
@@ -136,6 +142,10 @@ function PublicProductPageInner() {
 
   useEffect(() => {
     if (!product || !slug) return;
+    if (product.theme === 'sofra') {
+      setRelated([]);
+      return;
+    }
 
     if (demoEnabled) {
       api<{ products: RelatedProduct[] }>(
@@ -203,9 +213,9 @@ function PublicProductPageInner() {
   const onBack = () => {
     if (product.theme === 'sofra') {
       try {
-        const saved = JSON.parse(sessionStorage.getItem('atelier-return') || 'null');
+        const saved = JSON.parse(sessionStorage.getItem('menu-return') || 'null');
         if (saved?.productId === product.id && /^\/menu\/(home|group\/\d+)(\?|$)/.test(saved.url)) {
-          sessionStorage.setItem('atelier-restore', '1');
+          sessionStorage.setItem('menu-restore', '1');
           navigate(saved.url);
           return;
         }
