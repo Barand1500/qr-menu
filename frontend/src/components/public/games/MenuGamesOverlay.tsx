@@ -1,6 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Gamepad2, X } from 'lucide-react';
-import BlitzGame, { type BlitzProduct } from '@/components/public/games/BlitzGame';
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Check,
+  Gamepad2,
+  Layers3,
+  Search,
+  Timer,
+  X,
+} from 'lucide-react';
+import { useSheetFocus } from '../sofra/SofraSheet';
+import '../sahne/sahne-entertainment.css';
+import BlitzGame, {
+  type BlitzProduct,
+} from '@/components/public/games/BlitzGame';
 import DetectiveGame from '@/components/public/games/DetectiveGame';
 import MemoryGame from '@/components/public/games/MemoryGame';
 import XoxGame from '@/components/public/games/XoxGame';
@@ -13,6 +26,7 @@ import { gameCatalogEntry, gamesUi } from '@/lib/menuGamesUi';
 import type { PublicMenuGames } from '@/lib/menuGamesConfig';
 
 type Props = {
+  sahne?: boolean;
   open: boolean;
   onClose: () => void;
   slug: string;
@@ -24,6 +38,7 @@ type Props = {
 
 export default function MenuGamesOverlay({
   open,
+  sahne = false,
   onClose,
   slug,
   lang = 'tr',
@@ -41,17 +56,12 @@ export default function MenuGamesOverlay({
     else setActive(null);
   }, [open, initialGame, enabled]);
 
+  const panelRef = useSheetFocus(open, () =>
+    active ? setActive(null) : onClose(),
+  );
   useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        if (active) setActive(null);
-        else onClose();
-      }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, active, onClose]);
+    if (open) panelRef.current?.focus({ preventScroll: true });
+  }, [active, open, panelRef]);
 
   const catalog = MENU_GAMES_CATALOG.filter((g) => enabled.includes(g.id));
 
@@ -60,7 +70,8 @@ export default function MenuGamesOverlay({
     return gameCatalogEntry(active, lang).title;
   }, [active, lang, ui.title]);
 
-  const cfg = typeof gamesConfig === 'object' && gamesConfig ? gamesConfig : null;
+  const cfg =
+    typeof gamesConfig === 'object' && gamesConfig ? gamesConfig : null;
   const memoryPairs = cfg?.memory?.pairs || [];
   const pairCount = cfg?.memory?.pairCount || 6;
   const detectiveQuestions = cfg?.detective?.questions || [];
@@ -68,10 +79,30 @@ export default function MenuGamesOverlay({
   if (!open) return null;
 
   return (
-    <div className="menu-games" role="dialog" aria-modal="true" aria-labelledby="menu-games-title">
-      <button type="button" className="menu-games__scrim" aria-label={ui.close} onClick={onClose} />
-      <div className="menu-games__panel">
+    <div
+      className={`menu-games${sahne ? ' sh-games' : ''}`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="menu-games-title"
+    >
+      <button
+        type="button"
+        className="menu-games__scrim"
+        aria-label={ui.close}
+        onClick={onClose}
+      />
+      <section ref={panelRef} tabIndex={-1} className="menu-games__panel">
         <header className="menu-games__head">
+          {sahne && active && (
+            <button
+              type="button"
+              className="sh-games__back"
+              onClick={() => setActive(null)}
+              aria-label={ui.title}
+            >
+              <ArrowLeft size={21} />
+            </button>
+          )}
           <div className="menu-games__head-icon">
             <Gamepad2 className="w-5 h-5" />
           </div>
@@ -83,7 +114,7 @@ export default function MenuGamesOverlay({
             type="button"
             className="menu-games__close"
             onClick={() => {
-              if (active) setActive(null);
+              if (active && !sahne) setActive(null);
               else onClose();
             }}
             aria-label={ui.close}
@@ -92,7 +123,27 @@ export default function MenuGamesOverlay({
           </button>
         </header>
 
-        <div className="menu-games__body">
+        <div className="menu-games__body" key={active || 'catalog'}>
+          {sahne && !active && (
+            <div className="sh-games__intro">
+              <h3>
+                {lang.startsWith('tr') ? (
+                  <>
+                    Masada <i>oyun var.</i>
+                  </>
+                ) : (
+                  <>
+                    Time to <i>play.</i>
+                  </>
+                )}
+              </h3>
+              <p>
+                {lang.startsWith('tr')
+                  ? 'Tek başına bir rekor. Ya da masada küçük bir rekabet.'
+                  : 'A solo challenge. Or a little friendly competition.'}
+              </p>
+            </div>
+          )}
           {!active ? (
             <div className="menu-games__grid">
               {catalog.map((g) => {
@@ -101,18 +152,50 @@ export default function MenuGamesOverlay({
                   <button
                     key={g.id}
                     type="button"
-                    className="menu-games__tile"
+                    className={`menu-games__tile sh-games__tile--${g.id}`}
                     onClick={() => setActive(g.id)}
                   >
+                    {sahne && (
+                      <span className="sh-games__art" aria-hidden="true">
+                        {g.id === 'memory' ? (
+                          <Layers3 />
+                        ) : g.id === 'xox' ? (
+                          <span className="sh-games__xox">
+                            ×<i>○</i>
+                          </span>
+                        ) : g.id === 'detective' ? (
+                          <Search />
+                        ) : (
+                          <Timer />
+                        )}
+                        <i className="sh-games__art-orbit" />
+                      </span>
+                    )}
                     <span className="menu-games__tile-ok" aria-hidden>
                       <Check className="w-3.5 h-3.5" strokeWidth={2.75} />
                     </span>
-                    <span className="menu-games__tile-badge">{entry.badge}</span>
+                    <span className="menu-games__tile-badge">
+                      {entry.badge}
+                    </span>
                     <strong>{entry.title}</strong>
                     <span>{entry.blurb}</span>
+                    {sahne && (
+                      <ArrowUpRight
+                        className="sh-games__arrow"
+                        size={20}
+                        aria-hidden="true"
+                      />
+                    )}
                   </button>
                 );
               })}
+              {sahne && !catalog.length && (
+                <p>
+                  {lang.startsWith('tr')
+                    ? 'Oyunlar şu an kapalı.'
+                    : 'Games are currently unavailable.'}
+                </p>
+              )}
             </div>
           ) : active === 'memory' ? (
             <MemoryGame lang={lang} pairCount={pairCount} pairs={memoryPairs} />
@@ -124,7 +207,7 @@ export default function MenuGamesOverlay({
             <BlitzGame lang={lang} products={products} />
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

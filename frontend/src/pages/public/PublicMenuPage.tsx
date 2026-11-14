@@ -761,6 +761,7 @@ function PublicMenuPageInner({
   const gamesOverlay =
     gamesEnabled && slug ? (
       <MenuGamesOverlay
+        sahne={isSofra}
         open={gamesOpen}
         onClose={() => {
           setGamesOpen(false);
@@ -862,7 +863,11 @@ function PublicMenuPageInner({
               showcase={displayShowcase || []}
               stories={
                 displayStories && displayStories.length > 0 ? (
-                  <MobileStoriesStrip stories={displayStories} />
+                  <MobileStoriesStrip
+                    stories={displayStories}
+                    sahne
+                    seenScope={String(menu.restaurant.id)}
+                  />
                 ) : null
               }
               beforeContent={
@@ -1419,7 +1424,10 @@ function LuxuryHome({
 
       {displayStories && displayStories.length > 0 && (
         <div className="luxury-stories">
-          <MobileStoriesStrip stories={displayStories} />
+          <MobileStoriesStrip
+            stories={displayStories}
+            seenScope={String(menu.restaurant.id)}
+          />
         </div>
       )}
 
