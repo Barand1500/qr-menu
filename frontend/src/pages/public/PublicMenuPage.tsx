@@ -15,7 +15,8 @@ import { useDemoData } from '@/contexts/DemoDataContext';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import MenuCustomerAuthModal from '@/components/public/MenuCustomerAuthModal';
 import MenuGamesOverlay from '@/components/public/games/MenuGamesOverlay';
-import { MENU_WAITER_CALLED_EVENT, type MenuGameId } from '@/lib/menuGames';
+import type { MenuGameId } from '@/lib/menuGames';
+import ServiceCallNotice from '@/components/public/ServiceCallNotice';
 import { isPublicGamesOn, type PublicMenuGames } from '@/lib/menuGamesConfig';
 import '@/menu-customer.css';
 import {
@@ -255,7 +256,6 @@ function PublicMenuPageInner({
   const [customerAuthOpen, setCustomerAuthOpen] = useState(false);
   const [gamesOpen, setGamesOpen] = useState(false);
   const [gamesInitial, setGamesInitial] = useState<MenuGameId | null>(null);
-  const [gamesPromo, setGamesPromo] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
   const [menuLoading, setMenuLoading] = useState(true);
   const {
@@ -269,16 +269,6 @@ function PublicMenuPageInner({
   const { colorMode, toggleColorMode } = useMenuColorMode(menuThemeForMode);
 
   usePublicRtl(lang);
-
-  useEffect(() => {
-    function onWaiter() {
-      if (!isPublicGamesOn(menu?.features?.menuGames)) return;
-      setGamesPromo(true);
-      setSideMenuOpen(true);
-    }
-    window.addEventListener(MENU_WAITER_CALLED_EVENT, onWaiter);
-    return () => window.removeEventListener(MENU_WAITER_CALLED_EVENT, onWaiter);
-  }, [menu?.features?.menuGames]);
 
   useEffect(() => {
     const masa = searchParams.get('masa');
@@ -749,8 +739,6 @@ function PublicMenuPageInner({
       onDietaryPrefsChange={changeDietaryPrefs}
       gamesEnabled={gamesEnabled}
       gamesConfig={gamesConfig}
-      gamesPromo={gamesPromo}
-      onGamesPromoDismiss={() => setGamesPromo(false)}
       onOpenGames={(game) => {
         setGamesInitial(game ?? null);
         setGamesOpen(true);
@@ -778,6 +766,16 @@ function PublicMenuPageInner({
         }))}
       />
     ) : null;
+
+  const serviceNotice = (
+    <ServiceCallNotice
+      onGames={gamesEnabled ? () => {
+        setSideMenuOpen(false);
+        setGamesInitial(null);
+        setGamesOpen(true);
+      } : undefined}
+    />
+  );
 
   const assistantUi = menuAssistantOn && slug && lang === 'tr' ? (
     <>
@@ -921,6 +919,7 @@ function PublicMenuPageInner({
           />
           {sideMenu}
           {gamesOverlay}
+          {serviceNotice}
           {assistantUi}
           <SiparisCartSheet lang={lang} />
           <MenuCustomerAuthModal
@@ -1074,6 +1073,7 @@ function PublicMenuPageInner({
 
         {sideMenu}
         {gamesOverlay}
+        {serviceNotice}
         {assistantUi}
         {isAnimasyon ? (
           <AnimasyonCartSheet lang={lang} />
@@ -1289,6 +1289,7 @@ function PublicMenuPageInner({
 
       {sideMenu}
       {gamesOverlay}
+      {serviceNotice}
       {assistantUi}
       {isAnimasyon ? (
         <AnimasyonCartSheet lang={lang} />

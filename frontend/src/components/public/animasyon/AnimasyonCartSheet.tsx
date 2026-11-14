@@ -124,6 +124,7 @@ export default function AnimasyonCartSheet({ lang }: { lang: string }) {
       async function post() {
         return api<{
           ok: boolean;
+          duplicate?: boolean;
           id: number;
           type: string;
           tableNumber: string;
@@ -156,7 +157,13 @@ export default function AnimasyonCartSheet({ lang }: { lang: string }) {
         orderJson: res.orderJson,
         createdAt: res.createdAt,
       });
-      notifyWaiterCalled();
+      notifyWaiterCalled({
+        type: res.type,
+        requestId: res.id,
+        tableNumber: res.tableNumber,
+        duplicate: res.duplicate,
+        lang,
+      });
       // Ortak sepet — sipariş iletildikten sonra temizle (tüm temalar)
       clear();
       setDone(true);

@@ -1,5 +1,6 @@
 import type { PublicMenuGames } from '@/lib/menuGamesConfig';
 import { isPublicGamesOn } from '@/lib/menuGamesConfig';
+import { notifyServiceCallConfirmed } from '@/lib/serviceCallFeedback';
 
 const GUEST_KEY = 'menu_game_guest_id';
 
@@ -20,9 +21,22 @@ export function getMenuGameGuestId(): string {
 
 export const MENU_WAITER_CALLED_EVENT = 'menu-waiter-called';
 
-export function notifyWaiterCalled() {
+export function notifyWaiterCalled(details: {
+  type?: string;
+  requestId?: number;
+  tableNumber?: string;
+  lang?: string;
+  duplicate?: boolean;
+} = {}) {
   try {
     window.dispatchEvent(new CustomEvent(MENU_WAITER_CALLED_EVENT));
+    notifyServiceCallConfirmed({
+      kind: details.type || 'waiter',
+      requestId: details.requestId,
+      tableNumber: details.tableNumber,
+      lang: details.lang,
+      duplicate: details.duplicate,
+    });
   } catch {
     /* ignore */
   }

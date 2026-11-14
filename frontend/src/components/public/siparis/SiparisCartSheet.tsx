@@ -86,6 +86,7 @@ export default function SiparisCartSheet({ lang }: { lang: string }) {
       async function post() {
         return api<{
           ok: boolean;
+          duplicate?: boolean;
           id: number;
           type: string;
           tableNumber: string;
@@ -118,7 +119,13 @@ export default function SiparisCartSheet({ lang }: { lang: string }) {
         orderJson: res.orderJson,
         createdAt: res.createdAt,
       });
-      notifyWaiterCalled();
+      notifyWaiterCalled({
+        type: res.type,
+        requestId: res.id,
+        tableNumber: res.tableNumber,
+        duplicate: res.duplicate,
+        lang,
+      });
       // Tüm temalar aynı sepeti kullanır — sipariş iletildikten sonra temizle
       clear();
       setDone(true);

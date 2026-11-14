@@ -95,7 +95,13 @@ export default function TableServiceButtons({
           createdAt: res.createdAt,
         });
       }
-      notifyWaiterCalled();
+      notifyWaiterCalled({
+        type: res.type,
+        requestId: res.id,
+        tableNumber: res.tableNumber,
+        duplicate: res.duplicate,
+        lang,
+      });
       setDone(true);
       window.setTimeout(() => setDone(false), 45_000);
     } catch {

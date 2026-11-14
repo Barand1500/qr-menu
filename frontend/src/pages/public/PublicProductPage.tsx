@@ -36,6 +36,7 @@ import AnimasyonCartSheet from '@/components/public/animasyon/AnimasyonCartSheet
 import { SiparisCartProvider } from '@/hooks/useSiparisCart';
 import MaintenanceGate from '@/components/public/MaintenanceGate';
 import TableSessionCodeGate from '@/components/public/TableSessionCodeGate';
+import ServiceCallNotice from '@/components/public/ServiceCallNotice';
 import { useEffect, useState } from 'react';
 import type { ProductOptionGroup } from '@/lib/productOptions';
 import '@/components/public/sofra/sofra.css';
@@ -94,6 +95,7 @@ export default function PublicProductPage() {
     <MaintenanceGate slug={slug}>
       <TableSessionCodeGate slug={slug}>
         <PublicProductPageInner />
+        <ServiceCallNotice />
       </TableSessionCodeGate>
     </MaintenanceGate>
   );
