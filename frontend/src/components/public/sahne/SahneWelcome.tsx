@@ -1,10 +1,10 @@
 import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { ArrowRight, ChevronsRight, Clock } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ChevronUp, ChevronsRight, Clock, Pause, Play, VolumeX } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { resolveMenuSlug } from '@/lib/menuPaths';
 import { sofraCopy } from '@/lib/sofra';
 import { SofraBrand, SofraText } from '../sofra/SofraElements';
-import type { SofraWelcomeProps } from '../sofra/types';
+import type { SofraWelcomeAction, SofraWelcomeMusic, SofraWelcomeProps } from '../sofra/types';
 import {
   Magnetic,
   Marquee,
@@ -223,6 +223,130 @@ function SlideToEnter({
   );
 }
 
+/** Welcome music. Desktop: a small player with a moving track. Mobile: one equaliser button. */
+function MusicControl({ music, compact }: { music: SofraWelcomeMusic; compact?: boolean }) {
+  const live = music.on && music.playing;
+  const bars = (
+    <span className="sh-music__bars" aria-hidden="true">
+      <i />
+      <i />
+      <i />
+      <i />
+    </span>
+  );
+  return (
+    <button
+      type="button"
+      className={`sh-music${compact ? ' sh-music--icon' : ''}${live ? ' is-playing' : ''}`}
+      aria-pressed={music.on}
+      aria-label={music.label}
+      title={music.label}
+      onClick={music.onToggle}
+    >
+      {compact ? (
+        music.on ? (
+          bars
+        ) : (
+          <VolumeX size={19} aria-hidden="true" />
+        )
+      ) : (
+        <>
+          <span className="sh-music__button" aria-hidden="true">
+            {music.on ? <Pause size={15} /> : <Play size={15} />}
+          </span>
+          <span className="sh-music__body">
+            <span className="sh-music__title">{music.label}</span>
+            <span className="sh-music__track">
+              <i />
+            </span>
+          </span>
+          {bars}
+        </>
+      )}
+    </button>
+  );
+}
+
+/**
+ * Mobile: every secondary action lives behind one button. Closed, it cycles through the
+ * action names so guests can see what is inside; open, the actions rise above it.
+ */
+function ActionTray({
+  actions,
+  extra,
+  en,
+}: {
+  actions: SofraWelcomeAction[];
+  extra?: ReactNode;
+  en: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (open || actions.length < 2 || prefersReducedMotion()) return;
+    const timer = setInterval(() => setTick((n) => n + 1), 2200);
+    return () => clearInterval(timer);
+  }, [open, actions.length]);
+  useEffect(() => {
+    if (!open) return;
+    const keydown = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('keydown', keydown);
+    return () => document.removeEventListener('keydown', keydown);
+  }, [open]);
+  if (!actions.length) return extra ? <div className="sh-foot__links">{extra}</div> : null;
+  const current = actions[tick % actions.length];
+  return (
+    <div className={`sh-tray${open ? ' is-open' : ''}`}>
+      {open && (
+        <>
+          <button
+            type="button"
+            className="sh-tray__shade"
+            aria-label={en ? 'Close' : 'Kapat'}
+            onClick={() => setOpen(false)}
+          />
+          <div className="sh-tray__panel">
+            {actions.map((action, i) => (
+              <button
+                type="button"
+                key={action.id}
+                style={cssVars({ '--i': actions.length - 1 - i })}
+                onClick={() => {
+                  setOpen(false);
+                  action.onClick();
+                }}
+              >
+                <span className="sh-tray__icon">{action.icon}</span>
+                <span>{action.label}</span>
+                <ArrowUpRight size={18} aria-hidden="true" />
+              </button>
+            ))}
+            {extra}
+          </div>
+        </>
+      )}
+      <button
+        type="button"
+        className="sh-tray__toggle"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        <span className="sh-tray__icons" aria-hidden="true">
+          {actions.slice(0, 4).map((action) => (
+            <i key={action.id} className={!open && action === current ? 'is-on' : undefined}>
+              {action.icon}
+            </i>
+          ))}
+        </span>
+        <span className="sh-tray__ticker" key={open ? 'open' : current.id}>
+          {open ? (en ? 'Close' : 'Kapat') : current.label}
+        </span>
+        <ChevronUp size={20} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
 /** Mobile backdrop: a drifting wall when there are enough photos, a slow slideshow otherwise. */
 function MobileBackdrop({ photos }: { photos: string[] }) {
   const [active, setActive] = useState(0);
@@ -324,21 +448,17 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
       <div className="sh-top__tools">
         <SahneLanguage lang={p.lang} languages={p.languages} onChange={p.onLangChange} />
         {p.tableLabel && <span className="sh-pill">{p.tableLabel}</span>}
+        {mobile && p.music && <MusicControl music={p.music} compact />}
       </div>
     </header>
   );
-  const eyebrow = (
+  const eyebrow = p.config.openingHours ? (
     <span className="sh-eyebrow">
       <i aria-hidden="true" />
-      <SofraText field="sealText" value={copy.sealText} onTextEdit={p.onTextEdit} />
-      {p.config.openingHours && (
-        <span className="sh-eyebrow__hours">
-          <Clock size={13} aria-hidden="true" />
-          {p.config.openingHours}
-        </span>
-      )}
+      <Clock size={13} aria-hidden="true" />
+      {p.config.openingHours}
     </span>
-  );
+  ) : null;
   const title = editing ? (
     <SofraText
       as="h1"
@@ -376,7 +496,22 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
         value={copy.footerText}
         onTextEdit={p.onTextEdit}
       />
-      {p.extra && <div className="sh-foot__links">{p.extra}</div>}
+      {mobile ? (
+        <ActionTray actions={p.actions || []} extra={p.extra} en={en} />
+      ) : (
+        (p.music || p.actions?.length || p.extra) && (
+          <div className="sh-foot__links">
+            {p.music && <MusicControl music={p.music} />}
+            {p.actions?.map((action) => (
+              <button type="button" className="sh-chip" key={action.id} onClick={action.onClick}>
+                {action.icon}
+                {action.label}
+              </button>
+            ))}
+            {p.extra}
+          </div>
+        )
+      )}
     </footer>
   );
 

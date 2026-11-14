@@ -129,7 +129,14 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
         </div>
       )}
       <header className="sh-mbar">
-        <SofraBrand {...p} />
+        {/* Phone header: the logo alone; the name appears only when there is no logo. */}
+        {p.restaurant.logoUrl ? (
+          <span className="sh-mlogo">
+            <Photo src={p.restaurant.logoUrl} alt={brand} eager />
+          </span>
+        ) : (
+          <SofraBrand {...p} />
+        )}
         <div className="sh-bar__tools">{p.headerTools}</div>
       </header>
       <div className="sh-msearch">

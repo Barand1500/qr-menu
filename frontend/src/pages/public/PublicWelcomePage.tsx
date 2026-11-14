@@ -38,6 +38,7 @@ import type { WelcomeCupsConfig } from '@/lib/welcomeCupsConfig';
 import { SofraWelcomeView } from '@/components/public/sofra/SofraCanvas';
 import SofraDialog from '@/components/public/sofra/SofraDialog';
 import { normalizeSofraConfig, type SofraConfig } from '@/lib/sofra';
+import { pickMenuLang } from '@/lib/menuLang';
 
 interface WelcomeData {
   restaurant: { id: number; name: string; slug: string; logoUrl?: string | null };
@@ -246,6 +247,12 @@ function PublicWelcomePageInner({
     };
   }, [data]);
 
+  // Sofra has no language step: start in the guest's browser language when it is offered.
+  useEffect(() => {
+    if (data?.theme !== 'sofra') return;
+    setSelectedLang(pickMenuLang(data.languages));
+  }, [data]);
+
   useEffect(() => {
     if (!data) return;
     const t = requestAnimationFrame(() => setRevealed(true));
@@ -442,28 +449,33 @@ function PublicWelcomePageInner({
           onEnter={() => enterMenu(selectedLang)}
           entering={entering}
           tableLabel={tableNo ? `${t.table} ${tableNo}` : null}
+          actions={[
+            {
+              id: 'prefs',
+              icon: <Salad size={16} aria-hidden />,
+              label: selectedLang === 'en' ? 'Dietary preferences' : 'Beslenme tercihlerim',
+              onClick: () => setWelcomeStep('prefs'),
+            },
+            {
+              id: 'suggestion',
+              icon: <Lightbulb size={16} aria-hidden />,
+              label: t.suggestionBox,
+              onClick: () => setSuggestionOpen(true),
+            },
+            {
+              id: 'complaint',
+              icon: <MessageCircleHeart size={16} aria-hidden />,
+              label: selectedLang === 'en' ? 'Complaint Box' : 'Şikayet Kutusu',
+              onClick: () => setComplaintOpen(true),
+            },
+          ]}
+          music={
+            data.welcomeMusicUrl
+              ? { on: musicOn, playing: musicPlaying, label: musicLabel, onToggle: toggleMusic }
+              : undefined
+          }
           extra={
-            <>
-              <button type="button" className="sh-chip" onClick={() => setWelcomeStep('prefs')}>
-                <Salad size={15} aria-hidden />
-                {selectedLang === 'en' ? 'Dietary preferences' : 'Beslenme tercihlerim'}
-              </button>
-              <button type="button" className="sh-chip" onClick={() => setSuggestionOpen(true)}>
-                <Lightbulb size={15} aria-hidden />
-                {t.suggestionBox}
-              </button>
-              <button type="button" className="sh-chip" onClick={() => setComplaintOpen(true)}>
-                <MessageCircleHeart size={15} aria-hidden />
-                {selectedLang === 'en' ? 'Complaint Box' : 'Şikayet Kutusu'}
-              </button>
-              {data.welcomeMusicUrl && (
-                <button type="button" className="sh-chip" onClick={toggleMusic}>
-                  {musicOn ? <Volume2 size={15} aria-hidden /> : <VolumeX size={15} aria-hidden />}
-                  {musicLabel}
-                </button>
-              )}
-              <PublicSocialLinks links={data.socialLinks || []} />
-            </>
+            data.socialLinks?.length ? <PublicSocialLinks links={data.socialLinks} /> : undefined
           }
         />
         {welcomeStep === 'prefs' && (

@@ -70,6 +70,7 @@ import { SiparisCartProvider } from '@/hooks/useSiparisCart';
 import { useSiparisCart } from '@/hooks/useSiparisCart';
 import { SofraMenuView, type SofraProduct } from '@/components/public/sofra/SofraCanvas';
 import { normalizeSofraConfig, type SofraConfig } from '@/lib/sofra';
+import { pickMenuLang } from '@/lib/menuLang';
 import {
   loadDietaryPrefs,
   preferenceUi,
@@ -400,6 +401,14 @@ function PublicMenuPageInner({
       .finally(()=>{ if (!cancelled) setPopularLoading(false); });
     return ()=>{ cancelled = true; };
   }, [slug, lang, demoEnabled, campaignSlug, groupRetry]);
+
+  // Opened without the welcome screen and without an earlier choice: follow the browser language.
+  useEffect(() => {
+    if (menu?.theme !== 'sofra' || localStorage.getItem('menu_lang')) return;
+    const next = pickMenuLang(menu.languages);
+    localStorage.setItem('menu_lang', next);
+    if (next !== lang) setLang(next);
+  }, [menu, lang]);
 
   function changeLang(code: string) {
     setLang(code);

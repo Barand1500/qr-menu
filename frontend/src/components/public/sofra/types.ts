@@ -9,6 +9,19 @@ export interface SofraShowcaseItem {
   title2: string;
 }
 
+export interface SofraWelcomeAction {
+  id: string;
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+}
+export interface SofraWelcomeMusic {
+  on: boolean;
+  playing: boolean;
+  label: string;
+  onToggle: () => void;
+}
+
 export type SofraWelcomeProps = {
   config: SofraConfig;
   restaurant: SofraRestaurant;
@@ -17,6 +30,9 @@ export type SofraWelcomeProps = {
   onLangChange?: (code: string) => void;
   onEnter?: () => void;
   tableLabel?: string | null;
+  /** Secondary actions (preferences, feedback…). Chips on desktop, one expanding button on mobile. */
+  actions?: SofraWelcomeAction[];
+  music?: SofraWelcomeMusic;
   extra?: ReactNode;
   entering?: boolean;
 } & SofraEditing;
