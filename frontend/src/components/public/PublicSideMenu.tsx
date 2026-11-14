@@ -1,4 +1,4 @@
-import './sahne/sahne-more.css';
+import SahneMore from './sahne/SahneMore';
 import { useEffect, useRef, useState } from 'react';
 import {
   X,
@@ -10,11 +10,6 @@ import {
   Check,
   Gamepad2,
   Sparkles,
-  Layers3,
-  Grid2X2,
-  Search,
-  Timer,
-  ArrowUpRight,
 } from 'lucide-react';
 import PublicSocialLinks from '@/components/public/PublicSocialLinks';
 import type { PublicSocialLink } from '@/lib/socialCatalog';
@@ -34,7 +29,8 @@ interface Language {
   name: string;
 }
 
-interface PublicSideMenuProps {
+export interface PublicSideMenuProps {
+  sahne?: boolean;
   open: boolean;
   tab: PublicTab;
   restaurantName: string;
@@ -54,7 +50,11 @@ interface PublicSideMenuProps {
   onAssistant?: () => void;
 }
 
-export default function PublicSideMenu({
+export default function PublicSideMenu(props: PublicSideMenuProps) {
+  return props.sahne ? <SahneMore {...props} /> : <ClassicSideMenu {...props} />;
+}
+
+function ClassicSideMenu({
   open,
   tab,
   restaurantName,
@@ -147,7 +147,7 @@ export default function PublicSideMenu({
         inert={!open}
         role={open ? 'dialog' : undefined}
         aria-modal={open ? true : undefined}
-        className={`public-side-menu sh-more ${open ? 'is-open' : ''}`}
+        className={`public-side-menu ${open ? 'is-open' : ''}`}
         aria-hidden={!open}
         aria-label={chrome.menu}
       >
@@ -155,11 +155,6 @@ export default function PublicSideMenu({
           <div className="min-w-0">
             <p className="public-side-menu__eyebrow">{chrome.menu}</p>
             <p className="public-side-menu__brand truncate">{restaurantName}</p>
-            <p className="sh-more__intro">
-              {activeLang.startsWith('en')
-                ? 'Stay a little. Discover more.'
-                : 'Biraz keşfet, keyfine bak.'}
-            </p>
           </div>
           <button
             type="button"
@@ -253,25 +248,9 @@ export default function PublicSideMenu({
                         <span className="public-side-menu__games-ok is-quiet" aria-hidden>
                           <Check className="w-3 h-3" strokeWidth={2.75} />
                         </span>
-                        <span className="sh-more__game-icon" aria-hidden="true">
-                          {g.id === 'memory' ? (
-                            <Layers3 size={23} />
-                          ) : g.id === 'xox' ? (
-                            <Grid2X2 size={23} />
-                          ) : g.id === 'detective' ? (
-                            <Search size={23} />
-                          ) : (
-                            <Timer size={23} />
-                          )}
-                        </span>
                         <em>{entry.badge}</em>
                         <strong>{entry.title}</strong>
                         <span>{entry.blurb}</span>
-                        <ArrowUpRight
-                          className="sh-more__game-arrow"
-                          size={17}
-                          aria-hidden="true"
-                        />
                       </button>
                     );
                   })}

@@ -367,154 +367,6 @@
   }
 }
 
-/* The menu is another bottom sheet, including on wide screens. */
-.sofra-public-shell .public-side-menu {
-  top: auto;
-  bottom: 0;
-  right: auto;
-  left: 50%;
-  width: min(100%, 640px);
-  height: auto;
-  max-height: 90svh;
-  padding: 26px;
-  border-radius: 25px 25px 0 0;
-  transform: translate(-50%, 100%);
-  background: #18130f;
-  color: #f6eee4;
-  border: 0;
-  box-shadow: 0 -12px 60px #00000070;
-  transition:
-    transform 0.24s ease,
-    visibility 0.24s;
-  visibility: hidden;
-}
-.sofra-public-shell .public-side-menu.is-open {
-  transform: translate(-50%, 0);
-  visibility: visible;
-}
-.sofra-public-shell .public-side-menu__header {
-  padding: 0 0 20px;
-}
-.sofra-public-shell .public-side-menu__eyebrow {
-  color: #a99b8d;
-  letter-spacing: 0.12em;
-}
-.sofra-public-shell .public-side-menu__brand {
-  color: #f6eee4;
-  font:
-    26px/1.2 var(--sh-display);
-  white-space: normal;
-}
-.sofra-public-shell .public-side-menu__close {
-  background: transparent;
-  color: #a99b8d;
-  border: 1px solid #3a2f27;
-  border-radius: 50%;
-}
-.sofra-public-shell .public-side-menu__nav {
-  display: flex;
-  flex-direction: row;
-  gap: 8px;
-  padding: 0 0 18px;
-}
-.sofra-public-shell .public-side-menu__link {
-  flex: 1;
-  color: #a99b8d;
-  background: transparent;
-  border-radius: 10px;
-  padding: 13px;
-}
-.sofra-public-shell .public-side-menu__link.is-active {
-  color: #ff6b2c;
-  background: #ff6b2c1a;
-}
-.sofra-public-shell .public-side-menu__scroll {
-  padding: 0;
-}
-.sofra-public-shell .public-side-menu__section {
-  border-color: #33291f;
-}
-.sofra-public-shell .public-side-menu__section-title {
-  color: #a99b8d;
-}
-.sofra-public-shell .public-side-menu__game-card {
-  background: transparent;
-  border: 1px solid #3a2f27;
-  border-radius: 12px;
-  color: #f6eee4;
-  box-shadow: none;
-}
-.sofra-public-shell .public-side-menu__game-card :is(strong, p, span) {
-  color: inherit;
-}
-.sofra-public-shell .public-side-menu__game-card small,
-.sofra-public-shell .public-side-menu__game-card em {
-  color: #a99b8d;
-}
-.sofra-public-shell .public-side-menu__games-promo {
-  background: #221b16;
-  border: 1px solid #3a2f27;
-  border-radius: 12px;
-  box-shadow: none;
-  animation: none;
-}
-.sofra-public-shell .public-side-menu__games-promo > p {
-  color: #ff6b2c;
-}
-.sofra-public-shell .public-side-menu__games-promo-item {
-  color: #f6eee4;
-  background: #18130f;
-  border: 1px solid #33291f;
-  border-radius: 10px;
-  animation: none;
-}
-.sofra-public-shell .public-side-menu__games-promo-item small {
-  color: #a99b8d;
-}
-.sofra-public-shell :is(.public-side-menu__lang-trigger, .public-side-menu__accordion) {
-  background: transparent;
-  border: 1px solid #3a2f27;
-  border-radius: 10px;
-  color: #f6eee4;
-}
-.sofra-public-shell :is(.public-side-menu__lang-name, .public-side-menu__accordion-text strong) {
-  color: #f6eee4;
-}
-.sofra-public-shell :is(.public-side-menu__accordion-text small, .public-side-menu__allergy-sub) {
-  color: #a99b8d;
-}
-.sofra-public-shell .public-side-menu__accordion-text > span {
-  color: #a99b8d;
-}
-.sofra-public-shell .public-side-menu__accordion-left > svg {
-  color: #ff6b2c;
-}
-.sofra-public-shell .public-side-menu__lang-list {
-  background: #18130f;
-  border-color: #3a2f27;
-  color: #f6eee4;
-}
-.sofra-public-shell .public-side-menu__lang-option {
-  color: #f6eee4;
-}
-.sofra-public-shell .public-side-menu__lang-option.is-active {
-  background: #ff6b2c1a;
-  color: #ff6b2c;
-}
-.sofra-public-shell .public-side-menu__allergy-chip {
-  background: transparent;
-  color: #a99b8d;
-  border-color: #3a2f27;
-}
-.sofra-public-shell .public-side-menu__allergy-chip.is-active {
-  background: #ff6b2c1a;
-  color: #ff6b2c;
-  border-color: #ff6b2c;
-}
-.sofra-public-shell .public-side-menu__social {
-  border-top: 1px solid #33291f;
-  margin-top: 20px;
-}
 .sofra-public-shell :is(.menu-games, .mc-auth) {
   align-items: flex-end;
   padding-bottom: 0;
@@ -578,38 +430,14 @@
   .sofra-sheet-panel {
     padding-inline: 20px;
   }
-  .sofra-public-shell .public-side-menu {
-    padding: 22px 20px max(22px, env(safe-area-inset-bottom));
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   .sofra-sheet *,
   .sofra-public-shell .siparis-cart-sheet *,
-  .sofra-public-shell .public-side-menu,
   .sofra-public-shell .menu-games__panel,
   .sofra-public-shell .mc-auth__panel,
   .sofra-prefs {
     animation: none !important;
     transition: none !important;
   }
-}
-.sofra-public-shell .public-side-menu__brand {
-  font-family: var(--sh-display) !important;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-.sofra-public-shell .public-side-menu__nav {
-  flex-wrap: wrap;
-}
-.sofra-public-shell .public-side-menu__link {
-  flex: 1 1 130px;
-  white-space: nowrap;
-}
-.sofra-public-shell .public-side-menu__assistant {
-  width: auto;
-  margin: 0;
-  border: 1px solid var(--sh-line-strong);
-  border-radius: 10px;
-  background: transparent;
-  color: var(--sh-text);
 }

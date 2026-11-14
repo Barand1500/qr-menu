@@ -1412,12 +1412,6 @@
     transition: none !important;
   }
 }
-/* "Ne yesem?" sits in the dock on desktop and in the More sheet on mobile. */
-@media (min-width: 1024px) {
-  .sofra-public-shell .public-side-menu__assistant {
-    display: none !important;
-  }
-}
 .sh-dock--mob .sh-dock__service {
   padding: 0;
 }

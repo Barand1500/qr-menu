@@ -731,6 +731,7 @@ function PublicMenuPageInner({
 
   const sideMenu = (
     <PublicSideMenu
+      sahne={isSofra}
       open={sideMenuOpen}
       tab={tab}
       restaurantName={isSofra ? menu.sofra?.brandName || menu.restaurant.name : menu.restaurant.name}

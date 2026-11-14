@@ -45,10 +45,17 @@ Doğrulama: backend/frontend üretim derlemeleri; node backend/tests/menu-search
 
 [Web arama](search-desktop.png) · [Mobil arama](search-mobile.png)
 
-## Diğer paneli — 14 Kasım 2026
+## Diğer / küçük bir ara — 14 Kasım 2026
 
-Sahne için webde ortalanmış iki bölümlü panel, mobilde köşeden dairesel açılan tam ekran görünüm kullanılır. Üst başlık, gezinme ve sosyal bağlantılar sabit kalırken oyunlar/dil/tercihler alanı kendi içinde kayar. Oyunların ayrı simgeleri vardır; dil listesi panel içinde açılır. Hareket azaltma tercihinde geçişler kapanır. Mevcut gezinme, oyun, dil, alerji/tercih, sosyal bağlantı ve klavye/fokus davranışları korunur. Diğer temaların yerleşimi değişmez; yeni bağımlılık yoktur.
+İlk panel düzeni kullanıcı tarafından reddedildi. Güncel `SahneMore.tsx`, klasik yan menüden bağımsız bir bileşendir; `PublicMenuPage` bunu yalnızca Sofra/Sahne için seçer. Önceki Sahne panelinin stilleri değiştirildi, kullanılmayan Sofra yan menü kuralları kaldırıldı. Diğer temalar klasik bileşeni kullanır.
 
-[Geniş ekran](more-desktop.png) · [Mobil](more-mobile.png) — Chrome ve taklit API ile örnek veriler.
+- Ana alan: Ne yesem? özelliği açıksa tabak illüstrasyonlu öneri daveti; kapalıysa menüye dönüş. Fotoğraf veya yemek verisi uydurulmaz; dekor CSS ve mevcut Lucide simgeleriyle çizilir.
+- Gezinme büyük numaralı bağlantılarla, oyunlar küçük eğimli nesnelerden oluşan bir rafla sunulur. Her oyun doğrudan açılır; işaretçi/klavye odağında kısa açıklaması görünür ve erişilebilir adına da eklenir. Garson sonrası oyun mesajı korunur.
+- Dil ve alerji/tercih düğmeleri alt şerittedir. İçeriği aşağı büyüten liste/akordeon yerine aynı panelde ayrı görünüm açılır. Geri/Tamam veya Escape ile ana görünüme ve tetikleyici odağına dönülür. Escape ana görünümde paneli kapatır. Tercihler mevcut akışta anında uygulanır; yeni Kaydet adımı yoktur. Vegan seçiminin vejetaryeni de işaretleme davranışı korunur.
+- Masaüstünde ortalanmış kompozisyon, mobilde köşeden genişleyen tam ekran açılış; düşük yükseklikte yalnızca içerik alanı kayar. Alt araçlar ve kapatma sabit kalır. Hareket azaltmada geçişler kapanır. Yeni bağımlılık yoktur.
 
-Kontrol: frontend üretim derlemesi; Chrome'da 320×568, 390×844, 768×1024, 1440×900, 1920×1080 yerleşimleri; dil listesini açma/seçim, alerjen seçme/temizleme, Escape ile kapatma ve odağı geri verme, oyun başlatma, Hakkımızda'ya geçme, uzun işletme adı ve hareket azaltma geçti. Çalışma zamanı hatası görülmedi. Fiziksel telefon, iOS Safari, Zen ve canlı sunucu denenmedi. Bu değişiklik yalnızca frontend deploy gerektirir.
+İlham için [21st Expanding Cards](https://21st.dev/@vaib215/components/expanding-cards) ve [React Bits Staggered Menu](https://reactbits.dev/components/staggered-menu) incelendi; bileşen kaynakları kopyalanmadı.
+
+[Geniş ekran](more-desktop.png) · [Mobil](more-mobile.png) — Chrome ve taklit API, örnek işletme verileri.
+
+Kontrol: frontend üretim derlemesi ve diff kontrolü; Chrome'da 320×568, 390×844, 768×1024, 1440×900, 1920×1080 panel sınırları; dil görünümü/seçimi, alerjen seçme/temizleme, vegan/vejetaryen bağı, Ne yesem? açılması, oyun başlatma, Hakkımızda'ya geçiş, Escape/odak dönüşü/Tab, uzun isim, Arapça yerleşim, hareket azaltma ve özellikler kapalıyken menüye dönüş geçti. Son kompakt düzenin 390/1440 görüntüleri tekrar alındı. Çalışma zamanı hatası görülmedi. Mevcut Vite büyük paket uyarısı devam eder. Fiziksel telefon, iOS Safari, Zen ve canlı sunucu denenmedi. Bu değişiklik yalnızca frontend deploy gerektirir.
