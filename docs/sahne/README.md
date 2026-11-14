@@ -44,3 +44,11 @@ Kaynak: backend/src/lib/menuSearch.ts ve public-menu search rotası; frontend sa
 Doğrulama: backend/frontend üretim derlemeleri; node backend/tests/menu-search.test.mjs (harf eksikliği/tekrarı/yer değiştirmesi, Türkçe, kategoriler, çok kelime, normal eşleşme önceliği, kısa/ilgisiz/boş sorgu ve 100'den sonraki ürün); Chrome/taklit API'de gerçek arama yardımcı fonksiyonuyla 1440 ve 390 px sonuç/öneriye tıklama/normal arama/ilgisiz arama/taşma kontrolü geçti. Canlı veritabanı/sunucu veya fiziksel telefon testi yapılmadı. Geçici tarayıcı harness'i frontend/node_modules/.qr-check/sahne-search.mjs içindedir.
 
 [Web arama](search-desktop.png) · [Mobil arama](search-mobile.png)
+
+## Diğer paneli — 14 Kasım 2026
+
+Sahne için webde ortalanmış iki bölümlü panel, mobilde köşeden dairesel açılan tam ekran görünüm kullanılır. Üst başlık, gezinme ve sosyal bağlantılar sabit kalırken oyunlar/dil/tercihler alanı kendi içinde kayar. Oyunların ayrı simgeleri vardır; dil listesi panel içinde açılır. Hareket azaltma tercihinde geçişler kapanır. Mevcut gezinme, oyun, dil, alerji/tercih, sosyal bağlantı ve klavye/fokus davranışları korunur. Diğer temaların yerleşimi değişmez; yeni bağımlılık yoktur.
+
+[Geniş ekran](more-desktop.png) · [Mobil](more-mobile.png) — Chrome ve taklit API ile örnek veriler.
+
+Kontrol: frontend üretim derlemesi; Chrome'da 320×568, 390×844, 768×1024, 1440×900, 1920×1080 yerleşimleri; dil listesini açma/seçim, alerjen seçme/temizleme, Escape ile kapatma ve odağı geri verme, oyun başlatma, Hakkımızda'ya geçme, uzun işletme adı ve hareket azaltma geçti. Çalışma zamanı hatası görülmedi. Fiziksel telefon, iOS Safari, Zen ve canlı sunucu denenmedi. Bu değişiklik yalnızca frontend deploy gerektirir.

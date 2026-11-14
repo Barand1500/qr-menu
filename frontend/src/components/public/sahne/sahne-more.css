@@ -1,0 +1,466 @@
+/* The existing menu behaviour, presented as a Sahne discovery overlay. Other themes keep their layout. */
+.sh-more__intro,
+.sh-more__game-icon,
+.sh-more__game-arrow {
+  display: none;
+}
+.sofra-public-shell .public-side-menu__backdrop {
+  background: #080604b8;
+  backdrop-filter: blur(10px);
+  transition:
+    opacity 0.4s,
+    visibility 0.4s;
+}
+.sofra-public-shell .public-side-menu.sh-more {
+  inset: 50% auto auto 50%;
+  width: min(1040px, calc(100vw - 64px));
+  height: min(790px, calc(100dvh - 64px));
+  max-height: none;
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0 36px;
+  padding: 32px;
+  border: 1px solid var(--sh-line-strong);
+  border-radius: 28px;
+  background: radial-gradient(ellipse at 0 0, #ff6b2c12, transparent 55%), var(--sh-bg);
+  box-shadow: 0 40px 130px #000a;
+  transform: translate(-50%, -48%) scale(0.97);
+  clip-path: inset(0 0 100% 0 round 28px);
+  opacity: 0;
+  overflow: hidden;
+  visibility: hidden;
+  transition:
+    clip-path 0.55s var(--sh-ease),
+    transform 0.55s var(--sh-ease),
+    opacity 0.3s,
+    visibility 0.55s;
+}
+.sofra-public-shell .public-side-menu.sh-more.is-open {
+  transform: translate(-50%, -50%) scale(1);
+  clip-path: inset(0 round 28px);
+  opacity: 1;
+  visibility: visible;
+}
+.sofra-public-shell .sh-more .public-side-menu__header {
+  grid-column: 1/-1;
+  align-items: flex-start;
+  padding: 0 0 28px;
+  border-bottom: 1px solid var(--sh-line);
+  margin-bottom: 24px;
+  gap: 24px;
+}
+.sofra-public-shell .sh-more .public-side-menu__eyebrow {
+  font: 700 10px var(--sh-body);
+  letter-spacing: 0.2em;
+  color: var(--sh-accent-2);
+  margin-bottom: 9px;
+}
+.sofra-public-shell .sh-more .public-side-menu__brand {
+  font: 700 clamp(25px, 3vw, 38px)/1.1 var(--sh-display);
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+.sofra-public-shell .sh-more .sh-more__intro {
+  display: block;
+  margin: 11px 0 0;
+  font: 13px/1.5 var(--sh-body);
+  color: var(--sh-muted);
+}
+.sofra-public-shell .sh-more .public-side-menu__close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  background: var(--sh-surface);
+  border-color: var(--sh-line-strong);
+  color: var(--sh-text);
+  transition:
+    rotate 0.3s,
+    background 0.3s;
+}
+.sofra-public-shell .sh-more .public-side-menu__close:hover {
+  rotate: 90deg;
+  background: var(--sh-raise);
+}
+.sofra-public-shell .sh-more .public-side-menu__nav {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0;
+  counter-reset: more-nav;
+}
+.sofra-public-shell .sh-more .public-side-menu__link {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 62px;
+  padding: 15px 17px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  font: 600 16px var(--sh-display);
+  color: var(--sh-muted);
+  transition:
+    background 0.2s,
+    color 0.2s,
+    translate 0.2s;
+}
+.sofra-public-shell .sh-more .public-side-menu__link:hover {
+  background: var(--sh-surface);
+  color: var(--sh-text);
+  translate: 3px 0;
+}
+.sofra-public-shell .sh-more .public-side-menu__link.is-active {
+  color: var(--sh-on-accent);
+  background: linear-gradient(115deg, var(--sh-accent), var(--sh-accent-2));
+  box-shadow: 0 8px 25px #ff6b2c14;
+}
+.sofra-public-shell .sh-more .public-side-menu__scroll {
+  grid-column: 2;
+  grid-row: 2/4;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 0 8px 0 0;
+}
+.sofra-public-shell .sh-more .public-side-menu__section {
+  border: 0;
+  padding: 0;
+  margin: 0 0 25px;
+}
+.sofra-public-shell .sh-more .public-side-menu__section-title {
+  font: 600 10px var(--sh-body);
+  letter-spacing: 0.16em;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--sh-muted);
+}
+.sofra-public-shell .sh-more .public-side-menu__games-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.sofra-public-shell .sh-more .public-side-menu__game-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 6px 12px;
+  align-content: start;
+  padding: 18px;
+  min-height: 130px;
+  background: var(--sh-surface);
+  border: 1px solid var(--sh-line);
+  border-radius: 17px;
+  text-align: start;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    translate 0.25s;
+}
+.sofra-public-shell .sh-more .public-side-menu__game-card:hover {
+  background: var(--sh-raise);
+  border-color: #ffb44a66;
+  translate: 0 -3px;
+}
+.sofra-public-shell .sh-more .sh-more__game-icon {
+  display: grid;
+  place-items: center;
+  grid-column: 1;
+  grid-row: 1/3;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  color: var(--sh-accent-2);
+  background: #ffb44a12;
+}
+.sofra-public-shell .sh-more .public-side-menu__game-card em {
+  grid-column: 2;
+  font: 700 8px var(--sh-body);
+  letter-spacing: 0.12em;
+  color: var(--sh-muted);
+  margin-top: 3px;
+}
+.sofra-public-shell .sh-more .public-side-menu__game-card strong {
+  grid-column: 2;
+  font: 650 15px/1.2 var(--sh-display);
+  color: var(--sh-text);
+}
+.sofra-public-shell
+  .sh-more
+  .public-side-menu__game-card
+  > span:not(.sh-more__game-icon):not(.public-side-menu__games-ok) {
+  grid-column: 1/-1;
+  font: 11px/1.5 var(--sh-body);
+  color: var(--sh-muted);
+  padding-right: 15px;
+  margin-top: 6px;
+}
+.sofra-public-shell .sh-more .public-side-menu__games-ok.is-quiet {
+  display: none;
+}
+.sofra-public-shell .sh-more .sh-more__game-arrow {
+  display: block;
+  position: absolute;
+  bottom: 16px;
+  right: 14px;
+  color: var(--sh-accent-2);
+  opacity: 0.6;
+}
+.sofra-public-shell .sh-more :is(.public-side-menu__lang-trigger, .public-side-menu__accordion) {
+  background: var(--sh-surface);
+  border: 1px solid var(--sh-line);
+  border-radius: 14px;
+  min-height: 58px;
+  padding: 15px 17px;
+}
+.sofra-public-shell .sh-more .public-side-menu__lang-trigger {
+  font-size: 14px;
+}
+.sofra-public-shell .sh-more .public-side-menu__lang-list {
+  position: relative;
+  inset: auto;
+  margin-top: 8px;
+  border-radius: 14px;
+  box-shadow: none;
+  animation: sh-more-item 0.25s both;
+  max-height: 210px;
+  overflow: auto;
+}
+.sofra-public-shell .sh-more .public-side-menu__lang-option {
+  min-height: 46px;
+  padding: 11px 15px;
+}
+.sofra-public-shell .sh-more .public-side-menu__accordion-text strong {
+  font-size: 14px;
+}
+.sofra-public-shell .sh-more .public-side-menu__accordion-text > span {
+  font-size: 11px;
+  margin-top: 4px;
+}
+.sofra-public-shell .sh-more .public-side-menu__accordion-body {
+  padding: 16px 3px 4px;
+  animation: sh-more-item 0.25s both;
+}
+.sofra-public-shell .sh-more .public-side-menu__allergy-chips {
+  gap: 7px;
+}
+.sofra-public-shell .sh-more .public-side-menu__allergy-chip {
+  min-height: 38px;
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 9px;
+}
+.sofra-public-shell .sh-more .public-side-menu__social {
+  grid-column: 1;
+  grid-row: 3;
+  margin: 18px 0 0;
+  padding: 20px 0 0;
+  border: 0;
+  border-top: 1px solid var(--sh-line);
+}
+.sofra-public-shell .sh-more .public-side-menu__social .public-social {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin: 0;
+}
+.sofra-public-shell
+  .sh-more.is-open
+  :is(.public-side-menu__nav, .public-side-menu__scroll, .public-side-menu__social) {
+  animation: sh-more-item 0.55s var(--sh-ease) 0.15s both;
+}
+.sofra-public-shell .sh-more.is-open .public-side-menu__scroll {
+  animation-delay: 0.23s;
+}
+.sofra-public-shell .sh-more.is-open .public-side-menu__social {
+  animation-delay: 0.3s;
+}
+@keyframes sh-more-item {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 1023px) {
+  .sofra-public-shell .public-side-menu.sh-more {
+    inset: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 0;
+    padding: 24px 20px max(20px, env(safe-area-inset-bottom));
+    transform: none;
+    clip-path: circle(0 at 92% 96%);
+    background: radial-gradient(ellipse at 100% 0, #ff6b2c14, transparent 50%), var(--sh-bg);
+    transition:
+      clip-path 0.6s var(--sh-ease),
+      opacity 0.3s,
+      visibility 0.6s;
+  }
+  .sofra-public-shell .public-side-menu.sh-more.is-open {
+    transform: none;
+    clip-path: circle(150% at 92% 96%);
+  }
+  .sofra-public-shell .sh-more .public-side-menu__header {
+    grid-row: 1;
+    grid-column: 1;
+    padding-bottom: 20px;
+    margin-bottom: 16px;
+    gap: 12px;
+  }
+  .sofra-public-shell .sh-more .public-side-menu__brand {
+    font-size: 28px;
+    line-height: 1.1;
+  }
+  .sofra-public-shell .sh-more .sh-more__intro {
+    font-size: 12px;
+    margin-top: 9px;
+  }
+  .sofra-public-shell .sh-more .public-side-menu__nav {
+    grid-column: 1;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding-bottom: 20px;
+  }
+  .sofra-public-shell .sh-more .public-side-menu__link {
+    min-height: 52px;
+    padding: 12px;
+    gap: 9px;
+    font-size: 14px;
+  }
+  .sofra-public-shell .sh-more .public-side-menu__assistant {
+    grid-column: 1/-1;
+    min-height: 44px;
+    font-size: 13px;
+  }
+  .sofra-public-shell .sh-more .public-side-menu__scroll {
+    grid-column: 1;
+    grid-row: 3;
+    padding: 2px 0 12px;
+    min-height: 0;
+  }
+  .sofra-public-shell .sh-more .public-side-menu__social {
+    grid-column: 1;
+    grid-row: 4;
+    margin: 0;
+    padding-top: 16px;
+  }
+  .sofra-public-shell .sh-more .public-side-menu__game-card {
+    padding: 14px;
+    gap: 5px 9px;
+    min-height: 125px;
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+  .sofra-public-shell .sh-more .sh-more__game-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+  .sofra-public-shell .sh-more .sh-more__game-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  .sofra-public-shell .sh-more .public-side-menu__game-card strong {
+    font-size: 14px;
+  }
+  .sofra-public-shell
+    .sh-more
+    .public-side-menu__game-card
+    > span:not(.sh-more__game-icon):not(.public-side-menu__games-ok) {
+    font-size: 10px;
+    line-height: 1.5;
+  }
+  .sofra-public-shell
+    .sh-more.is-open
+    :is(.public-side-menu__nav, .public-side-menu__scroll, .public-side-menu__social) {
+    animation-delay: 0.18s;
+  }
+}
+@media (max-width: 360px) {
+  .sofra-public-shell .public-side-menu.sh-more {
+    padding-inline: 16px;
+  }
+  .sofra-public-shell .sh-more .public-side-menu__brand {
+    font-size: 25px;
+  }
+  .sofra-public-shell .sh-more .public-side-menu__games-grid {
+    gap: 9px;
+  }
+  .sofra-public-shell .sh-more .public-side-menu__game-card {
+    padding: 12px;
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+  .sofra-public-shell .sh-more .sh-more__game-icon {
+    width: 30px;
+    height: 30px;
+  }
+  .sofra-public-shell .sh-more .public-side-menu__game-card strong {
+    font-size: 13px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sofra-public-shell .public-side-menu.sh-more,
+  .sofra-public-shell .public-side-menu__backdrop {
+    transition: none !important;
+  }
+  .sofra-public-shell .sh-more * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+.sofra-public-shell .sh-more .public-side-menu__games-promo {
+  padding: 15px;
+  border: 1px solid var(--sh-line);
+  border-radius: 16px;
+  background: #ffb44a08;
+}
+.sofra-public-shell .sh-more .public-side-menu__games-promo > p {
+  font-size: 12px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+  color: var(--sh-accent-2);
+}
+.sofra-public-shell .sh-more .public-side-menu__games-promo-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.sofra-public-shell .sh-more .public-side-menu__games-promo-item {
+  padding: 12px;
+  border: 1px solid var(--sh-line);
+  background: var(--sh-surface);
+  border-radius: 10px;
+  min-width: 0;
+  gap: 8px;
+}
+.sofra-public-shell .sh-more .public-side-menu__games-promo-item strong {
+  font: 600 13px var(--sh-display);
+}
+.sofra-public-shell .sh-more .public-side-menu__games-promo-item small {
+  font: 10px/1.5 var(--sh-body);
+  color: var(--sh-muted);
+}
+.sofra-public-shell .sh-more .public-side-menu__games-promo-item .public-side-menu__games-ok {
+  background: var(--sh-accent);
+  color: var(--sh-on-accent);
+  flex-shrink: 0;
+}
