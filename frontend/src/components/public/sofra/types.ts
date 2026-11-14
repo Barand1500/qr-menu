@@ -50,6 +50,7 @@ export type SofraMenuProps = {
   /** `from` is the pressed element; the cart uses it as the start of its fly animation. */
   onAdd?: (product: SofraProduct, from?: HTMLElement | null) => void;
   search?: string;
+  searchSuggestion?: string;
   onSearchChange?: (text: string) => void;
   loading?: boolean;
   error?: string | null;

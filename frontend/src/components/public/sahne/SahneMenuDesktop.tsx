@@ -3,7 +3,7 @@ import { ArrowUpRight, Sparkles } from 'lucide-react';
 import { SofraBrand, SofraText } from '../sofra/SofraElements';
 import type { SofraProduct } from '../sofra/SofraElements';
 import type { SofraMenuProps } from '../sofra/types';
-import { DishCard, GridSkeleton, MenuState, SearchField, useMenuModel } from './menuShared';
+import { DishCard, GridSkeleton, MenuState, SearchCorrection, SearchField, useMenuModel } from './menuShared';
 import {
   Photo,
   SplitText,
@@ -218,6 +218,7 @@ export default function SahneMenuDesktop(p: SofraMenuProps) {
               )}
             </section>
           )}
+          <SearchCorrection p={p}/>
           {p.stories}
           {m.home && (m.count > 0 || p.loading || editing) && (
             <div className="sh-section">

@@ -1,3 +1,4 @@
+import { searchMenu } from '../lib/menuSearch.js';
 import { Router, type Request } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { loadSofraConfig } from '../lib/sofra.js';
@@ -8,7 +9,6 @@ import {
   getProductField,
   getShowcaseTitles,
   getWelcomeMessage,
-  textMatchesI18n,
 } from '../lib/i18n-json.js';
 import { parseSocialLinks, publicSocialLinks } from '../lib/social.js';
 import { isAddonActive } from '../addons/ownership.js';
@@ -1116,7 +1116,7 @@ router.get('/:slug/popular-products', async (req, res) => {
 
 router.get('/:slug/search', async (req, res) => {
   const slug = req.params.slug;
-  const q = String(req.query.q || '').toLowerCase();
+  const q = String(req.query.q || '').trim().slice(0, 80);
   const lang = getLangCode(req);
   const campaignSlug = getCampaignSlug(req.query);
 
@@ -1140,21 +1140,21 @@ router.get('/:slug/search', async (req, res) => {
       ...(campaign ? { id: { in: campaign.productIds } } : {}),
     },
     include: { group: true, currency: true },
-    take: 100,
   });
 
   const timeMenu = await getTimeMenuRuntime(restaurant.id);
 
-  const filtered = products
-    .filter((p) => textMatchesI18n(p.i18n, activeLang, ['name'], q))
-    .filter((p) => {
-      if (!timeMenu.config.enabled || !timeMenu.slot) return true;
-      return timeMenu.rules.get(p.id)?.hidden !== true;
-    })
-    .slice(0, 20);
+  const available = products.filter((p) => {
+    if (!timeMenu.config.enabled || !timeMenu.slot) return true;
+    return timeMenu.rules.get(p.id)?.hidden !== true;
+  });
+  const filtered = searchMenu(available, q, (p) => [
+    getProductField(p.i18n, activeLang, 'name'),
+    getGroupName(p.group.i18n, activeLang),
+  ]).slice(0, 20);
 
   res.json(
-    filtered.map((p) => {
+    filtered.map(({ item: p, suggestion }) => {
       const priced = applyCampaignPrice(
         p.id,
         {
@@ -1173,6 +1173,7 @@ router.get('/:slug/search', async (req, res) => {
         : null;
       return {
         id: p.id,
+        ...(suggestion ? { searchSuggestion: suggestion } : {}),
         name: getProductField(p.i18n, activeLang, 'name'),
         price: patch?.price ?? priced.price,
         currency: priced.currency,

@@ -52,6 +52,27 @@ const TEXT = {
 };
 export type MenuText = (typeof TEXT)['tr'];
 
+export function SearchCorrection({ p }: { p: SofraMenuProps }) {
+  if (!p.search?.trim() || !p.searchSuggestion || p.loading || p.error || !p.products.length)
+    return null;
+  const en = p.lang.split('-')[0] === 'en';
+  return (
+    <div className="sh-search-correction" role="status">
+      <span>{en ? 'Did you mean' : 'Bunu mu demek istediniz?'}</span>
+      <button type="button" onClick={() => p.onSearchChange?.(p.searchSuggestion!)}>
+        {p.searchSuggestion}
+        <ArrowUpRight size={15} />
+      </button>
+      <small>
+        {en
+          ? 'A little typo won’t stop us finding your favourite.'
+          : 'Küçük yazım hataları bizde sorun değil.'}{' '}
+        <span aria-hidden="true">♡</span>
+      </small>
+    </div>
+  );
+}
+
 const RETURN_KEY = 'menu-return';
 const RESTORE_KEY = 'menu-restore';
 

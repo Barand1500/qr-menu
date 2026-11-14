@@ -1443,3 +1443,9 @@
   object-fit: cover;
   background: var(--sh-bg);
 }
+/* A quiet spelling hint beside the results; the original query remains editable. */
+.sh-search-correction{display:flex;align-items:center;flex-wrap:wrap;gap:9px 12px;padding:16px 20px;margin:18px 0 24px;border:1px solid var(--sh-line);border-radius:18px;background:var(--sh-surface);color:var(--sh-muted);font:13px/1.5 var(--sh-body)}
+.sahne .sh-search-correction button{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid var(--sh-line-strong);border-radius:999px;color:var(--sh-accent-2);font-weight:700;background:#ffb44a0a;min-height:36px}
+.sh-search-correction small{font-size:12px;margin-inline-start:auto}.sh-search-correction small span{color:var(--sh-accent-2);font-size:17px;margin-inline-start:4px}
+@media(max-width:1023px){.sh-search-correction{padding:14px;border-radius:16px;gap:8px;font-size:12px}.sh-search-correction small{flex-basis:100%;margin:0}}
+.sahne .sh-search-correction button{max-width:100%;min-width:0;overflow-wrap:anywhere;text-align:start}

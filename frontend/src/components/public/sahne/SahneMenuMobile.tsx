@@ -4,7 +4,7 @@ import { formatMoney } from '@/lib/api';
 import { SofraBrand, SofraText } from '../sofra/SofraElements';
 import type { SofraProduct } from '../sofra/SofraElements';
 import type { SofraMenuProps } from '../sofra/types';
-import { AddButton, DishCard, GridSkeleton, MenuState, SearchField, useMenuModel } from './menuShared';
+import { AddButton, DishCard, GridSkeleton, MenuState, SearchCorrection, SearchField, useMenuModel } from './menuShared';
 import { Photo, cssVars, isRtl, pad2, useReveal, useSahneNav } from './shared';
 import './sahne.css';
 import './sahne-menu.css';
@@ -264,6 +264,7 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
               <h1>{m.searching ? `“${p.search?.trim()}”` : m.group?.name}</h1>
               {!p.loading && !p.error && <p className="sh-ghead__count">{t.items(m.count)}</p>}
             </div>
+            <SearchCorrection p={p}/>
             <div
               className="sh-results"
               key={m.searching ? 'results' : `g${p.activeGroup}`}

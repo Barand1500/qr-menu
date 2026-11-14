@@ -30,3 +30,17 @@ Vitrin görseli varsa karşılamanın ana fotoğrafı ve menü ana alanı vitrin
 [Masaüstü karşılama](d-02-welcome.png) · [Masaüstü menü](d-06-menu-home.png) · [Masaüstü kategori](d-11-group.png) · [Mobil karşılama](m-01-welcome.png) · [Mobil menü](m-04-home.png) · [Mobil kategori seçici](m-08-picker.png) · [Mobil kategori](m-09-group.png)
 
 Örnek veride tüm ürünler aynı örnek kahvaltı fotoğrafının farklı kesitlerini kullanır; gerçek işletmede kendi görselleri görünür.
+
+## Yazım hatalarını anlayan arama — 14 Kasım 2026
+
+Arama ürün ve kategori adlarında çalışır; Türkçe karakter ve harf büyüklüğü normalleştirilir. Normal eşleşme varsa önce o sonuçlar kullanılır. Normal sonuç yoksa küçük ekleme/silme/değiştirme ve bitişik harf yer değiştirmeleri değerlendirilir: örneğin piza → Pizza, buger → Burger. Üç harften kısa kelimeler için yaklaşık eşleştirme yapılmaz; uzun kelimelerde de hata sayısı sınırlıdır. Alakasız sorgular sonuçsuz kalır. Kategori eşleşmesi o kategorinin ürünlerini bulabilir.
+
+Backend arama yanıtı dizi biçimini korur; yaklaşık sonuçlara isteğe bağlı searchSuggestion alanı eklenir. Mevcut restoran/aktif ürün/kampanya/zaman menüsü ve fiyat/stok hesapları korunur. İlk 100 ürünle sınırlama kaldırıldı; eşleşmeler tüm restoran kataloğundan değerlendirilir, yanıt en fazla 20 üründür. Mevcut istemci beslenme/alerjen filtresi korunur.
+
+Sahne web ve mobilinde küçük bir öneri satırı görünür: Bunu mu demek istediniz? Öneriye dokunmak aramayı günceller. Özgün yazı, kullanıcı dokunana kadar arama kutusunda kalır. Küçük yazım hataları bizde sorun değil. ♡ metni mevcut koyu/amber renklerle gösterilir; yükleme, hata, normal eşleşme veya eşleşmeyen sorguda satır gösterilmez.
+
+Kaynak: backend/src/lib/menuSearch.ts ve public-menu search rotası; frontend sahne/menuShared SearchCorrection. Yeni servis/bağımlılık/migration yok. Frontend ve backend birlikte deploy edilmelidir.
+
+Doğrulama: backend/frontend üretim derlemeleri; node backend/tests/menu-search.test.mjs (harf eksikliği/tekrarı/yer değiştirmesi, Türkçe, kategoriler, çok kelime, normal eşleşme önceliği, kısa/ilgisiz/boş sorgu ve 100'den sonraki ürün); Chrome/taklit API'de gerçek arama yardımcı fonksiyonuyla 1440 ve 390 px sonuç/öneriye tıklama/normal arama/ilgisiz arama/taşma kontrolü geçti. Canlı veritabanı/sunucu veya fiziksel telefon testi yapılmadı. Geçici tarayıcı harness'i frontend/node_modules/.qr-check/sahne-search.mjs içindedir.
+
+[Web arama](search-desktop.png) · [Mobil arama](search-mobile.png)

@@ -228,6 +228,7 @@ function PublicMenuPageInner({
   const [search, setSearch] = useState(() => searchParams.get('q') || '');
   const [searchResults, setSearchResults] = useState<
     {
+      searchSuggestion?: string;
       id: number;
       name: string;
       price: number;
@@ -834,6 +835,7 @@ function PublicMenuPageInner({
               activeGroup={selectedId}
               subgroups={!search.trim() && selectedId != null ? filteredGroupChildren : []}
               search={search}
+              searchSuggestion={filteredSearchResults.find(row=>row.searchSuggestion)?.searchSuggestion}
               onSearchChange={setSearch}
               loading={
                 search.trim() ? searchLoading : selectedId != null ? groupLoading : popularLoading
