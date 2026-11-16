@@ -15,6 +15,16 @@ type Props = {
 };
 
 const clamp = (v: number) => Math.max(0, Math.min(1, v));
+// Older highlight text contains emoji decorations. Keep the copy, use our own icon system.
+const cleanHighlight = (text: string) =>
+  text
+    .replace(/[0-9#*]\uFE0F?\u20E3/g, '')
+    .replace(
+      /[\p{Extended_Pictographic}\p{Regional_Indicator}\p{Emoji_Modifier}\uFE0F\u200D\u20E3]/gu,
+      '',
+    )
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
 
 /** One fixed public story layout; the old admin template selector doesn't control this page. */
 export default function SahneAboutPage({
@@ -43,7 +53,7 @@ export default function SahneAboutPage({
     .split(/\n\s*\n/)
     .map((p) => p.trim())
     .filter(Boolean);
-  const highlights = config.highlights.map((p) => p.trim()).filter(Boolean);
+  const highlights = config.highlights.map(cleanHighlight).filter(Boolean);
   const images = [
     ...new Set(
       [...photos, config.coverUrl].filter((src): src is string => !!src),
@@ -89,6 +99,10 @@ export default function SahneAboutPage({
     );
     const hero = host.querySelector<HTMLElement>('.sh-about__aperture');
     const ribbon = host.querySelector<HTMLElement>('.sh-about__ribbon');
+    const values = Array.from(
+      host.querySelectorAll<HTMLElement>('.sh-about__values li'),
+    );
+    const closing = host.querySelector<HTMLElement>('.sh-about__invitation');
     const paint = () => {
       frame = 0;
       const h = view.innerHeight;
@@ -106,23 +120,50 @@ export default function SahneAboutPage({
         const box = node.getBoundingClientRect();
         return clamp((h * 0.88 - box.top) / Math.max(1, box.height + h * 0.12));
       });
-      const offsets = photos.map((node) => {
+      const photoPositions = photos.map((node) => {
         const box = node.getBoundingClientRect();
-        return Math.max(
-          -1,
-          Math.min(1, (h / 2 - box.top - box.height / 2) / h),
-        );
+        return {
+          drift: Math.max(
+            -1,
+            Math.min(1, (h / 2 - box.top - box.height / 2) / h),
+          ),
+          reveal: clamp(
+            (h * 0.95 - box.top) / Math.max(1, Math.min(box.height, h) * 0.75),
+          ),
+        };
       });
+      const entries = values.map((node) => {
+        const box = node.getBoundingClientRect();
+        return clamp((h * 0.9 - box.top) / Math.max(1, box.height + h * 0.2));
+      });
+      const closingBox = closing?.getBoundingClientRect();
+      const closingProgress = closingBox
+        ? clamp(
+            (h * 0.92 - closingBox.top) /
+              Math.max(1, Math.min(closingBox.height, h) * 0.7),
+          )
+        : 1;
       host.style.setProperty('--about-progress', String(progress));
       hero?.style.setProperty('--open', open.toFixed(4));
       readNodes.forEach((node, i) =>
         node.style.setProperty('--read', String(reads[i])),
       );
-      photos.forEach((node, i) =>
-        node.style.setProperty('--drift', `${offsets[i] * 22}px`),
+      photos.forEach((node, i) => {
+        node.style.setProperty(
+          '--drift',
+          `${photoPositions[i].drift * (view.innerWidth < 768 ? 18 : 42)}px`,
+        );
+        node.style.setProperty(
+          '--photo-open',
+          String(photoPositions[i].reveal),
+        );
+      });
+      values.forEach((node, i) =>
+        node.style.setProperty('--entry', String(entries[i])),
       );
+      closing?.style.setProperty('--closing', String(closingProgress));
       if (ribbon)
-        ribbon.style.setProperty('--travel', `${(progress - 0.5) * -14}%`);
+        ribbon.style.setProperty('--travel', `${(progress - 0.5) * -20}%`);
     };
     const schedule = () => {
       if (!frame) frame = view.requestAnimationFrame(paint);

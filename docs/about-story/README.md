@@ -19,3 +19,10 @@
 - Canlı API/gerçek işletme verileri, fiziksel telefon, Zen ve iOS Safari denenmedi. Görüntüler test API'sindeki örnek içerik ve yerel fotoğraflarla alındı. Betikler Git dışında frontend/node_modules/.qr-check/about-page.mjs ve about-edge.mjs içinde. Bu iş için yalnızca frontend deploy yeterlidir; admin/backend/migration değişikliği yok.
 
 [Açılış / web](opening-web.png) · [Hikâye](story-web.png) · [Fotoğraf bölümü](details-web.png) · [Açılış / mobil](opening-mobile.png) · [Kapanış / mobil](closing-mobile.png)
+
+## İkinci düzenleme — emoji temizliği ve daha belirgin kaydırma
+
+- Eski kayıtlı vurgu cümlelerindeki emoji süsleri müşteri görünümünde temizlenir; metin, numaralar ve mevcut çizgi/ok simgeleri korunur. Emoji içeren veri veritabanında değiştirilmez; temizlendikten sonra boş kalan satırlar gösterilmez.
+- Kapak artık genişlerken hafifçe uzaklaşır, fotoğraf açıklaması açılır. Galeri fotoğrafları scroll ile açılan bir maskeye ve daha belirgin, mobilde sınırlı paralaksa sahip. Vurgu satırlarının çizgileri kaydırmayla uzar, metinleri yerleşir; kapanış başlığı ve logo da kaydırma ilerlemesini izler. Sabit zamanlı döngü veya scroll kilidi eklenmedi.
+- Üretim derlemesi geçti (mevcut büyük paket uyarısı sürer). Chrome/taklit API'de 1440/390 px: düz/ZWJ emoji temizliği ve metnin korunması, fotoğraf maskesinin ilerleyip geri dönmesi, vurgu çizgisi, çalışma sırasında hareket azaltmaya geçiş, yatay taşma ve menüye dönüş geçti. Yerel betik frontend/node_modules/.qr-check/about-motion.mjs; canlı/fiziksel cihaz denenmedi.
+- [Temiz vurgu satırları / web](values-clean-web.png) · [Mobil](values-clean-mobile.png). Yalnızca frontend deploy yeterli.
