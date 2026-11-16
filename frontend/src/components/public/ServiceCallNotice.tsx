@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowUpRight,
   Bell,
@@ -7,12 +7,13 @@ import {
   Gamepad2,
   HandHelping,
   X,
-} from 'lucide-react';
+  Wind,
+} from "lucide-react";
 import {
   SERVICE_CALL_CONFIRMED_EVENT,
   type ServiceCallReceipt,
-} from '@/lib/serviceCallFeedback';
-import './service-call-notice.css';
+} from "@/lib/serviceCallFeedback";
+import "./service-call-notice.css";
 
 const VISIBLE_MS = 6500;
 const EXIT_MS = 320;
@@ -45,12 +46,12 @@ export default function ServiceCallNotice({
   useEffect(() => {
     const confirmed = (event: Event) => {
       const detail = (event as CustomEvent<ServiceCallReceipt>).detail;
-      if (!detail || typeof detail.kind !== 'string') return;
+      if (!detail || typeof detail.kind !== "string") return;
       priorFocus.current = document.activeElement as HTMLElement | null;
-      let lang = detail.lang || 'tr';
+      let lang = detail.lang || "tr";
       if (!detail.lang) {
         try {
-          lang = localStorage.getItem('menu_lang') || 'tr';
+          lang = localStorage.getItem("menu_lang") || "tr";
         } catch {
           /* Use Turkish. */
         }
@@ -82,35 +83,41 @@ export default function ServiceCallNotice({
   }, [visible, notice]);
 
   if (!notice) return null;
-  const en = notice.lang?.split('-')[0] !== 'tr';
+  const en = notice.lang?.split("-")[0] !== "tr";
   const Icon =
-    notice.kind === 'waiter'
+    notice.kind === "waiter"
       ? HandHelping
-      : notice.kind === 'valet'
+      : notice.kind === "valet"
         ? CarFront
-        : Bell;
+        : notice.kind === "hookah"
+          ? Wind
+          : Bell;
   const title = notice.duplicate
     ? en
-      ? 'Your request is already sent'
-      : 'Çağrın zaten iletildi'
-    : notice.kind === 'waiter'
+      ? "Your request is already sent"
+      : "Çağrın zaten iletildi"
+    : notice.kind === "waiter"
       ? en
-        ? 'Waiter called'
-        : 'Garson çağrıldı'
-      : notice.kind === 'valet'
+        ? "Waiter called"
+        : "Garson çağrıldı"
+      : notice.kind === "valet"
         ? en
-          ? 'Valet called'
-          : 'Vale çağrıldı'
-        : en
-          ? 'Request sent'
-          : 'Çağrın iletildi';
+          ? "Valet called"
+          : "Vale çağrıldı"
+        : notice.kind === "hookah"
+          ? en
+            ? "Hookah attendant called"
+            : "Nargileci çağrıldı"
+          : en
+            ? "Request sent"
+            : "Çağrın iletildi";
 
   return createPortal(
     <div className="service-notice-host">
       <section
         key={notice.sequence}
         ref={root}
-        className={`service-notice ${visible ? 'is-visible' : 'is-leaving'} ${settled ? 'is-settled' : ''}`}
+        className={`service-notice ${visible ? "is-visible" : "is-leaving"} ${settled ? "is-settled" : ""}`}
         inert={!visible}
         onPointerEnter={() => setPaused(true)}
         onPointerLeave={() =>
@@ -154,10 +161,10 @@ export default function ServiceCallNotice({
         >
           <div className="service-notice__eyebrow">
             <span className="service-notice__dot" />
-            {en ? 'REQUEST RECEIVED' : 'ÇAĞRIN ALINDI'}
+            {en ? "REQUEST RECEIVED" : "ÇAĞRIN ALINDI"}
             {notice.tableNumber && (
               <span className="service-notice__table">
-                {en ? 'Table' : 'Masa'} {notice.tableNumber}
+                {en ? "Table" : "Masa"} {notice.tableNumber}
               </span>
             )}
           </div>
@@ -165,24 +172,24 @@ export default function ServiceCallNotice({
           <p>
             {notice.duplicate
               ? en
-                ? 'The team already has your request.'
-                : 'Talebin ekibe daha önce ulaştı.'
+                ? "The team already has your request."
+                : "Talebin ekibe daha önce ulaştı."
               : en
-                ? 'Your request has been sent to the team.'
-                : 'Talebin ekibe başarıyla iletildi.'}
+                ? "Your request has been sent to the team."
+                : "Talebin ekibe başarıyla iletildi."}
           </p>
         </div>
         <button
           type="button"
           className="service-notice__close"
-          aria-label={en ? 'Dismiss notification' : 'Bildirimi kapat'}
+          aria-label={en ? "Dismiss notification" : "Bildirimi kapat"}
           onClick={dismiss}
         >
           <X size={18} />
         </button>
-        {settled && onGames && notice.kind === 'waiter' && (
+        {settled && onGames && notice.kind === "waiter" && (
           <div className="service-notice__after">
-            <span>{en ? 'While you wait…' : 'Beklerken küçük bir mola…'}</span>
+            <span>{en ? "While you wait…" : "Beklerken küçük bir mola…"}</span>
             <button
               type="button"
               onClick={() => {
@@ -191,7 +198,7 @@ export default function ServiceCallNotice({
               }}
             >
               <Gamepad2 size={17} />
-              {en ? 'Explore games' : 'Oyunlara göz at'}
+              {en ? "Explore games" : "Oyunlara göz at"}
               <ArrowUpRight size={17} />
             </button>
           </div>

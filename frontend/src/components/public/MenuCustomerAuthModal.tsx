@@ -13,6 +13,8 @@ export default function MenuCustomerAuthModal(props: CustomerAccountProps) {
     <CustomerSignIn
       onClose={props.onClose}
       restaurantName={props.restaurantName}
+      logoUrl={props.logoUrl}
+      photos={props.photos}
       lang={props.lang}
     />
   );

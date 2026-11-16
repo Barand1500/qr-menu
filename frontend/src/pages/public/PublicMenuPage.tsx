@@ -469,6 +469,17 @@ function PublicMenuPageInner({
 
   if (!menu) return null;
 
+  // Business photos for the customer sign-in screen: showcase first, then categories, then popular dishes.
+  const signInPhotos = [
+    ...new Set(
+      [
+        ...(menu.showcase || []).map((item) => item.imageUrl),
+        ...menu.groups.map((group) => group.imageUrl),
+        ...popularProducts.map((product) => product.imageUrl),
+      ].filter((src): src is string => Boolean(src))
+    ),
+  ].slice(0, 3);
+
   const allergyCopy = preferenceUi(lang);
   const menuTheme = menu.theme || 'standart';
   const isSofra = menuTheme === 'sofra';
@@ -927,6 +938,8 @@ function PublicMenuPageInner({
             onClose={() => setCustomerAuthOpen(false)}
             restaurantId={menu.restaurant.id}
             restaurantName={menu.restaurant.name}
+            logoUrl={menu.restaurant.logoUrl}
+            photos={signInPhotos}
             lang={lang}
           />
         </div>
@@ -1086,6 +1099,8 @@ function PublicMenuPageInner({
             onClose={() => setCustomerAuthOpen(false)}
             restaurantId={menu.restaurant.id}
             restaurantName={menu.restaurant.name}
+            logoUrl={menu.restaurant.logoUrl}
+            photos={signInPhotos}
             lang={lang}
           />
         ) : null}
@@ -1302,6 +1317,8 @@ function PublicMenuPageInner({
           onClose={() => setCustomerAuthOpen(false)}
           restaurantId={menu.restaurant.id}
           restaurantName={menu.restaurant.name}
+          logoUrl={menu.restaurant.logoUrl}
+          photos={signInPhotos}
           lang={lang}
         />
       ) : null}

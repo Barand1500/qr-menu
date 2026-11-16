@@ -48,6 +48,9 @@ export type CustomerAccountProps = {
   onClose: () => void;
   restaurantId?: number | null;
   restaurantName?: string;
+  logoUrl?: string | null;
+  /** Business photos shown on the sign-in screen. */
+  photos?: string[];
   lang?: string;
 };
 

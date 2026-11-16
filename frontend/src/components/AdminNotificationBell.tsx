@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, HandHelping, KeyRound, Receipt, Trash2, Volume2, VolumeX, X } from 'lucide-react';
+import { Bell, CarFront, Wind, HandHelping, KeyRound, Receipt, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { api, formatMoney } from '@/lib/api';
 import { playAdminNotificationSound } from '@/lib/notificationSound';
 import { formatTableServiceLabel } from '@/lib/tableContext';
@@ -44,11 +44,15 @@ type FeedItem =
   | { kind: 'code'; sortAt: number; code: PendingCodeRow; key: string };
 
 function typeLabel(type: string, hasOrder: boolean) {
+  if (type === 'valet') return 'Vale çağrıldı';
+  if (type === 'hookah') return 'Nargileci çağrıldı';
   if (hasOrder) return 'Sipariş + garson';
   return type === 'bill' ? 'Hesap istendi' : 'Garson çağrıldı';
 }
 
 function typeIcon(type: string) {
+  if (type === 'valet') return CarFront;
+  if (type === 'hookah') return Wind;
   return type === 'bill' ? Receipt : HandHelping;
 }
 

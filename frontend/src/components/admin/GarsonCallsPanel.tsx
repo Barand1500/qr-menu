@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BellOff,
+  CarFront,
+  Wind,
   CheckCheck,
   ChevronLeft,
   ChevronRight,
@@ -118,6 +120,8 @@ function formatDuration(openedAt: string | null, now: number) {
 
 function typeLabel(type: string, hasOrder: boolean) {
   if (type === 'bill') return 'Hesap';
+  if (type === 'valet') return 'Vale';
+  if (type === 'hookah') return 'Nargileci';
   if (hasOrder) return 'Sipariş + garson';
   return 'Garson';
 }
@@ -324,7 +328,7 @@ export default function GarsonCallsPanel({
   function renderCallItem(item: GarsonCallRow, allowRead: boolean) {
     const order = parseOrderJson(item.orderJson);
     const note = (item.note || order?.note || '').trim();
-    const Icon = item.type === 'bill' ? Receipt : HandHelping;
+    const Icon = item.type === 'bill' ? Receipt : item.type === 'valet' ? CarFront : item.type === 'hookah' ? Wind : HandHelping;
     const focused = focusCallId === item.id;
     const showUnread = allowRead && !item.isRead;
     return (

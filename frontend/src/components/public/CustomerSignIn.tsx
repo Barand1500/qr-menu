@@ -1,4 +1,11 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
@@ -8,12 +15,12 @@ import {
   EyeOff,
   LockKeyhole,
   Mail,
-  QrCode,
   ShieldCheck,
-  Sparkles,
+  TriangleAlert,
   Utensils,
   X,
 } from 'lucide-react';
+import { imageUrl } from '@/lib/api';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import { useSheetFocus } from './sofra/SofraSheet';
 import {
@@ -28,10 +35,15 @@ type Step = 'options' | 'email' | 'password' | 'code' | 'create';
 export default function CustomerSignIn({
   onClose,
   restaurantName,
+  logoUrl,
+  photos = [],
   lang = 'tr',
 }: {
   onClose: () => void;
   restaurantName?: string;
+  logoUrl?: string | null;
+  /** The business's own photos (up to three), shown as a fan next to the form. */
+  photos?: string[];
   lang?: string;
 }) {
   const { login, completeEmail } = useCustomerAuth();
@@ -59,19 +71,35 @@ export default function CustomerSignIn({
   const normalizedEmail = email.trim().toLowerCase();
   const titles = en
     ? {
-        options: 'Good taste.\nGreat company.',
-        email: 'Let’s get acquainted.',
-        password: 'Welcome back.',
-        code: 'Check your inbox.',
-        create: 'Make it yours.',
+        options: 'Join the\ntable.',
+        email: 'What’s your\nemail?',
+        password: 'Welcome\nback.',
+        code: 'Check your\ninbox.',
+        create: 'Set your\npassword.',
       }
     : {
-        options: 'Bir hesap.\nDaha çok keyif.',
-        email: 'Seni tanıyalım.',
-        password: 'Tekrar hoş geldin.',
-        code: 'Gelen kutuna bak.',
-        create: 'Şifreni belirle.',
+        options: 'Sofraya\nkatıl.',
+        email: 'E-postan\nneydi?',
+        password: 'Tekrar\nhoş geldin.',
+        code: 'Gelen kutuna\nbak.',
+        create: 'Şifreni\nbelirle.',
       };
+  const eyebrows = en
+    ? {
+        options: 'SIGN IN OR JOIN',
+        email: 'EMAIL',
+        password: 'SIGN IN',
+        code: 'VERIFICATION',
+        create: purpose === 'reset' ? 'NEW PASSWORD' : 'LAST STEP',
+      }
+    : {
+        options: 'GİRİŞ YAP YA DA KAYIT OL',
+        email: 'E-POSTA',
+        password: 'GİRİŞ',
+        code: 'DOĞRULAMA',
+        create: purpose === 'reset' ? 'YENİ ŞİFRE' : 'SON ADIM',
+      };
+  const fan = photos.slice(0, 3).map((src) => imageUrl(src));
 
   useEffect(() => {
     input.current?.focus();
@@ -190,12 +218,12 @@ export default function CustomerSignIn({
   const caption =
     step === 'options'
       ? en
-        ? 'Your favourites and preferences. All at one table.'
-        : 'Favorilerin, tercihlerin, sana özel bir deneyim.'
+        ? 'Your favourites, preferences and allergy notes follow you to every table.'
+        : 'Favorilerin, tercihlerin ve alerji bilgin her sofrada seninle.'
       : step === 'email'
         ? en
-          ? 'One email. Your place at every table.'
-          : 'Bir e-posta ile tüm sofralarda yerin hazır.'
+          ? 'One email is all it takes. We’ll find your account or start one.'
+          : 'Tek bir e-posta yeter. Hesabını bulur ya da yenisini açarız.'
         : step === 'password'
           ? en
             ? 'Your account is ready. Enter your password.'
@@ -212,6 +240,48 @@ export default function CustomerSignIn({
                 ? 'One last step. Choose your password.'
                 : 'Son bir adım. Sana özel bir şifre seç.';
 
+  // The photo with the most weight sits in the middle of the fan.
+  const ordered = fan.length === 3 ? [fan[1], fan[0], fan[2]] : fan;
+  const cards = ordered.map((src, i) => {
+    const k = i - (ordered.length - 1) / 2;
+    return (
+      <figure
+        key={src}
+        style={
+          {
+            '--k': k,
+            '--ak': Math.abs(k),
+            '--i': i,
+            zIndex: 5 - Math.round(Math.abs(k) * 2),
+          } as CSSProperties
+        }
+      >
+        <img src={src} alt="" loading="eager" draggable={false} />
+      </figure>
+    );
+  });
+  const lines = titles[step].split('\n');
+  const label =
+    step === 'password'
+      ? en
+        ? 'Sign in'
+        : 'Giriş yap'
+      : step === 'code'
+        ? en
+          ? 'Verify code'
+          : 'Kodu doğrula'
+        : step === 'create'
+          ? purpose === 'reset'
+            ? en
+              ? 'Update password'
+              : 'Şifremi yenile'
+            : en
+              ? 'Create my account'
+              : 'Hesabımı oluştur'
+          : en
+            ? 'Continue'
+            : 'Devam et';
+
   return createPortal(
     <div
       className="customer-entry"
@@ -227,376 +297,361 @@ export default function CustomerSignIn({
         tabIndex={-1}
       />
       <section className="customer-entry__panel" ref={panel} tabIndex={-1}>
-        <button
-          type="button"
-          className="customer-entry__close"
-          onClick={onClose}
-          aria-label={en ? 'Close' : 'Kapat'}
-        >
-          <X size={22} />
-        </button>
         <aside className="customer-entry__invitation" aria-hidden="true">
-          <span className="customer-entry__brand">
-            <Utensils size={19} />
-            {restaurantName || 'Menü QR'}
-          </span>
-          <div className="customer-entry__welcome">
-            <span>
-              {en ? 'YOUR PLACE AT THE TABLE' : 'BU SOFRADA YERİN VAR'}
-            </span>
-            <p>
-              {en ? (
-                <>
-                  A little more
-                  <br />
-                  <i>you.</i>
-                </>
-              ) : (
-                <>
-                  Biraz daha
-                  <br />
-                  <i>sen.</i>
-                </>
-              )}
-            </p>
-          </div>
-          <div className="customer-entry__pass">
-            <span className="customer-entry__pass-notch" />
-            <div className="customer-entry__pass-top">
-              <Utensils size={23} />
-              <Sparkles size={22} />
+          <i className="customer-entry__glow" />
+          <i className="customer-entry__glow customer-entry__glow--b" />
+          {cards.length ? (
+            <div className="customer-entry__fan" data-count={cards.length}>
+              {cards}
             </div>
-            <small>{en ? 'YOUR MENU ACCOUNT' : 'SANA ÖZEL MENÜ HESABI'}</small>
-            <strong>
-              {en ? 'Welcome to\nthe table.' : 'Sofraya\nhoş geldin.'}
-            </strong>
-            <div className="customer-entry__pass-bottom">
+          ) : (
+            <div className="customer-entry__ghost">
               <span>
-                MENU CLUB
-                <br />
-                <b>01 / ∞</b>
+                {Array.from(
+                  { length: 4 },
+                  () => `${restaurantName || 'Menü QR'} ✦`,
+                ).join(' ')}
               </span>
-              <QrCode size={48} />
             </div>
-          </div>
-          <span className="customer-entry__invitation-foot">
+          )}
+          <p className="customer-entry__invitation-foot">
             {en
               ? 'Good moments start at the table.'
               : 'Güzel anlar sofrada başlar.'}
-          </span>
+          </p>
         </aside>
         <div className="customer-entry__content">
-          <header className="customer-entry__mobile-brand">
-            <Utensils size={19} />
-            <span>{restaurantName || 'Menü QR'}</span>
-          </header>
-          <div key={step} className="customer-entry__step">
-            {step !== 'options' && (
-              <button
-                type="button"
-                className="customer-entry__back"
-                onClick={back}
-                disabled={busy}
-              >
-                <ArrowLeft size={17} />
-                {en ? 'Back' : 'Geri'}
-              </button>
-            )}
-            <span className="customer-entry__eyebrow">
-              {step === 'options'
-                ? en
-                  ? 'YOUR MENU ACCOUNT'
-                  : 'MENÜ HESABIN'
-                : step === 'create'
-                  ? en
-                    ? 'ALMOST THERE'
-                    : 'AZ KALDI'
-                  : en
-                    ? 'A SMALL STEP'
-                    : 'KÜÇÜK BİR ADIM'}
+          <header className="customer-entry__head">
+            <span className="customer-entry__badge">
+              {logoUrl ? (
+                <img src={imageUrl(logoUrl)} alt="" />
+              ) : (
+                <Utensils size={21} />
+              )}
             </span>
-            <h2 id={id}>{titles[step]}</h2>
-            <p className="customer-entry__caption">{caption}</p>
-            {step !== 'options' && step !== 'email' && (
-              <button
-                type="button"
-                className="customer-entry__email"
-                onClick={back}
-                disabled={busy}
-              >
-                <Mail size={15} />
-                <span>{normalizedEmail}</span>
-                <ArrowLeft size={13} />
-              </button>
-            )}
-            {error && (
-              <p className="customer-entry__error" role="alert">
-                {error}
-              </p>
-            )}
-            {message && (
-              <p className="customer-entry__success" role="status">
-                <Check size={17} />
-                {message}
-              </p>
-            )}
-            {step === 'options' ? (
-              <div className="customer-entry__options">
+            <span className="customer-entry__head-copy">
+              <small>{en ? 'MENU ACCOUNT' : 'MENÜ HESABI'}</small>
+              <strong>{restaurantName || 'Menü QR'}</strong>
+            </span>
+            <button
+              type="button"
+              className="customer-entry__close"
+              onClick={onClose}
+              aria-label={en ? 'Close' : 'Kapat'}
+            >
+              <X size={22} />
+            </button>
+          </header>
+          <div className="customer-entry__scroll">
+            <div key={step} className="customer-entry__step">
+              {step === 'options' && cards.length > 0 && (
+                <div className="customer-entry__stack" aria-hidden="true">
+                  {cards}
+                </div>
+              )}
+              {step !== 'options' && (
                 <button
                   type="button"
-                  className="customer-entry__google"
-                  disabled
-                  aria-describedby={`${id}-google`}
+                  className="customer-entry__back"
+                  onClick={back}
+                  disabled={busy}
                 >
-                  <span className="customer-entry__google-mark">G</span>
-                  {en ? 'Continue with Google' : 'Google ile Devam Et'}
-                  <small>{en ? 'Soon' : 'Yakında'}</small>
+                  <ArrowLeft size={17} />
+                  {en ? 'Back' : 'Geri'}
                 </button>
-                <p id={`${id}-google`} className="customer-entry__google-note">
-                  {en
-                    ? 'Google sign-in is not enabled yet.'
-                    : 'Google ile giriş şimdilik kapalı.'}
+              )}
+              <span className="customer-entry__eyebrow">{eyebrows[step]}</span>
+              <h2 id={id} aria-label={lines.join(' ')}>
+                {lines.map((line, i) => (
+                  <span className="customer-entry__line" key={i} aria-hidden="true">
+                    <span
+                      className={i === lines.length - 1 ? 'is-accent' : undefined}
+                      style={{ '--i': i } as CSSProperties}
+                    >
+                      {line}
+                    </span>
+                  </span>
+                ))}
+              </h2>
+              <p className="customer-entry__caption">{caption}</p>
+              {step !== 'options' && step !== 'email' && (
+                <button
+                  type="button"
+                  className="customer-entry__email"
+                  onClick={back}
+                  disabled={busy}
+                >
+                  <Mail size={15} />
+                  <span>{normalizedEmail}</span>
+                  <ArrowLeft size={13} />
+                </button>
+              )}
+              {error && (
+                <p className="customer-entry__error" role="alert">
+                  <TriangleAlert size={17} />
+                  <span>{error}</span>
                 </p>
-                <span className="customer-entry__or">{en ? 'or' : 'veya'}</span>
-                <button
-                  type="button"
-                  className="customer-entry__primary"
-                  onClick={() => setStep('email')}
+              )}
+              {message && (
+                <p className="customer-entry__success" role="status">
+                  <Check size={17} />
+                  <span>{message}</span>
+                </p>
+              )}
+              {step === 'options' ? (
+                <div className="customer-entry__options">
+                  <button
+                    type="button"
+                    className="customer-entry__primary"
+                    onClick={() => setStep('email')}
+                  >
+                    <span className="customer-entry__label">
+                      <Mail size={19} />
+                      {en ? 'Continue with email' : 'E-posta ile Devam Et'}
+                    </span>
+                    <span className="customer-entry__orb">
+                      <ArrowRight size={20} />
+                    </span>
+                  </button>
+                  <span className="customer-entry__or">{en ? 'or' : 'veya'}</span>
+                  <button
+                    type="button"
+                    className="customer-entry__google"
+                    disabled
+                    aria-describedby={`${id}-google`}
+                  >
+                    <span className="customer-entry__google-mark">G</span>
+                    {en ? 'Continue with Google' : 'Google ile Devam Et'}
+                    <small>{en ? 'Soon' : 'Yakında'}</small>
+                  </button>
+                  <p id={`${id}-google`} className="customer-entry__sr-only">
+                    {en
+                      ? 'Google sign-in is not enabled yet.'
+                      : 'Google ile giriş şimdilik kapalı.'}
+                  </p>
+                </div>
+              ) : (
+                <form
+                  onSubmit={(event) => void submit(event)}
+                  className="customer-entry__form"
                 >
-                  <Mail size={19} />
-                  {en ? 'Continue with email' : 'E-posta ile Devam Et'}
-                  <ArrowRight size={19} />
-                </button>
-              </div>
-            ) : (
-              <form
-                onSubmit={(event) => void submit(event)}
-                className="customer-entry__form"
-              >
-                {step === 'email' && (
-                  <label className="customer-entry__field">
-                    <span>{en ? 'Email address' : 'E-posta adresin'}</span>
-                    <input
-                      ref={input}
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      autoComplete="email"
-                      inputMode="email"
-                      autoCapitalize="none"
-                      spellCheck={false}
-                      maxLength={150}
-                      placeholder="sen@ornek.com"
-                      required
-                      disabled={busy}
-                    />
-                  </label>
-                )}
-                {step === 'code' && (
-                  <>
-                    <label className="customer-entry__code">
-                      <span className="customer-entry__sr-only">
-                        {en
-                          ? '6-digit verification code'
-                          : '6 haneli doğrulama kodu'}
-                      </span>
+                  {step === 'email' && (
+                    <label className="customer-entry__field">
+                      <span>{en ? 'Email address' : 'E-posta adresin'}</span>
                       <input
                         ref={input}
-                        value={code}
-                        onChange={(e) =>
-                          setCode(e.target.value.replace(/\D/g, '').slice(0, 6))
-                        }
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        onPaste={(event) => {
-                          event.preventDefault();
-                          setCode(
-                            event.clipboardData
-                              .getData('text')
-                              .slice(0, 128)
-                              .replace(/\D/g, '')
-                              .slice(0, 6),
-                          );
-                        }}
-                        pattern="[0-9]{6}"
-                        maxLength={6}
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        autoComplete="email"
+                        inputMode="email"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        maxLength={150}
+                        placeholder="sen@ornek.com"
                         required
                         disabled={busy}
                       />
-                      <span
-                        className="customer-entry__digits"
-                        aria-hidden="true"
-                      >
-                        {Array.from({ length: 6 }, (_, i) => (
-                          <span
-                            key={i}
-                            className={code.length === i ? 'is-current' : ''}
-                          >
-                            {code[i] || ''}
-                          </span>
-                        ))}
-                      </span>
                     </label>
-                    <button
-                      type="button"
-                      className="customer-entry__resend"
-                      disabled={busy || remaining > 0}
-                      onClick={() =>
-                        void run(async () =>
-                          receive(
-                            await customerEmailRequest<EmailChallenge>('code', {
-                              email: normalizedEmail,
-                              purpose,
-                            }),
-                            purpose,
-                          ),
-                        )
-                      }
-                    >
-                      {remaining > 0
-                        ? en
-                          ? `Resend in ${remaining}s`
-                          : `${remaining} sn sonra yeniden gönder`
-                        : en
-                          ? 'Send a new code'
-                          : 'Kodu yeniden gönder'}
-                    </button>
-                  </>
-                )}
-                {(step === 'password' || step === 'create') && (
-                  <>
-                    <label className="customer-entry__field">
-                      <span>
-                        {step === 'create'
-                          ? en
-                            ? 'Your new password'
-                            : 'Yeni şifren'
-                          : en
-                            ? 'Password'
-                            : 'Şifren'}
-                      </span>
-                      <span className="customer-entry__password">
+                  )}
+                  {step === 'code' && (
+                    <>
+                      <label className="customer-entry__code">
+                        <span className="customer-entry__sr-only">
+                          {en
+                            ? '6-digit verification code'
+                            : '6 haneli doğrulama kodu'}
+                        </span>
                         <input
                           ref={input}
-                          type={showPassword ? 'text' : 'password'}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          autoComplete={
-                            step === 'create'
-                              ? 'new-password'
-                              : 'current-password'
+                          value={code}
+                          onChange={(e) =>
+                            setCode(e.target.value.replace(/\D/g, '').slice(0, 6))
                           }
-                          minLength={step === 'create' ? 8 : undefined}
-                          maxLength={72}
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          onPaste={(event) => {
+                            event.preventDefault();
+                            setCode(
+                              event.clipboardData
+                                .getData('text')
+                                .slice(0, 128)
+                                .replace(/\D/g, '')
+                                .slice(0, 6),
+                            );
+                          }}
+                          pattern="[0-9]{6}"
+                          maxLength={6}
                           required
                           disabled={busy}
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((v) => !v)}
-                          aria-label={
-                            showPassword
-                              ? en
-                                ? 'Hide password'
-                                : 'Şifreyi gizle'
-                              : en
-                                ? 'Show password'
-                                : 'Şifreyi göster'
-                          }
+                        <span
+                          className="customer-entry__digits"
+                          aria-hidden="true"
                         >
-                          {showPassword ? (
-                            <EyeOff size={19} />
-                          ) : (
-                            <Eye size={19} />
-                          )}
-                        </button>
-                      </span>
-                    </label>
-                    {step === 'create' && (
-                      <p className="customer-entry__password-hint">
-                        <LockKeyhole size={13} />
-                        {en ? 'At least 8 characters.' : 'En az 8 karakter.'}
-                      </p>
-                    )}
-                    {step === 'password' && (
+                          {Array.from({ length: 6 }, (_, i) => (
+                            <span
+                              key={i}
+                              className={
+                                code.length === i
+                                  ? 'is-current'
+                                  : code[i]
+                                    ? 'is-filled'
+                                    : ''
+                              }
+                            >
+                              {code[i] || ''}
+                            </span>
+                          ))}
+                        </span>
+                      </label>
                       <button
                         type="button"
-                        className="customer-entry__forgot"
-                        disabled={busy}
+                        className="customer-entry__resend"
+                        disabled={busy || remaining > 0}
                         onClick={() =>
                           void run(async () =>
                             receive(
-                              await customerEmailRequest<EmailChallenge>(
-                                'code',
-                                { email: normalizedEmail, purpose: 'reset' },
-                              ),
-                              'reset',
+                              await customerEmailRequest<EmailChallenge>('code', {
+                                email: normalizedEmail,
+                                purpose,
+                              }),
+                              purpose,
                             ),
                           )
                         }
                       >
-                        {en ? 'Forgot password?' : 'Şifremi unuttum'}
+                        {remaining > 0
+                          ? en
+                            ? `Resend in ${remaining}s`
+                            : `${remaining} sn sonra yeniden gönder`
+                          : en
+                            ? 'Send a new code'
+                            : 'Kodu yeniden gönder'}
                       </button>
-                    )}
-                    <label className="customer-entry__check">
-                      <input
-                        type="checkbox"
-                        checked={remember}
-                        onChange={(e) => setRemember(e.target.checked)}
-                        disabled={busy}
-                      />
-                      <span>{en ? 'Remember me' : 'Beni hatırla'}</span>
-                    </label>
-                    {step === 'create' && purpose === 'register' && (
-                      <label className="customer-entry__check customer-entry__consent">
-                        <input
-                          type="checkbox"
-                          checked={consent}
-                          onChange={(e) => setConsent(e.target.checked)}
-                          required
-                          disabled={busy}
-                        />
+                    </>
+                  )}
+                  {(step === 'password' || step === 'create') && (
+                    <>
+                      <label className="customer-entry__field">
                         <span>
-                          {en
-                            ? 'I consent to processing my personal data, including allergy and preference data, under KVKK.'
-                            : 'Kişisel verilerimin (alerji/tercih dahil) işlenmesini KVKK kapsamında kabul ediyorum.'}
+                          {step === 'create'
+                            ? en
+                              ? 'Your new password'
+                              : 'Yeni şifren'
+                            : en
+                              ? 'Password'
+                              : 'Şifren'}
+                        </span>
+                        <span className="customer-entry__password">
+                          <input
+                            ref={input}
+                            type={showPassword ? 'text' : 'password'}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            autoComplete={
+                              step === 'create'
+                                ? 'new-password'
+                                : 'current-password'
+                            }
+                            minLength={step === 'create' ? 8 : undefined}
+                            maxLength={72}
+                            required
+                            disabled={busy}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((v) => !v)}
+                            aria-label={
+                              showPassword
+                                ? en
+                                  ? 'Hide password'
+                                  : 'Şifreyi gizle'
+                                : en
+                                  ? 'Show password'
+                                  : 'Şifreyi göster'
+                            }
+                          >
+                            {showPassword ? (
+                              <EyeOff size={19} />
+                            ) : (
+                              <Eye size={19} />
+                            )}
+                          </button>
                         </span>
                       </label>
-                    )}
-                  </>
-                )}
-                <button
-                  type="submit"
-                  className="customer-entry__primary"
-                  disabled={busy || (step === 'code' && code.length !== 6)}
-                >
-                  {busy
-                    ? en
-                      ? 'One moment…'
-                      : 'Bir saniye…'
-                    : step === 'password'
-                      ? en
-                        ? 'Sign in'
-                        : 'Giriş yap'
-                      : step === 'code'
-                        ? en
-                          ? 'Verify code'
-                          : 'Kodu doğrula'
-                        : step === 'create'
-                          ? purpose === 'reset'
-                            ? en
-                              ? 'Update password'
-                              : 'Şifremi yenile'
-                            : en
-                              ? 'Create my account'
-                              : 'Hesabımı oluştur'
-                          : en
-                            ? 'Continue'
-                            : 'Devam et'}
-                  <ArrowRight size={19} />
-                </button>
-              </form>
-            )}
+                      {step === 'create' && (
+                        <p className="customer-entry__password-hint">
+                          <LockKeyhole size={13} />
+                          {en ? 'At least 8 characters.' : 'En az 8 karakter.'}
+                        </p>
+                      )}
+                      {step === 'password' && (
+                        <button
+                          type="button"
+                          className="customer-entry__forgot"
+                          disabled={busy}
+                          onClick={() =>
+                            void run(async () =>
+                              receive(
+                                await customerEmailRequest<EmailChallenge>(
+                                  'code',
+                                  { email: normalizedEmail, purpose: 'reset' },
+                                ),
+                                'reset',
+                              ),
+                            )
+                          }
+                        >
+                          {en ? 'Forgot password?' : 'Şifremi unuttum'}
+                        </button>
+                      )}
+                      <label className="customer-entry__check">
+                        <input
+                          type="checkbox"
+                          checked={remember}
+                          onChange={(e) => setRemember(e.target.checked)}
+                          disabled={busy}
+                        />
+                        <span>{en ? 'Remember me' : 'Beni hatırla'}</span>
+                      </label>
+                      {step === 'create' && purpose === 'register' && (
+                        <label className="customer-entry__check customer-entry__consent">
+                          <input
+                            type="checkbox"
+                            checked={consent}
+                            onChange={(e) => setConsent(e.target.checked)}
+                            required
+                            disabled={busy}
+                          />
+                          <span>
+                            {en
+                              ? 'I consent to processing my personal data, including allergy and preference data, under KVKK.'
+                              : 'Kişisel verilerimin (alerji/tercih dahil) işlenmesini KVKK kapsamında kabul ediyorum.'}
+                          </span>
+                        </label>
+                      )}
+                    </>
+                  )}
+                  <button
+                    type="submit"
+                    className="customer-entry__primary"
+                    disabled={busy || (step === 'code' && code.length !== 6)}
+                  >
+                    <span className="customer-entry__label">
+                      {busy ? (en ? 'One moment…' : 'Bir saniye…') : label}
+                    </span>
+                    <span className="customer-entry__orb">
+                      {busy ? (
+                        <span className="customer-entry__spinner" />
+                      ) : (
+                        <ArrowRight size={20} />
+                      )}
+                    </span>
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
           <footer className="customer-entry__footer">
             <ShieldCheck size={16} />

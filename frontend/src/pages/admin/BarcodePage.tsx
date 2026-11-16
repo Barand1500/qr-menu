@@ -721,7 +721,7 @@ export default function BarcodePage() {
                 role="status"
               >
                 <strong>
-                  {callHighlight.type === 'bill' ? 'Hesap istendi' : 'Garson çağrıldı'}
+                  {callHighlight.type === 'bill' ? 'Hesap istendi' : callHighlight.type === 'valet' ? 'Vale çağrıldı' : callHighlight.type === 'hookah' ? 'Nargileci çağrıldı' : 'Garson çağrıldı'}
                 </strong>
                 <span>Masa {callHighlight.masa}</span>
                 <button type="button" onClick={() => setCallHighlight(null)} aria-label="Kapat">

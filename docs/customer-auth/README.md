@@ -1,6 +1,17 @@
 # Müşteri girişi — 16 Kasım 2026
 
-Bu değişiklik müşteri hesabı içindir. Yönetim panelinin giriş ekranı, admin SMTP ayarları ve menü/karşılama tasarımları değiştirilmedi. Yeni giriş masaüstünde davetiye ve formdan oluşan iki bölümlü ekran, telefonda tam ekran kullanır; alttan açılan eski giriş/kayıt formu kaldırıldı. Profil ayrı MenuCustomerProfileModal bileşenine taşındı; mevcut QR, puan, tercih ve profil adımları korunur. Mobil Sahne başlığındaki profil düğmesi görünür yapıldı.
+Bu değişiklik müşteri hesabı içindir. Yönetim panelinin giriş ekranı, admin SMTP ayarları ve menü/karşılama tasarımları değiştirilmedi. Yeni giriş masaüstünde iki bölümlü ekran, telefonda tam ekran kullanır; alttan açılan eski giriş/kayıt formu kaldırıldı. Profil ayrı MenuCustomerProfileModal bileşenine taşındı; mevcut QR, puan, tercih ve profil adımları korunur. Mobil Sahne başlığındaki profil düğmesi görünür yapıldı.
+
+## Görünüm — 16 Kasım 2026 güncellemesi (Sahne dili)
+
+İlk görünüm (bilet kartı, yeşilimsi davetiye, "Biraz daha sen.") Sahne tasarımına uymadığı için baştan çizildi; akış, API ve güvenlik kuralları aynen korundu. Güncel görünüm `customer-sign-in.css` ve `CustomerSignIn.tsx` içindedir.
+
+- Aynı palet ve yazı dili: koyu zemin, turuncu→amber gradyan, Bricolage başlık, son satırı italik Instrument Serif ve gradyanlı. Başlık oyunlar penceresindeki gibi yuvarlak rozet + üst yazı + işletme adı + kapat düğmesiyle başlar.
+- Masaüstünde sol tarafta işletmenin kendi fotoğrafları (vitrin, kategori, popüler ürün sırasıyla en fazla üç) yelpaze olarak süzülür; karşılama ekranındaki yelpazeyle aynı dil. Fotoğraf yoksa işletme adından kayan hayalet yazı gösterilir. Telefonda başlığın üstünde üst üste binen küçük fotoğraf destesi vardır; kısa ekranlarda gizlenir.
+- Giriş seçenekleri: önce turuncu hap düğme (E-posta ile Devam Et), ardından devre dışı Google ve Yakında rozeti. Alanlar hap biçimli, odakta turuncu halka. Doğrulama kodu altı kutuda; dolan kutu turuncu parlar, sıradaki kutuda yanıp sönen imleç vardır. İşlem sürerken düğmedeki ok dönen göstergeye dönüşür. Hata ve başarı mesajları simgeli, renkli kutulardadır.
+- Başlıklar sade ve işleve dönük: "Sofraya katıl.", "E-postan neydi?", "Tekrar hoş geldin.", "Gelen kutuna bak.", "Şifreni belirle." Üst yazılar adımı söyler (GİRİŞ YAP YA DA KAYIT OL, E-POSTA, DOĞRULAMA, SON ADIM).
+- Hareket azaltma tercihinde animasyonlar kapalıdır. Uzun adımlarda içerik başlığın altında kalmadan kaydırılır.
+- Fotoğraf ve logo `PublicMenuPage` üzerinden isteğe bağlı `photos`/`logoUrl` ile gelir; eski çağrılar bozulmaz.
 
 ## Akış
 

@@ -103,7 +103,7 @@ export default function GarsonAppPage() {
       ? formatTableServiceLabel(focus.tableNumber, focus.groupSlug)
       : 'Masa';
     const kind =
-      focus?.type === 'bill' ? 'Hesap istedi' : focus?.orderJson ? 'Sipariş + garson' : 'Garson çağırdı';
+      focus?.type === 'bill' ? 'Hesap istedi' : focus?.type === 'valet' ? `Vale çağırdı · ${focus.note || ''}` : focus?.type === 'hookah' ? 'Nargileci çağırdı' : focus?.orderJson ? 'Sipariş + garson' : 'Garson çağırdı';
 
     playAdminNotificationSound();
     void showGarsonCallNotification({
