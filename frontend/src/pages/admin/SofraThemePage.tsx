@@ -6,6 +6,11 @@ import {
   Save,
   ImagePlus,
   RotateCcw,
+  BellRing,
+  UserRound,
+  Salad,
+  Lightbulb,
+  MessageCircleHeart,
 } from 'lucide-react';
 import { Button, Input, PageHeader, Spinner } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -20,15 +25,26 @@ import {
   SofraMenuView,
 } from '@/components/public/sofra/SofraCanvas';
 import SofraPreviewFrame from '@/components/admin/SofraPreviewFrame';
+import { useSofraEditorPreview } from '@/hooks/useSofraEditorPreview';
+import {
+  SahneLanguage,
+  SahneNavProvider,
+} from '@/components/public/sahne/shared';
+import SahneDock from '@/components/public/sahne/SahneDock';
+import MobileStoriesStrip from '@/components/public/MobileStoriesStrip';
 import './sofra-editor.css';
 
 type ImageField = 'welcomeImage' | 'menuImage';
 interface EditorData {
   config: SofraConfig;
   revision: string;
-  restaurant: { name: string; logoUrl?: string | null };
+  restaurant: { name: string; slug?: string; logoUrl?: string | null };
   languages: { code: string; name: string }[];
-  groups: { id: number; i18n: Record<string, { name?: string }> }[];
+  groups: {
+    id: number;
+    imageUrl?: string | null;
+    i18n: Record<string, { name?: string }>;
+  }[];
   products: {
     id: number;
     groupId: number;
@@ -55,6 +71,15 @@ export default function SofraThemePage() {
   const [stageHeight, setStageHeight] = useState(650);
   const [activeGroup, setActiveGroup] = useState<number | null>(null);
   const [previewSearch, setPreviewSearch] = useState('');
+  const [previewMusicOn, setPreviewMusicOn] = useState(false);
+  const phone = device === 'phone';
+  const preview = useSofraEditorPreview(
+    data?.restaurant.slug,
+    lang,
+    activeGroup,
+    previewSearch,
+    phone,
+  );
   const stageRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
   const imageFieldRef = useRef<ImageField>('welcomeImage');
@@ -265,6 +290,7 @@ export default function SofraThemePage() {
   const groups = data.groups.map((g) => ({
     id: g.id,
     name: g.i18n[lang]?.name || g.i18n.tr?.name || 'Grup',
+    imageUrl: phone ? g.imageUrl : undefined,
   }));
   const products = data.products.map((p) => ({
     id: p.id,
@@ -288,7 +314,9 @@ export default function SofraThemePage() {
             multiline: true,
           },
           { key: 'enterLabel', label: 'Menüye giriş düğmesi' },
-          { key: 'sealText', label: 'Dekoratif yazı' },
+          ...(!phone
+            ? [{ key: 'sealText' as const, label: 'Dekoratif yazı' }]
+            : []),
           { key: 'footerText', label: 'Alt yazı' },
         ]
       : [
@@ -307,14 +335,35 @@ export default function SofraThemePage() {
   );
   const editing = {
     onTextEdit: editText,
-    onImageEdit: chooseImage,
-    onBrandEdit: (value: string) =>
-      setDraft((prev) =>
-        value === (prev.brandName || data.restaurant.name)
-          ? prev
-          : { ...prev, brandName: value },
-      ),
+    onImageEdit: phone ? undefined : chooseImage,
+    onBrandEdit: phone
+      ? undefined
+      : (value: string) =>
+          setDraft((prev) =>
+            value === (prev.brandName || data.restaurant.name)
+              ? prev
+              : { ...prev, brandName: value },
+          ),
   };
+  const shownGroups = phone ? preview.menu?.groups || groups : groups;
+  const shownProducts = phone
+    ? previewSearch.trim() || activeGroup !== null
+      ? preview.content?.products || previewProducts
+      : preview.popular || previewProducts
+    : previewProducts;
+  const mediaPhotos = [
+    ...new Set(
+      [
+        ...(preview.menu?.showcase || []).map((item) => item.imageUrl),
+        ...(preview.popular || products).map((item) => item.imageUrl),
+        ...shownGroups.map((item) => item.imageUrl),
+      ].filter((src): src is string => !!src),
+    ),
+  ].slice(0, 9);
+  const hero =
+    preview.menu?.showcase?.find((item) => item.imageUrl)?.imageUrl ||
+    draft.welcomeImage;
+  const welcomePhotos = [...new Set([hero, ...mediaPhotos])].slice(0, 9);
   return (
     <div className="sofra-editor">
       <PageHeader
@@ -408,29 +457,141 @@ export default function SofraThemePage() {
           </div>
           <div className="sofra-editor-stage" ref={stageRef} inert={saving}>
             <SofraPreviewFrame width={width} height={height} scale={scale}>
-              {page === 'welcome' ? (
-                <SofraWelcomeView
-                  config={draft}
-                  restaurant={data.restaurant}
-                  lang={lang}
-                  languages={languages}
-                  tableLabel="Masa 08"
-                  {...editing}
-                />
-              ) : (
-                <SofraMenuView
-                  config={draft}
-                  restaurant={data.restaurant}
-                  lang={lang}
-                  groups={groups}
-                  products={previewProducts}
-                  activeGroup={activeGroup}
-                  onGroupChange={setActiveGroup}
-                  search={previewSearch}
-                  onSearchChange={setPreviewSearch}
-                  {...editing}
-                />
-              )}
+              <SahneNavProvider key={`${page}-${device}`}>
+                {page === 'welcome' ? (
+                  <SofraWelcomeView
+                    config={draft}
+                    restaurant={data.restaurant}
+                    lang={lang}
+                    languages={languages}
+                    tableLabel={phone ? undefined : 'Masa 08'}
+                    previewMedia={
+                      phone
+                        ? {
+                            hero,
+                            photos: welcomePhotos,
+                            names: shownGroups.map((g) => g.name),
+                          }
+                        : undefined
+                    }
+                    actions={
+                      phone
+                        ? [
+                            {
+                              id: 'prefs',
+                              icon: <Salad size={16} />,
+                              label:
+                                lang === 'en'
+                                  ? 'Dietary preferences'
+                                  : 'Beslenme tercihlerim',
+                              onClick: () => {},
+                            },
+                            {
+                              id: 'suggestion',
+                              icon: <Lightbulb size={16} />,
+                              label:
+                                lang === 'en'
+                                  ? 'Suggestion Box'
+                                  : 'Öneri Kutusu',
+                              onClick: () => {},
+                            },
+                            {
+                              id: 'complaint',
+                              icon: <MessageCircleHeart size={16} />,
+                              label:
+                                lang === 'en'
+                                  ? 'Complaint Box'
+                                  : 'Şikayet Kutusu',
+                              onClick: () => {},
+                            },
+                          ]
+                        : undefined
+                    }
+                    music={
+                      phone && preview.musicUrl
+                        ? {
+                            on: previewMusicOn,
+                            playing: previewMusicOn,
+                            label: previewMusicOn
+                              ? 'Müzik açık'
+                              : 'Müzik kapalı',
+                            onToggle: () =>
+                              setPreviewMusicOn((value) => !value),
+                          }
+                        : undefined
+                    }
+                    {...editing}
+                  />
+                ) : (
+                  <SofraMenuView
+                    config={draft}
+                    restaurant={data.restaurant}
+                    lang={lang}
+                    groups={shownGroups}
+                    products={shownProducts}
+                    subgroups={
+                      phone && !previewSearch.trim()
+                        ? preview.content?.children
+                        : undefined
+                    }
+                    loading={phone && preview.loading}
+                    error={phone ? preview.error : undefined}
+                    headerTools={
+                      phone ? (
+                        <>
+                          <SahneLanguage
+                            lang={lang}
+                            languages={languages}
+                            onChange={setLang}
+                          />
+                          <button
+                            className="public-menu-header__profile-btn"
+                            type="button"
+                            aria-label="Hesap önizlemesi"
+                          >
+                            <UserRound size={19} />
+                          </button>
+                        </>
+                      ) : undefined
+                    }
+                    stories={
+                      phone && preview.menu?.stories?.length ? (
+                        <div inert>
+                          <MobileStoriesStrip
+                            stories={preview.menu.stories}
+                            sahne
+                            seenScope={`editor-${data.restaurant.slug}`}
+                          />
+                        </div>
+                      ) : undefined
+                    }
+                    activeGroup={activeGroup}
+                    onGroupChange={(id) => {
+                      setPreviewSearch('');
+                      setActiveGroup(id);
+                    }}
+                    search={previewSearch}
+                    onSearchChange={setPreviewSearch}
+                    {...editing}
+                  />
+                )}
+                {phone && page === 'menu' && (
+                  <SahneDock
+                    lang={lang}
+                    onMenu={() => {}}
+                    service={
+                      <button
+                        type="button"
+                        className="table-service-header-btn"
+                        aria-label="Servis önizlemesi"
+                      >
+                        <BellRing size={16} />
+                        <span>Servis</span>
+                      </button>
+                    }
+                  />
+                )}
+              </SahneNavProvider>
             </SofraPreviewFrame>
           </div>
         </section>
@@ -471,16 +632,18 @@ export default function SofraThemePage() {
             ))}
           </div>
           <div className="sofra-editor-details">
-            <Input
-              label="Görünen işletme adı"
-              value={draft.brandName}
-              placeholder={data.restaurant.name}
-              disabled={saving}
-              maxLength={100}
-              onChange={(e) =>
-                setDraft((prev) => ({ ...prev, brandName: e.target.value }))
-              }
-            />
+            {!phone && (
+              <Input
+                label="Görünen işletme adı"
+                value={draft.brandName}
+                placeholder={data.restaurant.name}
+                disabled={saving}
+                maxLength={100}
+                onChange={(e) =>
+                  setDraft((prev) => ({ ...prev, brandName: e.target.value }))
+                }
+              />
+            )}
             <Input
               label="Çalışma saatleri (isteğe bağlı)"
               value={draft.openingHours}
@@ -490,20 +653,24 @@ export default function SofraThemePage() {
                 setDraft((prev) => ({ ...prev, openingHours: e.target.value }))
               }
             />
-            <button
-              onClick={() =>
-                chooseImage(page === 'welcome' ? 'welcomeImage' : 'menuImage')
-              }
-              disabled={saving}
-            >
-              <ImagePlus size={18} />
-              {page === 'welcome' ? 'Karşılama fotoğrafı' : 'Menü fotoğrafı'}
-            </button>
+            {!phone && (
+              <button
+                onClick={() =>
+                  chooseImage(page === 'welcome' ? 'welcomeImage' : 'menuImage')
+                }
+                disabled={saving}
+              >
+                <ImagePlus size={18} />
+                {page === 'welcome' ? 'Karşılama fotoğrafı' : 'Menü fotoğrafı'}
+              </button>
+            )}
           </div>
           <p className="sofra-editor-note">
             Değişiklikler Kaydet dediğinizde yayınlanır. Ürün adları ve fiyatlar
-            Ürünler sayfasından yönetilir. Önizlemedeki ürünler ve masa numarası
-            örnektir.
+            Ürünler sayfasından yönetilir.{' '}
+            {phone
+              ? 'Mobil fotoğraflar Vitrin Görselleri, Gruplar ve Ürünler alanlarından yönetilir. Önizlemedeki hesap, servis ve sepet işlemleri gönderilmez.'
+              : 'Önizlemedeki ürünler ve masa numarası örnektir.'}
           </p>
         </aside>
       </div>

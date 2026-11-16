@@ -1,10 +1,30 @@
-import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { ArrowRight, ArrowUpRight, ChevronUp, ChevronsRight, Clock, Pause, Play, VolumeX } from 'lucide-react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react';
+import {
+  ArrowRight,
+  ArrowUpRight,
+  ChevronUp,
+  ChevronsRight,
+  Clock,
+  Pause,
+  Play,
+  VolumeX,
+} from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { resolveMenuSlug } from '@/lib/menuPaths';
 import { sofraCopy } from '@/lib/sofra';
 import { SofraBrand, SofraText } from '../sofra/SofraElements';
-import type { SofraWelcomeAction, SofraWelcomeMusic, SofraWelcomeProps } from '../sofra/types';
+import type {
+  SofraWelcomeAction,
+  SofraWelcomeMusic,
+  SofraWelcomeProps,
+} from '../sofra/types';
 import {
   Magnetic,
   Marquee,
@@ -31,7 +51,11 @@ type Stage = 'load' | 'reveal' | 'done';
  * Collects the business's own photos once per page load: showcase first, then popular
  * products and categories. Everything is preloaded before the reveal, so nothing swaps mid-animation.
  */
-function useWelcomeMedia(welcomeImage: string, lang: string, editing: boolean): WelcomeMedia {
+function useWelcomeMedia(
+  welcomeImage: string,
+  lang: string,
+  editing: boolean,
+): WelcomeMedia {
   const [media, setMedia] = useState<WelcomeMedia>({
     ready: false,
     hero: welcomeImage,
@@ -46,7 +70,11 @@ function useWelcomeMedia(welcomeImage: string, lang: string, editing: boolean): 
       others: string[] = [],
       names: string[] = [];
     const clean = (urls: (string | null | undefined)[]) => [
-      ...new Set(urls.filter((url): url is string => Boolean(url?.trim())).map((url) => url.trim())),
+      ...new Set(
+        urls
+          .filter((url): url is string => Boolean(url?.trim()))
+          .map((url) => url.trim()),
+      ),
     ];
     const preload = (src: string) =>
       new Promise<string | null>((resolve) => {
@@ -69,16 +97,23 @@ function useWelcomeMedia(welcomeImage: string, lang: string, editing: boolean): 
       finished = true;
       clearTimeout(deadline);
       const hero = showcase[0] || welcomeImage;
-      const pool = clean([...showcase.slice(1), ...others]).filter((url) => url !== hero);
+      const pool = clean([...showcase.slice(1), ...others]).filter(
+        (url) => url !== hero,
+      );
       for (let i = pool.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [pool[i], pool[j]] = [pool[j], pool[i]];
       }
-      const loaded = (await Promise.all([hero, ...pool.slice(0, 8)].map(preload))).filter(
-        (src): src is string => Boolean(src),
-      );
+      const loaded = (
+        await Promise.all([hero, ...pool.slice(0, 8)].map(preload))
+      ).filter((src): src is string => Boolean(src));
       if (cancelled) return;
-      setMedia({ ready: true, hero: loaded[0] ?? hero, photos: loaded.length ? loaded : [hero], names });
+      setMedia({
+        ready: true,
+        hero: loaded[0] ?? hero,
+        photos: loaded.length ? loaded : [hero],
+        names,
+      });
     }
     const deadline = setTimeout(() => void finish(), 1800);
     resolveMenuSlug()
@@ -91,9 +126,15 @@ function useWelcomeMedia(welcomeImage: string, lang: string, editing: boolean): 
             groups?: { name: string; imageUrl?: string | null }[];
           }>(`/api/menu/${slug}?lang=${lang}`).then((data) => {
             if (finished) return;
-            showcase = clean((data.showcase || []).map((item) => item.imageUrl));
-            groupImages = clean((data.groups || []).map((group) => group.imageUrl));
-            names = (data.groups || []).map((group) => group.name).filter(Boolean);
+            showcase = clean(
+              (data.showcase || []).map((item) => item.imageUrl),
+            );
+            groupImages = clean(
+              (data.groups || []).map((group) => group.imageUrl),
+            );
+            names = (data.groups || [])
+              .map((group) => group.name)
+              .filter(Boolean);
           }),
           api<{ imageUrl?: string | null }[]>(
             `/api/menu/${slug}/popular-products?lang=${lang}`,
@@ -113,11 +154,17 @@ function useWelcomeMedia(welcomeImage: string, lang: string, editing: boolean): 
     // One selection per page load: language or render updates must not replace moving photos.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  return editing ? { ready: true, hero: welcomeImage, photos: [welcomeImage], names: [] } : media;
+  return editing
+    ? { ready: true, hero: welcomeImage, photos: [welcomeImage], names: [] }
+    : media;
 }
 
 /** Counts to 100 while the photos load, then opens the curtain. */
-function useIntro(ready: boolean, skip: boolean, counter: RefObject<HTMLElement | null>): Stage {
+function useIntro(
+  ready: boolean,
+  skip: boolean,
+  counter: RefObject<HTMLElement | null>,
+): Stage {
   const [stage, setStage] = useState<Stage>(skip ? 'done' : 'load');
   const [counted, setCounted] = useState(skip);
   useEffect(() => {
@@ -127,7 +174,8 @@ function useIntro(ready: boolean, skip: boolean, counter: RefObject<HTMLElement 
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / 1200);
       const eased = 1 - Math.pow(1 - t, 3);
-      if (counter.current) counter.current.textContent = String(Math.round(eased * 100));
+      if (counter.current)
+        counter.current.textContent = String(Math.round(eased * 100));
       if (t < 1) frame = requestAnimationFrame(tick);
       else setCounted(true);
     };
@@ -145,7 +193,10 @@ function useIntro(ready: boolean, skip: boolean, counter: RefObject<HTMLElement 
 
 /** Longest line decides how far the display type has to scale down. */
 function titleFit(text: string, room: number) {
-  const longest = Math.max(1, ...text.split('\n').map((line) => line.trim().length));
+  const longest = Math.max(
+    1,
+    ...text.split('\n').map((line) => line.trim().length),
+  );
   return Math.max(0.36, Math.min(1, room / longest)).toFixed(3);
 }
 
@@ -160,7 +211,9 @@ function SlideToEnter({
   disabled?: boolean;
   inert?: boolean;
 }) {
-  const drag = useRef<{ startX: number; max: number; moved: boolean } | null>(null);
+  const drag = useRef<{ startX: number; max: number; moved: boolean } | null>(
+    null,
+  );
   const dragged = useRef(0);
   const [done, setDone] = useState(false);
   const locked = inert || disabled || done;
@@ -168,7 +221,11 @@ function SlideToEnter({
     if (locked) return;
     setDone(true);
     track.style.setProperty('--p', '1');
-    window.setTimeout(() => onEnter(track.querySelector<HTMLElement>('.sh-slide__knob') || track), 280);
+    window.setTimeout(
+      () =>
+        onEnter(track.querySelector<HTMLElement>('.sh-slide__knob') || track),
+      280,
+    );
   }
   function release(track: HTMLElement, clientX: number) {
     const state = drag.current;
@@ -189,7 +246,11 @@ function SlideToEnter({
         if (Date.now() - dragged.current > 400) finish(e.currentTarget);
       }}
       onKeyDown={(e) => {
-        if ((e.key !== 'Enter' && e.key !== ' ') || e.target !== e.currentTarget) return;
+        if (
+          (e.key !== 'Enter' && e.key !== ' ') ||
+          e.target !== e.currentTarget
+        )
+          return;
         e.preventDefault();
         finish(e.currentTarget);
       }}
@@ -209,10 +270,15 @@ function SlideToEnter({
         if (!state.moved && Math.abs(dx) < 6) return;
         state.moved = true;
         e.currentTarget.classList.add('is-dragging');
-        e.currentTarget.style.setProperty('--p', String(Math.max(0, Math.min(1, dx / state.max))));
+        e.currentTarget.style.setProperty(
+          '--p',
+          String(Math.max(0, Math.min(1, dx / state.max))),
+        );
       }}
       onPointerUp={(e) => release(e.currentTarget, e.clientX)}
-      onPointerCancel={(e) => release(e.currentTarget, drag.current?.startX ?? 0)}
+      onPointerCancel={(e) =>
+        release(e.currentTarget, drag.current?.startX ?? 0)
+      }
     >
       <span className="sh-slide__fill" aria-hidden="true" />
       <span className="sh-slide__label">{children}</span>
@@ -224,7 +290,13 @@ function SlideToEnter({
 }
 
 /** Welcome music. Desktop: a small player with a moving track. Mobile: one equaliser button. */
-function MusicControl({ music, compact }: { music: SofraWelcomeMusic; compact?: boolean }) {
+function MusicControl({
+  music,
+  compact,
+}: {
+  music: SofraWelcomeMusic;
+  compact?: boolean;
+}) {
   const live = music.on && music.playing;
   const bars = (
     <span className="sh-music__bars" aria-hidden="true">
@@ -293,7 +365,8 @@ function ActionTray({
     document.addEventListener('keydown', keydown);
     return () => document.removeEventListener('keydown', keydown);
   }, [open]);
-  if (!actions.length) return extra ? <div className="sh-foot__links">{extra}</div> : null;
+  if (!actions.length)
+    return extra ? <div className="sh-foot__links">{extra}</div> : null;
   const current = actions[tick % actions.length];
   return (
     <div className={`sh-tray${open ? ' is-open' : ''}`}>
@@ -333,7 +406,10 @@ function ActionTray({
       >
         <span className="sh-tray__icons" aria-hidden="true">
           {actions.slice(0, 4).map((action) => (
-            <i key={action.id} className={!open && action === current ? 'is-on' : undefined}>
+            <i
+              key={action.id}
+              className={!open && action === current ? 'is-on' : undefined}
+            >
               {action.icon}
             </i>
           ))}
@@ -348,19 +424,31 @@ function ActionTray({
 }
 
 /** Mobile backdrop: a drifting wall when there are enough photos, a slow slideshow otherwise. */
-function MobileBackdrop({ photos }: { photos: string[] }) {
+function MobileBackdrop({
+  photos,
+  still = false,
+}: {
+  photos: string[];
+  still?: boolean;
+}) {
   const [active, setActive] = useState(0);
   const wall = photos.length >= 4;
   useEffect(() => {
-    if (wall || photos.length < 2 || prefersReducedMotion()) return;
-    const timer = setInterval(() => setActive((n) => (n + 1) % photos.length), 4800);
+    if (still || wall || photos.length < 2 || prefersReducedMotion()) return;
+    const timer = setInterval(
+      () => setActive((n) => (n + 1) % photos.length),
+      4800,
+    );
     return () => clearInterval(timer);
-  }, [wall, photos.length]);
+  }, [wall, photos.length, still]);
   if (!wall)
     return (
       <div className="sh-slides" aria-hidden="true">
         {photos.map((src, i) => (
-          <div key={src} className={i === active % photos.length ? 'is-on' : undefined}>
+          <div
+            key={src}
+            className={i === active % photos.length ? 'is-on' : undefined}
+          >
             <Photo src={src} eager />
           </div>
         ))}
@@ -388,6 +476,53 @@ function MobileBackdrop({ photos }: { photos: string[] }) {
   );
 }
 
+function MobileWelcomeTitle({
+  value,
+  onTextEdit,
+}: {
+  value: string;
+  onTextEdit: NonNullable<SofraWelcomeProps['onTextEdit']>;
+}) {
+  const [active, setActive] = useState(false);
+  const host = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (active)
+      host.current?.querySelector<HTMLElement>('[contenteditable]')?.focus();
+  }, [active]);
+  return (
+    <div
+      ref={host}
+      className="sh-mobile-title-editor"
+      style={cssVars({ '--fit': titleFit(value, 13) })}
+      onBlurCapture={(event) => {
+        if ((event.target as HTMLElement).hasAttribute('data-sofra-editable'))
+          setActive(false);
+      }}
+    >
+      {active ? (
+        <SofraText
+          as="h1"
+          className="sh-title"
+          field="welcomeTitle"
+          value={value}
+          onTextEdit={onTextEdit}
+        />
+      ) : (
+        <h1 className="sh-title" aria-label={value.replace(/\n/g, ' ')}>
+          <button
+            type="button"
+            className="sh-title-edit-trigger"
+            aria-label="Ana başlığı düzenle"
+            onClick={() => setActive(true)}
+          >
+            <SplitText text={value} />
+          </button>
+        </h1>
+      )}
+    </div>
+  );
+}
+
 export default function SahneWelcome(p: SofraWelcomeProps) {
   const root = useRef<HTMLDivElement>(null);
   const counter = useRef<HTMLSpanElement>(null);
@@ -397,7 +532,11 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
   const copy = sofraCopy(p.config, p.lang);
   const en = p.lang.split('-')[0] === 'en';
   const brand = p.config.brandName || p.restaurant.name;
-  const media = useWelcomeMedia(p.config.welcomeImage, p.lang, editing);
+  const liveMedia = useWelcomeMedia(p.config.welcomeImage, p.lang, editing);
+  const media =
+    editing && mobile && p.previewMedia
+      ? { ...p.previewMedia, ready: true }
+      : liveMedia;
   const [still] = useState(() => editing || prefersReducedMotion());
   const stage = useIntro(media.ready, still, counter);
   const photos = media.photos.length ? media.photos : [media.hero];
@@ -446,7 +585,11 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
     <header className="sh-top">
       <SofraBrand {...p} />
       <div className="sh-top__tools">
-        <SahneLanguage lang={p.lang} languages={p.languages} onChange={p.onLangChange} />
+        <SahneLanguage
+          lang={p.lang}
+          languages={p.languages}
+          onChange={p.onLangChange}
+        />
         {p.tableLabel && <span className="sh-pill">{p.tableLabel}</span>}
         {mobile && p.music && <MusicControl music={p.music} compact />}
       </div>
@@ -459,23 +602,31 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
       {p.config.openingHours}
     </span>
   ) : null;
-  const title = editing ? (
-    <SofraText
-      as="h1"
-      className="sh-title"
-      field="welcomeTitle"
-      value={copy.welcomeTitle}
-      onTextEdit={p.onTextEdit}
-    />
-  ) : (
-    <h1
-      className="sh-title"
-      aria-label={copy.welcomeTitle.replace(/\n/g, ' ')}
-      style={cssVars({ '--fit': titleFit(copy.welcomeTitle, mobile ? 13 : 15) })}
-    >
-      <SplitText text={copy.welcomeTitle} />
-    </h1>
-  );
+  const title =
+    editing && mobile ? (
+      <MobileWelcomeTitle
+        value={copy.welcomeTitle}
+        onTextEdit={p.onTextEdit!}
+      />
+    ) : editing ? (
+      <SofraText
+        as="h1"
+        className="sh-title"
+        field="welcomeTitle"
+        value={copy.welcomeTitle}
+        onTextEdit={p.onTextEdit}
+      />
+    ) : (
+      <h1
+        className="sh-title"
+        aria-label={copy.welcomeTitle.replace(/\n/g, ' ')}
+        style={cssVars({
+          '--fit': titleFit(copy.welcomeTitle, mobile ? 13 : 15),
+        })}
+      >
+        <SplitText text={copy.welcomeTitle} />
+      </h1>
+    );
   const subtitle = (
     <SofraText
       as="p"
@@ -486,7 +637,11 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
     />
   );
   const enterLabel = (
-    <SofraText field="enterLabel" value={copy.enterLabel} onTextEdit={p.onTextEdit} />
+    <SofraText
+      field="enterLabel"
+      value={copy.enterLabel}
+      onTextEdit={p.onTextEdit}
+    />
   );
   const footer = (
     <footer className="sh-foot">
@@ -496,6 +651,12 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
         value={copy.footerText}
         onTextEdit={p.onTextEdit}
       />
+      {mobile && p.config.openingHours.trim() && (
+        <span className="sh-foot__hours">
+          <Clock size={13} aria-hidden="true" />
+          {p.config.openingHours}
+        </span>
+      )}
       {mobile ? (
         <ActionTray actions={p.actions || []} extra={p.extra} en={en} />
       ) : (
@@ -503,7 +664,12 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
           <div className="sh-foot__links">
             {p.music && <MusicControl music={p.music} />}
             {p.actions?.map((action) => (
-              <button type="button" className="sh-chip" key={action.id} onClick={action.onClick}>
+              <button
+                type="button"
+                className="sh-chip"
+                key={action.id}
+                onClick={action.onClick}
+              >
                 {action.icon}
                 {action.label}
               </button>
@@ -519,24 +685,10 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
   if (mobile) {
     body = (
       <>
-        {editing ? (
-          <button
-            type="button"
-            className="sh-slides sh-slides--edit"
-            onClick={() => p.onImageEdit?.('welcomeImage')}
-          >
-            <div className="is-on">
-              <Photo src={media.hero} eager />
-            </div>
-            <span className="sh-edit-photo">Fotoğrafı değiştir</span>
-          </button>
-        ) : (
-          <MobileBackdrop photos={photos} />
-        )}
+        <MobileBackdrop photos={photos} still={editing} />
         <div className="sh-scrim" aria-hidden="true" />
         {header}
         <main className="sh-mhero">
-          {eyebrow}
           {title}
           {subtitle}
           <SlideToEnter onEnter={enter} disabled={p.entering} inert={editing}>
@@ -554,9 +706,13 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
     // The ring has room for about 46 characters; longer brand names are left out of it.
     const ringPair = `${copy.enterLabel} ✦ ${brand} ✦ `;
     const ringText = (
-      ringPair.length <= 46 ? ringPair : `${copy.enterLabel} ✦ ${copy.enterLabel} ✦ `
+      ringPair.length <= 46
+        ? ringPair
+        : `${copy.enterLabel} ✦ ${copy.enterLabel} ✦ `
     ).toLocaleUpperCase(p.lang);
-    const marquee = media.names.length ? media.names : [brand, copy.picksLabel, copy.menuTitle];
+    const marquee = media.names.length
+      ? media.names
+      : [brand, copy.picksLabel, copy.menuTitle];
     body = (
       <>
         <div className="sh-aurora" aria-hidden="true">
@@ -611,21 +767,36 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
                       : undefined
                   }
                   onClick={(e) =>
-                    main && p.onImageEdit ? p.onImageEdit('welcomeImage') : enter(e.currentTarget)
+                    main && p.onImageEdit
+                      ? p.onImageEdit('welcomeImage')
+                      : enter(e.currentTarget)
                   }
                 >
                   <Photo src={src} eager />
-                  {main && p.onImageEdit && <span className="sh-edit-photo">Fotoğrafı değiştir</span>}
+                  {main && p.onImageEdit && (
+                    <span className="sh-edit-photo">Fotoğrafı değiştir</span>
+                  )}
                 </button>
               );
             })}
-            <span className="sh-ring" aria-hidden="true" hidden={ringText.length > 50}>
+            <span
+              className="sh-ring"
+              aria-hidden="true"
+              hidden={ringText.length > 50}
+            >
               <svg viewBox="0 0 120 120">
                 <defs>
-                  <path id={ringId} d="M60,60 m-46,0 a46,46 0 1,1 92,0 a46,46 0 1,1 -92,0" />
+                  <path
+                    id={ringId}
+                    d="M60,60 m-46,0 a46,46 0 1,1 92,0 a46,46 0 1,1 -92,0"
+                  />
                 </defs>
                 <text>
-                  <textPath href={`#${ringId}`} textLength={282} lengthAdjust="spacing">
+                  <textPath
+                    href={`#${ringId}`}
+                    textLength={282}
+                    lengthAdjust="spacing"
+                  >
                     {ringText}
                   </textPath>
                 </text>

@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, Search, Sparkles, X } from 'lucide-react';
+import { ArrowUpRight, Clock, Search, Sparkles, X } from 'lucide-react';
 import { formatMoney } from '@/lib/api';
 import { SofraBrand, SofraText } from '../sofra/SofraElements';
 import type { SofraProduct } from '../sofra/SofraElements';
 import type { SofraMenuProps } from '../sofra/types';
-import { AddButton, DishCard, GridSkeleton, MenuState, SearchCorrection, SearchField, useMenuModel } from './menuShared';
+import {
+  AddButton,
+  DishCard,
+  GridSkeleton,
+  MenuState,
+  SearchCorrection,
+  SearchField,
+  useMenuModel,
+} from './menuShared';
 import { Photo, cssVars, isRtl, pad2, useReveal, useSahneNav } from './shared';
 import './sahne.css';
 import './sahne-menu.css';
@@ -21,7 +29,11 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
   const brand = p.config.brandName || p.restaurant.name;
   const pickerOpen = Boolean(nav?.open);
 
-  useReveal(root, [p.products, p.subgroups, p.groups, p.loading, m.home], editing);
+  useReveal(
+    root,
+    [p.products, p.subgroups, p.groups, p.loading, m.home],
+    editing,
+  );
 
   // Picks carousel: cards shrink and tilt away as they leave the centre.
   useEffect(() => {
@@ -35,7 +47,10 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
         mid = box.left + box.width / 2;
       strip.querySelectorAll<HTMLElement>('.sh-reel__card').forEach((card) => {
         const c = card.getBoundingClientRect();
-        const d = Math.max(-1, Math.min(1, (c.left + c.width / 2 - mid) / box.width));
+        const d = Math.max(
+          -1,
+          Math.min(1, (c.left + c.width / 2 - mid) / box.width),
+        );
         card.style.setProperty('--d', d.toFixed(3));
         card.style.setProperty('--a', Math.abs(d).toFixed(3));
       });
@@ -56,8 +71,9 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
   // Category overlay: lock the page, trap focus, close with Escape.
   useEffect(() => {
     if (!pickerOpen) return;
-    const doc = document.documentElement,
-      prior = document.activeElement as HTMLElement | null,
+    const pageDoc = overlay.current?.ownerDocument || document;
+    const doc = pageDoc.documentElement,
+      prior = pageDoc.activeElement as HTMLElement | null,
       overflow = doc.style.overflow;
     doc.style.overflow = 'hidden';
     overlay.current?.querySelector<HTMLElement>('.sh-picker__close')?.focus();
@@ -65,20 +81,22 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
       if (e.key === 'Escape') nav?.setOpen(false);
       if (e.key !== 'Tab') return;
       const nodes = Array.from(
-        overlay.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input') || [],
+        overlay.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input',
+        ) || [],
       );
-      if (e.shiftKey && document.activeElement === nodes[0]) {
+      if (e.shiftKey && pageDoc.activeElement === nodes[0]) {
         e.preventDefault();
         nodes.at(-1)?.focus();
-      } else if (!e.shiftKey && document.activeElement === nodes.at(-1)) {
+      } else if (!e.shiftKey && pageDoc.activeElement === nodes.at(-1)) {
         e.preventDefault();
         nodes[0]?.focus();
       }
     };
-    document.addEventListener('keydown', keydown);
+    pageDoc.addEventListener('keydown', keydown);
     return () => {
       doc.style.overflow = overflow;
-      document.removeEventListener('keydown', keydown);
+      pageDoc.removeEventListener('keydown', keydown);
       prior?.focus();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -91,8 +109,13 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
   }
 
   const needle = query.trim().toLocaleLowerCase(p.lang);
-  const picker = [{ id: null as number | null, name: copy.picksLabel, imageUrl: null }, ...p.groups];
-  const filtered = picker.filter((g) => g.name.toLocaleLowerCase(p.lang).includes(needle));
+  const picker = [
+    { id: null as number | null, name: copy.picksLabel, imageUrl: null },
+    ...p.groups,
+  ];
+  const filtered = picker.filter((g) =>
+    g.name.toLocaleLowerCase(p.lang).includes(needle),
+  );
 
   const grid = (rows: SofraProduct[], lead: boolean) => (
     <div className="sh-grid">
@@ -111,7 +134,11 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
   );
 
   return (
-    <div ref={root} className="sahne sh-menu sh-menu--mob" dir={isRtl(p.lang) ? 'rtl' : 'ltr'}>
+    <div
+      ref={root}
+      className="sahne sh-menu sh-menu--mob"
+      dir={isRtl(p.lang) ? 'rtl' : 'ltr'}
+    >
       {m.wipe && (
         <div className="sh-wipe-in" aria-hidden="true">
           <span>{brand}</span>
@@ -144,7 +171,12 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
                 value={copy.menuEyebrow}
                 onTextEdit={p.onTextEdit}
               />
-              <SofraText as="h1" field="menuTitle" value={copy.menuTitle} onTextEdit={p.onTextEdit} />
+              <SofraText
+                as="h1"
+                field="menuTitle"
+                value={copy.menuTitle}
+                onTextEdit={p.onTextEdit}
+              />
             </div>
             {(p.loading || p.error || m.count > 0 || editing) && (
               <section className="sh-picks">
@@ -185,8 +217,17 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
                           <span className="sh-reel__n">{pad2(i + 1)}</span>
                           <h3>{dish.name}</h3>
                           <div>
-                            <strong>{formatMoney(dish.price, dish.currency)}</strong>
-                            {p.onAdd && <AddButton dish={dish} t={t} onAdd={p.onAdd} round />}
+                            <strong>
+                              {formatMoney(dish.price, dish.currency)}
+                            </strong>
+                            {p.onAdd && (
+                              <AddButton
+                                dish={dish}
+                                t={t}
+                                onAdd={p.onAdd}
+                                round
+                              />
+                            )}
                           </div>
                         </div>
                       </article>
@@ -223,16 +264,21 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
           </>
         ) : (
           <>
-            <div className="sh-mhead" key={m.searching ? 'search' : p.activeGroup}>
+            <div
+              className="sh-mhead"
+              key={m.searching ? 'search' : p.activeGroup}
+            >
               <p className="sh-kicker">
                 {m.searching
                   ? t.results
                   : `${t.category} ${pad2(m.groupIndex + 1)} / ${pad2(p.groups.length)}`}
               </p>
               <h1>{m.searching ? `“${p.search?.trim()}”` : m.group?.name}</h1>
-              {!p.loading && !p.error && <p className="sh-ghead__count">{t.items(m.count)}</p>}
+              {!p.loading && !p.error && (
+                <p className="sh-ghead__count">{t.items(m.count)}</p>
+              )}
             </div>
-            <SearchCorrection p={p}/>
+            <SearchCorrection p={p} />
             <div
               className="sh-results"
               key={m.searching ? 'results' : `g${p.activeGroup}`}
@@ -266,7 +312,17 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
         )}
         {p.afterContent}
         <footer className="sh-menu__foot">
-          <SofraText field="footerText" value={copy.footerText} onTextEdit={p.onTextEdit} />
+          <SofraText
+            field="footerText"
+            value={copy.footerText}
+            onTextEdit={p.onTextEdit}
+          />
+          {p.config.openingHours.trim() && (
+            <span className="sh-foot__hours">
+              <Clock size={13} aria-hidden="true" />
+              {p.config.openingHours}
+            </span>
+          )}
         </footer>
       </main>
       {pickerOpen && (
@@ -310,7 +366,8 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
               </p>
             )}
             {filtered.map((g, i) => {
-              const active = g.id == null ? m.home : !m.searching && p.activeGroup === g.id;
+              const active =
+                g.id == null ? m.home : !m.searching && p.activeGroup === g.id;
               return (
                 <button
                   type="button"
@@ -320,9 +377,15 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
                   onClick={() => choose(g.id)}
                 >
                   <span className="sh-picker__thumb">
-                    {g.id == null ? <Sparkles size={20} /> : <Photo src={g.imageUrl} />}
+                    {g.id == null ? (
+                      <Sparkles size={20} />
+                    ) : (
+                      <Photo src={g.imageUrl} />
+                    )}
                   </span>
-                  <span className="sh-picker__n">{pad2(picker.indexOf(g))}</span>
+                  <span className="sh-picker__n">
+                    {pad2(picker.indexOf(g))}
+                  </span>
                   <strong>{g.name}</strong>
                   <ArrowUpRight size={20} aria-hidden="true" />
                 </button>

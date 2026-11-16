@@ -15,7 +15,7 @@ const users = {
 globalThis.__testPrisma = {
   user: { findUnique: async ({ where }) => users[where.id] },
   restaurant: {
-    findUnique: async ({ where }) => ({ name: `Restaurant ${where.id}`, logoUrl: null }),
+    findUnique: async ({ where }) => ({ name: `Restaurant ${where.id}`, slug: `restaurant-${where.id}`, logoUrl: null }),
   },
   language: { findMany: async () => [{ code: 'tr', name: 'Türkçe' }] },
   group: { findMany: async () => [] },
@@ -95,6 +95,7 @@ try {
   assert.equal(res.status, 200);
   const initial = await res.json();
   assert.equal(initial.restaurant.name, 'Restaurant 1');
+  assert.equal(initial.restaurant.slug, 'restaurant-1');
   assert.equal(initial.revision, '');
   const config = {
     ...initial.config,

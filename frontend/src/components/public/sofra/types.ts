@@ -1,6 +1,11 @@
 import type { ReactNode } from 'react';
 import type { SofraConfig } from '@/lib/sofra';
-import type { SofraEditing, SofraGroup, SofraProduct, SofraRestaurant } from './SofraElements';
+import type {
+  SofraEditing,
+  SofraGroup,
+  SofraProduct,
+  SofraRestaurant,
+} from './SofraElements';
 
 export interface SofraShowcaseItem {
   id: number;
@@ -35,6 +40,8 @@ export type SofraWelcomeProps = {
   music?: SofraWelcomeMusic;
   extra?: ReactNode;
   entering?: boolean;
+  /** Editor-only media snapshot from this business; avoids a separate, inaccurate static layout. */
+  previewMedia?: { hero: string; photos: string[]; names: string[] };
 } & SofraEditing;
 
 export type SofraMenuProps = {
