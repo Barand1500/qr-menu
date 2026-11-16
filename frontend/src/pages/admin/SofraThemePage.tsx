@@ -32,6 +32,7 @@ import {
 } from '@/components/public/sahne/shared';
 import SahneDock from '@/components/public/sahne/SahneDock';
 import MobileStoriesStrip from '@/components/public/MobileStoriesStrip';
+import PublicSocialLinks from '@/components/public/PublicSocialLinks';
 import './sofra-editor.css';
 
 type ImageField = 'welcomeImage' | 'menuImage';
@@ -78,7 +79,7 @@ export default function SofraThemePage() {
     lang,
     activeGroup,
     previewSearch,
-    phone,
+    Boolean(data),
   );
   const stageRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
@@ -163,6 +164,13 @@ export default function SofraThemePage() {
   }, [dirty, data]);
 
   function editText(field: SofraTextField, value: string) {
+    if (
+      page === 'menu' &&
+      ['menuTitle', 'menuEyebrow', 'picksLabel'].includes(field)
+    ) {
+      setActiveGroup(null);
+      setPreviewSearch('');
+    }
     const locale = lang.toLowerCase();
     setDraft((prev) =>
       sofraCopy(prev, lang)[field] === value
@@ -290,7 +298,7 @@ export default function SofraThemePage() {
   const groups = data.groups.map((g) => ({
     id: g.id,
     name: g.i18n[lang]?.name || g.i18n.tr?.name || 'Grup',
-    imageUrl: phone ? g.imageUrl : undefined,
+    imageUrl: g.imageUrl,
   }));
   const products = data.products.map((p) => ({
     id: p.id,
@@ -314,9 +322,6 @@ export default function SofraThemePage() {
             multiline: true,
           },
           { key: 'enterLabel', label: 'Menüye giriş düğmesi' },
-          ...(!phone
-            ? [{ key: 'sealText' as const, label: 'Dekoratif yazı' }]
-            : []),
           { key: 'footerText', label: 'Alt yazı' },
         ]
       : [
@@ -333,9 +338,16 @@ export default function SofraThemePage() {
           .toLocaleLowerCase(lang)
           .includes(previewSearch.trim().toLocaleLowerCase(lang))),
   );
+  const hasShowcase = Boolean(
+    preview.menu?.showcase?.some((item) => item.imageUrl),
+  );
+  const canEditPhoto =
+    !phone &&
+    !hasShowcase &&
+    (page === 'welcome' || (activeGroup === null && !previewSearch.trim()));
   const editing = {
     onTextEdit: editText,
-    onImageEdit: phone ? undefined : chooseImage,
+    onImageEdit: canEditPhoto ? chooseImage : undefined,
     onBrandEdit: phone
       ? undefined
       : (value: string) =>
@@ -345,12 +357,11 @@ export default function SofraThemePage() {
               : { ...prev, brandName: value },
           ),
   };
-  const shownGroups = phone ? preview.menu?.groups || groups : groups;
-  const shownProducts = phone
-    ? previewSearch.trim() || activeGroup !== null
+  const shownGroups = preview.menu?.groups || groups;
+  const shownProducts =
+    previewSearch.trim() || activeGroup !== null
       ? preview.content?.products || previewProducts
-      : preview.popular || previewProducts
-    : previewProducts;
+      : preview.popular || previewProducts;
   const mediaPhotos = [
     ...new Set(
       [
@@ -464,51 +475,40 @@ export default function SofraThemePage() {
                     restaurant={data.restaurant}
                     lang={lang}
                     languages={languages}
+                    onLangChange={setLang}
                     tableLabel={phone ? undefined : 'Masa 08'}
-                    previewMedia={
-                      phone
-                        ? {
-                            hero,
-                            photos: welcomePhotos,
-                            names: shownGroups.map((g) => g.name),
-                          }
-                        : undefined
-                    }
-                    actions={
-                      phone
-                        ? [
-                            {
-                              id: 'prefs',
-                              icon: <Salad size={16} />,
-                              label:
-                                lang === 'en'
-                                  ? 'Dietary preferences'
-                                  : 'Beslenme tercihlerim',
-                              onClick: () => {},
-                            },
-                            {
-                              id: 'suggestion',
-                              icon: <Lightbulb size={16} />,
-                              label:
-                                lang === 'en'
-                                  ? 'Suggestion Box'
-                                  : 'Öneri Kutusu',
-                              onClick: () => {},
-                            },
-                            {
-                              id: 'complaint',
-                              icon: <MessageCircleHeart size={16} />,
-                              label:
-                                lang === 'en'
-                                  ? 'Complaint Box'
-                                  : 'Şikayet Kutusu',
-                              onClick: () => {},
-                            },
-                          ]
-                        : undefined
-                    }
+                    previewMedia={{
+                      hero,
+                      photos: welcomePhotos,
+                      names: shownGroups.map((g) => g.name),
+                    }}
+                    actions={[
+                      {
+                        id: 'prefs',
+                        icon: <Salad size={16} />,
+                        label:
+                          lang === 'en'
+                            ? 'Dietary preferences'
+                            : 'Beslenme tercihlerim',
+                        onClick: () => {},
+                      },
+                      {
+                        id: 'suggestion',
+                        icon: <Lightbulb size={16} />,
+                        label:
+                          lang === 'en' ? 'Suggestion Box' : 'Öneri Kutusu',
+                        onClick: () => {},
+                      },
+                      {
+                        id: 'complaint',
+                        icon: <MessageCircleHeart size={16} />,
+                        label:
+                          lang === 'en' ? 'Complaint Box' : 'Şikayet Kutusu',
+                        onClick: () => {},
+                      },
+                    ]}
                     music={
-                      phone && preview.musicUrl
+                      preview.musicUrl
                         ? {
                             on: previewMusicOn,
                             playing: previewMusicOn,
@@ -520,6 +520,13 @@ export default function SofraThemePage() {
                           }
                         : undefined
                     }
+                    extra={
+                      preview.menu?.socialLinks?.length ? (
+                        <div inert>
+                          <PublicSocialLinks links={preview.menu.socialLinks} />
+                        </div>
+                      ) : undefined
+                    }
                     {...editing}
                   />
                 ) : (
@@ -530,32 +537,32 @@ export default function SofraThemePage() {
                     groups={shownGroups}
                     products={shownProducts}
                     subgroups={
-                      phone && !previewSearch.trim()
+                      !previewSearch.trim()
                         ? preview.content?.children
                         : undefined
                     }
-                    loading={phone && preview.loading}
-                    error={phone ? preview.error : undefined}
+                    loading={preview.loading}
+                    error={preview.error}
+                    showcase={preview.menu?.showcase || []}
+                    onProductOpen={() => {}}
                     headerTools={
-                      phone ? (
-                        <>
-                          <SahneLanguage
-                            lang={lang}
-                            languages={languages}
-                            onChange={setLang}
-                          />
-                          <button
-                            className="public-menu-header__profile-btn"
-                            type="button"
-                            aria-label="Hesap önizlemesi"
-                          >
-                            <UserRound size={19} />
-                          </button>
-                        </>
-                      ) : undefined
+                      <>
+                        <SahneLanguage
+                          lang={lang}
+                          languages={languages}
+                          onChange={setLang}
+                        />
+                        <button
+                          className="public-menu-header__profile-btn"
+                          type="button"
+                          aria-label="Hesap önizlemesi"
+                        >
+                          <UserRound size={19} />
+                        </button>
+                      </>
                     }
                     stories={
-                      phone && preview.menu?.stories?.length ? (
+                      preview.menu?.stories?.length ? (
                         <div inert>
                           <MobileStoriesStrip
                             stories={preview.menu.stories}
@@ -569,16 +576,21 @@ export default function SofraThemePage() {
                     onGroupChange={(id) => {
                       setPreviewSearch('');
                       setActiveGroup(id);
+                      stageRef.current
+                        ?.querySelector('iframe')
+                        ?.contentWindow?.scrollTo(0, 0);
                     }}
                     search={previewSearch}
                     onSearchChange={setPreviewSearch}
                     {...editing}
                   />
                 )}
-                {phone && page === 'menu' && (
+                {page === 'menu' && (
                   <SahneDock
                     lang={lang}
                     onMenu={() => {}}
+                    onGames={() => {}}
+                    onAssistant={() => {}}
                     service={
                       <button
                         type="button"
@@ -644,16 +656,21 @@ export default function SofraThemePage() {
                 }
               />
             )}
-            <Input
-              label="Çalışma saatleri (isteğe bağlı)"
-              value={draft.openingHours}
-              disabled={saving}
-              maxLength={150}
-              onChange={(e) =>
-                setDraft((prev) => ({ ...prev, openingHours: e.target.value }))
-              }
-            />
-            {!phone && (
+            {(phone || page === 'welcome') && (
+              <Input
+                label="Çalışma saatleri (isteğe bağlı)"
+                value={draft.openingHours}
+                disabled={saving}
+                maxLength={150}
+                onChange={(e) =>
+                  setDraft((prev) => ({
+                    ...prev,
+                    openingHours: e.target.value,
+                  }))
+                }
+              />
+            )}
+            {canEditPhoto && (
               <button
                 onClick={() =>
                   chooseImage(page === 'welcome' ? 'welcomeImage' : 'menuImage')
@@ -661,16 +678,18 @@ export default function SofraThemePage() {
                 disabled={saving}
               >
                 <ImagePlus size={18} />
-                {page === 'welcome' ? 'Karşılama fotoğrafı' : 'Menü fotoğrafı'}
+                {page === 'welcome'
+                  ? 'Yedek karşılama fotoğrafı'
+                  : 'Yedek menü fotoğrafı'}
               </button>
             )}
           </div>
           <p className="sofra-editor-note">
             Değişiklikler Kaydet dediğinizde yayınlanır. Ürün adları ve fiyatlar
-            Ürünler sayfasından yönetilir.{' '}
-            {phone
-              ? 'Mobil fotoğraflar Vitrin Görselleri, Gruplar ve Ürünler alanlarından yönetilir. Önizlemedeki hesap, servis ve sepet işlemleri gönderilmez.'
-              : 'Önizlemedeki ürünler ve masa numarası örnektir.'}
+            Ürünler sayfasından yönetilir. Fotoğraflar Vitrin Görselleri,
+            Gruplar ve Ürünler alanlarından gelir. Vitrin boşsa yedek fotoğraf
+            kullanılır. Önizlemedeki hesap, servis ve sepet işlemleri
+            gönderilmez.
           </p>
         </aside>
       </div>

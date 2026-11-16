@@ -476,12 +476,14 @@ function MobileBackdrop({
   );
 }
 
-function MobileWelcomeTitle({
+function EditableWelcomeTitle({
   value,
   onTextEdit,
+  mobile,
 }: {
   value: string;
   onTextEdit: NonNullable<SofraWelcomeProps['onTextEdit']>;
+  mobile: boolean;
 }) {
   const [active, setActive] = useState(false);
   const host = useRef<HTMLDivElement>(null);
@@ -492,8 +494,8 @@ function MobileWelcomeTitle({
   return (
     <div
       ref={host}
-      className="sh-mobile-title-editor"
-      style={cssVars({ '--fit': titleFit(value, 13) })}
+      className="sh-welcome-title-editor"
+      style={cssVars({ '--fit': titleFit(value, mobile ? 13 : 15) })}
       onBlurCapture={(event) => {
         if ((event.target as HTMLElement).hasAttribute('data-sofra-editable'))
           setActive(false);
@@ -534,9 +536,7 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
   const brand = p.config.brandName || p.restaurant.name;
   const liveMedia = useWelcomeMedia(p.config.welcomeImage, p.lang, editing);
   const media =
-    editing && mobile && p.previewMedia
-      ? { ...p.previewMedia, ready: true }
-      : liveMedia;
+    editing && p.previewMedia ? { ...p.previewMedia, ready: true } : liveMedia;
   const [still] = useState(() => editing || prefersReducedMotion());
   const stage = useIntro(media.ready, still, counter);
   const photos = media.photos.length ? media.photos : [media.hero];
@@ -602,31 +602,23 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
       {p.config.openingHours}
     </span>
   ) : null;
-  const title =
-    editing && mobile ? (
-      <MobileWelcomeTitle
-        value={copy.welcomeTitle}
-        onTextEdit={p.onTextEdit!}
-      />
-    ) : editing ? (
-      <SofraText
-        as="h1"
-        className="sh-title"
-        field="welcomeTitle"
-        value={copy.welcomeTitle}
-        onTextEdit={p.onTextEdit}
-      />
-    ) : (
-      <h1
-        className="sh-title"
-        aria-label={copy.welcomeTitle.replace(/\n/g, ' ')}
-        style={cssVars({
-          '--fit': titleFit(copy.welcomeTitle, mobile ? 13 : 15),
-        })}
-      >
-        <SplitText text={copy.welcomeTitle} />
-      </h1>
-    );
+  const title = editing ? (
+    <EditableWelcomeTitle
+      value={copy.welcomeTitle}
+      onTextEdit={p.onTextEdit!}
+      mobile={mobile}
+    />
+  ) : (
+    <h1
+      className="sh-title"
+      aria-label={copy.welcomeTitle.replace(/\n/g, ' ')}
+      style={cssVars({
+        '--fit': titleFit(copy.welcomeTitle, mobile ? 13 : 15),
+      })}
+    >
+      <SplitText text={copy.welcomeTitle} />
+    </h1>
+  );
   const subtitle = (
     <SofraText
       as="p"

@@ -6,11 +6,13 @@ import type {
 } from '@/components/public/sofra/SofraElements';
 import type { SofraShowcaseItem } from '@/components/public/sofra/types';
 import type { MenuStory } from '@/components/public/MobileStoriesStrip';
+import type { PublicSocialLink } from '@/lib/socialCatalog';
 
 type MenuSnapshot = {
   groups: SofraGroup[];
   showcase?: SofraShowcaseItem[];
   stories?: MenuStory[];
+  socialLinks?: PublicSocialLink[];
 };
 type Content = {
   products: SofraProduct[];

@@ -854,7 +854,7 @@
 .sh-welcome.is-editing :is(.sh-wall, .sh-slides) * {
   animation: none !important;
 }
-.sh-mobile-title-editor {
+.sh-welcome-title-editor {
   width: 100%;
 }
 .sahne .sh-title-edit-trigger {
@@ -864,7 +864,7 @@
   font: inherit;
   letter-spacing: inherit;
 }
-.sh-mobile-title-editor .sh-word > span {
+.sh-welcome-title-editor .sh-word > span {
   animation: none;
 }
 .sh-foot__hours {

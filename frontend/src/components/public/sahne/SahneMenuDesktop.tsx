@@ -3,7 +3,14 @@ import { ArrowUpRight, Sparkles } from 'lucide-react';
 import { SofraBrand, SofraText } from '../sofra/SofraElements';
 import type { SofraProduct } from '../sofra/SofraElements';
 import type { SofraMenuProps } from '../sofra/types';
-import { DishCard, GridSkeleton, MenuState, SearchCorrection, SearchField, useMenuModel } from './menuShared';
+import {
+  DishCard,
+  GridSkeleton,
+  MenuState,
+  SearchCorrection,
+  SearchField,
+  useMenuModel,
+} from './menuShared';
 import {
   Photo,
   SplitText,
@@ -18,16 +25,24 @@ import './sahne.css';
 import './sahne-menu.css';
 
 /** Home hero: the business's showcase photos, or the theme's menu photo when there are none. */
-function Showcase({ p, menuTitle, menuEyebrow }: { p: SofraMenuProps; menuTitle: string; menuEyebrow: string }) {
+function Showcase({
+  p,
+  menuTitle,
+  menuEyebrow,
+}: {
+  p: SofraMenuProps;
+  menuTitle: string;
+  menuEyebrow: string;
+}) {
   const editing = Boolean(p.onTextEdit);
-  const slides = editing ? [] : (p.showcase || []).filter((item) => item.imageUrl);
+  const slides = (p.showcase || []).filter((item) => item.imageUrl);
   const [active, setActive] = useState(0);
   const current = slides[active % Math.max(1, slides.length)];
   useEffect(() => {
-    if (slides.length < 2 || prefersReducedMotion()) return;
+    if (editing || slides.length < 2 || prefersReducedMotion()) return;
     const timer = setInterval(() => setActive((n) => (n + 1) % slides.length), 5200);
     return () => clearInterval(timer);
-  }, [slides.length, active]);
+  }, [slides.length, active, editing]);
   return (
     <section className="sh-show">
       <div className="sh-show__media">
@@ -43,8 +58,12 @@ function Showcase({ p, menuTitle, menuEyebrow }: { p: SofraMenuProps; menuTitle:
           </div>
         )}
       </div>
-      {p.onImageEdit && (
-        <button type="button" className="sh-edit-photo" onClick={() => p.onImageEdit?.('menuImage')}>
+      {p.onImageEdit && !slides.length && (
+        <button
+          type="button"
+          className="sh-edit-photo"
+          onClick={() => p.onImageEdit?.('menuImage')}
+        >
           Fotoğrafı değiştir
         </button>
       )}
@@ -190,7 +209,10 @@ export default function SahneMenuDesktop(p: SofraMenuProps) {
           {m.home ? (
             <Showcase p={p} menuTitle={copy.menuTitle} menuEyebrow={copy.menuEyebrow} />
           ) : (
-            <section className="sh-ghead" key={m.searching ? 'head-search' : `head-${p.activeGroup}`}>
+            <section
+              className="sh-ghead"
+              key={m.searching ? 'head-search' : `head-${p.activeGroup}`}
+            >
               {!m.searching && m.group && (
                 <div className="sh-ghead__ghost" aria-hidden="true">
                   <span>{Array.from({ length: 6 }, () => m.group?.name).join(' ✦ ')}</span>
@@ -218,11 +240,16 @@ export default function SahneMenuDesktop(p: SofraMenuProps) {
               )}
             </section>
           )}
-          <SearchCorrection p={p}/>
+          <SearchCorrection p={p} />
           {p.stories}
           {m.home && (m.count > 0 || p.loading || editing) && (
             <div className="sh-section">
-              <SofraText as="h2" field="picksLabel" value={copy.picksLabel} onTextEdit={p.onTextEdit} />
+              <SofraText
+                as="h2"
+                field="picksLabel"
+                value={copy.picksLabel}
+                onTextEdit={p.onTextEdit}
+              />
               {!p.loading && m.count > 0 && <span>{t.items(m.count)}</span>}
             </div>
           )}
@@ -250,7 +277,7 @@ export default function SahneMenuDesktop(p: SofraMenuProps) {
                         </h2>
                         {grid(g.products)}
                       </section>
-                    ),
+                    )
                 )}
               </>
             )}

@@ -131,6 +131,10 @@
   background: #0e0b09;
   border-radius: 8px;
 }
+/* A draft is a stable editing canvas, not another customer entrance animation. */
+#sofra-preview-root :is(.sh-menu *, .sh-dock) {
+  animation: none !important;
+}
 .sofra-editor-details {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

@@ -89,6 +89,7 @@ export function useMenuModel(p: SofraMenuProps) {
 
   // The welcome screen leaves a flag so its colour wipe can finish on this page.
   const [wipe, setWipe] = useState(() => {
+    if (p.onTextEdit) return false;
     try {
       return Boolean(sessionStorage.getItem('sahne-wipe')) && !prefersReducedMotion();
     } catch {
@@ -96,6 +97,7 @@ export function useMenuModel(p: SofraMenuProps) {
     }
   });
   useEffect(() => {
+    if (p.onTextEdit) return;
     try {
       sessionStorage.removeItem('sahne-wipe');
     } catch {}
@@ -106,6 +108,7 @@ export function useMenuModel(p: SofraMenuProps) {
 
   // Coming back from a product: return to the same scroll position.
   useEffect(() => {
+    if (p.onTextEdit) return;
     if (p.loading) return;
     try {
       const saved = JSON.parse(sessionStorage.getItem(RETURN_KEY) || 'null');
@@ -115,11 +118,12 @@ export function useMenuModel(p: SofraMenuProps) {
       const timer = setTimeout(() => window.scrollTo(0, Number(saved.y) || 0), 80);
       return () => clearTimeout(timer);
     } catch {}
-  }, [p.loading]);
+  }, [p.loading, p.onTextEdit]);
 
   // A new category starts from the top.
   const firstGroup = useRef(true);
   useEffect(() => {
+    if (p.onTextEdit) return;
     if (firstGroup.current) {
       firstGroup.current = false;
       return;
@@ -128,6 +132,10 @@ export function useMenuModel(p: SofraMenuProps) {
   }, [p.activeGroup]);
 
   function open(id: number) {
+    if (p.onTextEdit) {
+      p.onProductOpen?.(id);
+      return;
+    }
     try {
       const params = new URLSearchParams(location.search);
       if (p.search?.trim()) params.set('q', p.search);
