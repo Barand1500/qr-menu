@@ -361,7 +361,15 @@ export default function CustomerSignIn({
                 </button>
               )}
               <span className="customer-entry__eyebrow">{eyebrows[step]}</span>
-              <h2 id={id} aria-label={lines.join(' ')}>
+              <h2
+                id={id}
+                aria-label={lines.join(' ')}
+                className={
+                  ['options', 'email', 'password'].includes(step)
+                    ? 'customer-entry__title--inline'
+                    : undefined
+                }
+              >
                 {lines.map((line, i) => (
                   <span className="customer-entry__line" key={i} aria-hidden="true">
                     <span

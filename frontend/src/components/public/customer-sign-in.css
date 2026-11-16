@@ -272,6 +272,13 @@
   padding: 0.06em 0 0.14em;
   margin: -0.06em 0 -0.14em;
 }
+.customer-entry h2.customer-entry__title--inline {
+  display: flex;
+  align-items: baseline;
+  gap: 0.18em;
+  white-space: nowrap;
+  font-size: clamp(28px, 3.6vw, 48px);
+}
 .customer-entry__line > span {
   display: inline-block;
   animation: ce-rise 0.9s var(--ce-ease) calc(var(--i) * 90ms + 0.05s) both;
@@ -806,6 +813,9 @@
   }
   .customer-entry h2 {
     font-size: clamp(40px, 12.5vw, 56px);
+  }
+  .customer-entry h2.customer-entry__title--inline {
+    font-size: clamp(26px, 8.5vw, 40px);
   }
   .customer-entry__caption {
     max-width: 100%;
