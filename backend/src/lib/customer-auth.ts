@@ -6,6 +6,7 @@ import { prisma } from './prisma.js';
 export type CustomerAuthPayload = {
   typ: 'customer';
   customerId: number;
+  version?: number;
 };
 
 declare global {
@@ -16,15 +17,23 @@ declare global {
   }
 }
 
-export function signCustomerToken(customerId: number, remember = false): string {
+export function signCustomerToken(
+  customerId: number,
+  remember = false,
+  version = 0,
+): string {
   return jwt.sign(
-    { typ: 'customer', customerId } satisfies CustomerAuthPayload,
+    { typ: 'customer', customerId, version } satisfies CustomerAuthPayload,
     config.jwtSecret,
-    { expiresIn: remember ? '30d' : '7d' }
+    { expiresIn: remember ? '30d' : '7d' },
   );
 }
 
-export function customerAuthRequired(req: Request, res: Response, next: NextFunction) {
+export function customerAuthRequired(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   const header = req.headers.authorization;
   const token = header?.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) {
@@ -33,7 +42,10 @@ export function customerAuthRequired(req: Request, res: Response, next: NextFunc
 
   void (async () => {
     try {
-      const decoded = jwt.verify(token, config.jwtSecret) as CustomerAuthPayload & {
+      const decoded = jwt.verify(
+        token,
+        config.jwtSecret,
+      ) as CustomerAuthPayload & {
         typ?: string;
       };
       if (decoded.typ !== 'customer' || !decoded.customerId) {
@@ -41,11 +53,15 @@ export function customerAuthRequired(req: Request, res: Response, next: NextFunc
       }
       const row = await prisma.menuCustomer.findUnique({
         where: { id: decoded.customerId },
-        select: { id: true },
+        select: { id: true, authVersion: true },
       });
       if (!row) {
         return res.status(401).json({ message: 'Oturum geçersiz' });
       }
+      if ((decoded.version ?? 0) !== row.authVersion)
+        return res
+          .status(401)
+          .json({ message: 'Şifreniz değişti. Yeniden giriş yapın.' });
       req.customer = { typ: 'customer', customerId: row.id };
       next();
     } catch {
@@ -119,7 +135,11 @@ export function customerPublic(row: {
     likedFoods: asStringArray(row.likedFoods),
     dislikedFoods: asStringArray(row.dislikedFoods),
     drinksAlcohol:
-      row.drinksAlcohol === true ? true : row.drinksAlcohol === false ? false : null,
+      row.drinksAlcohol === true
+        ? true
+        : row.drinksAlcohol === false
+          ? false
+          : null,
     pointsByRestaurant: parsePointsJson(row.pointsJson),
     kvkkAcceptedAt: row.kvkkAcceptedAt.toISOString(),
   };

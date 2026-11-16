@@ -13,21 +13,22 @@ import {
   signCustomerToken,
 } from '../lib/customer-auth.js';
 import { issueCustomerQrChallenge } from '../lib/customer-qr-challenge.js';
+import customerEmailRouter from './customer-email.js';
+import {
+  allowCustomerEmailRequest,
+  customerEmail,
+} from '../lib/customer-email.js';
 
 const router = Router();
+router.use('/email', customerEmailRouter);
 
 router.post('/register', async (req, res) => {
-  const {
-    loginType,
-    email,
-    phone,
-    password,
-    fullName,
-    kvkkAccepted,
-    remember,
-  } = req.body as {
-    loginType?: 'email' | 'phone';
-    email?: string;
+  // Old clients cannot bypass the new e-mail verification flow.
+  if (req.body?.loginType !== 'phone')
+    return res
+      .status(410)
+      .json({ message: 'E-posta ile devam ederek hesabınızı doğrulayın.' });
+  const { phone, password, fullName, kvkkAccepted, remember } = req.body as {
     phone?: string;
     password?: string;
     fullName?: string;
@@ -39,7 +40,9 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ message: 'KVKK onayını kabul etmelisiniz' });
   }
 
-  const name = String(fullName || '').trim().slice(0, 150);
+  const name = String(fullName || '')
+    .trim()
+    .slice(0, 150);
   const pass = String(password || '');
   if (name.length < 2) {
     return res.status(400).json({ message: 'Ad soyad gerekli' });
@@ -48,34 +51,21 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ message: 'Şifre en az 6 karakter olmalı' });
   }
 
-  const type = loginType === 'phone' ? 'phone' : 'email';
-  let emailNorm: string | null = null;
-  let phoneNorm: string | null = null;
-
-  if (type === 'email') {
-    emailNorm = normalizeEmail(email || '');
-    if (!isValidEmail(emailNorm)) {
-      return res.status(400).json({ message: 'Geçerli bir e-posta girin' });
-    }
-    const exists = await prisma.menuCustomer.findUnique({ where: { email: emailNorm } });
-    if (exists) {
-      return res.status(409).json({ message: 'Bu e-posta ile kayıt zaten var' });
-    }
-  } else {
-    phoneNorm = normalizePhone(phone || '');
-    if (!isValidPhone(phoneNorm)) {
-      return res.status(400).json({ message: 'Geçerli bir cep telefonu girin (5XX XXX XX XX)' });
-    }
-    const exists = await prisma.menuCustomer.findUnique({ where: { phone: phoneNorm } });
-    if (exists) {
-      return res.status(409).json({ message: 'Bu telefon ile kayıt zaten var' });
-    }
+  const phoneNorm = normalizePhone(phone || '');
+  if (!isValidPhone(phoneNorm)) {
+    return res
+      .status(400)
+      .json({ message: 'Geçerli bir cep telefonu girin (5XX XXX XX XX)' });
   }
-
+  const exists = await prisma.menuCustomer.findUnique({
+    where: { phone: phoneNorm },
+  });
+  if (exists)
+    return res.status(409).json({ message: 'Bu telefon ile kayıt zaten var' });
   const passwordHash = await bcrypt.hash(pass, 10);
   const row = await prisma.menuCustomer.create({
     data: {
-      email: emailNorm,
+      email: null,
       phone: phoneNorm,
       passwordHash,
       fullName: name,
@@ -93,6 +83,19 @@ router.post('/register', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const address = req.ip || 'unknown';
+  const account =
+    customerEmail(req.body?.email) || normalizePhone(req.body?.phone || '');
+  if (
+    !allowCustomerEmailRequest(`password-ip:${address}`, 300) ||
+    !allowCustomerEmailRequest(`password-account:${address}:${account}`, 20)
+  )
+    return res
+      .status(429)
+      .json({
+        message: 'Çok fazla deneme yapıldı. Daha sonra tekrar deneyin.',
+      });
   const { loginType, email, phone, password, remember } = req.body as {
     loginType?: 'email' | 'phone';
     email?: string;
@@ -118,26 +121,34 @@ router.post('/login', async (req, res) => {
   } else {
     const phoneNorm = normalizePhone(phone || '');
     if (!isValidPhone(phoneNorm)) {
-      return res.status(400).json({ message: 'Geçerli bir cep telefonu girin' });
+      return res
+        .status(400)
+        .json({ message: 'Geçerli bir cep telefonu girin' });
     }
     row = await prisma.menuCustomer.findUnique({ where: { phone: phoneNorm } });
   }
 
   if (!row) {
-    return res.status(401).json({ message: 'Hesap bulunamadı veya şifre hatalı' });
+    return res
+      .status(401)
+      .json({ message: 'Hesap bulunamadı veya şifre hatalı' });
   }
 
   const ok = await bcrypt.compare(pass, row.passwordHash);
   if (!ok) {
-    return res.status(401).json({ message: 'Hesap bulunamadı veya şifre hatalı' });
+    return res
+      .status(401)
+      .json({ message: 'Hesap bulunamadı veya şifre hatalı' });
   }
 
-  const token = signCustomerToken(row.id, Boolean(remember));
+  const token = signCustomerToken(row.id, Boolean(remember), row.authVersion);
   res.json({ token, customer: customerPublic(row) });
 });
 
 router.get('/me', customerAuthRequired, async (req, res) => {
-  const row = await prisma.menuCustomer.findUnique({ where: { id: req.customer!.customerId } });
+  const row = await prisma.menuCustomer.findUnique({
+    where: { id: req.customer!.customerId },
+  });
   if (!row) return res.status(401).json({ message: 'Oturum geçersiz' });
 
   const restaurantId = Number(req.query.restaurantId);
@@ -159,7 +170,10 @@ router.get('/me', customerAuthRequired, async (req, res) => {
 
 router.put('/profile', customerAuthRequired, async (req, res) => {
   const body = req.body || {};
-  const fullName = body.fullName != null ? String(body.fullName).trim().slice(0, 150) : undefined;
+  const fullName =
+    body.fullName != null
+      ? String(body.fullName).trim().slice(0, 150)
+      : undefined;
   if (fullName !== undefined && fullName.length < 2) {
     return res.status(400).json({ message: 'Ad soyad gerekli' });
   }
@@ -174,10 +188,13 @@ router.put('/profile', customerAuthRequired, async (req, res) => {
   } = {};
 
   if (fullName !== undefined) data.fullName = fullName;
-  if (body.allergenTags !== undefined) data.allergenTags = asStringArray(body.allergenTags);
+  if (body.allergenTags !== undefined)
+    data.allergenTags = asStringArray(body.allergenTags);
   if (body.dietTags !== undefined) data.dietTags = asStringArray(body.dietTags);
-  if (body.likedFoods !== undefined) data.likedFoods = asStringArray(body.likedFoods);
-  if (body.dislikedFoods !== undefined) data.dislikedFoods = asStringArray(body.dislikedFoods);
+  if (body.likedFoods !== undefined)
+    data.likedFoods = asStringArray(body.likedFoods);
+  if (body.dislikedFoods !== undefined)
+    data.dislikedFoods = asStringArray(body.dislikedFoods);
   if (body.drinksAlcohol !== undefined) {
     if (body.drinksAlcohol === true) data.drinksAlcohol = true;
     else if (body.drinksAlcohol === false) data.drinksAlcohol = false;

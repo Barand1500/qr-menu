@@ -689,7 +689,7 @@ function PublicMenuPageInner({
   const profileIcon = profileEnabled ? (
     <button
       type="button"
-      className={`public-menu-header__icon-btn public-menu-header__icon-btn--md-only public-menu-header__profile-btn${customer ? ' is-active' : ''}`}
+      className={`public-menu-header__icon-btn${isSofra ? '' : ' public-menu-header__icon-btn--md-only'} public-menu-header__profile-btn${customer ? ' is-active' : ''}`}
       aria-label={customer ? profileCopy.profile : profileCopy.loginRegister}
       title={customer ? profileCopy.profile : profileCopy.loginRegister}
       onClick={() => setCustomerAuthOpen(true)}

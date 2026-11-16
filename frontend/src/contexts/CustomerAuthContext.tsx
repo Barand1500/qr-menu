@@ -36,7 +36,7 @@ type CustomerAuthContextValue = {
   filterEnabled: boolean;
   setFilterEnabled: (on: boolean) => void;
   login: (body: Record<string, unknown>) => Promise<void>;
-  register: (body: Record<string, unknown>) => Promise<void>;
+  completeEmail: (body: Record<string, unknown>) => Promise<{ reset: boolean }>;
   logout: () => void;
   refresh: (restaurantId?: number | null) => Promise<void>;
   updateProfile: (body: Record<string, unknown>) => Promise<void>;
@@ -161,14 +161,16 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     syncPrefsFromCustomer(res.customer);
   }, []);
 
-  const register = useCallback(async (body: Record<string, unknown>) => {
-    const res = await api<AuthResponse>('/api/customer/auth/register', {
+  const completeEmail = useCallback(async (body: Record<string, unknown>) => {
+    const res = await api<AuthResponse | { reset: true }>('/api/customer/auth/email/complete', {
       method: 'POST',
       body: JSON.stringify(body),
     });
+    if ('reset' in res) return { reset: true };
     storeToken(res.token, Boolean(body.remember));
     setCustomer(res.customer);
     syncPrefsFromCustomer(res.customer);
+    return { reset: false };
   }, []);
 
   const logout = useCallback(() => {
@@ -200,7 +202,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       filterEnabled,
       setFilterEnabled,
       login,
-      register,
+      completeEmail,
       logout,
       refresh,
       updateProfile,
@@ -212,7 +214,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       filterEnabled,
       setFilterEnabled,
       login,
-      register,
+      completeEmail,
       logout,
       refresh,
       updateProfile,
