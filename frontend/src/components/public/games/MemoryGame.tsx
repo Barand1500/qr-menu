@@ -2,10 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { imageUrl } from '@/lib/api';
 import type { MemoryPair, MemoryPairCount } from '@/lib/menuGamesConfig';
 import { gamesUi } from '@/lib/menuGamesUi';
+import { Utensils } from 'lucide-react';
 
 const EMOJIS = ['🍕', '🍔', '🍣', '🍩', '🌮', '🥗', '🍜', '🍰'];
 
-type Face = { key: string; kind: 'emoji' | 'image'; emoji?: string; src?: string };
+type Face = {
+  key: string;
+  kind: 'emoji' | 'image';
+  emoji?: string;
+  src?: string;
+};
 
 type Card = {
   id: number;
@@ -54,12 +60,14 @@ function buildDeck(pairCount: MemoryPairCount, pairs: MemoryPair[]): Card[] {
 }
 
 type Props = {
+  sahne?: boolean;
   lang?: string;
   pairCount?: MemoryPairCount;
   pairs?: MemoryPair[];
 };
 
 export default function MemoryGame({
+  sahne = false,
   lang = 'tr',
   pairCount = 6,
   pairs = [],
@@ -81,7 +89,7 @@ export default function MemoryGame({
 
   const openIds = useMemo(
     () => cards.filter((c) => c.flipped && !c.matched).map((c) => c.id),
-    [cards]
+    [cards],
   );
 
   useEffect(() => {
@@ -92,16 +100,19 @@ export default function MemoryGame({
     const ca = cards.find((c) => c.id === a)!;
     const cb = cards.find((c) => c.id === b)!;
     const match = ca.face.key === cb.face.key;
-    const t = window.setTimeout(() => {
-      setCards((prev) =>
-        prev.map((c) => {
-          if (c.id !== a && c.id !== b) return c;
-          if (match) return { ...c, matched: true, flipped: true };
-          return { ...c, flipped: false };
-        })
-      );
-      setLock(false);
-    }, match ? 280 : 650);
+    const t = window.setTimeout(
+      () => {
+        setCards((prev) =>
+          prev.map((c) => {
+            if (c.id !== a && c.id !== b) return c;
+            if (match) return { ...c, matched: true, flipped: true };
+            return { ...c, flipped: false };
+          }),
+        );
+        setLock(false);
+      },
+      match ? 280 : 650,
+    );
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openIds.join(',')]);
@@ -131,7 +142,9 @@ export default function MemoryGame({
     setStartedAt(Date.now());
   }
 
-  const secs = wonAt ? Math.max(1, Math.round((wonAt - startedAt) / 1000)) : null;
+  const secs = wonAt
+    ? Math.max(1, Math.round((wonAt - startedAt) / 1000))
+    : null;
 
   return (
     <div className="menu-game-memory">
@@ -162,7 +175,12 @@ export default function MemoryGame({
             disabled={lock || c.matched}
             aria-label={ui.card}
           >
-            <span className="menu-game-memory__face menu-game-memory__face--back">?</span>
+            <span
+              className="menu-game-memory__face menu-game-memory__face--back"
+              aria-hidden="true"
+            >
+              {sahne ? <Utensils size={25} strokeWidth={1.3} /> : '?'}
+            </span>
             <span className="menu-game-memory__face menu-game-memory__face--front">
               {c.face.kind === 'image' && c.face.src ? (
                 <img src={imageUrl(c.face.src)} alt="" />

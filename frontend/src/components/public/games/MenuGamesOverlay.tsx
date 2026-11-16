@@ -146,13 +146,18 @@ export default function MenuGamesOverlay({
               })}
             </div>
           ) : active === 'memory' ? (
-            <MemoryGame lang={lang} pairCount={pairCount} pairs={memoryPairs} />
+            <MemoryGame
+              sahne={sahne}
+              lang={lang}
+              pairCount={pairCount}
+              pairs={memoryPairs}
+            />
           ) : active === 'xox' ? (
             <XoxGame slug={slug} lang={lang} />
           ) : active === 'detective' ? (
             <DetectiveGame lang={lang} adminQuestions={detectiveQuestions} />
           ) : (
-            <BlitzGame lang={lang} products={products} />
+            <BlitzGame sahne={sahne} lang={lang} products={products} />
           )}
         </div>
       </section>

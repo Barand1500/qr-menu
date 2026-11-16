@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { gamesUi } from '@/lib/menuGamesUi';
+import SahneBlitzView from './SahneBlitzView';
 
 export type BlitzProduct = {
   id: string;
@@ -34,11 +35,16 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 type Props = {
+  sahne?: boolean;
   lang?: string;
   products?: BlitzProduct[];
 };
 
-export default function BlitzGame({ lang = 'tr', products = [] }: Props) {
+export default function BlitzGame({
+  lang = 'tr',
+  products = [],
+  sahne = false,
+}: Props) {
   const ui = gamesUi(lang);
   const pool = useMemo(() => {
     const fromMenu = products.filter((p) => p.name?.trim()).slice(0, 24);
@@ -72,10 +78,10 @@ export default function BlitzGame({ lang = 'tr', products = [] }: Props) {
     const targetCount = Math.min(4, Math.max(3, Math.floor(pool.length / 3)));
     const shuffled = shuffle(pool);
     const target = shuffled.slice(0, targetCount);
-    const decoys = shuffled.slice(targetCount, targetCount + Math.max(4, targetCount + 2));
-    const mixed = shuffle([...target, ...decoys]).slice(0, Math.min(8, target.length + decoys.length));
+    // Reserve a place for every target before shuffling; truncating after shuffle can hide a correct answer.
+    const decoys = shuffled.slice(targetCount, 8);
     setOrder(target);
-    setOptions(mixed.length >= target.length + 2 ? mixed : shuffle([...target, ...FALLBACK]).slice(0, 8));
+    setOptions(shuffle([...target, ...decoys]));
     setPicked([]);
     setScore(0);
     setPhase('memorize');
@@ -83,7 +89,9 @@ export default function BlitzGame({ lang = 'tr', products = [] }: Props) {
 
   function toggle(id: string) {
     if (phase !== 'recall') return;
-    setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setPicked((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
   }
 
   function submit() {
@@ -93,6 +101,22 @@ export default function BlitzGame({ lang = 'tr', products = [] }: Props) {
     setScore(Math.max(0, ok - falsePos));
     setPhase('result');
   }
+
+  if (sahne)
+    return (
+      <SahneBlitzView
+        lang={lang}
+        phase={phase}
+        seconds={seconds}
+        order={order}
+        options={options}
+        picked={picked}
+        score={score}
+        onStart={start}
+        onToggle={toggle}
+        onSubmit={submit}
+      />
+    );
 
   if (phase === 'intro') {
     return (
@@ -133,7 +157,9 @@ export default function BlitzGame({ lang = 'tr', products = [] }: Props) {
     return (
       <div className="menu-blitz menu-blitz--end">
         <div className="menu-blitz__result">
-          <p className="menu-blitz__kicker">{perfect ? ui.blitzPerfect : ui.blitzScore(score, order.length)}</p>
+          <p className="menu-blitz__kicker">
+            {perfect ? ui.blitzPerfect : ui.blitzScore(score, order.length)}
+          </p>
           <strong>{ui.blitzScore(score, order.length)}</strong>
           <button type="button" className="menu-games__primary" onClick={start}>
             {ui.blitzAgain}
