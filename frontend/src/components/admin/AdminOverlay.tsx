@@ -65,6 +65,8 @@ export default function AdminOverlay({
       }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
+          if ((e.target as HTMLElement).closest('[data-admin-escape-owner]'))
+            return;
           e.preventDefault();
           e.stopPropagation();
           if (!busy && !onEscape?.()) onClose();

@@ -1,14 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import {
-  X,
-  ImagePlus,
-  UtensilsCrossed,
-  Plus,
-  Pencil,
-  Trash2,
-  ChevronUp,
-  ChevronDown,
-} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, Plus, Pencil, Trash2 } from 'lucide-react';
 import { imageUrl } from '@/lib/api';
 import { Button, Input, Select } from '@/components/ui';
 import LanguageTabs, { type Language } from '@/components/LanguageTabs';
@@ -27,6 +18,10 @@ import IngredientPoolPicker from '@/components/admin/IngredientPoolPicker';
 import { syncIngredientsFromPoolSelection } from '@/lib/ingredientPool';
 import '@/ingredient-pool.css';
 import AdminOverlay from '@/components/admin/AdminOverlay';
+import ProductNameField from '@/components/admin/products/ProductNameField';
+import ProductGallery from '@/components/admin/products/ProductGallery';
+import type { Product } from '@/components/admin/products/types';
+import '@/components/admin/products/product-editor.css';
 
 export interface ProductTranslationFields {
   name: string;
@@ -60,11 +55,10 @@ interface GroupOption {
   parentName?: string | null;
 }
 
-type ModalTab = 'general' | 'diet' | 'translations' | 'image';
+type ModalTab = 'general' | 'translations' | 'image';
 
 const MODAL_TABS: { id: ModalTab; label: string }[] = [
-  { id: 'general', label: 'Genel' },
-  { id: 'diet', label: 'Alerjen' },
+  { id: 'general', label: 'Ürün' },
   { id: 'translations', label: 'Çeviriler' },
   { id: 'image', label: 'Görseller' },
 ];
@@ -239,6 +233,8 @@ interface ProductModalProps {
   form: ProductFormState;
   productImages: string[];
   pendingPreviews: { id: string; url: string }[];
+  photoOrder: string[];
+  productId?: number;
   saving?: boolean;
   error?: string;
   initialTab?: ModalTab;
@@ -248,7 +244,7 @@ interface ProductModalProps {
   onAddImages: (files: FileList | null) => void;
   onRemoveImage: (url: string) => void;
   onRemovePending: (id: string) => void;
-  onMoveImage: (url: string, direction: -1 | 1) => void;
+  onPhotoOrderChange: (ids: string[]) => void;
 }
 
 export default function ProductModal({
@@ -262,6 +258,8 @@ export default function ProductModal({
   form,
   productImages,
   pendingPreviews,
+  photoOrder,
+  productId,
   saving,
   error,
   initialTab = 'general',
@@ -271,9 +269,8 @@ export default function ProductModal({
   onAddImages,
   onRemoveImage,
   onRemovePending,
-  onMoveImage,
+  onPhotoOrderChange,
 }: ProductModalProps) {
-  const fileRef = useRef<HTMLInputElement>(null);
   const sortedLangs = [...languages].sort((a, b) =>
     a.code === 'tr' ? -1 : b.code === 'tr' ? 1 : 0,
   );
@@ -283,12 +280,18 @@ export default function ProductModal({
     'manual',
   );
   const [poolPickerOpen, setPoolPickerOpen] = useState(false);
+  const [suggestedProduct, setSuggestedProduct] = useState<Product | null>(
+    null,
+  );
+  const [assistText, setAssistText] = useState('');
 
   useEffect(() => {
     if (!open) return;
     setActiveTab(initialTab);
     setIngredientsMode('manual');
     setPoolPickerOpen(false);
+    setSuggestedProduct(null);
+    setAssistText('');
     const tr = languages.find((l) => l.code === 'tr');
     setActiveLang(tr?.code || languages[0]?.code || 'tr');
     // Yalnızca modal açıldığında sıfırla — onClose/languages her render'da değişebilir
@@ -341,7 +344,7 @@ export default function ProductModal({
       open={open}
       busy={saving}
       label={mode === 'edit' ? 'Ürün ayrıntıları' : 'Yeni ürün'}
-      className="admin-overlay--product"
+      className="admin-overlay--product pe-editor"
       onClose={onClose}
       onEscape={() => {
         if (poolPickerOpen) {
@@ -364,25 +367,16 @@ export default function ProductModal({
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="px-6 pt-6 pb-3 shrink-0">
+          <div className="px-6 pt-6 pb-3 shrink-0 pe-header">
             <div className="flex items-start justify-between gap-4 mb-4">
               <div className="flex items-start gap-3 min-w-0">
-                <div
-                  className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{ background: 'var(--admin-accent-soft)' }}
-                >
-                  <UtensilsCrossed
-                    className="w-5 h-5"
-                    style={{ color: 'var(--admin-accent)' }}
-                  />
-                </div>
                 <div className="min-w-0">
-                  <h2 className="text-xl font-bold text-[var(--admin-text)]">
-                    {mode === 'edit' ? 'Ürün Düzenle' : 'Ürün Oluştur'}
-                  </h2>
-                  <p className="text-sm admin-text-muted mt-0.5">
-                    Bilgileri sekmeler arasında düzenleyin
+                  <p className="pe-eyebrow">
+                    {mode === 'edit' ? 'MENÜNÜZDEN' : 'MENÜYE EKLE'}
                   </p>
+                  <h2 className="text-xl font-bold text-[var(--admin-text)]">
+                    {mode === 'edit' ? 'Ürünü düzenle' : 'Yeni bir lezzet.'}
+                  </h2>
                 </div>
               </div>
               <button
@@ -395,26 +389,14 @@ export default function ProductModal({
               </button>
             </div>
 
-            <div
-              className="flex gap-1 p-1 rounded-xl"
-              style={{ background: 'var(--admin-input-bg)' }}
-            >
+            <div className="pe-tabs">
               {MODAL_TABS.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className="flex-1 py-2 px-2 sm:px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all"
-                  style={{
-                    background:
-                      activeTab === tab.id
-                        ? 'var(--admin-accent)'
-                        : 'transparent',
-                    color:
-                      activeTab === tab.id
-                        ? 'var(--admin-btn-primary-text)'
-                        : 'var(--admin-text-muted)',
-                  }}
+                  className={activeTab === tab.id ? 'is-active' : ''}
+                  aria-pressed={activeTab === tab.id}
                 >
                   {tab.label}
                 </button>
@@ -430,172 +412,319 @@ export default function ProductModal({
             )}
             <fieldset disabled={saving} className="min-w-0">
               {activeTab === 'general' && (
-                <div className="space-y-4 float-field-stack pt-2">
-                  <Select
-                    label="Grubu"
-                    value={form.groupId}
-                    options={groupOptions}
-                    onChange={(e) =>
-                      onFormChange({ ...form, groupId: e.target.value })
-                    }
-                  />
-                  <Input
-                    label="Adı"
+                <div className="pe-form">
+                  <ProductNameField
                     value={trTranslation.name}
-                    onChange={(e) => {
-                      const name = e.target.value;
+                    productId={productId}
+                    disabled={saving}
+                    onChange={(name) => {
+                      setSuggestedProduct(null);
+                      setAssistText('');
                       onFormChange({
                         ...form,
                         translations: {
                           ...form.translations,
-                          tr: {
-                            ...(form.translations.tr || {
-                              name: '',
-                              description: '',
-                              ingredients: '',
-                              allergens: '',
-                            }),
-                            name,
-                          },
+                          tr: { ...trTranslation, name },
                         },
                       });
                     }}
-                    placeholder="Ürün adı"
+                    onSelect={({ name, product }) => {
+                      const filled: string[] = [];
+                      if (
+                        !form.prepTimeMinutes &&
+                        product?.prepTimeMinutes != null
+                      )
+                        filled.push('süre');
+                      if (!form.calories && product?.calories != null)
+                        filled.push('kalori');
+                      setSuggestedProduct(product || null);
+                      setAssistText(
+                        filled.length
+                          ? 'Menünüzdeki kayıttan ' +
+                              filled.join(' ve ') +
+                              ' alındı. Tarif ve porsiyonu kontrol edin.'
+                          : '',
+                      );
+                      onFormChange({
+                        ...form,
+                        prepTimeMinutes:
+                          form.prepTimeMinutes ||
+                          product?.prepTimeMinutes?.toString() ||
+                          '',
+                        calories:
+                          form.calories || product?.calories?.toString() || '',
+                        translations: {
+                          ...form.translations,
+                          tr: { ...trTranslation, name },
+                        },
+                      });
+                    }}
                   />
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      label="Fiyat"
-                      value={form.price}
-                      onChange={(e) =>
-                        onFormChange({ ...form, price: e.target.value })
-                      }
-                    />
+                  <div className="pe-primary-grid">
                     <Select
-                      label="Para birimi"
-                      value={form.currencyId}
-                      options={currencies
-                        .filter(
-                          (c) =>
-                            c.isActive || c.id.toString() === form.currencyId,
-                        )
-                        .map((c) => ({
-                          value: c.id.toString(),
-                          label: `${c.symbol} ${c.code} — ${c.name}`,
-                        }))}
-                      onChange={(e) =>
-                        onFormChange({ ...form, currencyId: e.target.value })
+                      label="Grubu"
+                      value={form.groupId}
+                      options={groupOptions}
+                      onChange={(event) =>
+                        onFormChange({ ...form, groupId: event.target.value })
                       }
                     />
+                    <fieldset className="pe-price">
+                      <legend>Fiyat</legend>
+                      <input
+                        aria-label="Fiyat"
+                        inputMode="decimal"
+                        placeholder="0,00"
+                        value={form.price}
+                        onChange={(event) =>
+                          onFormChange({ ...form, price: event.target.value })
+                        }
+                      />
+                      <select
+                        aria-label="Para birimi"
+                        value={form.currencyId}
+                        onChange={(event) =>
+                          onFormChange({
+                            ...form,
+                            currencyId: event.target.value,
+                          })
+                        }
+                      >
+                        <option value="" disabled>
+                          Seçin
+                        </option>
+                        {currencies
+                          .filter(
+                            (currency) =>
+                              currency.isActive ||
+                              String(currency.id) === form.currencyId,
+                          )
+                          .map((currency) => (
+                            <option key={currency.id} value={currency.id}>
+                              {currency.symbol} {currency.code}
+                            </option>
+                          ))}
+                      </select>
+                    </fieldset>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      type="number"
-                      min="0"
-                      label="Hazırlanma (dk.)"
-                      value={form.prepTimeMinutes}
-                      onChange={(e) =>
+                  <label className="pe-description">
+                    Kısa açıklama <span>isteğe bağlı</span>
+                    <textarea
+                      aria-label="Kısa açıklama"
+                      rows={2}
+                      placeholder="Misafiriniz bu lezzet hakkında ne bilmeli?"
+                      value={trTranslation.description}
+                      onChange={(event) =>
                         onFormChange({
                           ...form,
-                          prepTimeMinutes: e.target.value,
+                          translations: {
+                            ...form.translations,
+                            tr: {
+                              ...trTranslation,
+                              description: event.target.value,
+                            },
+                          },
                         })
                       }
                     />
-                    <Input
-                      type="number"
-                      min="0"
-                      label="Kalori (cal.)"
-                      value={form.calories}
-                      onChange={(e) =>
-                        onFormChange({ ...form, calories: e.target.value })
-                      }
-                    />
+                  </label>
+                  <div className="pe-numbers">
+                    <label>
+                      Hazırlanma{' '}
+                      <span>
+                        <input
+                          aria-label="Hazırlanma (dk.)"
+                          type="number"
+                          min="0"
+                          inputMode="numeric"
+                          placeholder="—"
+                          value={form.prepTimeMinutes}
+                          onChange={(event) =>
+                            onFormChange({
+                              ...form,
+                              prepTimeMinutes: event.target.value,
+                            })
+                          }
+                        />
+                        <small>dk</small>
+                      </span>
+                    </label>
+                    <label>
+                      Kalori{' '}
+                      <span>
+                        <input
+                          aria-label="Kalori (kcal)"
+                          type="number"
+                          min="0"
+                          inputMode="numeric"
+                          placeholder="—"
+                          value={form.calories}
+                          onChange={(event) =>
+                            onFormChange({
+                              ...form,
+                              calories: event.target.value,
+                            })
+                          }
+                        />
+                        <small>kcal</small>
+                      </span>
+                    </label>
                   </div>
-
-                  <ProductFeaturesEditor
-                    features={form.features}
-                    onChange={(features) => onFormChange({ ...form, features })}
-                  />
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="flex items-center gap-2.5 cursor-pointer text-sm text-[var(--admin-text)]">
+                  {assistText && (
+                    <p className="pe-assist" role="status">
+                      {assistText}
+                    </p>
+                  )}
+                  <details className="pe-details">
+                    <summary>
+                      <span>
+                        Alerjenler ve tercihler
+                        <small>
+                          {form.allergenTags.length +
+                            dietIdsFromProduct(form, form.dietTags).length >
+                          0
+                            ? [
+                                ...catalogToOptions(
+                                  prefCatalog,
+                                  'allergen',
+                                ).filter((item) =>
+                                  form.allergenTags.includes(item.id),
+                                ),
+                                ...catalogToOptions(prefCatalog, 'diet').filter(
+                                  (item) =>
+                                    dietIdsFromProduct(
+                                      form,
+                                      form.dietTags,
+                                    ).includes(item.id),
+                                ),
+                              ]
+                                .map((item) => item.label)
+                                .join(' · ')
+                            : 'Gerekliyse ekleyin'}
+                        </small>
+                      </span>
+                      <Plus size={17} />
+                    </summary>
+                    <div className="pe-details__body">
+                      {suggestedProduct &&
+                      (suggestedProduct.allergenTags?.length ||
+                        dietIdsFromProduct(
+                          suggestedProduct,
+                          suggestedProduct.dietTags,
+                        ).length) ? (
+                        <button
+                          type="button"
+                          className="pe-copy-tags"
+                          onClick={() => {
+                            const dietTags = [
+                              ...new Set([
+                                ...dietIdsFromProduct(form, form.dietTags),
+                                ...dietIdsFromProduct(
+                                  suggestedProduct,
+                                  suggestedProduct.dietTags,
+                                ),
+                              ]),
+                            ];
+                            onFormChange({
+                              ...form,
+                              ...flagsFromDietSelection(dietTags),
+                              allergenTags: [
+                                ...new Set([
+                                  ...form.allergenTags,
+                                  ...(suggestedProduct.allergenTags || []),
+                                ]),
+                              ],
+                            });
+                            setSuggestedProduct(null);
+                          }}
+                        >
+                          Kayıtlı ürünün alerjen ve tercihlerini de kullan
+                        </button>
+                      ) : null}
+                      <ManageableTagPillGroup
+                        title="Alerjenler"
+                        hint="Tarifinizde bulunanları seçin."
+                        kind="allergen"
+                        options={catalogToOptions(prefCatalog, 'allergen')}
+                        selected={form.allergenTags}
+                        onChange={(allergenTags) =>
+                          onFormChange({ ...form, allergenTags })
+                        }
+                        catalog={prefCatalog}
+                        onCatalogChange={onPrefCatalogChange}
+                        languageCodes={languages.map(
+                          (language) => language.code,
+                        )}
+                      />
+                      <ManageableTagPillGroup
+                        title="Diyet / yaşam tarzı"
+                        hint="Ürün bu tercihlere uygunsa seçin."
+                        kind="diet"
+                        options={catalogToOptions(prefCatalog, 'diet')}
+                        selected={dietIdsFromProduct(form, form.dietTags)}
+                        onChange={(ids) =>
+                          onFormChange({
+                            ...form,
+                            ...flagsFromDietSelection(ids),
+                          })
+                        }
+                        catalog={prefCatalog}
+                        onCatalogChange={onPrefCatalogChange}
+                        languageCodes={languages.map(
+                          (language) => language.code,
+                        )}
+                      />
+                    </div>
+                  </details>
+                  <details className="pe-details">
+                    <summary>
+                      <span>
+                        Ürün özellikleri
+                        <small>
+                          {form.features.length
+                            ? form.features.join(' · ')
+                            : 'Acı, ev yapımı, günlük taze…'}
+                        </small>
+                      </span>
+                      <Plus size={17} />
+                    </summary>
+                    <div className="pe-details__body">
+                      <ProductFeaturesEditor
+                        features={form.features}
+                        onChange={(features) =>
+                          onFormChange({ ...form, features })
+                        }
+                      />
+                    </div>
+                  </details>
+                  <div className="pe-toggles">
+                    <label>
                       <input
                         type="checkbox"
                         checked={form.isRecommended}
-                        onChange={(e) =>
+                        onChange={(event) =>
                           onFormChange({
                             ...form,
-                            isRecommended: e.target.checked,
+                            isRecommended: event.target.checked,
                           })
                         }
-                        className="w-4 h-4 rounded accent-[var(--admin-accent)]"
                       />
                       Önerilen ürün
                     </label>
-                    <label className="flex items-center gap-2.5 cursor-pointer text-sm text-[var(--admin-text)]">
+                    <label>
                       <input
                         type="checkbox"
                         checked={form.isActive}
-                        onChange={(e) =>
-                          onFormChange({ ...form, isActive: e.target.checked })
+                        onChange={(event) =>
+                          onFormChange({
+                            ...form,
+                            isActive: event.target.checked,
+                          })
                         }
-                        className="w-4 h-4 rounded accent-[var(--admin-accent)]"
                       />
                       Menüde aktif
                     </label>
                   </div>
-                </div>
-              )}
-
-              {activeTab === 'diet' && (
-                <div className="space-y-5 pt-2">
-                  <p
-                    className="text-xs admin-text-muted rounded-xl px-3 py-2.5 leading-relaxed"
-                    style={{ background: 'var(--admin-input-bg)' }}
-                  >
-                    Burada seçtiğiniz pill’ler menü filtreleriyle birebir
-                    bağlanır. Yeni eklediğiniz seçenekler Dil Ayarları’ndaki
-                    aktif dillere otomatik çevrilir — çeviri sekmesinde ayrıca
-                    yazmanız gerekmez.
-                  </p>
-
-                  <ManageableTagPillGroup
-                    title="Alerjenler"
-                    hint="Üründe bulunan maddeleri seçin — yeni eklerken Dil Ayarları dillerine otomatik çevrilir"
-                    kind="allergen"
-                    options={catalogToOptions(prefCatalog, 'allergen')}
-                    selected={form.allergenTags}
-                    onChange={(allergenTags) =>
-                      onFormChange({ ...form, allergenTags })
-                    }
-                    catalog={prefCatalog}
-                    onCatalogChange={onPrefCatalogChange}
-                    languageCodes={languages.map((l) => l.code)}
-                  />
-
-                  <ManageableTagPillGroup
-                    title="Diyet / yaşam tarzı"
-                    hint="Ürün bu tercihlere uygunsa işaretleyin — yeni eklerken Dil Ayarları dillerine otomatik çevrilir"
-                    kind="diet"
-                    options={catalogToOptions(prefCatalog, 'diet')}
-                    selected={dietIdsFromProduct(form, form.dietTags)}
-                    onChange={(ids) => {
-                      const flags = flagsFromDietSelection(ids);
-                      onFormChange({
-                        ...form,
-                        isVegan: flags.isVegan,
-                        isVegetarian: flags.isVegetarian,
-                        isGlutenFree: flags.isGlutenFree,
-                        isDiabetic: flags.isDiabetic,
-                        dietTags: flags.dietTags,
-                      });
-                    }}
-                    catalog={prefCatalog}
-                    onCatalogChange={onPrefCatalogChange}
-                    languageCodes={languages.map((l) => l.code)}
-                  />
                 </div>
               )}
 
@@ -681,100 +810,59 @@ export default function ProductModal({
               )}
 
               {activeTab === 'image' && (
-                <div className="pt-2 space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {productImages.map((url, index) => (
-                      <div key={url} className="product-images-item">
-                        <img
-                          src={imageUrl(url)}
-                          alt=""
-                          className="product-images-item__img"
-                        />
-                        <div className="product-images-item__actions">
-                          <button
-                            type="button"
-                            onClick={() => onMoveImage(url, -1)}
-                            disabled={index === 0}
-                            title="Yukarı taşı"
-                          >
-                            <ChevronUp className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onMoveImage(url, 1)}
-                            disabled={index === productImages.length - 1}
-                            title="Aşağı taşı"
-                          >
-                            <ChevronDown className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onRemoveImage(url)}
-                            className="text-red-500"
-                            title="Sil"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                        {index === 0 && (
-                          <span className="product-images-item__cover">
-                            Kapak
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                    {pendingPreviews.map((item) => (
-                      <div
-                        key={item.id}
-                        className="product-images-item product-images-item--pending"
-                      >
-                        <img
-                          src={item.url}
-                          alt=""
-                          className="product-images-item__img"
-                        />
-                        <button
-                          type="button"
-                          className="product-images-item__remove-pending"
-                          onClick={() => onRemovePending(item.id)}
-                          title="Kaldır"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                        <span className="product-images-item__pending-label">
-                          Yeni
-                        </span>
-                      </div>
-                    ))}
+                <div className="pe-images">
+                  <div className="pe-section-title">
+                    <span>Görselleriniz</span>
+                    <small>
+                      {productImages.length + pendingPreviews.length} görsel
+                    </small>
                   </div>
-
-                  <div
-                    className="rounded-2xl border-2 border-dashed p-6 text-center transition hover:border-[var(--admin-accent)] cursor-pointer"
-                    style={{ borderColor: 'var(--admin-card-border)' }}
-                    onClick={() => fileRef.current?.click()}
-                  >
+                  <ProductGallery
+                    disabled={saving}
+                    photos={(() => {
+                      const photos = [
+                        ...productImages.map((url) => ({
+                          id: 'saved:' + url,
+                          src: imageUrl(url),
+                        })),
+                        ...pendingPreviews.map((item) => ({
+                          id: 'pending:' + item.id,
+                          src: item.url,
+                          pending: true,
+                        })),
+                      ];
+                      return photos.sort(
+                        (a, b) =>
+                          photoOrder.indexOf(a.id) - photoOrder.indexOf(b.id),
+                      );
+                    })()}
+                    onOrder={onPhotoOrderChange}
+                    onRemove={(photo) =>
+                      photo.pending
+                        ? onRemovePending(photo.id.slice(8))
+                        : onRemoveImage(photo.id.slice(6))
+                    }
+                  />
+                  <label className="pe-upload">
+                    <Plus size={22} />
+                    <span>
+                      Görsel ekle<small>PNG, JPG, WebP · en fazla 5 MB</small>
+                    </span>
                     <input
-                      ref={fileRef}
                       type="file"
+                      aria-label="Ürün görselleri ekle"
                       accept="image/*"
                       multiple
-                      className="hidden"
-                      onChange={(e) => {
-                        onAddImages(e.target.files);
-                        e.target.value = '';
+                      disabled={saving}
+                      onChange={(event) => {
+                        onAddImages(event.target.files);
+                        event.target.value = '';
                       }}
                     />
-                    <ImagePlus
-                      className="w-9 h-9 mx-auto mb-2"
-                      style={{ color: 'var(--admin-accent)' }}
-                    />
-                    <p className="text-sm font-medium text-[var(--admin-text)]">
-                      Görsel ekle (birden fazla seçebilirsiniz)
-                    </p>
-                    <p className="text-xs admin-text-subtle mt-1">
-                      600 × 600 · PNG, JPG — 5 MB
-                    </p>
-                  </div>
+                  </label>
+                  <p className="pe-help">
+                    Yeni görseller ve sıralama Kaydet ile yayınlanır.
+                  </p>
                 </div>
               )}
             </fieldset>

@@ -115,6 +115,17 @@ export default function ProductsPage() {
     [imageBusyId, setImageBusyId] = useState<number | null>(null);
   const pendingRef = useRef(pending);
   pendingRef.current = pending;
+  const [photoOrder, setPhotoOrder] = useState<string[]>([]);
+  useEffect(() => {
+    const available = [
+      ...images.map((url) => `saved:${url}`),
+      ...pending.map((photo) => `pending:${photo.id}`),
+    ];
+    setPhotoOrder((previous) => [
+      ...previous.filter((id) => available.includes(id)),
+      ...available.filter((id) => !previous.includes(id)),
+    ]);
+  }, [images, pending]);
   const [stock, setStock] = useState<Product | null>(null),
     [deleteTarget, setDeleteTarget] = useState<Product | null>(null),
     [deleteError, setDeleteError] = useState('');
@@ -298,6 +309,14 @@ export default function ProductsPage() {
           ? [product.imageUrl]
           : [],
     );
+    setPhotoOrder(
+      (product.images?.length
+        ? product.images
+        : product.imageUrl
+          ? [product.imageUrl]
+          : []
+      ).map((url) => `saved:${url}`),
+    );
     clearPending();
     setModalOpen(true);
   }
@@ -319,6 +338,7 @@ export default function ProductsPage() {
       currencyId: String(currency?.id || ''),
     });
     setImages([]);
+    setPhotoOrder([]);
     clearPending();
     setModalOpen(true);
   }
@@ -496,33 +516,6 @@ export default function ProductsPage() {
       end();
     }
   }
-  async function moveImage(url: string, direction: -1 | 1) {
-    const list = [...images],
-      index = list.indexOf(url),
-      target = index + direction;
-    if (
-      index < 0 ||
-      target < 0 ||
-      target >= list.length ||
-      !editing ||
-      !begin()
-    )
-      return;
-    [list[index], list[target]] = [list[target], list[index]];
-    try {
-      const updated = await api<Product>(
-        `/api/admin/products/${editing.id}/images/reorder`,
-        { method: 'PUT', body: JSON.stringify({ images: list }) },
-      );
-      setImages(updated.images || list);
-      setEditing(updated);
-      merge(updated);
-    } catch (e) {
-      setFormError(message(e));
-    } finally {
-      end();
-    }
-  }
   async function saveForm() {
     if (!begin()) return;
     setFormError('');
@@ -534,6 +527,19 @@ export default function ProductsPage() {
         throw new Error('Bir grup seçin.');
       if (!form.price.trim() || !Number.isFinite(price) || price < 0)
         throw new Error('Geçerli bir fiyat yazın.');
+      for (const [label, value] of [
+        ['Hazırlanma süresi', form.prepTimeMinutes],
+        ['Kalori', form.calories],
+      ]) {
+        if (
+          value.trim() &&
+          (!Number.isInteger(Number(value)) ||
+            Number(value) < 0 ||
+            Number(value) > 2147483647)
+        ) {
+          throw new Error(`${label} için sıfır veya üzeri bir tam sayı yazın.`);
+        }
+      }
       validateFiles(pending.map((p) => p.file));
       const payload = {
         ...form,
@@ -558,15 +564,55 @@ export default function ProductsPage() {
       );
       setEditing(saved);
       merge(saved);
+      let savedPhotos = [...images];
+      const resolved = new Map(images.map((url) => [`saved:${url}`, url]));
       if (pending.length) {
+        const orderedPending = [...pending].sort(
+          (a, b) =>
+            photoOrder.indexOf(`pending:${a.id}`) -
+            photoOrder.indexOf(`pending:${b.id}`),
+        );
         const updated = await upload(
           saved.id,
-          pending.map((p) => p.file),
+          orderedPending.map((photo) => photo.file),
         );
-        setImages(updated.images || []);
+        savedPhotos = updated.images || [];
+        const added = savedPhotos.filter((url) => !images.includes(url));
+        orderedPending.forEach((photo, index) => {
+          if (added[index]) resolved.set(`pending:${photo.id}`, added[index]);
+        });
+        setImages(savedPhotos);
         setEditing(updated);
         merge(updated);
+        // Resolve temporary IDs before the request: retrying a failed reorder must not upload twice.
+        setPhotoOrder(
+          photoOrder
+            .map((id) => resolved.get(id))
+            .filter((url): url is string => Boolean(url))
+            .map((url) => `saved:${url}`),
+        );
         clearPending();
+      }
+      const desired = photoOrder
+        .map((id) => resolved.get(id))
+        .filter((url): url is string => Boolean(url));
+      savedPhotos.forEach((url) => {
+        if (!desired.includes(url)) desired.push(url);
+      });
+      if (
+        desired.length &&
+        desired.some((url, index) => url !== savedPhotos[index])
+      ) {
+        const reordered = await api<Product>(
+          `/api/admin/products/${saved.id}/images/reorder`,
+          {
+            method: 'PUT',
+            body: JSON.stringify({ images: desired }),
+          },
+        );
+        setImages(reordered.images || desired);
+        setEditing(reordered);
+        merge(reordered);
       }
       await load();
       setModalOpen(false);
@@ -1045,6 +1091,8 @@ export default function ProductsPage() {
         onPrefCatalogChange={changePrefs}
         form={form}
         productImages={images}
+        productId={editing?.id}
+        photoOrder={photoOrder}
         pendingPreviews={pending.map(({ id, url }) => ({ id, url }))}
         saving={busy}
         onClose={closeForm}
@@ -1053,7 +1101,7 @@ export default function ProductsPage() {
         onAddImages={addFiles}
         onRemoveImage={removeImage}
         onRemovePending={removePending}
-        onMoveImage={moveImage}
+        onPhotoOrderChange={setPhotoOrder}
       />
       <BulkPriceModal
         open={bulkOpen}
