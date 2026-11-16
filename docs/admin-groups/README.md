@@ -32,6 +32,8 @@ Ad alanının onay/iptal düğmeleri ve kullanılmayan ikon/stilleri kaldırıld
 
 [Mobil ad alanı](rename-mobile.png) · [Tiksiz filtre](filter-minimal.png)
 
+İpucunun konumu düzeltildi: alta ayrılan satır kaldırıldı; ipucu alanın sağ ucunda, metinle aynı hizada. Web alanı yaklaşık 42 px, mobil alan 46 px yüksekliğinde. Telefonda yalnızca kısa "Enter ile kaydet" görünür; Escape davranışı korunur. Düzenleme sırasında mobil ad alanı son sütuna kadar genişler. Chrome + taklit API'de 1440/390/320 px alan yüksekliği, ipucunun sağda/dikey ortada olması, metinle çakışmaması ve Enter/Escape akışları doğrulandı. Güncel betik `groups-inline-hint.mjs` Git dışındadır.
+
 ## Doğrulama
 
 - Frontend üretim derlemesi geçti. Mevcut Vite büyük paket uyarısı sürer. Backend/şema değişmedi; bu tur frontend deploy yeterli.

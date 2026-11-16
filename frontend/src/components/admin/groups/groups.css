@@ -362,23 +362,34 @@
   color: var(--admin-accent-text);
 }
 .ag-rename {
-  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
-}
-.ag-rename input {
-  min-width: 0;
-  width: 100%;
-  min-height: 58px;
-  padding: 8px 9px 23px;
   border: 1px solid var(--admin-accent);
   border-radius: 8px;
   background: var(--admin-card);
+}
+.ag-rename:focus-within {
+  box-shadow: 0 0 0 1px var(--admin-accent);
+}
+.ag-rename input {
+  flex: 1;
+  min-width: 0;
+  width: 0;
+  min-height: 40px;
+  padding: 8px 9px;
+  border: 0;
+  outline: none;
+  border-radius: 8px;
+  background: transparent;
   color: var(--admin-text);
   font: inherit;
 }
 .ag-rename__hint {
-  position: absolute;
-  inset: auto 9px 7px;
+  flex-shrink: 0;
+  padding-inline-end: 10px;
+  white-space: nowrap;
   color: var(--admin-text-subtle);
   font-size: 10px;
   line-height: 1.2;
@@ -904,9 +915,17 @@
     margin-bottom: 6px;
   }
   .ag-rename input {
-    min-height: 70px;
-    padding-bottom: 32px;
+    min-height: 44px;
     font-size: 16px;
+  }
+  .ag-rename__escape {
+    display: none;
+  }
+  .ag-row.is-renaming {
+    grid-template-areas: 'photo name name' 'photo products visibility';
+  }
+  .ag-row.is-renaming .ag-more {
+    display: none;
   }
   .ag-dialog {
     width: 100%;

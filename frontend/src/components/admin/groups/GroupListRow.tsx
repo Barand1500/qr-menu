@@ -88,7 +88,7 @@ export default function GroupListRow({
   return (
     <div
       ref={setNodeRef}
-      className={`ag-row${group.isSubGroup ? ' ag-row--sub' : ''}${!group.isActive ? ' is-hidden' : ''}${isDragging ? ' is-dragging' : ''}${isOver && !isDragging ? ' is-over' : ''}${contextOnly ? ' is-context' : ''}`}
+      className={`ag-row${group.isSubGroup ? ' ag-row--sub' : ''}${!group.isActive ? ' is-hidden' : ''}${isDragging ? ' is-dragging' : ''}${isOver && !isDragging ? ' is-over' : ''}${contextOnly ? ' is-context' : ''}${renaming ? ' is-renaming' : ''}`}
       data-group-id={group.id}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       onContextMenu={(event) => {
@@ -170,7 +170,14 @@ export default function GroupListRow({
               }}
             />
             <small id={hintId} className="ag-rename__hint">
-              {busy ? 'Kaydediliyor…' : 'Enter ile kaydet · Esc ile vazgeç'}
+              {busy ? (
+                'Kaydediliyor…'
+              ) : (
+                <>
+                  Enter ile kaydet
+                  <span className="ag-rename__escape"> · Esc ile vazgeç</span>
+                </>
+              )}
             </small>
           </form>
         ) : (
