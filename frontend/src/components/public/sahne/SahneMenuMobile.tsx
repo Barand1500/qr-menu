@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, Search, Sparkles, X } from 'lucide-react';
 import { formatMoney } from '@/lib/api';
 import { SofraBrand, SofraText } from '../sofra/SofraElements';
@@ -14,7 +14,6 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
   const { copy, t } = m;
   const nav = useSahneNav();
   const root = useRef<HTMLDivElement>(null);
-  const chips = useRef<HTMLElement>(null);
   const reel = useRef<HTMLDivElement>(null);
   const overlay = useRef<HTMLElement>(null);
   const [query, setQuery] = useState('');
@@ -23,16 +22,6 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
   const pickerOpen = Boolean(nav?.open);
 
   useReveal(root, [p.products, p.subgroups, p.groups, p.loading, m.home], editing);
-
-  // Keep the active chip in view without moving the page itself.
-  useLayoutEffect(() => {
-    const strip = chips.current,
-      active = strip?.querySelector<HTMLElement>('[aria-current="page"]');
-    if (!strip || !active) return;
-    const a = active.getBoundingClientRect(),
-      s = strip.getBoundingClientRect();
-    strip.scrollLeft += a.left + a.width / 2 - (s.left + s.width / 2);
-  }, [p.activeGroup, m.home, p.groups.length]);
 
   // Picks carousel: cards shrink and tilt away as they leave the centre.
   useEffect(() => {
@@ -142,27 +131,6 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
       <div className="sh-msearch">
         <SearchField p={p} t={t} />
       </div>
-      <nav className="sh-chips" ref={chips} aria-label={t.categories}>
-        <button
-          type="button"
-          aria-current={m.home ? 'page' : undefined}
-          onClick={() => choose(null)}
-        >
-          <Sparkles size={15} aria-hidden="true" />
-          {copy.picksLabel}
-        </button>
-        {p.groups.map((g) => (
-          <button
-            type="button"
-            key={g.id}
-            aria-current={!m.searching && p.activeGroup === g.id ? 'page' : undefined}
-            onClick={() => choose(g.id)}
-          >
-            {g.imageUrl && <Photo src={g.imageUrl} />}
-            {g.name}
-          </button>
-        ))}
-      </nav>
       <main className="sh-mstage">
         {p.beforeContent}
         {p.stories}

@@ -975,62 +975,6 @@
 .sahne .sh-picker .sh-search input {
   font-size: 16px;
 }
-.sh-chips {
-  position: sticky;
-  top: 0;
-  z-index: 25;
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--sh-line);
-  background: #0e0b09e0;
-  backdrop-filter: blur(16px);
-  scrollbar-width: none;
-  scroll-behavior: smooth;
-}
-.sh-chips::-webkit-scrollbar {
-  display: none;
-}
-.sahne .sh-chips button {
-  display: inline-flex;
-  align-items: center;
-  flex: 0 0 auto;
-  gap: 8px;
-  min-height: 44px;
-  padding: 5px 16px;
-  border: 1px solid var(--sh-line);
-  border-radius: 999px;
-  background: #f6eee40a;
-  color: var(--sh-muted);
-  font: 600 14px/1 var(--sh-body);
-  white-space: nowrap;
-  transition:
-    background 0.3s,
-    color 0.3s,
-    scale 0.3s var(--sh-spring);
-}
-.sahne .sh-chips button:has(> img, > .sh-photo-empty) {
-  padding-inline-start: 6px;
-}
-.sh-chips button:active {
-  scale: 0.94;
-}
-.sh-chips img,
-.sh-chips .sh-photo-empty {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-.sh-chips .sh-photo-empty svg {
-  width: 14px;
-}
-.sahne .sh-chips button[aria-current] {
-  border-color: transparent;
-  background: linear-gradient(110deg, var(--sh-accent), var(--sh-accent-2));
-  color: var(--sh-on-accent);
-}
 .sh-mstage {
   display: flex;
   flex-direction: column;
