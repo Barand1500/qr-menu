@@ -111,6 +111,13 @@ router.get('/', async (req, res) => {
   if (active === 'true') where.isActive = true;
   if (active === 'false') where.isActive = false;
 
+  // Search the restaurant's complete matching set before paginating, not just the current page.
+  const query = String(search || '').trim().toLowerCase();
+  if (query) {
+    const candidates = await prisma.product.findMany({ where, select: { id: true, i18n: true } });
+    where.id = { in: candidates.filter((product) => textMatchesI18n(product.i18n, 'tr', ['name'], query)).map((product) => product.id) };
+  }
+
   const [products, languages, total] = await Promise.all([
     prisma.product.findMany({
       where,
@@ -123,13 +130,7 @@ router.get('/', async (req, res) => {
     prisma.product.count({ where }),
   ]);
 
-  let filtered = products;
-  if (search) {
-    const q = String(search).toLowerCase();
-    filtered = products.filter((p) => textMatchesI18n(p.i18n, 'tr', ['name'], q));
-  }
-
-  const mapped = await Promise.all(filtered.map((p) => mapProduct(p, restaurantId!, languages)));
+  const mapped = await Promise.all(products.map((p) => mapProduct(p, restaurantId!, languages)));
   res.json({
     data: mapped,
     pagination: { page: pageNum, limit: limitNum, total },

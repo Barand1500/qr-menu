@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { api, formatMoney } from '@/lib/api';
 import { Button, Input, Select } from '@/components/ui';
+import AdminOverlay from '@/components/admin/AdminOverlay';
 
 export type BulkPriceDirection = 'up' | 'down';
 export type BulkPriceMode = 'percent' | 'fixed';
@@ -73,7 +74,11 @@ interface BulkPriceModalProps {
   onApplied: (result: BulkPriceApplyResult) => void | Promise<void>;
 }
 
-const ROUNDING_CHOICES: { value: BulkPriceRounding; label: string; hint: string }[] = [
+const ROUNDING_CHOICES: {
+  value: BulkPriceRounding;
+  label: string;
+  hint: string;
+}[] = [
   { value: '0.1', label: '0,10 ₺', hint: 'En yakın 10 kuruş' },
   { value: '0.5', label: '0,50 ₺', hint: 'En yakın yarım lira' },
   { value: '1', label: '1 ₺', hint: 'En yakın tam lira' },
@@ -99,7 +104,9 @@ export default function BulkPriceModal({
   const [value, setValue] = useState('10');
   const [roundingOn, setRoundingOn] = useState(false);
   const [roundingStep, setRoundingStep] = useState<BulkPriceRounding>('1');
-  const [optionsAction, setOptionsAction] = useState<BulkOptionsAction | null>(null);
+  const [optionsAction, setOptionsAction] = useState<BulkOptionsAction | null>(
+    null,
+  );
 
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -110,9 +117,10 @@ export default function BulkPriceModal({
     () =>
       groups.map((g) => ({
         value: g.id.toString(),
-        label: g.isSubGroup && g.parentName ? `${g.parentName} › ${g.name}` : g.name,
+        label:
+          g.isSubGroup && g.parentName ? `${g.parentName} › ${g.name}` : g.name,
       })),
-    [groups]
+    [groups],
   );
 
   const filteredPicks = useMemo(() => {
@@ -121,7 +129,7 @@ export default function BulkPriceModal({
     return pickList.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
-        p.groupName.toLowerCase().includes(q)
+        p.groupName.toLowerCase().includes(q),
     );
   }, [pickList, pickSearch]);
 
@@ -143,12 +151,9 @@ export default function BulkPriceModal({
     setLoading(false);
     setApplying(false);
 
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !applying) onClose();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, groups, onClose, applying]);
+    // Reset only on opening; request state and parent renders must not reset the wizard.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (!open || scope !== 'selected') return;
@@ -169,7 +174,9 @@ export default function BulkPriceModal({
     };
   }, [open, scope]);
 
-  function buildBody(optsAction: BulkOptionsAction = optionsAction || 'base_only') {
+  function buildBody(
+    optsAction: BulkOptionsAction = optionsAction || 'base_only',
+  ) {
     const num = Number(String(value).replace(',', '.'));
     return {
       scope,
@@ -188,13 +195,14 @@ export default function BulkPriceModal({
     if (!Number.isFinite(num) || num < 0) return 'Geçerli bir değer girin';
     if (mode === 'percent' && num > 500) return 'Yüzde en fazla 500 olabilir';
     if (scope === 'category' && !groupId) return 'Kategori seçin';
-    if (scope === 'selected' && selectedIds.length === 0) return 'En az bir ürün seçin';
+    if (scope === 'selected' && selectedIds.length === 0)
+      return 'En az bir ürün seçin';
     return null;
   }
 
   async function goPreview(
     optsAction: BulkOptionsAction = optionsAction || 'base_only',
-    forceConfirm = false
+    forceConfirm = false,
   ) {
     const err = validateSetup();
     if (err) {
@@ -204,10 +212,13 @@ export default function BulkPriceModal({
     setError('');
     setLoading(true);
     try {
-      const res = await api<PreviewResponse>('/api/admin/products/bulk-price/preview', {
-        method: 'POST',
-        body: JSON.stringify(buildBody(optsAction)),
-      });
+      const res = await api<PreviewResponse>(
+        '/api/admin/products/bulk-price/preview',
+        {
+          method: 'POST',
+          body: JSON.stringify(buildBody(optsAction)),
+        },
+      );
       setPreview(res);
       if (!forceConfirm && res.withOptionsCount > 0) {
         setStep('options');
@@ -231,10 +242,13 @@ export default function BulkPriceModal({
     setApplying(true);
     setError('');
     try {
-      const res = await api<BulkPriceApplyResult>('/api/admin/products/bulk-price/apply', {
-        method: 'POST',
-        body: JSON.stringify(buildBody(optionsAction || 'base_only')),
-      });
+      const res = await api<BulkPriceApplyResult>(
+        '/api/admin/products/bulk-price/apply',
+        {
+          method: 'POST',
+          body: JSON.stringify(buildBody(optionsAction || 'base_only')),
+        },
+      );
       onClose();
       void onApplied(res);
     } catch (e) {
@@ -245,7 +259,7 @@ export default function BulkPriceModal({
 
   function toggleProduct(id: number) {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
@@ -262,9 +276,12 @@ export default function BulkPriceModal({
         : `${value} ₺ indirim`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[6px]" onClick={() => !applying && onClose()} />
-
+    <AdminOverlay
+      open={open}
+      busy={applying || loading}
+      label="Toplu fiyat güncelle"
+      onClose={onClose}
+    >
       <div
         className="relative w-full sm:max-w-xl max-h-[92vh] flex flex-col rounded-t-[28px] sm:rounded-[28px] shadow-2xl animate-slide-up overflow-hidden"
         style={{
@@ -280,22 +297,31 @@ export default function BulkPriceModal({
             <div className="flex items-start gap-3">
               <div
                 className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
-                style={{ background: 'var(--admin-accent-soft)', color: 'var(--admin-accent)' }}
+                style={{
+                  background: 'var(--admin-accent-soft)',
+                  color: 'var(--admin-accent)',
+                }}
               >
                 <Tags className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-[var(--admin-text)]">Toplu fiyat güncelle</h2>
+                <h2 className="text-base font-bold text-[var(--admin-text)]">
+                  Toplu fiyat güncelle
+                </h2>
                 <p className="text-xs admin-text-muted mt-0.5 leading-relaxed">
-                  {step === 'setup' && 'Kapsam ve zam / indirim ayarlarını seçin'}
-                  {step === 'options' && 'Seçenek fiyatı olan ürünler için ne yapılsın?'}
-                  {step === 'confirm' && 'Değişiklikleri kontrol edip onaylayın'}
+                  {step === 'setup' &&
+                    'Kapsam ve zam / indirim ayarlarını seçin'}
+                  {step === 'options' &&
+                    'Seçenek fiyatı olan ürünler için ne yapılsın?'}
+                  {step === 'confirm' &&
+                    'Değişiklikleri kontrol edip onaylayın'}
                 </p>
               </div>
             </div>
             <button
               type="button"
-              onClick={() => !applying && onClose()}
+              onClick={() => !applying && !loading && onClose()}
+              disabled={applying || loading}
               className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[var(--admin-accent-soft)] transition"
               aria-label="Kapat"
             >
@@ -309,14 +335,18 @@ export default function BulkPriceModal({
               const done =
                 (s === 'setup' && step !== 'setup') ||
                 (s === 'options' && step === 'confirm');
-              const skipOptions = s === 'options' && preview && preview.withOptionsCount === 0;
+              const skipOptions =
+                s === 'options' && preview && preview.withOptionsCount === 0;
               if (skipOptions && step === 'confirm') return null;
               return (
                 <div
                   key={s}
                   className="h-1 flex-1 rounded-full transition-colors"
                   style={{
-                    background: active || done ? 'var(--admin-accent)' : 'var(--admin-input-bg)',
+                    background:
+                      active || done
+                        ? 'var(--admin-accent)'
+                        : 'var(--admin-input-bg)',
                     opacity: skipOptions ? 0.35 : 1,
                   }}
                   title={['Ayarlar', 'Seçenekler', 'Onay'][i]}
@@ -326,7 +356,10 @@ export default function BulkPriceModal({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto admin-scroll p-5 space-y-4">
+        <fieldset
+          disabled={loading || applying}
+          className="flex-1 min-w-0 overflow-y-auto admin-scroll p-5 space-y-4"
+        >
           {error && (
             <div className="rounded-2xl px-3.5 py-2.5 text-sm text-red-600 bg-red-500/10 border border-red-500/20">
               {error}
@@ -354,9 +387,13 @@ export default function BulkPriceModal({
                       className="rounded-2xl px-3 py-2.5 text-sm font-medium text-left transition border"
                       style={{
                         borderColor:
-                          scope === opt.id ? 'var(--admin-accent)' : 'var(--admin-card-border)',
+                          scope === opt.id
+                            ? 'var(--admin-accent)'
+                            : 'var(--admin-card-border)',
                         background:
-                          scope === opt.id ? 'var(--admin-accent-soft)' : 'var(--admin-input-bg)',
+                          scope === opt.id
+                            ? 'var(--admin-accent-soft)'
+                            : 'var(--admin-input-bg)',
                         color: 'var(--admin-text)',
                       }}
                     >
@@ -387,9 +424,13 @@ export default function BulkPriceModal({
                     style={{ borderColor: 'var(--admin-card-border)' }}
                   >
                     {pickLoading ? (
-                      <p className="p-3 text-sm admin-text-muted">Yükleniyor…</p>
+                      <p className="p-3 text-sm admin-text-muted">
+                        Yükleniyor…
+                      </p>
                     ) : filteredPicks.length === 0 ? (
-                      <p className="p-3 text-sm admin-text-muted">Ürün bulunamadı</p>
+                      <p className="p-3 text-sm admin-text-muted">
+                        Ürün bulunamadı
+                      </p>
                     ) : (
                       filteredPicks.map((p) => {
                         const on = selectedIds.includes(p.id);
@@ -404,8 +445,12 @@ export default function BulkPriceModal({
                             <span
                               className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 border"
                               style={{
-                                borderColor: on ? 'var(--admin-accent)' : 'var(--admin-card-border)',
-                                background: on ? 'var(--admin-accent)' : 'transparent',
+                                borderColor: on
+                                  ? 'var(--admin-accent)'
+                                  : 'var(--admin-card-border)',
+                                background: on
+                                  ? 'var(--admin-accent)'
+                                  : 'transparent',
                                 color: on ? '#fff' : 'transparent',
                               }}
                             >
@@ -427,7 +472,9 @@ export default function BulkPriceModal({
                       })
                     )}
                   </div>
-                  <p className="text-xs admin-text-muted">{selectedIds.length} ürün seçildi</p>
+                  <p className="text-xs admin-text-muted">
+                    {selectedIds.length} ürün seçildi
+                  </p>
                 </div>
               )}
 
@@ -442,9 +489,13 @@ export default function BulkPriceModal({
                     className="rounded-2xl px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 border transition"
                     style={{
                       borderColor:
-                        direction === 'up' ? 'var(--admin-accent)' : 'var(--admin-card-border)',
+                        direction === 'up'
+                          ? 'var(--admin-accent)'
+                          : 'var(--admin-card-border)',
                       background:
-                        direction === 'up' ? 'var(--admin-accent-soft)' : 'var(--admin-input-bg)',
+                        direction === 'up'
+                          ? 'var(--admin-accent-soft)'
+                          : 'var(--admin-input-bg)',
                     }}
                   >
                     <ArrowUp className="w-4 h-4" /> Zam
@@ -455,9 +506,13 @@ export default function BulkPriceModal({
                     className="rounded-2xl px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 border transition"
                     style={{
                       borderColor:
-                        direction === 'down' ? 'var(--admin-accent)' : 'var(--admin-card-border)',
+                        direction === 'down'
+                          ? 'var(--admin-accent)'
+                          : 'var(--admin-card-border)',
                       background:
-                        direction === 'down' ? 'var(--admin-accent-soft)' : 'var(--admin-input-bg)',
+                        direction === 'down'
+                          ? 'var(--admin-accent-soft)'
+                          : 'var(--admin-input-bg)',
                     }}
                   >
                     <ArrowDown className="w-4 h-4" /> İndirim
@@ -470,9 +525,13 @@ export default function BulkPriceModal({
                     className="rounded-2xl px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 border transition"
                     style={{
                       borderColor:
-                        mode === 'percent' ? 'var(--admin-accent)' : 'var(--admin-card-border)',
+                        mode === 'percent'
+                          ? 'var(--admin-accent)'
+                          : 'var(--admin-card-border)',
                       background:
-                        mode === 'percent' ? 'var(--admin-accent-soft)' : 'var(--admin-input-bg)',
+                        mode === 'percent'
+                          ? 'var(--admin-accent-soft)'
+                          : 'var(--admin-input-bg)',
                     }}
                   >
                     <Percent className="w-4 h-4" /> Yüzde
@@ -483,9 +542,13 @@ export default function BulkPriceModal({
                     className="rounded-2xl px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 border transition"
                     style={{
                       borderColor:
-                        mode === 'fixed' ? 'var(--admin-accent)' : 'var(--admin-card-border)',
+                        mode === 'fixed'
+                          ? 'var(--admin-accent)'
+                          : 'var(--admin-card-border)',
                       background:
-                        mode === 'fixed' ? 'var(--admin-accent-soft)' : 'var(--admin-input-bg)',
+                        mode === 'fixed'
+                          ? 'var(--admin-accent-soft)'
+                          : 'var(--admin-input-bg)',
                     }}
                   >
                     ₺ Sabit
@@ -501,11 +564,16 @@ export default function BulkPriceModal({
 
               <div
                 className="rounded-2xl border p-3.5 space-y-3"
-                style={{ borderColor: 'var(--admin-card-border)', background: 'var(--admin-input-bg)' }}
+                style={{
+                  borderColor: 'var(--admin-card-border)',
+                  background: 'var(--admin-input-bg)',
+                }}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-[var(--admin-text)]">Yuvarlama</p>
+                    <p className="text-sm font-semibold text-[var(--admin-text)]">
+                      Yuvarlama
+                    </p>
                     <p className="text-xs admin-text-muted mt-0.5">
                       Açıkken sonucu seçtiğiniz adıma yuvarlar
                     </p>
@@ -517,12 +585,18 @@ export default function BulkPriceModal({
                     onClick={() => setRoundingOn((v) => !v)}
                     className="relative w-11 h-6 rounded-full transition shrink-0"
                     style={{
-                      background: roundingOn ? 'var(--admin-accent)' : 'var(--admin-card-border)',
+                      background: roundingOn
+                        ? 'var(--admin-accent)'
+                        : 'var(--admin-card-border)',
                     }}
                   >
                     <span
                       className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"
-                      style={{ transform: roundingOn ? 'translateX(20px)' : 'translateX(0)' }}
+                      style={{
+                        transform: roundingOn
+                          ? 'translateX(20px)'
+                          : 'translateX(0)',
+                      }}
                     />
                   </button>
                 </div>
@@ -549,7 +623,9 @@ export default function BulkPriceModal({
                         <span className="block text-sm font-semibold text-[var(--admin-text)]">
                           {c.label}
                         </span>
-                        <span className="block text-[11px] admin-text-muted">{c.hint}</span>
+                        <span className="block text-[11px] admin-text-muted">
+                          {c.hint}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -562,10 +638,13 @@ export default function BulkPriceModal({
             <div className="space-y-3">
               <div
                 className="rounded-2xl px-3.5 py-3 text-sm"
-                style={{ background: 'var(--admin-accent-soft)', color: 'var(--admin-text)' }}
+                style={{
+                  background: 'var(--admin-accent-soft)',
+                  color: 'var(--admin-text)',
+                }}
               >
-                <strong>{preview.withOptionsCount}</strong> üründe varyant / seçenek fiyatı var.
-                Bunlara ne yapalım?
+                <strong>{preview.withOptionsCount}</strong> üründe varyant /
+                seçenek fiyatı var. Bunlara ne yapalım?
               </div>
               <button
                 type="button"
@@ -616,7 +695,9 @@ export default function BulkPriceModal({
                   </span>
                 )}
                 {optionsAction === 'base_and_options' && (
-                  <span className="admin-text-muted">Seçenek fiyatları dahil</span>
+                  <span className="admin-text-muted">
+                    Seçenek fiyatları dahil
+                  </span>
                 )}
               </div>
 
@@ -630,7 +711,9 @@ export default function BulkPriceModal({
                     className="flex items-start gap-2 px-3 py-2.5 border-b last:border-b-0 text-sm"
                     style={{
                       borderColor: 'var(--admin-card-border)',
-                      background: line.skipped ? 'rgba(245, 158, 11, 0.08)' : undefined,
+                      background: line.skipped
+                        ? 'rgba(245, 158, 11, 0.08)'
+                        : undefined,
                     }}
                   >
                     {line.skipped ? (
@@ -639,11 +722,16 @@ export default function BulkPriceModal({
                       <span className="w-4 shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-[var(--admin-text)] truncate">{line.name}</p>
-                      <p className="text-xs admin-text-muted">{line.groupName}</p>
+                      <p className="font-medium text-[var(--admin-text)] truncate">
+                        {line.name}
+                      </p>
+                      <p className="text-xs admin-text-muted">
+                        {line.groupName}
+                      </p>
                       {line.skipped && (
                         <p className="text-xs text-amber-600 mt-0.5">
-                          İndirim sonrası fiyat 0’ın altına düşer — bu ürün atlanacak
+                          İndirim sonrası fiyat 0’ın altına düşer — bu ürün
+                          atlanacak
                         </p>
                       )}
                     </div>
@@ -662,7 +750,7 @@ export default function BulkPriceModal({
               </div>
             </div>
           )}
-        </div>
+        </fieldset>
 
         <div
           className="px-5 py-4 flex gap-2 shrink-0"
@@ -670,9 +758,6 @@ export default function BulkPriceModal({
         >
           {step === 'setup' && (
             <>
-              <Button type="button" variant="ghost" className="flex-1" onClick={onClose} disabled={loading}>
-                İptal
-              </Button>
               <Button
                 type="button"
                 className="flex-1"
@@ -724,6 +809,6 @@ export default function BulkPriceModal({
           )}
         </div>
       </div>
-    </div>
+    </AdminOverlay>
   );
 }

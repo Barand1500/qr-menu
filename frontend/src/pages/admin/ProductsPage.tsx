@@ -1,1306 +1,1124 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+} from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  Plus,
-  Pencil,
-  EyeOff,
-  Eye,
-  Layers3,
-  Tags,
-  RotateCcw,
+  ChevronDown,
   Clock,
+  Eye,
+  EyeOff,
+  Layers3,
+  MoreHorizontal,
+  Package,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
+  Tags,
   Trash2,
   X,
 } from 'lucide-react';
-import { api, formatMoney, formatPrice } from '@/lib/api';
+import { api } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
 import { getActiveLanguages, type AdminLanguage } from '@/lib/languages';
-import {
-  Badge,
-  Button,
-  Card,
-  EmptyState,
-  Input,
-  PageHeader,
-  Select,
-  Spinner,
-} from '@/components/ui';
-import ProductImageCell from '@/components/admin/ProductImageCell';
+import { Button, Spinner } from '@/components/ui';
 import { AdminListPager } from '@/components/AdminListPager';
-import ProductModal, {
-  type ProductFormState,
-  type ProductTranslationFields,
-} from '@/components/ProductModal';
+import ProductModal, { type ProductFormState } from '@/components/ProductModal';
+import ProductStockModal from '@/components/ProductStockModal';
 import BulkPriceModal, {
   type BulkPriceApplyResult,
 } from '@/components/BulkPriceModal';
-import AdminConfirmModal from '@/components/AdminConfirmModal';
-import ProductStockModal, { stockLabel } from '@/components/ProductStockModal';
-import type { ProductOptionGroup } from '@/lib/productOptions';
+import AdminToast, {
+  type AdminToastNotice,
+} from '@/components/admin/AdminToast';
+import GroupsDialog from '@/components/admin/groups/GroupsDialog';
+import ProductRow from '@/components/admin/products/ProductRow';
+import {
+  emptyForm,
+  buildFormFromProduct,
+} from '@/components/admin/products/productForm';
+import type {
+  Product,
+  Group,
+  Currency,
+} from '@/components/admin/products/types';
 import {
   defaultPrefCatalog,
   fetchPrefCatalog,
   savePrefCatalog,
   type PrefCatalog,
 } from '@/lib/prefCatalog';
-import {
-  AdminFilterBar,
-  FilterChipGroup,
-  FilterFieldLabel,
-  FilterSection,
-} from '@/components/AdminFilterBar';
+import '@/components/admin/products/products.css';
 
-interface Currency {
-  id: number;
-  code: string;
-  name: string;
-  symbol: string;
-  isActive: boolean;
-}
-
-interface Product {
-  id: number;
-  name: string;
-  groupId: number;
-  groupName: string;
-  price: number;
-  previousPrice?: number | null;
-  previousPriceAt?: string | null;
-  currencyId?: number | null;
-  currency?: { id: number | null; code: string; name: string; symbol: string };
-  prepTimeMinutes?: number | null;
-  calories?: number | null;
-  features?: string[];
-  allergenTags?: string[];
-  dietTags?: string[];
-  isVegan?: boolean;
-  isVegetarian?: boolean;
-  isGlutenFree?: boolean;
-  isDiabetic?: boolean;
-  isRecommended?: boolean;
-  imageUrl?: string | null;
-  images?: string[];
-  sortOrder: number;
-  isActive: boolean;
-  /** null = sınırsız (S) */
-  stockQty?: number | null;
-  stockResetHour?: number | null;
-  stockResetMinute?: number | null;
-  stockResetTo?: number | null;
-  optionGroups?: ProductOptionGroup[];
-  isValid: boolean;
-  translations: {
-    languageId: number;
-    languageCode: string;
-    name: string;
-    description?: string | null;
-    ingredients?: string | null;
-    allergens?: string | null;
-  }[];
-}
-
-type BulkStatus = {
-  hasSnapshot: boolean;
-  appliedAt: string | null;
-  count: number;
+type Query = {
+  search: string;
+  group: string;
+  status: 'all' | 'active' | 'passive';
+  page: number;
 };
-
-function sleep(ms: number) {
-  return new Promise<void>((resolve) => setTimeout(resolve, ms));
-}
-
-function formatShortDate(iso?: string | null) {
-  if (!iso) return '';
-  try {
-    return new Intl.DateTimeFormat('tr-TR', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(iso));
-  } catch {
-    return '';
-  }
-}
-
-function ProductPriceCell({
-  price,
-  currency,
-  previousPrice,
-  previousPriceAt,
-  rolling,
-  rollFrom,
-}: {
-  price: number;
-  currency?: { symbol?: string | null; code?: string | null } | null;
-  previousPrice?: number | null;
-  previousPriceAt?: string | null;
-  rolling: boolean;
-  rollFrom: number | null;
-}) {
-  const [shown, setShown] = useState(price);
-  const symbol = currency?.symbol?.trim() || currency?.code?.trim() || '₺';
-
-  useEffect(() => {
-    if (!rolling || rollFrom == null) {
-      setShown(price);
-      return;
-    }
-    const start = performance.now();
-    const duration = 650;
-    let raf = 0;
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - (1 - t) ** 3;
-      setShown(rollFrom + (price - rollFrom) * eased);
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [rolling, rollFrom, price]);
-
-  return (
-    <div className={rolling ? 'bulk-price-rolling' : undefined}>
-      <p className="font-medium text-[var(--admin-text)] tabular-nums">
-        {formatPrice(shown)} {symbol}
-      </p>
-      {previousPrice != null && (
-        <p className="text-[11px] admin-text-muted mt-0.5 leading-snug">
-          Önceki: {formatMoney(previousPrice, currency)}
-          {previousPriceAt ? ` · ${formatShortDate(previousPriceAt)}` : ''}
-        </p>
-      )}
-    </div>
-  );
-}
-
-interface Group {
-  id: number;
-  name: string;
-  parentId?: number | null;
-  parentName?: string | null;
-  isSubGroup?: boolean;
-}
-
-interface Language extends AdminLanguage {}
-
-type StatusFilter = 'all' | 'active' | 'passive';
-
-/** Yarın tekrar aç: true yap */
-const BULK_PRICE_UI_ENABLED = true;
-
-function ProductStockCell({
-  product,
-  onOpen,
-}: {
-  product: Product;
-  onOpen: () => void;
-}) {
-  const soldOut = product.stockQty === 0;
-  const hasSchedule = product.stockResetHour != null;
-  const variantSoldOut = (product.optionGroups || []).some((g) =>
-    g.options.some((o) => o.stockQty === 0)
-  );
-
-  return (
-    <button
-      type="button"
-      title="Stok yönetimi (S = sınırsız)"
-      onDoubleClick={(e) => e.stopPropagation()}
-      onClick={(e) => {
-        e.stopPropagation();
-        onOpen();
-      }}
-      className="flex items-center gap-1.5 rounded-xl px-2 py-1 transition hover:bg-[var(--admin-accent-soft)]"
-    >
-      <span
-        className="min-w-[1.75rem] text-sm font-bold tabular-nums"
-        style={{ color: soldOut ? '#dc2626' : 'var(--admin-text)' }}
-      >
-        {stockLabel(product.stockQty)}
-      </span>
-      {variantSoldOut ? (
-        <span
-          className="px-1.5 py-0.5 rounded-md text-[10px] font-bold"
-          style={{ background: 'rgba(220,38,38,0.1)', color: '#dc2626' }}
-        >
-          varyant
-        </span>
-      ) : null}
-      <Clock
-        className="w-3.5 h-3.5"
-        style={{
-          color: hasSchedule ? 'var(--admin-accent)' : 'var(--admin-text-muted)',
-          opacity: hasSchedule ? 1 : 0.55,
-        }}
-      />
-    </button>
-  );
-}
-
-const emptyForm = (): ProductFormState => ({
-  groupId: '',
-  price: '',
-  currencyId: '',
-  prepTimeMinutes: '',
-  calories: '',
-  features: [],
-  allergenTags: [],
-  dietTags: [],
-  isVegan: false,
-  isVegetarian: false,
-  isGlutenFree: false,
-  isDiabetic: false,
-  isRecommended: false,
-  translations: {},
-  isActive: true,
-});
-
-function buildFormFromProduct(product: Product): ProductFormState {
-  const translations: Record<string, ProductTranslationFields> = {};
-  for (const t of product.translations) {
-    translations[t.languageCode] = {
-      name: t.name,
-      description: t.description || '',
-      ingredients: t.ingredients || '',
-      allergens: t.allergens || '',
-    };
-  }
-  return {
-    groupId: product.groupId.toString(),
-    price: product.price.toString(),
-    currencyId: (product.currencyId ?? product.currency?.id)?.toString() || '',
-    prepTimeMinutes: product.prepTimeMinutes?.toString() || '',
-    calories: product.calories?.toString() || '',
-    features: product.features ?? [],
-    allergenTags: product.allergenTags ?? [],
-    dietTags: product.dietTags ?? [],
-    isVegan: product.isVegan ?? false,
-    isVegetarian: product.isVegetarian ?? false,
-    isGlutenFree: product.isGlutenFree ?? false,
-    isDiabetic: product.isDiabetic ?? false,
-    isRecommended: product.isRecommended ?? false,
-    translations,
-    isActive: product.isActive,
-  };
-}
-
+type Snapshot = {
+  hasSnapshot: boolean;
+  count: number;
+  appliedAt: string | null;
+};
+const PAGE_SIZE = 15;
+const message = (e: unknown) =>
+  e instanceof Error ? e.message : 'İşlem tamamlanamadı. Tekrar deneyin.';
+const priceValue = (value: string) => Number(value.trim().replace(',', '.'));
 export default function ProductsPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [languages, setLanguages] = useState<Language[]>([]);
-  const [currencies, setCurrencies] = useState<Currency[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  const [search, setSearch] = useState('');
-  const [groupFilter, setGroupFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const PAGE_SIZE = 15;
-
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
-  const [editing, setEditing] = useState<Product | null>(null);
-  const [stockProduct, setStockProduct] = useState<Product | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [form, setForm] = useState<ProductFormState>(emptyForm());
-  const [productImages, setProductImages] = useState<string[]>([]);
-  const [pendingFiles, setPendingFiles] = useState<{ id: string; file: File; url: string }[]>([]);
-  const [imageUploadingId, setImageUploadingId] = useState<number | null>(null);
-  const imageUploadBusy = useRef(false);
-  const [imageFeedback, setImageFeedback] = useState<{ error: boolean; message: string } | null>(null);
-  const [prefCatalog, setPrefCatalog] = useState<PrefCatalog>(() => defaultPrefCatalog());
-
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [bulkRestoreOpen, setBulkRestoreOpen] = useState(false);
-  const [bulkRestoring, setBulkRestoring] = useState(false);
-  const [bulkToast, setBulkToast] = useState<string | null>(null);
-  const [bulkStatus, setBulkStatus] = useState<BulkStatus>({
-    hasSnapshot: false,
-    appliedAt: null,
-    count: 0,
-  });
-  const [bulkAnimating, setBulkAnimating] = useState(false);
-  const [rollingId, setRollingId] = useState<number | null>(null);
-  const [rollFrom, setRollFrom] = useState<number | null>(null);
-  const productsRef = useRef(products);
-  productsRef.current = products;
-  const pageRef = useRef(page);
-  pageRef.current = page;
-  const bulkAnimatingRef = useRef(false);
-  const animTokenRef = useRef({ cancelled: false });
-  const bulkToastTimerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      animTokenRef.current.cancelled = true;
-      bulkAnimatingRef.current = false;
-      if (bulkToastTimerRef.current != null) {
-        window.clearTimeout(bulkToastTimerRef.current);
-        bulkToastTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  const refreshBulkStatus = useCallback(async () => {
-    try {
-      const status = await api<BulkStatus>('/api/admin/products/bulk-price/status');
-      setBulkStatus(status);
-    } catch {
-      setBulkStatus({ hasSnapshot: false, appliedAt: null, count: 0 });
-    }
-  }, []);
-
-  const load = useCallback(async (pageOverride?: number) => {
-    if (bulkAnimatingRef.current) return;
-    const pageToLoad = pageOverride ?? page;
-    const params = new URLSearchParams({
-      limit: String(PAGE_SIZE),
-      page: String(pageToLoad),
+  const [params, setParams] = useSearchParams();
+  const [products, setProducts] = useState<Product[]>([]),
+    [groups, setGroups] = useState<Group[]>([]),
+    [languages, setLanguages] = useState<AdminLanguage[]>([]),
+    [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [ready, setReady] = useState(false),
+    [metaError, setMetaError] = useState(''),
+    [metaRetry, setMetaRetry] = useState(0);
+  const [query, setQuery] = useState<Query>({
+      search: '',
+      group: '',
+      status: 'all',
+      page: 1,
+    }),
+    [total, setTotal] = useState(0),
+    [refreshing, setRefreshing] = useState(true),
+    [listError, setListError] = useState(''),
+    [retry, setRetry] = useState(0);
+  const [notice, setNotice] = useState<AdminToastNotice>(null),
+    [busy, setBusy] = useState(false);
+  const lock = useRef(false),
+    request = useRef(0),
+    handled = useRef('');
+  const [categoryOpen, setCategoryOpen] = useState(false),
+    [toolsOpen, setToolsOpen] = useState(false),
+    [statusOpen, setStatusOpen] = useState(false);
+  const statusRoot = useRef<HTMLDivElement>(null),
+    statusPanel = useRef<HTMLDivElement>(null);
+  const [actions, setActions] = useState<{
+    product: Product;
+    point: { x: number; y: number };
+  } | null>(null);
+  const [modalOpen, setModalOpen] = useState(false),
+    [editing, setEditing] = useState<Product | null>(null),
+    [form, setForm] = useState<ProductFormState>(emptyForm()),
+    [tab, setTab] = useState<'general' | 'image'>('general'),
+    [formError, setFormError] = useState('');
+  const [images, setImages] = useState<string[]>([]),
+    [pending, setPending] = useState<{ id: string; file: File; url: string }[]>(
+      [],
+    ),
+    [imageBusyId, setImageBusyId] = useState<number | null>(null);
+  const pendingRef = useRef(pending);
+  pendingRef.current = pending;
+  const [stock, setStock] = useState<Product | null>(null),
+    [deleteTarget, setDeleteTarget] = useState<Product | null>(null),
+    [deleteError, setDeleteError] = useState('');
+  const [prefs, setPrefs] = useState<PrefCatalog>(defaultPrefCatalog);
+  const [bulkOpen, setBulkOpen] = useState(false),
+    [restoreOpen, setRestoreOpen] = useState(false),
+    [restoreError, setRestoreError] = useState(''),
+    [snapshot, setSnapshot] = useState<Snapshot>({
+      hasSnapshot: false,
+      count: 0,
+      appliedAt: null,
     });
-    if (search) params.set('search', search);
-    if (groupFilter) params.set('groupId', groupFilter);
-    if (statusFilter === 'active') params.set('active', 'true');
-    if (statusFilter === 'passive') params.set('active', 'false');
-
-    const [p, g, langs, curs] = await Promise.all([
-      api<{ data: Product[]; pagination: { total: number; page: number; limit: number } }>(
-        `/api/admin/products?${params}`
-      ),
-      api<{ data: Group[] }>('/api/admin/groups?limit=200'),
-      api<Language[]>('/api/admin/languages'),
-      api<Currency[]>('/api/admin/currencies'),
-    ]);
-    setProducts(p.data);
-    setTotal(p.pagination?.total ?? p.data.length);
-    setGroups(g.data);
-    setLanguages(getActiveLanguages(langs));
-    setCurrencies(curs);
-  }, [search, groupFilter, statusFilter, page]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, groupFilter, statusFilter]);
-
-  useEffect(() => {
-    if (bulkAnimatingRef.current) return;
-    load().finally(() => setLoading(false));
-  }, [load]);
-
-  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
-
-  useEffect(() => {
-    if (bulkAnimatingRef.current) return;
-    if (page > pageCount) setPage(pageCount);
-  }, [page, pageCount]);
-
-  useEffect(() => {
-    void refreshBulkStatus();
-  }, [refreshBulkStatus]);
-
-  useEffect(() => {
-    fetchPrefCatalog().then(setPrefCatalog).catch(() => undefined);
-  }, []);
-
-  async function loadProductCatalog(): Promise<Map<number, Product>> {
-    const map = new Map(productsRef.current.map((p) => [p.id, p]));
-    try {
-      const res = await api<{ data: Product[] }>('/api/admin/products?limit=500');
-      for (const p of res.data) map.set(p.id, p);
-    } catch {
-      /* mevcut satırlarla devam */
-    }
-    return map;
-  }
-
-  function buildAnimPageProducts(
-    updates: {
-      id: number;
-      price: number;
-      previousPrice?: number | null;
-      previousPriceAt?: string | null;
-    }[],
-    pageNum: number,
-    animatedCount: number,
-    kind: 'apply' | 'restore',
-    catalog: Map<number, Product>,
-    fromPrices?: Map<number, number>
-  ): Product[] {
-    const start = (pageNum - 1) * PAGE_SIZE;
-    return updates.slice(start, start + PAGE_SIZE).flatMap((u, j) => {
-      const base = catalog.get(u.id);
-      if (!base) return [];
-      const globalIdx = start + j;
-      const done = globalIdx < animatedCount;
-      const startPrice =
-        fromPrices?.get(u.id) ??
-        (kind === 'apply' ? (u.previousPrice ?? base.price) : base.price);
-      return [
-        {
-          ...base,
-          price: done ? u.price : startPrice,
-          previousPrice: kind === 'apply' && done ? (u.previousPrice ?? null) : null,
-          previousPriceAt: kind === 'apply' && done ? (u.previousPriceAt ?? null) : null,
-        },
-      ];
-    });
-  }
-
-  async function runPriceSequence(
-    updates: {
-      id: number;
-      price: number;
-      previousPrice?: number | null;
-      previousPriceAt?: string | null;
-    }[],
-    kind: 'apply' | 'restore',
-    fromPrices?: Map<number, number>
-  ) {
-    animTokenRef.current = { cancelled: false };
-    const token = animTokenRef.current;
-    bulkAnimatingRef.current = true;
-    setBulkAnimating(true);
-
-    const resumePage = pageRef.current;
-    const catalog = await loadProductCatalog();
-    const animUpdates = updates.filter((u) => catalog.has(u.id));
-    const animTotal = animUpdates.length;
-    setTotal(Math.max(animTotal, 1));
-    let shownPage = -1;
-
-    for (let i = 0; i < animUpdates.length; i++) {
-      if (token.cancelled) break;
-      const u = animUpdates[i];
-      const targetPage = Math.floor(i / PAGE_SIZE) + 1;
-
-      if (shownPage !== targetPage) {
-        shownPage = targetPage;
-        pageRef.current = targetPage;
-        setPage(targetPage);
-        setProducts(
-          buildAnimPageProducts(animUpdates, targetPage, i, kind, catalog, fromPrices)
-        );
-        await sleep(80);
-        await new Promise<void>((r) =>
-          requestAnimationFrame(() => requestAnimationFrame(() => r()))
-        );
-      }
-
-      const row = document.querySelector(`[data-product-row="${u.id}"]`);
-      if (row) {
-        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        await sleep(420);
-        if (token.cancelled) break;
-      }
-
-      const current = productsRef.current.find((p) => p.id === u.id);
-      const from =
-        fromPrices?.get(u.id) ??
-        current?.price ??
-        (u.previousPrice != null ? u.previousPrice : u.price);
-      setRollFrom(from);
-      setRollingId(u.id);
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.id === u.id
-            ? {
-                ...p,
-                price: u.price,
-                previousPrice: kind === 'apply' ? (u.previousPrice ?? null) : null,
-                previousPriceAt: kind === 'apply' ? (u.previousPriceAt ?? null) : null,
-              }
-            : p
-        )
-      );
-      await sleep(720);
-    }
-
-    setRollingId(null);
-    setRollFrom(null);
-    bulkAnimatingRef.current = false;
-    setBulkAnimating(false);
-
-    if (token.cancelled) return;
-
-    pageRef.current = resumePage;
-    setPage(resumePage);
-    await load(resumePage);
-    await refreshBulkStatus();
-  }
-
-  async function handleBulkApplied(result: BulkPriceApplyResult) {
-    setBulkOpen(false);
-    setBulkToast('İşlem başarıyla başlatıldı');
-    if (bulkToastTimerRef.current != null) window.clearTimeout(bulkToastTimerRef.current);
-    bulkToastTimerRef.current = window.setTimeout(() => {
-      setBulkToast(null);
-      bulkToastTimerRef.current = null;
-    }, 3200);
-
-    await runPriceSequence(result.updates, 'apply');
-    if (animTokenRef.current.cancelled) return;
-
-    if (result.skipped.length > 0) {
-      window.alert(
-        `${result.skipped.length} ürün atlandı (fiyat 0 altına düşerdi):\n` +
-          result.skipped
-            .slice(0, 8)
-            .map((s) => `• ${s.name}`)
-            .join('\n') +
-          (result.skipped.length > 8 ? `\n… +${result.skipped.length - 8}` : '')
-      );
-    }
-  }
-
-  async function handleBulkRestore() {
-    if (bulkAnimating || bulkRestoring || !bulkStatus.hasSnapshot) return;
-    setBulkRestoring(true);
-    try {
-      const catalog = await loadProductCatalog();
-      const fromPrices = new Map<number, number>();
-      for (const [id, p] of catalog) fromPrices.set(id, p.price);
-
-      const res = await api<{
-        ok: true;
-        orderIds: number[];
-        updates: { id: number; price: number }[];
-      }>('/api/admin/products/bulk-price/restore', { method: 'POST' });
-      setBulkRestoreOpen(false);
-      await runPriceSequence(res.updates, 'restore', fromPrices);
-    } catch (e) {
-      window.alert(e instanceof Error ? e.message : 'Geri alınamadı');
-    } finally {
-      setBulkRestoring(false);
-    }
-  }
-
-  useEffect(() => {
-    return () => {
-      pendingFiles.forEach((p) => URL.revokeObjectURL(p.url));
-    };
-  }, [pendingFiles]);
-
-  const groupOptions = useMemo(
-    () =>
-      groups.map((g) => ({
-        id: g.id,
-        name: g.name,
-        isSubGroup: g.isSubGroup,
-        parentName: g.parentName,
-      })),
-    [groups]
+  const [categorySearch, setCategorySearch] = useState('');
+  useEffect(
+    () => () =>
+      pendingRef.current.forEach((file) => URL.revokeObjectURL(file.url)),
+    [],
   );
-
-  const activeFilterCount = [
-    groupFilter.length > 0,
-    statusFilter !== 'all',
-    search.trim().length > 0,
-  ].filter(Boolean).length;
-
-  function openCreate(presetGroupId?: number | string | null) {
-    setModalMode('create');
-    setEditing(null);
-    const defaultCurrency =
-      currencies.find((c) => c.code === 'TRY' && c.isActive) ||
-      currencies.find((c) => c.isActive);
-    const preset =
-      presetGroupId != null && presetGroupId !== ''
-        ? String(presetGroupId)
-        : '';
-    const groupId = groups.some((g) => String(g.id) === preset)
-      ? preset
-      : groups[0]?.id?.toString() || '';
-    setForm({
-      ...emptyForm(),
-      groupId,
-      currencyId: defaultCurrency?.id.toString() || '',
-    });
-    setProductImages([]);
-    setPendingFiles([]);
-    setModalOpen(true);
+  const refreshSnapshot = useCallback(async () => {
+    try {
+      setSnapshot(await api<Snapshot>('/api/admin/products/bulk-price/status'));
+    } catch {
+      /* snapshot tools stay unavailable until a successful response */
+    }
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [first, langs, curs, catalog] = await Promise.all([
+          api<{ data: Group[]; pagination?: { total: number } }>(
+            '/api/admin/groups?limit=200',
+          ),
+          api<AdminLanguage[]>('/api/admin/languages'),
+          api<Currency[]>('/api/admin/currencies'),
+          fetchPrefCatalog().catch(() => defaultPrefCatalog()),
+        ]);
+        const all = [...first.data];
+        for (
+          let page = 2;
+          all.length < (first.pagination?.total || 0);
+          page++
+        ) {
+          const res = await api<{ data: Group[] }>(
+            `/api/admin/groups?limit=200&page=${page}`,
+          );
+          if (!res.data.length) break;
+          all.push(...res.data);
+        }
+        if (!cancelled) {
+          setGroups(all);
+          setLanguages(getActiveLanguages(langs));
+          setCurrencies(curs);
+          setPrefs(catalog);
+          setReady(true);
+          setMetaError('');
+        }
+      } catch (e) {
+        if (!cancelled) setMetaError(message(e));
+      }
+    })();
+    void refreshSnapshot();
+    return () => {
+      cancelled = true;
+    };
+  }, [metaRetry, refreshSnapshot]);
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      const id = ++request.current;
+      setRefreshing(true);
+      setListError('');
+      const search = new URLSearchParams({
+        limit: String(PAGE_SIZE),
+        page: String(query.page),
+      });
+      if (query.search.trim()) search.set('search', query.search.trim());
+      if (query.group) search.set('groupId', query.group);
+      if (query.status !== 'all')
+        search.set('active', String(query.status === 'active'));
+      try {
+        const result = await api<{
+          data: Product[];
+          pagination: { total: number };
+        }>(`/api/admin/products?${search}`, { signal });
+        if (id !== request.current || signal?.aborted) return;
+        setProducts(result.data);
+        const count = result.pagination?.total ?? result.data.length;
+        setTotal(count);
+        if (query.page > Math.max(1, Math.ceil(count / PAGE_SIZE)))
+          setQuery((prev) => ({
+            ...prev,
+            page: Math.max(1, Math.ceil(count / PAGE_SIZE)),
+          }));
+      } catch (e) {
+        if (id === request.current && !signal?.aborted)
+          setListError(message(e));
+      } finally {
+        if (id === request.current && !signal?.aborted) setRefreshing(false);
+      }
+    },
+    [query],
+  );
+  useEffect(() => {
+    const abort = new AbortController();
+    const timer = setTimeout(
+      () => void load(abort.signal),
+      query.search.trim() ? 220 : 0,
+    );
+    return () => {
+      clearTimeout(timer);
+      abort.abort();
+    };
+  }, [load, retry, query.search]);
+  useEffect(() => {
+    if (!statusOpen) return;
+    const outside = (e: PointerEvent) => {
+      if (!statusRoot.current?.contains(e.target as Node)) setStatusOpen(false);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setStatusOpen(false);
+        statusRoot.current?.querySelector('button')?.focus();
+      }
+    };
+    const place = () => {
+      const top = statusPanel.current?.getBoundingClientRect().top || 0;
+      statusPanel.current?.style.setProperty(
+        '--space',
+        `${Math.max(100, innerHeight - top - 12)}px`,
+      );
+    };
+    place();
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', key);
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      document.removeEventListener('pointerdown', outside);
+      document.removeEventListener('keydown', key);
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [statusOpen]);
+  function filter(patch: Partial<Query>) {
+    setQuery((prev) => ({ ...prev, ...patch, page: 1 }));
   }
-
-  function openEdit(product: Product) {
-    if (imageUploadBusy.current) return;
-    setModalMode('edit');
+  function begin() {
+    if (lock.current) return false;
+    lock.current = true;
+    setBusy(true);
+    return true;
+  }
+  function end() {
+    lock.current = false;
+    setBusy(false);
+  }
+  function merge(updated: Product) {
+    setProducts((list) =>
+      list.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)),
+    );
+  }
+  function clearPending() {
+    pendingRef.current.forEach((file) => URL.revokeObjectURL(file.url));
+    setPending([]);
+  }
+  function openEdit(
+    product: Product,
+    initial: 'general' | 'image' = 'general',
+  ) {
+    if (lock.current) return;
+    setActions(null);
+    setNotice(null);
     setEditing(product);
     setForm(buildFormFromProduct(product));
-    setPendingFiles([]);
-    setProductImages(
-      product.images?.length ? product.images : product.imageUrl ? [product.imageUrl] : []
+    setTab(initial);
+    setFormError('');
+    setImages(
+      product.images?.length
+        ? product.images
+        : product.imageUrl
+          ? [product.imageUrl]
+          : [],
     );
+    clearPending();
     setModalOpen(true);
   }
-
-  function closeModal() {
+  function openCreate(groupId?: string) {
+    if (lock.current) return;
+    setNotice(null);
+    setEditing(null);
+    setTab('general');
+    setFormError('');
+    const currency =
+      currencies.find((c) => c.code === 'TRY' && c.isActive) ||
+      currencies.find((c) => c.isActive);
+    const group = groupId || query.group || String(groups[0]?.id || '');
+    setForm({
+      ...emptyForm(),
+      groupId: groups.some((g) => String(g.id) === group)
+        ? group
+        : String(groups[0]?.id || ''),
+      currencyId: String(currency?.id || ''),
+    });
+    setImages([]);
+    clearPending();
+    setModalOpen(true);
+  }
+  function closeForm() {
+    if (lock.current) return;
     setModalOpen(false);
     setEditing(null);
-    setForm(emptyForm());
-    pendingFiles.forEach((p) => URL.revokeObjectURL(p.url));
-    setPendingFiles([]);
-    setProductImages([]);
+    clearPending();
   }
-
   useEffect(() => {
-    const editId = searchParams.get('edit');
-    if (!editId || loading) return;
-
-    const id = Number(editId);
-    if (!id) return;
-
-    async function openFromUrl() {
-      const fromList = products.find((p) => p.id === id);
-      if (fromList) {
-        openEdit(fromList);
-      } else {
-        try {
-          const product = await api<Product>(`/api/admin/products/${id}`);
-          openEdit(product);
-        } catch {
-          /* ignore */
-        }
-      }
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete('edit');
-        return next;
-      }, { replace: true });
+    if (!ready) return;
+    const edit = params.get('edit'),
+      create = params.get('new') === '1' || params.get('add') === '1';
+    const key = edit ? `edit:${edit}` : create ? 'new' : '';
+    if (!key || handled.current === key) return;
+    handled.current = key;
+    const done = () => {
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('edit');
+          next.delete('new');
+          next.delete('add');
+          next.delete('groupId');
+          return next;
+        },
+        { replace: true },
+      );
+      handled.current = '';
+    };
+    if (edit) {
+      void api<Product>(`/api/admin/products/${Number(edit)}`)
+        .then((p) => openEdit(p))
+        .catch((e) => setNotice({ error: true, text: message(e) }))
+        .finally(done);
+    } else {
+      openCreate(params.get('groupId') || undefined);
+      done();
     }
-
-    openFromUrl();
+    // The URL is consumed once; draft changes must not reopen/reset it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, products, loading]);
-
-  useEffect(() => {
-    const wantsNew =
-      searchParams.get('new') === '1' || searchParams.get('add') === '1';
-    if (!wantsNew || loading) return;
-
-    const groupIdParam = searchParams.get('groupId');
-    openCreate(groupIdParam);
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.delete('new');
-      next.delete('add');
-      next.delete('groupId');
-      return next;
-    }, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, loading, groups]);
-
-  function handleAddImages(files: FileList | null) {
-    if (!files?.length) return;
-    const next = Array.from(files).map((file) => ({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      file,
-      url: URL.createObjectURL(file),
-    }));
-    setPendingFiles((prev) => [...prev, ...next]);
+  }, [ready, params]);
+  async function quickEdit(
+    product: Product,
+    field: 'name' | 'price',
+    raw: string,
+  ) {
+    if (!begin()) return false;
+    try {
+      let payload: object;
+      if (field === 'price') {
+        const price = priceValue(raw);
+        if (!raw.trim() || !Number.isFinite(price) || price < 0)
+          throw new Error('Geçerli, sıfır veya üzeri bir fiyat yazın.');
+        payload = { price };
+      } else {
+        const lang = languages.find((l) => l.code === 'tr') || languages[0];
+        if (!raw.trim() || !lang) throw new Error('Ürün adını yazın.');
+        const old = product.translations.find((t) => t.languageId === lang.id);
+        payload = {
+          translations: [{ ...old, languageId: lang.id, name: raw.trim() }],
+        };
+      }
+      merge(
+        await api<Product>(`/api/admin/products/${product.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        }),
+      );
+      setNotice({
+        error: false,
+        text: field === 'price' ? 'Fiyat kaydedildi.' : 'Ürün adı kaydedildi.',
+      });
+      return true;
+    } catch (e) {
+      setNotice({ error: true, text: message(e) });
+      return false;
+    } finally {
+      end();
+    }
   }
-
-  function handleRemovePending(id: string) {
-    setPendingFiles((prev) => {
+  async function toggle(product: Product) {
+    if (!begin()) return;
+    try {
+      const result = await api<Product>(
+        `/api/admin/products/${product.id}/toggle`,
+        { method: 'PATCH' },
+      );
+      merge(result);
+      setNotice({
+        error: false,
+        text: `${product.name} ${result.isActive ? 'menüde gösteriliyor.' : 'menüde gizlendi.'}`,
+      });
+      if (query.status !== 'all') await load();
+    } catch (e) {
+      setNotice({ error: true, text: message(e) });
+    } finally {
+      end();
+    }
+  }
+  function validateFiles(files: File[]) {
+    if (
+      files.length > 12 ||
+      files.some(
+        (file) =>
+          !file.type.startsWith('image/') || file.size > 5 * 1024 * 1024,
+      )
+    )
+      throw new Error(
+        'Bir seferde en fazla 12 görsel seçin; her biri en fazla 5 MB olmalı.',
+      );
+  }
+  async function upload(id: number, files: File[]) {
+    validateFiles(files);
+    const body = new FormData();
+    files.forEach((file) => body.append('images', file));
+    return api<Product>(`/api/admin/products/${id}/images`, {
+      method: 'POST',
+      body,
+    });
+  }
+  async function quickUpload(product: Product, files: File[]) {
+    if (!files.length || !begin()) return;
+    setImageBusyId(product.id);
+    try {
+      merge(await upload(product.id, files));
+      setNotice({
+        error: false,
+        text: `${product.name}: ${files.length} görsel eklendi.`,
+      });
+    } catch (e) {
+      setNotice({ error: true, text: message(e) });
+    } finally {
+      setImageBusyId(null);
+      end();
+    }
+  }
+  function addFiles(files: FileList | null) {
+    if (!files?.length) return;
+    try {
+      const next = Array.from(files);
+      validateFiles([...pending.map((p) => p.file), ...next]);
+      setPending((prev) => [
+        ...prev,
+        ...next.map((file) => ({
+          id: crypto.randomUUID(),
+          file,
+          url: URL.createObjectURL(file),
+        })),
+      ]);
+    } catch (e) {
+      setFormError(message(e));
+    }
+  }
+  function removePending(id: string) {
+    setPending((prev) => {
       const item = prev.find((p) => p.id === id);
       if (item) URL.revokeObjectURL(item.url);
       return prev.filter((p) => p.id !== id);
     });
   }
-
-  async function handleRemoveImage(url: string) {
-    if (editing) {
-      const updated = await api<Product>(`/api/admin/products/${editing.id}/images`, {
-        method: 'DELETE',
-        body: JSON.stringify({ url }),
-      });
-      setProductImages(updated.images ?? []);
+  async function removeImage(url: string) {
+    if (!editing || !begin()) return;
+    try {
+      const updated = await api<Product>(
+        `/api/admin/products/${editing.id}/images`,
+        { method: 'DELETE', body: JSON.stringify({ url }) },
+      );
+      setImages(updated.images || []);
       setEditing(updated);
-      setProducts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
-      return;
+      merge(updated);
+    } catch (e) {
+      setFormError(message(e));
+    } finally {
+      end();
     }
-    setProductImages((prev) => prev.filter((u) => u !== url));
   }
-
-  async function handleMoveImage(url: string, direction: -1 | 1) {
-    const list = [...productImages];
-    const index = list.indexOf(url);
-    if (index < 0) return;
-    const target = index + direction;
-    if (target < 0 || target >= list.length) return;
+  async function moveImage(url: string, direction: -1 | 1) {
+    const list = [...images],
+      index = list.indexOf(url),
+      target = index + direction;
+    if (
+      index < 0 ||
+      target < 0 ||
+      target >= list.length ||
+      !editing ||
+      !begin()
+    )
+      return;
     [list[index], list[target]] = [list[target], list[index]];
-    setProductImages(list);
-
-    if (editing) {
-      const updated = await api<Product>(`/api/admin/products/${editing.id}/images/reorder`, {
-        method: 'PUT',
-        body: JSON.stringify({ images: list }),
-      });
-      setProductImages(updated.images ?? list);
+    try {
+      const updated = await api<Product>(
+        `/api/admin/products/${editing.id}/images/reorder`,
+        { method: 'PUT', body: JSON.stringify({ images: list }) },
+      );
+      setImages(updated.images || list);
       setEditing(updated);
-      setProducts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
-    }
-  }
-
-  async function uploadImages(id: number, files: File[]) {
-    if (files.length === 0) return;
-    const fd = new FormData();
-    files.forEach((file) => fd.append('images', file));
-    return api<Product>(`/api/admin/products/${id}/images`, {
-      method: 'POST',
-      body: fd,
-    });
-  }
-
-  async function handleQuickImageUpload(product: Product, files: File[]) {
-    if (imageUploadBusy.current || !files.length) return;
-    if (files.length > 12 || files.some((file) => !file.type.startsWith('image/') || file.size > 5 * 1024 * 1024)) {
-      setImageFeedback({ error: true, message: 'Tek seferde en fazla 12 görsel seçin. Her görsel en fazla 5 MB olmalıdır.' });
-      return;
-    }
-    imageUploadBusy.current = true;
-    setImageUploadingId(product.id);
-    setImageFeedback(null);
-    try {
-      const updated = await uploadImages(product.id, files);
-      if (!updated) return;
-      setProducts((prev) => prev.map((p) => p.id === product.id ? {
-        ...p, imageUrl: updated.imageUrl, images: updated.images, isValid: updated.isValid,
-      } : p));
-      setImageFeedback({ error: false, message: `${product.name}: ${files.length} görsel eklendi.` });
-    } catch (err) {
-      setImageFeedback({ error: true, message: err instanceof Error ? err.message : 'Görsel yüklenemedi.' });
+      merge(updated);
+    } catch (e) {
+      setFormError(message(e));
     } finally {
-      imageUploadBusy.current = false;
-      setImageUploadingId(null);
+      end();
     }
   }
-
-  async function handleSave() {
-    setSaving(true);
+  async function saveForm() {
+    if (!begin()) return;
+    setFormError('');
     try {
-      const translations = languages.map((l) => ({
-        languageId: l.id,
-        name: form.translations[l.code]?.name || '',
-        description: form.translations[l.code]?.description || '',
-        ingredients: form.translations[l.code]?.ingredients || '',
-        allergens: form.translations[l.code]?.allergens || '',
-      }));
-
+      const price = priceValue(form.price);
+      if (!form.translations.tr?.name.trim())
+        throw new Error('Ürün adını yazın.');
+      if (!groups.some((g) => String(g.id) === form.groupId))
+        throw new Error('Bir grup seçin.');
+      if (!form.price.trim() || !Number.isFinite(price) || price < 0)
+        throw new Error('Geçerli bir fiyat yazın.');
+      validateFiles(pending.map((p) => p.file));
       const payload = {
+        ...form,
         groupId: Number(form.groupId),
-        price: parseFloat(form.price) || 0,
+        price,
         currencyId: form.currencyId ? Number(form.currencyId) : null,
-        prepTimeMinutes: form.prepTimeMinutes ? Number(form.prepTimeMinutes) : null,
+        prepTimeMinutes: form.prepTimeMinutes
+          ? Number(form.prepTimeMinutes)
+          : null,
         calories: form.calories ? Number(form.calories) : null,
-        features: form.features,
-        allergenTags: form.allergenTags,
-        dietTags: form.dietTags,
-        isVegan: form.isVegan,
-        isVegetarian: form.isVegetarian,
-        isGlutenFree: form.isGlutenFree,
-        isDiabetic: form.isDiabetic,
-        isRecommended: form.isRecommended,
-        translations,
-        isActive: form.isActive,
+        translations: languages.map((l) => ({
+          languageId: l.id,
+          name: form.translations[l.code]?.name || '',
+          description: form.translations[l.code]?.description || '',
+          ingredients: form.translations[l.code]?.ingredients || '',
+          allergens: form.translations[l.code]?.allergens || '',
+        })),
       };
-
-      if (editing) {
-        await api(`/api/admin/products/${editing.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(payload),
-        });
-        if (pendingFiles.length > 0) {
-          await uploadImages(
-            editing.id,
-            pendingFiles.map((p) => p.file)
-          );
-        }
-      } else {
-        const created = await api<Product>('/api/admin/products', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        });
-        if (pendingFiles.length > 0) {
-          await uploadImages(
-            created.id,
-            pendingFiles.map((p) => p.file)
-          );
-        }
+      const saved = await api<Product>(
+        editing ? `/api/admin/products/${editing.id}` : '/api/admin/products',
+        { method: editing ? 'PUT' : 'POST', body: JSON.stringify(payload) },
+      );
+      setEditing(saved);
+      merge(saved);
+      if (pending.length) {
+        const updated = await upload(
+          saved.id,
+          pending.map((p) => p.file),
+        );
+        setImages(updated.images || []);
+        setEditing(updated);
+        merge(updated);
+        clearPending();
       }
-
-      closeModal();
       await load();
+      setModalOpen(false);
+      clearPending();
+      setNotice({ error: false, text: 'Ürün kaydedildi.' });
+    } catch (e) {
+      setFormError(message(e));
     } finally {
-      setSaving(false);
+      end();
     }
   }
-
-  async function handlePrefCatalogChange(catalog: PrefCatalog) {
-    setPrefCatalog(catalog);
+  async function changePrefs(catalog: PrefCatalog) {
+    setPrefs(catalog);
     try {
       await savePrefCatalog(catalog);
-    } catch {
-      /* sessiz — kullanıcı kaydetmeye devam edebilir */
+    } catch (e) {
+      setFormError(message(e));
     }
   }
-
-  async function handleToggle(product: Product) {
-    const nextActive = !product.isActive;
-    setProducts((prev) =>
-      prev.map((p) => (p.id === product.id ? { ...p, isActive: nextActive } : p))
-    );
+  async function removeProduct() {
+    if (!deleteTarget || !begin()) return;
+    setDeleteError('');
     try {
-      await api(`/api/admin/products/${product.id}/toggle`, { method: 'PATCH' });
-    } catch {
-      setProducts((prev) =>
-        prev.map((p) => (p.id === product.id ? { ...p, isActive: product.isActive } : p))
-      );
-    }
-  }
-
-  function handleDelete(product: Product) {
-    setDeleteTarget(product);
-  }
-
-  async function confirmDelete() {
-    if (!deleteTarget || deleting) return;
-    const product = deleteTarget;
-    setDeleting(true);
-    const prev = products;
-    setProducts((list) => list.filter((p) => p.id !== product.id));
-    setDeleteTarget(null);
-    try {
-      await api(`/api/admin/products/${product.id}`, { method: 'DELETE' });
-    } catch (err) {
-      setProducts(prev);
-      window.alert(err instanceof Error ? err.message : 'Ürün silinemedi.');
+      await api(`/api/admin/products/${deleteTarget.id}`, { method: 'DELETE' });
+      setDeleteTarget(null);
+      await load();
+      setNotice({ error: false, text: 'Ürün silindi.' });
+    } catch (e) {
+      setDeleteError(message(e));
     } finally {
-      setDeleting(false);
+      end();
     }
   }
-
-  function clearFilters() {
-    setSearch('');
-    setGroupFilter('');
-    setStatusFilter('all');
+  async function bulkApplied(result: BulkPriceApplyResult) {
+    setBulkOpen(false);
+    if (!begin()) return;
+    try {
+      await load();
+      await refreshSnapshot();
+      setNotice({
+        error: false,
+        text: `${result.updates.length} ürünün fiyatı güncellendi.${result.skipped.length ? ` ${result.skipped.length} ürün atlandı.` : ''}`,
+      });
+    } finally {
+      end();
+    }
   }
-
-  const groupFilterOptions = useMemo(
-    () =>
-      groups.map((g) => ({
-        value: g.id.toString(),
-        label: g.isSubGroup && g.parentName ? `${g.parentName} › ${g.name}` : g.name,
-      })),
-    [groups]
+  async function restorePrices() {
+    if (!snapshot.hasSnapshot || !begin()) return;
+    setRestoreError('');
+    try {
+      await api('/api/admin/products/bulk-price/restore', { method: 'POST' });
+      setRestoreOpen(false);
+      await load();
+      await refreshSnapshot();
+      setNotice({
+        error: false,
+        text: 'Son toplu fiyat değişikliği geri alındı.',
+      });
+    } catch (e) {
+      setRestoreError(message(e));
+    } finally {
+      end();
+    }
+  }
+  function openActions(product: Product, e: MouseEvent<HTMLElement>) {
+    e.preventDefault();
+    if (busy) return;
+    const box = e.currentTarget.getBoundingClientRect();
+    setActions({
+      product,
+      point: {
+        x: e.type === 'contextmenu' ? e.clientX : box.right - 280,
+        y: e.type === 'contextmenu' ? e.clientY : box.bottom + 6,
+      },
+    });
+  }
+  const disabled = busy || refreshing;
+  const groupOptions = groups.map((g) => ({
+    id: g.id,
+    name: g.name,
+    isSubGroup: g.isSubGroup,
+    parentName: g.parentName,
+  }));
+  const selectedGroup = groups.find((g) => String(g.id) === query.group);
+  const categoryButtons = (mobile = false) => (
+    <nav aria-label={mobile ? 'Grup seçimi' : 'Ürün grupları'}>
+      <button
+        className={!query.group ? 'is-active' : ''}
+        onClick={() => {
+          filter({ group: '' });
+          setCategoryOpen(false);
+        }}
+      >
+        Tüm ürünler<span>↗</span>
+      </button>
+      {groups
+        .filter(
+          (g) =>
+            !mobile ||
+            `${g.name} ${g.parentName || ''}`
+              .toLocaleLowerCase('tr')
+              .includes(categorySearch.toLocaleLowerCase('tr')),
+        )
+        .map((g) => (
+          <button
+            key={g.id}
+            className={`${query.group === String(g.id) ? 'is-active' : ''}${g.isSubGroup ? ' is-sub' : ''}`}
+            onClick={() => {
+              filter({ group: String(g.id) });
+              setCategoryOpen(false);
+            }}
+          >
+            {g.isSubGroup && <small>{g.parentName}</small>}
+            <span>{g.name}</span>
+          </button>
+        ))}
+    </nav>
   );
-
-  if (loading) return <Spinner />;
-
-  return (
-    <div className="space-y-5">
-      {bulkToast ? (
-        <div
-          className="fixed top-4 left-1/2 z-[60] -translate-x-1/2 px-4 py-2.5 rounded-2xl text-sm font-semibold shadow-lg animate-slide-up"
-          style={{
-            background: 'var(--admin-card)',
-            border: '1px solid var(--admin-card-border)',
-            color: 'var(--admin-text)',
-            boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+  if (metaError)
+    return (
+      <div className="ag-empty" role="alert">
+        <h1>Ürünler açılamadı</h1>
+        <p>{metaError}</p>
+        <Button
+          onClick={() => {
+            setMetaError('');
+            setMetaRetry((v) => v + 1);
           }}
-          role="status"
         >
-          {bulkToast}
+          Tekrar dene
+        </Button>
+      </div>
+    );
+  if (!ready) return <Spinner />;
+  return (
+    <section className="ap-page" aria-label="Ürün yönetimi">
+      <AdminToast notice={notice} onClose={() => setNotice(null)} />
+      <header className="ap-head">
+        <div>
+          <p className="ag-eyebrow">MENÜ ATÖLYESİ</p>
+          <h1>
+            Ürünler<span>.</span>
+          </h1>
+          <p>Lezzetlerinize yer açın.</p>
         </div>
-      ) : null}
-      <PageHeader
-        title="Ürünler"
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <div className="flex flex-col items-stretch self-center min-w-0">
-              <Link to={adminPath('urun-secenekleri')}>
-                <Button variant="secondary" className="w-full">
-                  <Layers3 className="w-4 h-4" />
-                  Varyant / seçenek
-                </Button>
-              </Link>
-              <Link
-                to={adminPath('icerik-havuzu')}
-                className="mt-0.5 w-full text-center text-[11px] leading-tight admin-text-muted hover:text-[var(--admin-accent)] transition px-0.5"
-              >
-                İçerik havuzu
-              </Link>
-            </div>
-            {BULK_PRICE_UI_ENABLED && (
-              <div className="flex flex-col items-stretch self-center min-w-0">
-                <Button
-                  variant="secondary"
-                  onClick={() => setBulkOpen(true)}
-                  disabled={bulkAnimating || bulkRestoring}
-                  className="w-full"
+        <div className="ap-head__actions">
+          <button
+            className="ap-tools"
+            disabled={busy}
+            onClick={() => setToolsOpen(true)}
+            aria-label="Ürün araçları"
+          >
+            <MoreHorizontal size={20} />
+            <span>Araçlar</span>
+          </button>
+          <Button disabled={busy} onClick={() => openCreate()}>
+            <Plus size={18} />
+            Ürün ekle
+          </Button>
+        </div>
+      </header>
+      <div className="ap-workspace">
+        <aside className="ap-categories">
+          <p>MENÜNÜN BÖLÜMLERİ</p>
+          {categoryButtons()}
+        </aside>
+        <div className="ap-canvas">
+          <div className="ap-toolbar">
+            <label className="ap-search">
+              <Search size={18} />
+              <input
+                aria-label="Ürünlerde ara"
+                placeholder="Bir ürün bul…"
+                value={query.search}
+                onChange={(e) => filter({ search: e.target.value })}
+              />
+              {query.search && (
+                <button
+                  className="ag-icon"
+                  aria-label="Aramayı temizle"
+                  onClick={() => filter({ search: '' })}
                 >
-                  <Tags className="w-4 h-4" />
-                  Toplu fiyat
-                </Button>
-                {bulkStatus.hasSnapshot ? (
-                  <button
-                    type="button"
-                    onClick={() => setBulkRestoreOpen(true)}
-                    disabled={bulkAnimating || bulkRestoring}
-                    title={
-                      bulkStatus.appliedAt
-                        ? `Son işlem: ${formatShortDate(bulkStatus.appliedAt)}`
-                        : 'Eski fiyata dön'
-                    }
-                    className="mt-0.5 w-full text-center text-[11px] leading-tight admin-text-muted hover:text-[var(--admin-accent)] transition disabled:opacity-40 truncate px-0.5"
-                  >
-                    Eski fiyata dön
-                  </button>
-                ) : (
-                  <span className="mt-0.5 w-full text-center text-[11px] leading-tight admin-text-muted/80 truncate px-0.5">
-                    Henüz eski fiyat yok
-                  </span>
-                )}
-              </div>
-            )}
-            <div className="flex flex-col items-stretch self-center min-w-0">
-              <Button onClick={() => openCreate()} className="w-full">
-                <Plus className="w-4 h-4" />
-                Yeni Ürün Ekle
-              </Button>
-              <Link
-                to={adminPath('saatlik-menu')}
-                className="mt-0.5 w-full text-center text-[11px] leading-tight admin-text-muted hover:text-[var(--admin-accent)] transition px-0.5"
+                  <X size={16} />
+                </button>
+              )}
+            </label>
+            <button
+              className="ap-category-trigger"
+              onClick={() => {
+                setCategorySearch('');
+                setCategoryOpen(true);
+              }}
+            >
+              <span>{selectedGroup?.name || 'Tüm gruplar'}</span>
+              <small>{refreshing ? '…' : `${total} ürün`}</small>
+              <ChevronDown size={15} />
+            </button>
+            <div className="ap-status-wrap" ref={statusRoot}>
+              <button
+                className={`ap-filter${query.status !== 'all' ? 'is-active' : ''}`}
+                aria-label="Ürün filtreleri"
+                aria-expanded={statusOpen}
+                onClick={() => setStatusOpen((v) => !v)}
               >
-                Saatlik menü
-              </Link>
+                <SlidersHorizontal size={18} />
+                {query.status !== 'all' && <i />}
+              </button>
+              {statusOpen && (
+                <div
+                  ref={statusPanel}
+                  className="ap-filter-panel"
+                  role="region"
+                  aria-label="Görünürlük filtresi"
+                >
+                  <header>
+                    <span>Menüde görünürlük</span>
+                    <button
+                      className="ag-icon"
+                      aria-label="Filtreleri kapat"
+                      onClick={() => setStatusOpen(false)}
+                    >
+                      <X size={16} />
+                    </button>
+                  </header>
+                  {(
+                    [
+                      ['all', 'Tümü'],
+                      ['active', 'Açık'],
+                      ['passive', 'Gizli'],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      aria-pressed={query.status === value}
+                      onClick={() => filter({ status: value })}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        }
-      />
-
-      {imageFeedback && (
-        <div
-          role={imageFeedback.error ? 'alert' : 'status'}
-          className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm ${
-            imageFeedback.error ? 'bg-red-500/10 text-red-600' : 'bg-emerald-500/10 text-emerald-600'
-          }`}
-        >
-          <span>{imageFeedback.message}</span>
-          <button type="button" aria-label="Bildirimi kapat" onClick={() => setImageFeedback(null)}>
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      <Card className="overflow-hidden !p-0">
-        <AdminFilterBar
-          search={
-            <Input
-              label="Ürün adı ara..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          }
-          filterOpen={filterOpen}
-          onFilterToggle={() => setFilterOpen(!filterOpen)}
-          activeFilterCount={activeFilterCount}
-          recordLabel={`${products.length} kayıt`}
-          onClear={clearFilters}
-        >
-          <FilterSection className="min-w-[200px]">
-            <FilterFieldLabel>Grup</FilterFieldLabel>
-            <Select
-              label="Tüm gruplar"
-              value={groupFilter}
-              options={groupFilterOptions}
-              onChange={(e) => setGroupFilter(e.target.value)}
-            />
-          </FilterSection>
-          <FilterSection>
-            <FilterChipGroup
-              label="Durum"
-              value={statusFilter}
-              options={[
-                { value: 'all', label: 'Tümü' },
-                { value: 'active', label: 'Aktif' },
-                { value: 'passive', label: 'Pasif' },
-              ]}
-              onChange={setStatusFilter}
-            />
-          </FilterSection>
-        </AdminFilterBar>
-
-        <div className="overflow-x-auto admin-scroll">
-          <table className="w-full text-sm">
-            <thead>
-              <tr
-                className="text-left text-xs uppercase tracking-wide admin-text-muted"
-                style={{ background: 'var(--admin-input-bg)' }}
+          <div className={`ap-section-head${query.search ? ' is-search' : ''}`}>
+            <div>
+              <p>{query.search ? 'ARAMA SONUÇLARI' : 'SOFRANIN İÇİNDEKİLER'}</p>
+              <h2>
+                {query.search
+                  ? `“${query.search}”`
+                  : selectedGroup?.name || 'Tüm ürünler'}
+              </h2>
+            </div>
+            <span aria-live="polite">
+              {refreshing ? 'Yükleniyor…' : `${total} ürün`}
+            </span>
+          </div>
+          {query.status !== 'all' && (
+            <div className="ap-active-filter">
+              {query.status === 'active' ? 'Menüde açık' : 'Menüde gizli'}
+              <button
+                onClick={() => filter({ status: 'all' })}
+                aria-label="Görünürlük filtresini temizle"
               >
-                <th className="py-3.5 px-4 font-semibold w-[72px]">Görsel</th>
-                <th className="py-3.5 px-4 font-semibold">Adı</th>
-                <th className="py-3.5 px-4 font-semibold hidden md:table-cell">Grubu</th>
-                <th className="py-3.5 px-4 font-semibold">Fiyat</th>
-                <th className="py-3.5 px-4 font-semibold hidden sm:table-cell">Sıra</th>
-                <th className="py-3.5 px-4 font-semibold">Durum</th>
-                <th className="py-3.5 px-4 font-semibold">Stok</th>
-                <th className="py-3.5 px-4 font-semibold w-[100px]">İşlem</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.length === 0 ? (
-                <tr>
-                  <td colSpan={8}>
-                    <EmptyState message="Henüz ürün eklenmemiş" />
-                  </td>
-                </tr>
-              ) : (
-                products.map((product) => (
-                  <tr
-                    key={product.id}
-                    data-product-row={product.id}
-                    onDoubleClick={() => openEdit(product)}
-                    className={`border-b transition-all duration-300 hover:bg-[var(--admin-accent-soft)]/30 admin-table-row--editable cursor-pointer${
-                      rollingId === product.id ? ' bulk-price-row--flash' : ''
-                    }`}
-                    style={{
-                      borderColor: 'var(--admin-card-border)',
-                      opacity: product.isActive ? 1 : 0.38,
-                    }}
-                  >
-                    <td className="py-3.5 px-4">
-                      <ProductImageCell
-                        name={product.name}
-                        cover={product.imageUrl}
-                        images={product.images}
-                        busy={imageUploadingId === product.id}
-                        disabled={imageUploadingId !== null || bulkAnimating}
-                        onUpload={(files) => handleQuickImageUpload(product, files)}
-                      />
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <p className="font-semibold text-[var(--admin-text)]">{product.name}</p>
-                      {!product.isValid && (
-                        <span className="text-xs text-red-500">Eksik çeviri</span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 admin-text-muted hidden md:table-cell">
-                      {product.groupName}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <ProductPriceCell
-                        price={product.price}
-                        currency={product.currency}
-                        previousPrice={product.previousPrice}
-                        previousPriceAt={product.previousPriceAt}
-                        rolling={rollingId === product.id}
-                        rollFrom={rollingId === product.id ? rollFrom : null}
-                      />
-                    </td>
-                    <td className="py-3.5 px-4 admin-text-muted hidden sm:table-cell">
-                      {product.sortOrder}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <Badge active={product.isActive} />
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <ProductStockCell
-                        product={product}
-                        onOpen={() => setStockProduct(product)}
-                      />
-                    </td>
-                    <td className="py-3.5 px-4" onDoubleClick={(e) => e.stopPropagation()}>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => openEdit(product)}
-                          className="p-2 rounded-xl transition hover:bg-[var(--admin-accent-soft)]"
-                          style={{ color: 'var(--admin-accent)' }}
-                          title="Düzenle"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleToggle(product)}
-                          className={`p-2 rounded-xl transition ${
-                            product.isActive
-                              ? 'hover:bg-amber-500/10 text-amber-600'
-                              : 'hover:bg-emerald-500/10 text-emerald-600'
-                          }`}
-                          title={product.isActive ? 'Pasifleştir' : 'Aktifleştir'}
-                        >
-                          {product.isActive ? (
-                            <EyeOff className="w-4 h-4" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product)}
-                          className="p-2 rounded-xl transition hover:bg-red-500/10 text-red-500"
-                          title="Sil"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                <X size={14} />
+              </button>
+            </div>
+          )}
+          <div
+            className={`ap-list${refreshing ? ' is-loading' : ''}`}
+            aria-busy={refreshing}
+          >
+            {listError ? (
+              <div className="ag-empty" role="alert">
+                <p>{listError}</p>
+                <Button onClick={() => setRetry((v) => v + 1)}>
+                  Tekrar dene
+                </Button>
+              </div>
+            ) : products.length ? (
+              products.map((product) => (
+                <ProductRow
+                  key={product.id}
+                  product={product}
+                  busy={disabled}
+                  imageBusy={imageBusyId === product.id}
+                  onEdit={openEdit}
+                  onQuickEdit={quickEdit}
+                  onToggle={toggle}
+                  onStock={(product) => {
+                    setNotice(null);
+                    setStock(product);
+                  }}
+                  onActions={openActions}
+                  onUpload={(files) => quickUpload(product, files)}
+                />
+              ))
+            ) : refreshing ? (
+              <div className="ap-skeleton" aria-label="Ürünler yükleniyor">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} />
+                ))}
+              </div>
+            ) : (
+              <div className="ag-empty">
+                <Package size={30} />
+                <h3>
+                  {query.search || query.status !== 'all'
+                    ? 'Bu seçimde ürün yok'
+                    : 'İlk lezzetinize yer açın'}
+                </h3>
+                <p>
+                  {query.search
+                    ? 'Başka bir ürün adı deneyin.'
+                    : 'Yeni ürününüzü bu bölüme ekleyebilirsiniz.'}
+                </p>
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    query.search || query.status !== 'all'
+                      ? filter({ search: '', status: 'all' })
+                      : openCreate()
+                  }
+                >
+                  {query.search || query.status !== 'all'
+                    ? 'Filtreleri temizle'
+                    : 'Ürün ekle'}
+                </Button>
+              </div>
+            )}
+          </div>
           <AdminListPager
-            page={page}
-            pageCount={pageCount}
+            page={query.page}
+            pageCount={Math.max(1, Math.ceil(total / PAGE_SIZE))}
             total={total}
             pageSize={PAGE_SIZE}
-            onPageChange={bulkAnimating ? () => undefined : setPage}
+            onPageChange={(page) => {
+              if (!disabled) setQuery((prev) => ({ ...prev, page }));
+            }}
           />
+          <p className="ap-note">
+            Ad veya fiyata dokunun, Enter ile kaydedin. Ayrıntılar için üç
+            noktayı kullanın.
+          </p>
         </div>
-      </Card>
-
+      </div>
+      <GroupsDialog
+        open={categoryOpen}
+        title="Hangi bölüm?"
+        subtitle="Ürünleri grubuna göre daraltın."
+        onClose={() => setCategoryOpen(false)}
+        className="ap-category-sheet"
+      >
+        <label className="ap-search">
+          <Search size={17} />
+          <input
+            aria-label="Grup bul"
+            placeholder="Grup ara"
+            value={categorySearch}
+            onChange={(e) => setCategorySearch(e.target.value)}
+          />
+        </label>
+        {categoryButtons(true)}
+      </GroupsDialog>
+      <GroupsDialog
+        open={toolsOpen}
+        title="Menü araçları"
+        subtitle="Günlük işlerin ötesinde, ihtiyacınız olduğunda."
+        onClose={() => setToolsOpen(false)}
+      >
+        <div className="ag-action-list">
+          <button
+            onClick={() => {
+              setToolsOpen(false);
+              setBulkOpen(true);
+            }}
+          >
+            <Tags size={20} />
+            <span>
+              Toplu fiyat güncelle
+              <small>Önizle, kontrol et, birlikte uygula</small>
+            </span>
+          </button>
+          {snapshot.hasSnapshot && (
+            <button
+              onClick={() => {
+                setToolsOpen(false);
+                setRestoreError('');
+                setRestoreOpen(true);
+              }}
+            >
+              <RotateCcw size={19} />
+              <span>
+                Son fiyat değişikliğini geri al
+                <small>{snapshot.count} ürün</small>
+              </span>
+            </button>
+          )}
+          <Link to={adminPath('urun-secenekleri')}>
+            <Layers3 size={20} />
+            <span>Varyant ve seçenekler</span>
+          </Link>
+          <Link to={adminPath('icerik-havuzu')}>
+            <Package size={20} />
+            <span>İçerik havuzu</span>
+          </Link>
+          <Link to={adminPath('saatlik-menu')}>
+            <Clock size={20} />
+            <span>Saatlik menü</span>
+          </Link>
+        </div>
+      </GroupsDialog>
+      <GroupsDialog
+        open={Boolean(actions)}
+        title={actions?.product.name || 'Ürün'}
+        onClose={() => setActions(null)}
+        className="ag-actions"
+        anchor={actions?.point}
+      >
+        {actions && (
+          <div className="ag-action-list">
+            <button onClick={() => openEdit(actions.product)}>
+              <Pencil size={18} />
+              Ayrıntıları düzenle
+            </button>
+            <button onClick={() => openEdit(actions.product, 'image')}>
+              <Layers3 size={18} />
+              Görselleri yönet
+            </button>
+            <button
+              onClick={() => {
+                setStock(actions.product);
+                setActions(null);
+              }}
+            >
+              <Package size={18} />
+              Stok ve varyantlar
+            </button>
+            <button
+              onClick={() => {
+                const product = actions.product;
+                setActions(null);
+                void toggle(product);
+              }}
+            >
+              {actions.product.isActive ? (
+                <EyeOff size={18} />
+              ) : (
+                <Eye size={18} />
+              )}
+              Menüde {actions.product.isActive ? 'gizle' : 'göster'}
+            </button>
+            <button
+              className="is-danger"
+              onClick={() => {
+                setDeleteTarget(actions.product);
+                setDeleteError('');
+                setActions(null);
+              }}
+            >
+              <Trash2 size={18} />
+              Ürünü sil
+            </button>
+          </div>
+        )}
+      </GroupsDialog>
       <ProductModal
         open={modalOpen}
-        mode={modalMode}
+        mode={editing ? 'edit' : 'create'}
+        initialTab={tab}
+        error={formError}
         languages={languages}
         currencies={currencies}
         groups={groupOptions}
-        prefCatalog={prefCatalog}
-        onPrefCatalogChange={handlePrefCatalogChange}
+        prefCatalog={prefs}
+        onPrefCatalogChange={changePrefs}
         form={form}
-        productImages={productImages}
-        pendingPreviews={pendingFiles.map(({ id, url }) => ({ id, url }))}
-        saving={saving}
-        onClose={closeModal}
-        onSave={handleSave}
+        productImages={images}
+        pendingPreviews={pending.map(({ id, url }) => ({ id, url }))}
+        saving={busy}
+        onClose={closeForm}
+        onSave={() => void saveForm()}
         onFormChange={setForm}
-        onAddImages={handleAddImages}
-        onRemoveImage={handleRemoveImage}
-        onRemovePending={handleRemovePending}
-        onMoveImage={handleMoveImage}
+        onAddImages={addFiles}
+        onRemoveImage={removeImage}
+        onRemovePending={removePending}
+        onMoveImage={moveImage}
       />
-
       <BulkPriceModal
         open={bulkOpen}
         groups={groupOptions}
         onClose={() => setBulkOpen(false)}
-        onApplied={handleBulkApplied}
+        onApplied={bulkApplied}
       />
-
-      {stockProduct ? (
+      {stock && (
         <ProductStockModal
-          product={stockProduct}
-          onClose={() => setStockProduct(null)}
-          onSaved={(updated) =>
-            setProducts((prev) =>
-              prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
-            )
-          }
+          product={stock}
+          onClose={() => setStock(null)}
+          onSaved={(updated) => {
+            setProducts((list) =>
+              list.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)),
+            );
+            setNotice({ error: false, text: 'Stok bilgileri kaydedildi.' });
+          }}
         />
-      ) : null}
-
-      <AdminConfirmModal
-        open={Boolean(deleteTarget)}
-        title="Ürünü sil"
-        description="Seçili ürün menüden kalıcı olarak kaldırılır."
-        highlight={deleteTarget?.name}
-        confirmLabel="Evet, sil"
-        busy={deleting}
-        onCancel={() => {
-          if (!deleting) setDeleteTarget(null);
-        }}
-        onConfirm={() => void confirmDelete()}
-      />
-
-      {bulkRestoreOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[6px]"
-            onClick={() => !bulkRestoring && setBulkRestoreOpen(false)}
-          />
-          <div
-            className="relative w-full sm:max-w-md flex flex-col rounded-t-[28px] sm:rounded-[28px] shadow-2xl animate-slide-up overflow-hidden"
-            style={{
-              background: 'var(--admin-card)',
-              border: '1px solid var(--admin-card-border)',
-            }}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="bulk-restore-title"
-          >
-            <div
-              className="px-5 pt-5 pb-4"
-              style={{ borderBottom: '1px solid var(--admin-card-border)' }}
-            >
-              <div className="flex items-start gap-3">
-                <div
-                  className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{ background: 'rgba(245, 158, 11, 0.14)', color: '#d97706' }}
-                >
-                  <RotateCcw className="w-5 h-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2
-                    id="bulk-restore-title"
-                    className="text-base font-bold text-[var(--admin-text)]"
-                  >
-                    Eski fiyata dön
-                  </h2>
-                  <p className="text-xs admin-text-muted mt-0.5 leading-relaxed">
-                    Bu işlem son toplu fiyat güncellemesini geri alır.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="px-5 py-4 space-y-3">
-              <p className="text-sm text-[var(--admin-text)] leading-relaxed">
-                Son toplu işlemdeki{' '}
-                <strong>{bulkStatus.count} ürün</strong>ün fiyatı eski haline
-                dönecek.
-              </p>
-              {bulkStatus.appliedAt && (
-                <p
-                  className="text-xs rounded-xl px-3 py-2 admin-text-muted"
-                  style={{ background: 'var(--admin-input-bg)' }}
-                >
-                  Son işlem: {formatShortDate(bulkStatus.appliedAt)}
-                </p>
-              )}
-              <p className="text-xs text-amber-700 leading-relaxed">
-                Onayladıktan sonra fiyatlar sayfada tek tek geri döner. Bu geri alma
-                kaydı silinir.
-              </p>
-            </div>
-
-            <div
-              className="px-5 py-4 flex gap-2"
-              style={{ borderTop: '1px solid var(--admin-card-border)' }}
-            >
-              <Button
-                type="button"
-                variant="ghost"
-                className="flex-1"
-                disabled={bulkRestoring}
-                onClick={() => setBulkRestoreOpen(false)}
-              >
-                Vazgeç
-              </Button>
-              <Button
-                type="button"
-                className="flex-1"
-                disabled={bulkRestoring || bulkAnimating}
-                onClick={() => void handleBulkRestore()}
-              >
-                {bulkRestoring ? 'Geri alınıyor…' : 'Evet, geri al'}
-              </Button>
-            </div>
-          </div>
-        </div>
       )}
-    </div>
+      <GroupsDialog
+        open={Boolean(deleteTarget)}
+        title="Ürünü silelim mi?"
+        subtitle={deleteTarget?.name}
+        busy={busy}
+        onClose={() => setDeleteTarget(null)}
+      >
+        <p className="ag-delete-copy">
+          Bu ürün menüden kalıcı olarak kaldırılır. Bu işlem geri alınamaz.
+        </p>
+        {deleteError && (
+          <p role="alert" className="ag-form-error">
+            {deleteError}
+          </p>
+        )}
+        <Button
+          className="w-full ag-delete-button"
+          disabled={busy}
+          onClick={() => void removeProduct()}
+        >
+          {busy ? 'Siliniyor…' : 'Ürünü sil'}
+        </Button>
+      </GroupsDialog>
+      <GroupsDialog
+        open={restoreOpen}
+        title="Son fiyatlara dön"
+        busy={busy}
+        onClose={() => setRestoreOpen(false)}
+      >
+        <p className="ag-delete-copy">
+          Son toplu işlemde değişen {snapshot.count} ürünün eski fiyatı geri
+          yüklenecek.
+        </p>
+        {restoreError && (
+          <p role="alert" className="ag-form-error">
+            {restoreError}
+          </p>
+        )}
+        <Button
+          className="w-full"
+          disabled={busy}
+          onClick={() => void restorePrices()}
+        >
+          {busy ? 'Geri alınıyor…' : 'Eski fiyatları geri yükle'}
+        </Button>
+      </GroupsDialog>
+    </section>
   );
 }

@@ -1,8 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Boxes, Check, Clock, Moon, SlidersHorizontal, Sun, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+  Boxes,
+  Check,
+  Clock,
+  Moon,
+  SlidersHorizontal,
+  Sun,
+  X,
+} from 'lucide-react';
 import { api } from '@/lib/api';
 import type { ProductOptionGroup } from '@/lib/productOptions';
 import '@/product-stock-modal.css';
+import AdminOverlay from '@/components/admin/AdminOverlay';
 
 export type StockProduct = {
   id: number;
@@ -70,21 +79,25 @@ export default function ProductStockModal({
 }) {
   const groups = useMemo(
     () => (product.optionGroups || []).filter((g) => g.options.length > 0),
-    [product.optionGroups]
+    [product.optionGroups],
   );
 
   const [tab, setTab] = useState<Tab>(groups.length ? 'variants' : 'settings');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [productStock, setProductStock] = useState(stockLabel(product.stockQty));
-  const [optionStocks, setOptionStocks] = useState<Record<string, string>>(() => {
-    const map: Record<string, string> = {};
-    for (const g of product.optionGroups || []) {
-      for (const o of g.options) map[o.id] = stockLabel(o.stockQty);
-    }
-    return map;
-  });
+  const [productStock, setProductStock] = useState(
+    stockLabel(product.stockQty),
+  );
+  const [optionStocks, setOptionStocks] = useState<Record<string, string>>(
+    () => {
+      const map: Record<string, string> = {};
+      for (const g of product.optionGroups || []) {
+        for (const o of g.options) map[o.id] = stockLabel(o.stockQty);
+      }
+      return map;
+    },
+  );
 
   const initialHour = product.stockResetHour;
   const [resetOn, setResetOn] = useState(initialHour != null);
@@ -96,14 +109,6 @@ export default function ProductStockModal({
   const [isPm, setIsPm] = useState(() => (initialHour ?? 10) >= 12);
   const [minute, setMinute] = useState(product.stockResetMinute ?? 0);
   const [resetTo, setResetTo] = useState(stockLabel(product.stockResetTo));
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   const hour24 = isPm ? (hour12 % 12) + 12 : hour12 % 12;
   const timeLabel = `${String(hour24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
@@ -151,10 +156,13 @@ export default function ProductStockModal({
 
     setSaving(true);
     try {
-      const updated = await api<StockProduct>(`/api/admin/products/${product.id}/stock`, {
-        method: 'PATCH',
-        body: JSON.stringify(body),
-      });
+      const updated = await api<StockProduct>(
+        `/api/admin/products/${product.id}/stock`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(body),
+        },
+      );
       onSaved(updated);
       onClose();
     } catch (err) {
@@ -165,9 +173,11 @@ export default function ProductStockModal({
   }
 
   return (
-    <div className="psm-overlay">
-      <button type="button" className="psm-scrim" aria-label="Kapat" onClick={onClose} />
-
+    <AdminOverlay
+      label={`${product.name} stok yönetimi`}
+      busy={saving}
+      onClose={onClose}
+    >
       <div
         role="dialog"
         aria-modal="true"
@@ -182,18 +192,26 @@ export default function ProductStockModal({
             <p>Stok yönetimi</p>
             <h2>{product.name}</h2>
           </div>
-          <button type="button" className="psm-close" onClick={onClose} aria-label="Kapat">
+          <button
+            type="button"
+            className="psm-close"
+            onClick={onClose}
+            aria-label="Kapat"
+            disabled={saving}
+          >
             <X className="w-4 h-4" />
           </button>
         </header>
 
         <nav className="psm-tabs" role="tablist">
-          {(
-            [
-              { key: 'variants' as const, label: 'Varyant stoğu', icon: Boxes },
-              { key: 'settings' as const, label: 'Ayarlar', icon: SlidersHorizontal },
-            ]
-          ).map(({ key, label, icon: Icon }) => (
+          {[
+            { key: 'variants' as const, label: 'Varyant stoğu', icon: Boxes },
+            {
+              key: 'settings' as const,
+              label: 'Ayarlar',
+              icon: SlidersHorizontal,
+            },
+          ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               type="button"
@@ -208,7 +226,7 @@ export default function ProductStockModal({
           ))}
         </nav>
 
-        <div className="psm-body admin-scroll">
+        <fieldset disabled={saving} className="psm-body admin-scroll min-w-0">
           {tab === 'variants' ? (
             groups.length === 0 ? (
               <div className="psm-empty">
@@ -219,7 +237,8 @@ export default function ProductStockModal({
             ) : (
               <div className="psm-variants">
                 <p className="psm-hint">
-                  Her varyant için ayrı stok gir. <b>S</b> = sınırsız, <b>0</b> = tükendi.
+                  Her varyant için ayrı stok gir. <b>S</b> = sınırsız, <b>0</b>{' '}
+                  = tükendi.
                 </p>
                 {groups.map((group) => (
                   <section key={group.id} className="psm-variant-group">
@@ -228,14 +247,20 @@ export default function ProductStockModal({
                       {group.options.map((option) => {
                         const soldOut = optionStocks[option.id] === '0';
                         return (
-                          <li key={option.id} className={soldOut ? 'is-soldout' : undefined}>
+                          <li
+                            key={option.id}
+                            className={soldOut ? 'is-soldout' : undefined}
+                          >
                             <span>{option.name}</span>
                             <StockField
                               size="sm"
                               ariaLabel={`${option.name} stoğu`}
                               value={optionStocks[option.id] ?? 'S'}
                               onChange={(next) =>
-                                setOptionStocks((prev) => ({ ...prev, [option.id]: next }))
+                                setOptionStocks((prev) => ({
+                                  ...prev,
+                                  [option.id]: next,
+                                }))
                               }
                             />
                           </li>
@@ -284,7 +309,11 @@ export default function ProductStockModal({
 
                 {resetOn ? (
                   <div className="psm-reset__panel">
-                    <div className="psm-period" role="group" aria-label="Gündüz veya gece">
+                    <div
+                      className="psm-period"
+                      role="group"
+                      aria-label="Gündüz veya gece"
+                    >
                       <button
                         type="button"
                         className={`psm-period__btn psm-period__btn--day${!isPm ? ' is-on' : ''}`}
@@ -320,7 +349,11 @@ export default function ProductStockModal({
                     <div className="psm-clock">
                       <div className="psm-clock__face" aria-hidden>
                         <span className={isPm ? 'is-night' : 'is-day'}>
-                          {isPm ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                          {isPm ? (
+                            <Moon className="w-4 h-4" />
+                          ) : (
+                            <Sun className="w-4 h-4" />
+                          )}
                         </span>
                         <strong>{timeLabel}</strong>
                       </div>
@@ -333,11 +366,13 @@ export default function ProductStockModal({
                             onChange={(e) => setHour12(Number(e.target.value))}
                             aria-label="Saat"
                           >
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
-                              <option key={h} value={h}>
-                                {String(h).padStart(2, '0')}
-                              </option>
-                            ))}
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(
+                              (h) => (
+                                <option key={h} value={h}>
+                                  {String(h).padStart(2, '0')}
+                                </option>
+                              ),
+                            )}
                           </select>
                         </label>
                         <span className="psm-clock__colon" aria-hidden>
@@ -378,14 +413,11 @@ export default function ProductStockModal({
               </section>
             </div>
           )}
-        </div>
+        </fieldset>
 
         <footer className="psm-foot">
           <p className="psm-error">{error}</p>
           <div className="psm-foot__actions">
-            <button type="button" className="psm-btn-ghost" onClick={onClose} disabled={saving}>
-              Vazgeç
-            </button>
             <button
               type="button"
               className="psm-btn-primary"
@@ -398,6 +430,6 @@ export default function ProductStockModal({
           </div>
         </footer>
       </div>
-    </div>
+    </AdminOverlay>
   );
 }

@@ -13,7 +13,14 @@ interface ProductImageCellProps {
   onUpload: (files: File[]) => Promise<void>;
 }
 
-export default function ProductImageCell({ name, cover, images, busy, disabled, onUpload }: ProductImageCellProps) {
+export default function ProductImageCell({
+  name,
+  cover,
+  images,
+  busy,
+  disabled,
+  onUpload,
+}: ProductImageCellProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -22,6 +29,8 @@ export default function ProductImageCell({ name, cover, images, busy, disabled, 
   const photos = images?.length ? images : cover ? [cover] : [];
 
   function showGallery() {
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches)
+      return;
     if (closeTimer.current) clearTimeout(closeTimer.current);
     if (photos.length > 1) setOpen(true);
   }
@@ -30,9 +39,12 @@ export default function ProductImageCell({ name, cover, images, busy, disabled, 
     closeTimer.current = setTimeout(() => setOpen(false), 120);
   }
 
-  useEffect(() => () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    },
+    [],
+  );
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -43,11 +55,20 @@ export default function ProductImageCell({ name, cover, images, busy, disabled, 
         setOpen(false);
         return;
       }
-      const width = Math.min(photos.length * 116 + 12, 560, window.innerWidth - 24);
+      const width = Math.min(
+        photos.length * 116 + 12,
+        560,
+        window.innerWidth - 24,
+      );
       setPosition({
         width,
         left: Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)),
-        top: Math.max(12, rect.bottom + 192 <= window.innerHeight ? rect.bottom + 8 : rect.top - 184),
+        top: Math.max(
+          12,
+          rect.bottom + 192 <= window.innerHeight
+            ? rect.bottom + 8
+            : rect.top - 184,
+        ),
       });
     }
     placeGallery();
@@ -73,6 +94,12 @@ export default function ProductImageCell({ name, cover, images, busy, disabled, 
         onMouseLeave={hideGallery}
         onFocus={showGallery}
         onBlur={() => setOpen(false)}
+        onClick={() => {
+          if (window.matchMedia('(pointer: coarse)').matches) {
+            setOpen(false);
+            inputRef.current?.click();
+          }
+        }}
         onDoubleClick={() => {
           setOpen(false);
           inputRef.current?.click();
@@ -87,7 +114,11 @@ export default function ProductImageCell({ name, cover, images, busy, disabled, 
         }}
       >
         {photos[0] ? (
-          <img src={imageUrl(photos[0])} alt="" className="w-12 h-12 rounded-xl object-cover" />
+          <img
+            src={imageUrl(photos[0])}
+            alt=""
+            className="w-12 h-12 rounded-xl object-cover"
+          />
         ) : (
           <div className="w-12 h-12 rounded-xl overflow-hidden">
             <MenuMediaPlaceholder kind="product" size="sm" label={name} />
@@ -118,30 +149,41 @@ export default function ProductImageCell({ name, cover, images, busy, disabled, 
           if (files.length) void onUpload(files);
         }}
       />
-      {open && photos.length > 1 && createPortal(
-        <div
-          role="tooltip"
-          aria-label={`${name} görselleri`}
-          className="fixed z-[70] rounded-2xl border border-[var(--admin-card-border)] bg-[var(--admin-card)] p-3 shadow-2xl"
-          style={position}
-          onMouseEnter={showGallery}
-          onMouseLeave={hideGallery}
-          onDoubleClick={(e) => e.stopPropagation()}
-        >
-          <p className="mb-2 truncate text-xs font-semibold text-[var(--admin-text)]">{name} · {photos.length} görsel</p>
-          <div className="flex gap-3 overflow-x-auto pb-1 admin-scroll">
-            {photos.map((url, index) => (
-              <figure key={`${url}-${index}`} className="w-[104px] shrink-0 overflow-hidden rounded-xl border border-[var(--admin-card-border)] bg-[var(--admin-input-bg)]">
-                <img src={imageUrl(url)} alt={`${name} — ${index + 1}. görsel`} className="h-[104px] w-full object-cover" />
-                <figcaption className="py-1.5 text-center text-[10px] font-medium text-[var(--admin-text-muted)]">
-                  {index === 0 ? 'Kapak' : `Görsel ${index + 1}`}
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </div>,
-        document.body
-      )}
+      {open &&
+        photos.length > 1 &&
+        createPortal(
+          <div
+            role="tooltip"
+            aria-label={`${name} görselleri`}
+            className="fixed z-[70] rounded-2xl border border-[var(--admin-card-border)] bg-[var(--admin-card)] p-3 shadow-2xl"
+            style={position}
+            onMouseEnter={showGallery}
+            onMouseLeave={hideGallery}
+            onDoubleClick={(e) => e.stopPropagation()}
+          >
+            <p className="mb-2 truncate text-xs font-semibold text-[var(--admin-text)]">
+              {name} · {photos.length} görsel
+            </p>
+            <div className="flex gap-3 overflow-x-auto pb-1 admin-scroll">
+              {photos.map((url, index) => (
+                <figure
+                  key={`${url}-${index}`}
+                  className="w-[104px] shrink-0 overflow-hidden rounded-xl border border-[var(--admin-card-border)] bg-[var(--admin-input-bg)]"
+                >
+                  <img
+                    src={imageUrl(url)}
+                    alt={`${name} — ${index + 1}. görsel`}
+                    className="h-[104px] w-full object-cover"
+                  />
+                  <figcaption className="py-1.5 text-center text-[10px] font-medium text-[var(--admin-text-muted)]">
+                    {index === 0 ? 'Kapak' : `Görsel ${index + 1}`}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
