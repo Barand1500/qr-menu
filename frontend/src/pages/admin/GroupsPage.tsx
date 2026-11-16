@@ -1,16 +1,25 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Plus,
-  Pencil,
-  EyeOff,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from 'react';
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
   Eye,
-  GripVertical,
-  FolderTree,
-  X,
+  EyeOff,
+  FolderPlus,
   Package,
-  CornerDownRight,
+  Pencil,
+  Plus,
+  Search,
+  SlidersHorizontal,
   Trash2,
-  LoaderCircle,
+  X,
 } from 'lucide-react';
 import {
   DndContext,
@@ -24,831 +33,802 @@ import {
 import {
   SortableContext,
   sortableKeyboardCoordinates,
-  useSortable,
   verticalListSortingStrategy,
   arrayMove,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { api, imageUrl } from '@/lib/api';
 import { getActiveLanguages, type AdminLanguage } from '@/lib/languages';
-import { Badge, Button, Card, EmptyState, Input, PageHeader, Spinner } from '@/components/ui';
-import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
+import { Button, Spinner } from '@/components/ui';
 import { AdminListPager } from '@/components/AdminListPager';
 import GroupModal, { type GroupFormState } from '@/components/GroupModal';
 import GroupProductsModal from '@/components/GroupProductsModal';
-import AdminConfirmModal from '@/components/AdminConfirmModal';
-import {
-  AdminFilterBar,
-  FilterChipGroup,
-  FilterSection,
-  ToggleSwitch,
-} from '@/components/AdminFilterBar';
+import GroupListRow from '@/components/admin/groups/GroupListRow';
+import GroupsDialog from '@/components/admin/groups/GroupsDialog';
+import type { AdminGroup as Group } from '@/components/admin/groups/types';
+import '@/components/admin/groups/groups.css';
 
-interface Group {
-  id: number;
-  name: string;
-  parentId: number | null;
-  parentName: string | null;
-  isSubGroup: boolean;
-  imageUrl?: string | null;
-  sortOrder: number;
-  isActive: boolean;
-  childrenCount: number;
-  productCount: number;
-  translations: { languageId: number; languageCode: string; name: string }[];
-}
-
-interface Language extends AdminLanguage {}
-
-type ModalMode = 'create' | 'edit' | 'sub' | null;
-type StatusFilter = 'all' | 'active' | 'passive';
-type TypeFilter = 'all' | 'main' | 'sub';
-
-const emptyForm: GroupFormState = { translations: {}, isActive: true, parentId: null };
-
-type SubPosition = 'none' | 'first' | 'middle' | 'last' | 'only';
-
-interface RowLayout {
-  hideBottomBorder: boolean;
-  subPosition: SubPosition;
-  hasChildren: boolean;
-}
-
-function getRowLayout(groups: Group[], index: number): RowLayout {
-  const group = groups[index];
-  const prev = groups[index - 1];
-  const next = groups[index + 1];
-
-  if (!group.isSubGroup) {
-    const hasChildren = next?.parentId === group.id;
-    return { hideBottomBorder: hasChildren, subPosition: 'none', hasChildren };
-  }
-
-  const isFirst = !prev || prev.id === group.parentId;
-  const isLast = !next || next.parentId !== group.parentId;
-
-  let subPosition: SubPosition;
-  if (isFirst && isLast) subPosition = 'only';
-  else if (isFirst) subPosition = 'first';
-  else if (isLast) subPosition = 'last';
-  else subPosition = 'middle';
-
-  return { hideBottomBorder: !isLast, subPosition, hasChildren: false };
-}
-
-function SortableRow({
-  group,
-  layout,
-  sortMode,
-  pickMode,
-  selectedForSub,
-  onEdit,
-  onToggle,
-  onDelete,
-  onPickParent,
-  onShowProducts,
-  onImageUpload,
-  imageUploadingId,
-}: {
-  group: Group;
-  layout: RowLayout;
-  sortMode: boolean;
-  pickMode: boolean;
-  selectedForSub: number | null;
-  onEdit: (g: Group) => void;
-  onToggle: (g: Group) => void;
-  onDelete: (g: Group) => void;
-  onPickParent: (g: Group) => void;
-  onShowProducts: (g: Group) => void;
-  onImageUpload: (g: Group, file: File) => Promise<void>;
-  imageUploadingId: number | null;
-}) {
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const imageBusy = imageUploadingId === group.id;
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: group.id,
-    disabled: !sortMode,
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : group.isActive ? 1 : 0.38,
-  };
-
-  const canPick = pickMode && !group.isSubGroup;
-  const isHighlighted = pickMode && selectedForSub === group.id;
-  const isSub = group.isSubGroup;
-  const { hideBottomBorder, hasChildren } = layout;
-
-  const subRowBg = isSub
-    ? { background: 'color-mix(in srgb, var(--admin-accent-soft) 40%, var(--admin-card))' }
-    : {};
-
-  return (
-    <tr
-      ref={setNodeRef}
-      onClick={() => canPick && onPickParent(group)}
-      onDoubleClick={() => {
-        if (!pickMode && !sortMode) onEdit(group);
-      }}
-      className={`transition-all duration-300 admin-table-row--editable ${
-        hideBottomBorder ? '' : 'border-b'
-      } ${!group.isActive ? 'grayscale-[30%]' : ''} ${
-        isHighlighted
-          ? 'bg-[var(--admin-accent-soft)] ring-2 ring-inset ring-[var(--admin-accent)]'
-          : canPick
-            ? 'cursor-pointer hover:bg-[var(--admin-accent-soft)]/60'
-            : isSub
-              ? 'hover:bg-[var(--admin-accent-soft)]/50'
-              : 'hover:bg-[var(--admin-accent-soft)]/30'
-      } ${hasChildren ? 'border-b-0' : ''}`}
-      style={{
-        ...style,
-        borderColor: hideBottomBorder ? 'transparent' : 'var(--admin-card-border)',
-        ...subRowBg,
-      }}
-    >
-      {sortMode && (
-        <td className="py-3.5 px-3 w-10">
-          <button
-            {...attributes}
-            {...listeners}
-            className="cursor-grab active:cursor-grabbing p-1 rounded-lg admin-text-subtle hover:bg-[var(--admin-input-bg)]"
-          >
-            <GripVertical className="w-4 h-4" />
-          </button>
-        </td>
-      )}
-      <td className={`py-3.5 px-4 w-[72px] ${isSub ? 'pl-6' : ''}`}>
-        <div className="flex items-center gap-1">
-          {isSub && (
-            <CornerDownRight
-              className="w-4 h-4 shrink-0 admin-text-subtle"
-              style={{ color: 'var(--admin-accent)' }}
-            />
-          )}
-          <button
-            type="button"
-            disabled={sortMode || imageUploadingId !== null}
-            tabIndex={pickMode ? -1 : 0}
-            aria-label={`${group.name} görselini değiştir`}
-            aria-busy={imageBusy}
-            title="Görsel eklemek veya değiştirmek için çift tıklayın"
-            className="relative rounded-xl shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--admin-accent)]"
-            onDoubleClick={(e) => {
-              e.stopPropagation();
-              if (!pickMode) imageInputRef.current?.click();
-            }}
-            onKeyDown={(e) => {
-              if (!pickMode && (e.key === 'Enter' || e.key === ' ')) {
-                e.preventDefault();
-                imageInputRef.current?.click();
-              }
-            }}
-          >
-            {group.imageUrl ? (
-              <img
-                src={imageUrl(group.imageUrl)}
-                alt=""
-                className={`${isSub ? 'w-10 h-10' : 'w-12 h-12'} rounded-xl object-cover`}
-                style={{ background: 'var(--admin-input-bg)' }}
-              />
-            ) : (
-              <div
-                className={`${isSub ? 'w-10 h-10' : 'w-12 h-12'} rounded-xl overflow-hidden shrink-0`}
-              >
-                <MenuMediaPlaceholder kind="group" size="sm" label={group.name} />
-              </div>
-            )}
-            {imageBusy && (
-              <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 text-white">
-                <LoaderCircle className="w-5 h-5 animate-spin" />
-              </span>
-            )}
-          </button>
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            aria-label={`${group.name} için görsel seç`}
-            onClick={(e) => e.stopPropagation()}
-            onDoubleClick={(e) => e.stopPropagation()}
-            onChange={(e) => {
-              const file = e.currentTarget.files?.[0];
-              e.currentTarget.value = '';
-              if (file) void onImageUpload(group, file);
-            }}
-          />
-        </div>
-      </td>
-      <td className="py-3.5 px-4 min-w-[180px]">
-        <div className={`min-w-0 ${isSub ? 'pl-1' : ''}`}>
-          <p
-            className={`truncate text-[var(--admin-text)] ${
-              isSub ? 'text-sm font-medium' : 'font-semibold'
-            }`}
-          >
-            {group.name}
-          </p>
-          {hasChildren && (
-            <p className="text-xs admin-text-subtle mt-0.5">
-              {group.childrenCount} alt grup
-            </p>
-          )}
-        </div>
-      </td>
-      <td className="py-3.5 px-4 hidden md:table-cell">
-        <span
-          className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full"
-          style={{
-            background: group.isSubGroup ? 'var(--admin-input-bg)' : 'var(--admin-accent-soft)',
-            color: group.isSubGroup ? 'var(--admin-text-muted)' : 'var(--admin-accent-text)',
-          }}
-        >
-          {group.isSubGroup ? 'Alt Grup' : 'Ana Grup'}
-        </span>
-      </td>
-      <td className="py-3.5 px-4 hidden sm:table-cell text-sm admin-text-muted">
-        {group.sortOrder}
-      </td>
-      <td className="py-3.5 px-4 hidden lg:table-cell" onDoubleClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onShowProducts(group);
-          }}
-          className="inline-flex items-center gap-1.5 text-sm font-medium px-2.5 py-1 rounded-xl transition hover:bg-[var(--admin-accent-soft)]"
-          style={{ color: 'var(--admin-accent-text)' }}
-          title="Grup ürünlerini gör"
-        >
-          <Package className="w-3.5 h-3.5" />
-          {group.productCount}
-        </button>
-      </td>
-      <td className="py-3.5 px-4">
-        <Badge active={group.isActive} />
-      </td>
-      <td className="py-3.5 px-4 w-[132px]" onDoubleClick={(e) => e.stopPropagation()}>
-        {!pickMode && (
-          <div className="flex gap-1">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit(group);
-              }}
-              className="p-2 rounded-xl transition hover:bg-[var(--admin-accent-soft)]"
-              style={{ color: 'var(--admin-accent)' }}
-              title="Düzenle"
-            >
-              <Pencil className="w-4 h-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggle(group);
-              }}
-              className={`p-2 rounded-xl transition ${
-                group.isActive
-                  ? 'hover:bg-amber-500/10 text-amber-600'
-                  : 'hover:bg-emerald-500/10 text-emerald-600'
-              }`}
-              title={group.isActive ? 'Pasifleştir' : 'Aktifleştir'}
-            >
-              {group.isActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(group);
-              }}
-              className="p-2 rounded-xl transition hover:bg-red-500/10 text-red-500"
-              title="Sil"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-      </td>
-    </tr>
-  );
-}
+const emptyForm: GroupFormState = {
+  translations: {},
+  isActive: true,
+  parentId: null,
+};
+const byOrder = (a: Group, b: Group) =>
+  a.sortOrder - b.sortOrder || a.id - b.id;
+type Status = 'all' | 'active' | 'passive';
+type Kind = 'all' | 'main' | 'sub';
+type Notice = { error: boolean; text: string } | null;
 
 export default function GroupsPage() {
-  const [allGroups, setAllGroups] = useState<Group[]>([]);
-  const [languages, setLanguages] = useState<Language[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [hideSubGroups, setHideSubGroups] = useState(false);
-  const [sortMode, setSortMode] = useState(false);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [languages, setLanguages] = useState<AdminLanguage[]>([]);
+  const [loading, setLoading] = useState(true),
+    [loadError, setLoadError] = useState('');
+  const [search, setSearch] = useState(''),
+    [status, setStatus] = useState<Status>('all'),
+    [kind, setKind] = useState<Kind>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false),
+    [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 15;
-
-  const [modalMode, setModalMode] = useState<ModalMode>(null);
-  const [editing, setEditing] = useState<Group | null>(null);
-  const [form, setForm] = useState<GroupFormState>(emptyForm);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageUploadingId, setImageUploadingId] = useState<number | null>(null);
-  const imageUploadBusy = useRef(false);
-  const [imageFeedback, setImageFeedback] = useState<{ error: boolean; message: string } | null>(null);
-
-  const [subGroupPickMode, setSubGroupPickMode] = useState(false);
-  const [pickParent, setPickParent] = useState<Group | null>(null);
-
-  const [productsModalGroup, setProductsModalGroup] = useState<Group | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Group | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  const [notice, setNotice] = useState<Notice>(null),
+    [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'sub' | null>(
+    null,
   );
-
+  const [editing, setEditing] = useState<Group | null>(null),
+    [parent, setParent] = useState<Group | null>(null);
+  const [form, setForm] = useState<GroupFormState>(emptyForm);
+  const [imageFile, setImageFile] = useState<File | null>(null),
+    [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [formError, setFormError] = useState('');
+  const [productsGroup, setProductsGroup] = useState<Group | null>(null),
+    [deleteTarget, setDeleteTarget] = useState<Group | null>(null);
+  const [actions, setActions] = useState<{
+    id: number;
+    point: { x: number; y: number };
+  } | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
   const load = useCallback(async () => {
-    const [g, langs] = await Promise.all([
-      api<{ data: Group[] }>('/api/admin/groups?limit=200'),
-      api<Language[]>('/api/admin/languages'),
+    const [first, langs] = await Promise.all([
+      api<{ data: Group[]; pagination?: { total: number } }>(
+        '/api/admin/groups?limit=200',
+      ),
+      api<AdminLanguage[]>('/api/admin/languages'),
     ]);
-    setAllGroups(g.data);
+    const result = [...first.data];
+    for (let next = 2; result.length < (first.pagination?.total || 0); next++) {
+      const batch = await api<{ data: Group[] }>(
+        `/api/admin/groups?limit=200&page=${next}`,
+      );
+      if (!batch.data.length) break;
+      result.push(...batch.data);
+    }
+    setGroups(result);
     setLanguages(getActiveLanguages(langs));
+    setLoadError('');
   }, []);
-
-  useEffect(() => {
-    load().finally(() => setLoading(false));
+  const reload = useCallback(async () => {
+    setLoading(true);
+    try {
+      await load();
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Gruplar yüklenemedi.');
+    } finally {
+      setLoading(false);
+    }
   }, [load]);
-
+  useEffect(() => {
+    void reload();
+  }, [reload]);
   useEffect(() => {
     if (!imageFile) {
-      setImagePreview(null);
+      setImagePreview(editing?.imageUrl ? imageUrl(editing.imageUrl) : null);
       return;
     }
     const url = URL.createObjectURL(imageFile);
     setImagePreview(url);
     return () => URL.revokeObjectURL(url);
-  }, [imageFile]);
-
-  const filteredGroups = useMemo(() => {
-    let list = [...allGroups];
-
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter(
-        (g) =>
-          g.name.toLowerCase().includes(q) ||
-          g.parentName?.toLowerCase().includes(q)
+  }, [imageFile, editing]);
+  useEffect(() => setPage(1), [search, status, kind]);
+  const matches = useCallback(
+    (g: Group) => {
+      const q = search.trim().toLocaleLowerCase('tr');
+      return (
+        (!q ||
+          [
+            g.name,
+            g.parentName || '',
+            ...g.translations.map((t) => t.name),
+          ].some((name) => name.toLocaleLowerCase('tr').includes(q))) &&
+        (status === 'all' || g.isActive === (status === 'active')) &&
+        (kind === 'all' || g.isSubGroup === (kind === 'sub'))
       );
-    }
-
-    if (statusFilter === 'active') list = list.filter((g) => g.isActive);
-    if (statusFilter === 'passive') list = list.filter((g) => !g.isActive);
-    if (typeFilter === 'main') list = list.filter((g) => !g.isSubGroup);
-    if (typeFilter === 'sub') list = list.filter((g) => g.isSubGroup);
-
-    if (hideSubGroups) {
-      return list.filter((g) => !g.isSubGroup).sort((a, b) => a.sortOrder - b.sortOrder);
-    }
-
-    const roots = list.filter((g) => !g.isSubGroup).sort((a, b) => a.sortOrder - b.sortOrder);
-    const ordered: Group[] = [];
-    for (const root of roots) {
-      ordered.push(root);
-      ordered.push(
-        ...list.filter((g) => g.parentId === root.id).sort((a, b) => a.sortOrder - b.sortOrder)
-      );
-    }
-    const seen = new Set(ordered.map((g) => g.id));
-    list.filter((g) => !seen.has(g.id)).forEach((g) => ordered.push(g));
-    return ordered;
-  }, [allGroups, search, statusFilter, typeFilter, hideSubGroups]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, statusFilter, typeFilter, hideSubGroups]);
-
-  const pageCount = Math.max(1, Math.ceil(filteredGroups.length / PAGE_SIZE));
-  const safePage = Math.min(page, pageCount);
-  const pagedGroups = useMemo(() => {
-    if (sortMode) return filteredGroups;
-    const start = (safePage - 1) * PAGE_SIZE;
-    return filteredGroups.slice(start, start + PAGE_SIZE);
-  }, [filteredGroups, safePage, sortMode]);
-
-  const activeFilterCount = [
-    statusFilter !== 'all',
-    typeFilter !== 'all',
-    search.trim().length > 0,
-    hideSubGroups,
-  ].filter(Boolean).length;
-
-  function openCreateMain() {
-    setSubGroupPickMode(false);
-    setPickParent(null);
-    setEditing(null);
-    setForm(emptyForm);
-    setImageFile(null);
-    setModalMode('create');
+    },
+    [search, status, kind],
+  );
+  const roots = useMemo(() => {
+    const list = groups
+      .filter((g) => g.parentId == null)
+      .sort(byOrder)
+      .map((root) => ({
+        root,
+        children: groups.filter((g) => g.parentId === root.id).sort(byOrder),
+      }));
+    groups
+      .filter(
+        (g) => g.parentId != null && !groups.some((p) => p.id === g.parentId),
+      )
+      .sort(byOrder)
+      .forEach((root) => list.push({ root, children: [] }));
+    return list.filter(
+      ({ root, children }) => matches(root) || children.some(matches),
+    );
+  }, [groups, matches]);
+  const filtering = Boolean(
+    search.trim() || status !== 'all' || kind !== 'all',
+  );
+  const pageSize = 12,
+    pageCount = Math.max(1, Math.ceil(roots.length / pageSize)),
+    safePage = Math.min(page, pageCount);
+  const blocks = roots.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const visible = blocks.flatMap(({ root, children }) => [
+    root,
+    ...(filtering || expanded.has(root.id)
+      ? children.filter((g) => !filtering || matches(g))
+      : []),
+  ]);
+  const currentAction = groups.find((g) => g.id === actions?.id);
+  const siblings = currentAction
+    ? groups.filter((g) => g.parentId === currentAction.parentId).sort(byOrder)
+    : [];
+  const actionIndex = siblings.findIndex((g) => g.id === currentAction?.id);
+  function begin() {
+    if (busyRef.current) return false;
+    busyRef.current = true;
+    setBusy(true);
+    return true;
   }
-
-  function startSubGroupPick() {
-    setSubGroupPickMode(true);
-    setPickParent(null);
-    setModalMode(null);
+  function end() {
+    busyRef.current = false;
+    setBusy(false);
   }
-
-  function cancelSubGroupPick() {
-    setSubGroupPickMode(false);
-    setPickParent(null);
+  function error(e: unknown, fallback: string) {
+    setNotice({ error: true, text: e instanceof Error ? e.message : fallback });
   }
-
-  function handlePickParent(group: Group) {
-    if (group.isSubGroup) return;
-    setPickParent(group);
-    setSubGroupPickMode(false);
-    setEditing(null);
-    setForm({ ...emptyForm, parentId: group.id });
-    setImageFile(null);
-    setModalMode('sub');
-  }
-
-  function openEdit(group: Group) {
-    setSubGroupPickMode(false);
-    setEditing(group);
-    setForm({
-      translations: Object.fromEntries(group.translations.map((t) => [t.languageCode, t.name])),
-      isActive: group.isActive,
-      parentId: group.parentId,
+  function openActions(group: Group, event: MouseEvent<HTMLElement>) {
+    event.preventDefault();
+    if (busy) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    setActions({
+      id: group.id,
+      point: {
+        x: event.type === 'contextmenu' ? event.clientX : box.right - 280,
+        y: event.type === 'contextmenu' ? event.clientY : box.bottom + 6,
+      },
     });
-    setImageFile(null);
-    setImagePreview(group.imageUrl ? imageUrl(group.imageUrl) : null);
-    setModalMode('edit');
   }
-
-  function closeModal() {
-    setModalMode(null);
-    setEditing(null);
-    setForm(emptyForm);
+  function openForm(group: Group | null, parentGroup: Group | null = null) {
+    setActions(null);
+    setEditing(group);
+    setParent(parentGroup);
+    setFormError('');
     setImageFile(null);
-    setImagePreview(null);
+    setForm(
+      group
+        ? {
+            translations: Object.fromEntries(
+              group.translations.map((t) => [t.languageCode, t.name]),
+            ),
+            isActive: group.isActive,
+            parentId: group.parentId,
+          }
+        : { ...emptyForm, parentId: parentGroup?.id ?? null },
+    );
+    setModalMode(group ? 'edit' : parentGroup ? 'sub' : 'create');
   }
-
-  async function handleSave() {
-    setSaving(true);
+  async function rename(group: Group, name: string) {
+    if (!begin()) return false;
     try {
+      const lang = languages.find((l) => l.code === 'tr') || languages[0];
+      if (!lang) throw new Error('Önce etkin bir menü dili tanımlayın.');
+      const updated = await api<Group>(`/api/admin/groups/${group.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ translations: [{ languageId: lang.id, name }] }),
+      });
+      setGroups((list) =>
+        list.map((g) =>
+          g.id === group.id
+            ? { ...g, ...updated }
+            : g.parentId === group.id
+              ? { ...g, parentName: updated.name }
+              : g,
+        ),
+      );
+      setNotice({ error: false, text: 'Grup adı kaydedildi.' });
+      return true;
+    } catch (e) {
+      error(e, 'Ad kaydedilemedi.');
+      return false;
+    } finally {
+      end();
+    }
+  }
+  async function toggle(group: Group) {
+    if (!begin()) return;
+    setGroups((list) =>
+      list.map((g) =>
+        g.id === group.id ? { ...g, isActive: !group.isActive } : g,
+      ),
+    );
+    try {
+      const updated = await api<Group>(`/api/admin/groups/${group.id}/toggle`, {
+        method: 'PATCH',
+      });
+      setGroups((list) =>
+        list.map((g) =>
+          g.id === group.id ? { ...g, isActive: updated.isActive } : g,
+        ),
+      );
+      setNotice({
+        error: false,
+        text: `${group.name} ${updated.isActive ? 'menüde gösteriliyor.' : 'menüde gizlendi.'}`,
+      });
+    } catch (e) {
+      setGroups((list) =>
+        list.map((g) =>
+          g.id === group.id ? { ...g, isActive: group.isActive } : g,
+        ),
+      );
+      error(e, 'Görünürlük değiştirilemedi.');
+    } finally {
+      end();
+    }
+  }
+  function validateImage(file: File) {
+    if (!file.type.startsWith('image/') || file.size > 5 * 1024 * 1024)
+      throw new Error('En fazla 5 MB boyutunda bir görsel seçin.');
+  }
+  async function upload(id: number, file: File) {
+    validateImage(file);
+    const body = new FormData();
+    body.append('image', file);
+    return api<Group>(`/api/admin/groups/${id}/image`, {
+      method: 'POST',
+      body,
+    });
+  }
+  async function quickImage(group: Group, file: File) {
+    if (!begin()) return;
+    try {
+      const updated = await upload(group.id, file);
+      setGroups((list) =>
+        list.map((g) =>
+          g.id === group.id ? { ...g, imageUrl: updated.imageUrl } : g,
+        ),
+      );
+      setNotice({ error: false, text: `${group.name} görseli kaydedildi.` });
+    } catch (e) {
+      error(e, 'Görsel yüklenemedi.');
+    } finally {
+      end();
+    }
+  }
+  async function saveForm() {
+    if (!begin()) return;
+    setFormError('');
+    try {
+      const primary = languages.find((l) => l.code === 'tr') || languages[0];
+      if (!primary || !form.translations[primary.code]?.trim())
+        throw new Error('Grup adını yazın.');
+      if (imageFile) validateImage(imageFile);
       const translations = languages.map((l) => ({
         languageId: l.id,
-        name: form.translations[l.code] || '',
+        name: form.translations[l.code]?.trim() || '',
       }));
-
-      if (editing) {
-        await api(`/api/admin/groups/${editing.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({ translations, isActive: form.isActive }),
-        });
-        if (imageFile) await uploadImage(editing.id, imageFile);
-      } else {
-        const created = await api<Group>('/api/admin/groups', {
-          method: 'POST',
+      const saved = await api<Group>(
+        editing ? `/api/admin/groups/${editing.id}` : '/api/admin/groups',
+        {
+          method: editing ? 'PUT' : 'POST',
           body: JSON.stringify({
             translations,
             isActive: form.isActive,
-            parentId: form.parentId,
+            ...(!editing ? { parentId: form.parentId } : {}),
           }),
-        });
-        if (imageFile) await uploadImage(created.id, imageFile);
-      }
-
-      closeModal();
+        },
+      );
+      // A failed image upload must not create another copy on retry.
+      setEditing(saved);
+      setModalMode('edit');
+      setGroups((list) =>
+        list.some((g) => g.id === saved.id)
+          ? list.map((g) => (g.id === saved.id ? saved : g))
+          : [...list, saved],
+      );
+      if (imageFile) await upload(saved.id, imageFile);
       await load();
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Grup kaydedilemedi.');
+      if (saved.parentId)
+        setExpanded((prev) => new Set([...prev, saved.parentId!]));
+      setModalMode(null);
+      setImageFile(null);
+      setNotice({ error: false, text: 'Grup kaydedildi.' });
+    } catch (e) {
+      setFormError(
+        e instanceof Error
+          ? e.message
+          : 'Kaydedilemedi. Bilgileriniz korunuyor.',
+      );
     } finally {
-      setSaving(false);
+      end();
     }
   }
-
-  async function uploadImage(id: number, file: File) {
-    const fd = new FormData();
-    fd.append('image', file);
-    return api<Group>(`/api/admin/groups/${id}/image`, {
-      method: 'POST',
-      body: fd,
-    });
-  }
-
-  async function handleQuickImageUpload(group: Group, file: File) {
-    if (imageUploadBusy.current) return;
-    if (!file.type.startsWith('image/') || file.size > 5 * 1024 * 1024) {
-      setImageFeedback({ error: true, message: 'Lütfen en fazla 5 MB boyutunda bir görsel seçin.' });
+  async function reorder(activeId: number, overId: number) {
+    const active = groups.find((g) => g.id === activeId),
+      over = groups.find((g) => g.id === overId);
+    if (
+      !active ||
+      !over ||
+      active.id === over.id ||
+      active.parentId !== over.parentId ||
+      !begin()
+    )
       return;
-    }
-
-    imageUploadBusy.current = true;
-    setImageUploadingId(group.id);
-    setImageFeedback(null);
-    try {
-      const updated = await uploadImage(group.id, file);
-      setAllGroups((prev) => prev.map((g) => g.id === group.id ? { ...g, imageUrl: updated.imageUrl } : g));
-      setImageFeedback({ error: false, message: `${group.name} görseli kaydedildi.` });
-    } catch (err) {
-      setImageFeedback({ error: true, message: err instanceof Error ? err.message : 'Görsel yüklenemedi.' });
-    } finally {
-      imageUploadBusy.current = false;
-      setImageUploadingId(null);
-    }
-  }
-
-  async function handleToggle(group: Group) {
-    const nextActive = !group.isActive;
-    setAllGroups((prev) =>
-      prev.map((g) => (g.id === group.id ? { ...g, isActive: nextActive } : g))
+    const previous = groups
+      .filter((g) => g.parentId === active.parentId)
+      .sort(byOrder);
+    const ordered = arrayMove(
+      previous,
+      previous.findIndex((g) => g.id === activeId),
+      previous.findIndex((g) => g.id === overId),
+    ).map((g, i) => ({ ...g, sortOrder: i + 1 }));
+    const map = new Map(ordered.map((g) => [g.id, g.sortOrder]));
+    setGroups((list) =>
+      list.map((g) =>
+        map.has(g.id) ? { ...g, sortOrder: map.get(g.id)! } : g,
+      ),
     );
     try {
-      await api(`/api/admin/groups/${group.id}/toggle`, { method: 'PATCH' });
-    } catch {
-      setAllGroups((prev) =>
-        prev.map((g) => (g.id === group.id ? { ...g, isActive: group.isActive } : g))
+      await api('/api/admin/groups/reorder/bulk', {
+        method: 'PUT',
+        body: JSON.stringify({
+          items: ordered.map(({ id, sortOrder }) => ({ id, sortOrder })),
+        }),
+      });
+      setNotice({ error: false, text: 'Menü sırası kaydedildi.' });
+    } catch (e) {
+      const old = new Map(previous.map((g) => [g.id, g.sortOrder]));
+      setGroups((list) =>
+        list.map((g) =>
+          old.has(g.id) ? { ...g, sortOrder: old.get(g.id)! } : g,
+        ),
       );
-    }
-  }
-
-  function handleDelete(group: Group) {
-    setDeleteTarget(group);
-  }
-
-  async function confirmDelete() {
-    if (!deleteTarget || deleting) return;
-    const group = deleteTarget;
-    setDeleting(true);
-    const prev = allGroups;
-    setAllGroups((list) => list.filter((g) => g.id !== group.id));
-    setDeleteTarget(null);
-    try {
-      await api(`/api/admin/groups/${group.id}`, { method: 'DELETE' });
-    } catch (err) {
-      setAllGroups(prev);
-      window.alert(err instanceof Error ? err.message : 'Grup silinemedi.');
+      error(e, 'Sıralama kaydedilemedi.');
     } finally {
-      setDeleting(false);
+      end();
     }
   }
-
-  async function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const activeGroup = filteredGroups.find((g) => g.id === active.id);
-    const overGroup = filteredGroups.find((g) => g.id === over.id);
-    if (!activeGroup || !overGroup) return;
-    if (activeGroup.parentId !== overGroup.parentId) return;
-
-    const siblings = filteredGroups.filter((g) => g.parentId === activeGroup.parentId);
-    const oldIndex = siblings.findIndex((g) => g.id === active.id);
-    const newIndex = siblings.findIndex((g) => g.id === over.id);
-    const reordered = arrayMove(siblings, oldIndex, newIndex).map((g, i) => ({
-      ...g,
-      sortOrder: i + 1,
-    }));
-
-    setAllGroups((prev) => {
-      const map = new Map(reordered.map((g) => [g.id, g]));
-      return prev.map((g) => map.get(g.id) ?? g);
-    });
-
-    await api('/api/admin/groups/reorder/bulk', {
-      method: 'PUT',
-      body: JSON.stringify({
-        items: reordered.map((g) => ({ id: g.id, sortOrder: g.sortOrder })),
-      }),
-    });
+  function dragEnd({ active, over }: DragEndEvent) {
+    if (over) void reorder(Number(active.id), Number(over.id));
   }
-
+  async function remove() {
+    if (!deleteTarget || !begin()) return;
+    try {
+      await api(`/api/admin/groups/${deleteTarget.id}`, { method: 'DELETE' });
+      setGroups((list) => list.filter((g) => g.id !== deleteTarget.id));
+      setDeleteTarget(null);
+      setNotice({ error: false, text: 'Grup silindi.' });
+    } catch (e) {
+      error(e, 'Grup silinemedi.');
+    } finally {
+      end();
+    }
+  }
+  const closeActions = () => setActions(null);
   function clearFilters() {
     setSearch('');
-    setStatusFilter('all');
-    setTypeFilter('all');
-    setHideSubGroups(false);
+    setStatus('all');
+    setKind('all');
   }
-
   if (loading) return <Spinner />;
-
+  if (loadError)
+    return (
+      <section className="ag-page ag-empty" role="alert">
+        <h1>Gruplar yüklenemedi</h1>
+        <p>{loadError}</p>
+        <Button onClick={() => void reload()}>Tekrar dene</Button>
+      </section>
+    );
   return (
-    <div className="space-y-5">
-      <PageHeader
-        title="Gruplar"
-        actions={
-          <>
-            <Button
-              variant={sortMode ? 'primary' : 'secondary'}
-              onClick={() => {
-                setSortMode(!sortMode);
-                cancelSubGroupPick();
-              }}
-            >
-              <GripVertical className="w-4 h-4" />
-              {sortMode ? 'Sıralamayı Bitir' : 'Sıralama Modu'}
-            </Button>
-            <Button variant="secondary" onClick={startSubGroupPick}>
-              <FolderTree className="w-4 h-4" />
-              Yeni Alt Grup Ekle
-            </Button>
-            <Button onClick={openCreateMain}>
-              <Plus className="w-4 h-4" />
-              Yeni Grup Ekle
-            </Button>
-          </>
-        }
-      />
-
-      {subGroupPickMode && (
+    <section className="ag-page" aria-label="Grup yönetimi">
+      <header className="ag-head">
+        <div>
+          <p className="ag-eyebrow">MENÜ DÜZENİ</p>
+          <h1>
+            Gruplar<span>.</span>
+          </h1>
+          <p>
+            {groups.filter((g) => !g.isSubGroup).length} ana grup ·{' '}
+            {groups.filter((g) => g.isSubGroup).length} alt grup
+          </p>
+        </div>
+        <Button onClick={() => openForm(null)} disabled={busy}>
+          <Plus size={18} />
+          Grup ekle
+        </Button>
+      </header>
+      {notice && (
         <div
-          className="flex items-center justify-between gap-3 px-4 py-3.5 rounded-2xl text-sm font-medium animate-pulse"
-          style={{
-            background: 'var(--admin-accent-soft)',
-            color: 'var(--admin-accent-text)',
-            border: '1px dashed var(--admin-accent)',
-          }}
+          className={`ag-notice${notice.error ? ' is-error' : ''}`}
+          role={notice.error ? 'alert' : 'status'}
         >
-          <div className="flex items-center gap-2">
-            <FolderTree className="w-4 h-4 shrink-0" />
-            <span>Listeden bir ana grup seçiniz — alt grup bu grubun altına eklenecek</span>
-          </div>
+          <span>{notice.text}</span>
           <button
-            onClick={cancelSubGroupPick}
-            className="p-1.5 rounded-lg hover:bg-black/5 shrink-0"
+            className="ag-icon"
+            aria-label="Bildirimi kapat"
+            onClick={() => setNotice(null)}
           >
-            <X className="w-4 h-4" />
+            <X size={17} />
           </button>
         </div>
       )}
-
-      {imageFeedback && (
-        <div
-          role={imageFeedback.error ? 'alert' : 'status'}
-          className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm ${
-            imageFeedback.error ? 'bg-red-500/10 text-red-600' : 'bg-emerald-500/10 text-emerald-600'
-          }`}
-        >
-          <span>{imageFeedback.message}</span>
-          <button type="button" aria-label="Bildirimi kapat" onClick={() => setImageFeedback(null)}>
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      <Card className="overflow-hidden !p-0">
-        <AdminFilterBar
-          search={
-            <Input
-              label="Grup adı veya üst grup ara..."
+      <div className="ag-board">
+        <div className="ag-toolbar">
+          <label className="ag-search">
+            <Search size={19} />
+            <input
+              aria-label="Gruplarda ara"
+              placeholder="Grup veya alt grup ara"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          }
-          filterOpen={filterOpen}
-          onFilterToggle={() => setFilterOpen(!filterOpen)}
-          activeFilterCount={activeFilterCount}
-          recordLabel={`${filteredGroups.length} / ${allGroups.length} kayıt`}
-          onClear={clearFilters}
-        >
-          <FilterSection>
-            <FilterChipGroup
-              label="Durum"
-              value={statusFilter}
-              options={[
-                { value: 'all', label: 'Tümü' },
-                { value: 'active', label: 'Aktif' },
-                { value: 'passive', label: 'Pasif' },
-              ]}
-              onChange={setStatusFilter}
-            />
-          </FilterSection>
-          <FilterSection>
-            <FilterChipGroup
-              label="Grup Tipi"
-              value={typeFilter}
-              options={[
-                { value: 'all', label: 'Tümü' },
-                { value: 'main', label: 'Ana Grup' },
-                { value: 'sub', label: 'Alt Grup' },
-              ]}
-              onChange={setTypeFilter}
-            />
-          </FilterSection>
-          <FilterSection className="min-w-[240px]">
-            <ToggleSwitch
-              checked={hideSubGroups}
-              onChange={setHideSubGroups}
-              label="Alt grupları gizle"
-              description="Listede yalnızca ana gruplar görünür"
-            />
-          </FilterSection>
-        </AdminFilterBar>
-
-        <div className="overflow-x-auto admin-scroll">
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr
-                  className="text-left text-xs uppercase tracking-wide admin-text-muted"
-                  style={{ background: 'var(--admin-input-bg)' }}
-                >
-                  {sortMode && <th className="w-10 py-3.5 px-3" />}
-                  <th className="py-3.5 px-4 font-semibold w-[72px]">Görsel</th>
-                  <th className="py-3.5 px-4 font-semibold">Grup Adı</th>
-                  <th className="py-3.5 px-4 font-semibold hidden md:table-cell">Tip</th>
-                  <th className="py-3.5 px-4 font-semibold hidden sm:table-cell">Sıra</th>
-                  <th className="py-3.5 px-4 font-semibold hidden lg:table-cell">Ürün</th>
-                  <th className="py-3.5 px-4 font-semibold">Durum</th>
-                  <th className="py-3.5 px-4 font-semibold w-[132px]">İşlem</th>
-                </tr>
-              </thead>
-              <SortableContext
-                items={pagedGroups.map((g) => g.id)}
-                strategy={verticalListSortingStrategy}
+            {search && (
+              <button
+                className="ag-icon"
+                aria-label="Aramayı temizle"
+                onClick={() => setSearch('')}
               >
-                <tbody>
-                  {pagedGroups.length === 0 ? (
-                    <tr>
-                      <td colSpan={sortMode ? 8 : 7}>
-                        <EmptyState message="Filtrelere uygun grup bulunamadı" />
-                      </td>
-                    </tr>
-                  ) : (
-                    pagedGroups.map((group, index) => (
-                      <SortableRow
-                        key={group.id}
-                        group={group}
-                        layout={getRowLayout(pagedGroups, index)}
-                        sortMode={sortMode}
-                        pickMode={subGroupPickMode}
-                        selectedForSub={pickParent?.id ?? null}
-                        onEdit={openEdit}
-                        onToggle={handleToggle}
-                        onDelete={handleDelete}
-                        onPickParent={handlePickParent}
-                        onShowProducts={setProductsModalGroup}
-                        onImageUpload={handleQuickImageUpload}
-                        imageUploadingId={imageUploadingId}
-                      />
-                    ))
-                  )}
-                </tbody>
-              </SortableContext>
-            </table>
-          </DndContext>
-          {!sortMode ? (
-            <AdminListPager
-              page={safePage}
-              pageCount={pageCount}
-              total={filteredGroups.length}
-              pageSize={PAGE_SIZE}
-              onPageChange={setPage}
-            />
-          ) : null}
+                <X size={16} />
+              </button>
+            )}
+          </label>
+          <button
+            className={`ag-filter${status !== 'all' || kind !== 'all' ? ' is-active' : ''}`}
+            aria-label="Filtrele"
+            onClick={() => setFiltersOpen(true)}
+          >
+            <SlidersHorizontal size={17} />
+            <span>Filtrele</span>
+            {(status !== 'all' || kind !== 'all') && (
+              <b>{Number(status !== 'all') + Number(kind !== 'all')}</b>
+            )}
+          </button>
         </div>
-      </Card>
-
-      <GroupProductsModal
-        open={productsModalGroup !== null}
-        groupId={productsModalGroup?.id ?? null}
-        groupName={productsModalGroup?.name ?? ''}
-        onClose={() => setProductsModalGroup(null)}
-      />
-
+        {filtering && (
+          <div className="ag-filter-summary">
+            <span>
+              {groups.filter(matches).length} eşleşme
+              {status !== 'all'
+                ? ` · ${status === 'active' ? 'Açık' : 'Gizli'}`
+                : ''}
+              {kind !== 'all'
+                ? ` · ${kind === 'main' ? 'Ana gruplar' : 'Alt gruplar'}`
+                : ''}
+            </span>
+            <button onClick={clearFilters}>Temizle</button>
+          </div>
+        )}
+        <div className="ag-list-label">
+          <span>Menüdeki sıra</span>
+          <span className="ag-desktop-hint">
+            Adı düzenle · Görsele dokun · Sürükleyerek sırala
+          </span>
+        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={dragEnd}
+        >
+          <SortableContext
+            items={visible.map((g) => g.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="ag-list">
+              {blocks.map(({ root, children }) => {
+                const open = filtering || expanded.has(root.id),
+                  shown = children.filter((g) => !filtering || matches(g));
+                const rowProps = {
+                  onActions: openActions,
+                  onRename: rename,
+                  onToggle: toggle,
+                  onProducts: setProductsGroup,
+                  onImage: quickImage,
+                  busy,
+                  sortable: !filtering,
+                };
+                return (
+                  <section
+                    className="ag-family"
+                    key={root.id}
+                    aria-label={root.name}
+                  >
+                    <GroupListRow
+                      group={root}
+                      {...rowProps}
+                      contextOnly={filtering && !matches(root)}
+                      childrenNames={children.map((g) => g.name)}
+                      expanded={open}
+                      onExpand={() =>
+                        setExpanded((prev) => {
+                          const next = new Set(prev);
+                          next.has(root.id)
+                            ? next.delete(root.id)
+                            : next.add(root.id);
+                          return next;
+                        })
+                      }
+                    />
+                    {open && shown.length > 0 && (
+                      <div className="ag-branches">
+                        {shown.map((child) => (
+                          <GroupListRow
+                            key={child.id}
+                            group={child}
+                            {...rowProps}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {!root.isSubGroup &&
+                      !filtering &&
+                      open &&
+                      children.length > 0 && (
+                        <button
+                          className="ag-add-sub"
+                          disabled={busy}
+                          onClick={() => openForm(null, root)}
+                        >
+                          <Plus size={14} />
+                          <span>{root.name} altına ekle</span>
+                        </button>
+                      )}
+                  </section>
+                );
+              })}
+              {!blocks.length && (
+                <div className="ag-empty">
+                  <FolderPlus size={28} />
+                  <h2>
+                    {groups.length
+                      ? 'Bu aramada grup yok'
+                      : 'Menünüzün ilk başlığını açın'}
+                  </h2>
+                  <p>
+                    {groups.length
+                      ? 'Başka bir isim deneyin veya filtreleri temizleyin.'
+                      : 'Kahvaltılar, içecekler, tatlılar… İlk grubunuzla başlayın.'}
+                  </p>
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      groups.length ? clearFilters() : openForm(null)
+                    }
+                  >
+                    {groups.length ? 'Filtreleri temizle' : 'İlk grubu ekle'}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </SortableContext>
+        </DndContext>
+        <AdminListPager
+          page={safePage}
+          pageCount={pageCount}
+          total={roots.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+        />
+      </div>
+      <p className="ag-footnote">
+        Sıra, ad ve görünürlük değişiklikleri doğrudan menünüze yansır.
+      </p>
+      <GroupsDialog
+        open={filtersOpen}
+        title="Görmek istediklerin"
+        subtitle="Listeyi daraltın; düzeniniz aynı kalır."
+        onClose={() => setFiltersOpen(false)}
+      >
+        <fieldset className="ag-filter-options">
+          <legend>Menüde görünürlük</legend>
+          {(
+            [
+              ['all', 'Tümü'],
+              ['active', 'Açık'],
+              ['passive', 'Gizli'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              aria-pressed={status === key}
+              onClick={() => setStatus(key)}
+            >
+              {label}
+              {status === key && <Check size={16} />}
+            </button>
+          ))}
+        </fieldset>
+        <fieldset className="ag-filter-options">
+          <legend>Grup yapısı</legend>
+          {(
+            [
+              ['all', 'Tüm gruplar'],
+              ['main', 'Ana gruplar'],
+              ['sub', 'Alt gruplar'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              aria-pressed={kind === key}
+              onClick={() => setKind(key)}
+            >
+              {label}
+              {kind === key && <Check size={16} />}
+            </button>
+          ))}
+        </fieldset>
+        <Button className="w-full" onClick={() => setFiltersOpen(false)}>
+          Listeyi göster
+        </Button>
+      </GroupsDialog>
+      <GroupsDialog
+        open={Boolean(currentAction)}
+        title={currentAction?.name || 'Grup işlemleri'}
+        subtitle={
+          currentAction?.isSubGroup
+            ? currentAction.parentName || 'Alt grup'
+            : 'Bu grupla ne yapalım?'
+        }
+        onClose={closeActions}
+        className="ag-actions"
+        anchor={actions?.point}
+      >
+        {currentAction && (
+          <div className="ag-action-list">
+            <button onClick={() => openForm(currentAction)}>
+              <Pencil size={19} />
+              <span>
+                Ayrıntıları düzenle<small>Çeviriler ve grup bilgileri</small>
+              </span>
+            </button>
+            <button
+              onClick={() => {
+                closeActions();
+                setProductsGroup(currentAction);
+              }}
+            >
+              <Package size={19} />
+              <span>
+                Ürünleri gör<small>{currentAction.productCount} ürün</small>
+              </span>
+            </button>
+            {!currentAction.isSubGroup && (
+              <button onClick={() => openForm(null, currentAction)}>
+                <FolderPlus size={19} />
+                <span>Alt grup ekle</span>
+              </button>
+            )}
+            <div className="ag-move">
+              <button
+                disabled={filtering || actionIndex <= 0}
+                onClick={() => {
+                  closeActions();
+                  void reorder(currentAction.id, siblings[actionIndex - 1].id);
+                }}
+              >
+                <ArrowUp size={18} />
+                Yukarı taşı
+              </button>
+              <button
+                disabled={filtering || actionIndex >= siblings.length - 1}
+                onClick={() => {
+                  closeActions();
+                  void reorder(currentAction.id, siblings[actionIndex + 1].id);
+                }}
+              >
+                <ArrowDown size={18} />
+                Aşağı taşı
+              </button>
+            </div>
+            <button
+              onClick={() => {
+                closeActions();
+                void toggle(currentAction);
+              }}
+            >
+              {currentAction.isActive ? (
+                <EyeOff size={19} />
+              ) : (
+                <Eye size={19} />
+              )}
+              <span>
+                {currentAction.isActive ? 'Menüde gizle' : 'Menüde göster'}
+              </span>
+            </button>
+            <button
+              className="is-danger"
+              onClick={() => {
+                closeActions();
+                setNotice(null);
+                setDeleteTarget(currentAction);
+              }}
+            >
+              <Trash2 size={19} />
+              <span>Grubu sil</span>
+            </button>
+          </div>
+        )}
+      </GroupsDialog>
       <GroupModal
         open={modalMode !== null}
         mode={modalMode || 'create'}
-        parentName={pickParent?.name || editing?.parentName}
+        parentName={parent?.name || editing?.parentName}
         languages={languages}
         form={form}
         imagePreview={imagePreview}
-        saving={saving}
-        onClose={closeModal}
-        onSave={handleSave}
+        saving={busy}
+        error={formError}
+        onClose={() => {
+          if (!busy) {
+            setModalMode(null);
+            setImageFile(null);
+          }
+        }}
+        onSave={() => void saveForm()}
         onFormChange={setForm}
         onImageChange={setImageFile}
       />
-
-      <AdminConfirmModal
-        open={Boolean(deleteTarget)}
-        title="Grubu sil"
-        description="Seçili grup menüden kalıcı olarak kaldırılır."
-        highlight={deleteTarget?.name}
-        confirmLabel="Evet, sil"
-        busy={deleting}
-        onCancel={() => {
-          if (!deleting) setDeleteTarget(null);
-        }}
-        onConfirm={() => void confirmDelete()}
+      <GroupProductsModal
+        open={Boolean(productsGroup)}
+        groupId={productsGroup?.id ?? null}
+        groupName={productsGroup?.name || ''}
+        onClose={() => setProductsGroup(null)}
       />
-    </div>
+      <GroupsDialog
+        open={Boolean(deleteTarget)}
+        title="Bu grubu silelim mi?"
+        subtitle={deleteTarget?.name}
+        busy={busy}
+        onClose={() => setDeleteTarget(null)}
+      >
+        <p className="ag-delete-copy">
+          Bu işlem geri alınamaz. İçinde ürün veya alt grup bulunan gruplar
+          silinemez; önce onları taşıyın veya kaldırın.
+        </p>
+        {notice?.error && (
+          <p role="alert" className="ag-form-error">
+            {notice.text}
+          </p>
+        )}
+        <div className="ag-form-actions">
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onClick={() => setDeleteTarget(null)}
+          >
+            Vazgeç
+          </Button>
+          <Button
+            className="ag-delete-button"
+            disabled={busy}
+            onClick={() => void remove()}
+          >
+            {busy ? 'Siliniyor…' : 'Grubu sil'}
+          </Button>
+        </div>
+      </GroupsDialog>
+    </section>
   );
 }
