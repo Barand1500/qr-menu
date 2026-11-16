@@ -9,7 +9,6 @@ import {
 import {
   ArrowDown,
   ArrowUp,
-  Check,
   Eye,
   EyeOff,
   FolderPlus,
@@ -17,7 +16,6 @@ import {
   Pencil,
   Plus,
   Search,
-  SlidersHorizontal,
   Trash2,
   X,
 } from 'lucide-react';
@@ -44,6 +42,8 @@ import GroupModal, { type GroupFormState } from '@/components/GroupModal';
 import GroupProductsModal from '@/components/GroupProductsModal';
 import GroupListRow from '@/components/admin/groups/GroupListRow';
 import GroupsDialog from '@/components/admin/groups/GroupsDialog';
+import GroupFilters from '@/components/admin/groups/GroupFilters';
+import AdminToast from '@/components/admin/AdminToast';
 import type { AdminGroup as Group } from '@/components/admin/groups/types';
 import '@/components/admin/groups/groups.css';
 
@@ -66,8 +66,7 @@ export default function GroupsPage() {
   const [search, setSearch] = useState(''),
     [status, setStatus] = useState<Status>('all'),
     [kind, setKind] = useState<Kind>('all');
-  const [filtersOpen, setFiltersOpen] = useState(false),
-    [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [page, setPage] = useState(1);
   const [notice, setNotice] = useState<Notice>(null),
     [busy, setBusy] = useState(false);
@@ -81,6 +80,7 @@ export default function GroupsPage() {
   const [imageFile, setImageFile] = useState<File | null>(null),
     [imagePreview, setImagePreview] = useState<string | null>(null);
   const [formError, setFormError] = useState('');
+  const [deleteError, setDeleteError] = useState('');
   const [productsGroup, setProductsGroup] = useState<Group | null>(null),
     [deleteTarget, setDeleteTarget] = useState<Group | null>(null);
   const [actions, setActions] = useState<{
@@ -422,6 +422,7 @@ export default function GroupsPage() {
       setDeleteTarget(null);
       setNotice({ error: false, text: 'Grup silindi.' });
     } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'Grup silinemedi.');
       error(e, 'Grup silinemedi.');
     } finally {
       end();
@@ -460,21 +461,7 @@ export default function GroupsPage() {
           Grup ekle
         </Button>
       </header>
-      {notice && (
-        <div
-          className={`ag-notice${notice.error ? ' is-error' : ''}`}
-          role={notice.error ? 'alert' : 'status'}
-        >
-          <span>{notice.text}</span>
-          <button
-            className="ag-icon"
-            aria-label="Bildirimi kapat"
-            onClick={() => setNotice(null)}
-          >
-            <X size={17} />
-          </button>
-        </div>
-      )}
+      <AdminToast notice={notice} onClose={() => setNotice(null)} />
       <div className="ag-board">
         <div className="ag-toolbar">
           <label className="ag-search">
@@ -495,17 +482,12 @@ export default function GroupsPage() {
               </button>
             )}
           </label>
-          <button
-            className={`ag-filter${status !== 'all' || kind !== 'all' ? ' is-active' : ''}`}
-            aria-label="Filtrele"
-            onClick={() => setFiltersOpen(true)}
-          >
-            <SlidersHorizontal size={17} />
-            <span>Filtrele</span>
-            {(status !== 'all' || kind !== 'all') && (
-              <b>{Number(status !== 'all') + Number(kind !== 'all')}</b>
-            )}
-          </button>
+          <GroupFilters
+            status={status}
+            kind={kind}
+            onStatusChange={setStatus}
+            onKindChange={setKind}
+          />
         </div>
         {filtering && (
           <div className="ag-filter-summary">
@@ -635,54 +617,7 @@ export default function GroupsPage() {
       <p className="ag-footnote">
         Sıra, ad ve görünürlük değişiklikleri doğrudan menünüze yansır.
       </p>
-      <GroupsDialog
-        open={filtersOpen}
-        title="Görmek istediklerin"
-        subtitle="Listeyi daraltın; düzeniniz aynı kalır."
-        onClose={() => setFiltersOpen(false)}
-      >
-        <fieldset className="ag-filter-options">
-          <legend>Menüde görünürlük</legend>
-          {(
-            [
-              ['all', 'Tümü'],
-              ['active', 'Açık'],
-              ['passive', 'Gizli'],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              aria-pressed={status === key}
-              onClick={() => setStatus(key)}
-            >
-              {label}
-              {status === key && <Check size={16} />}
-            </button>
-          ))}
-        </fieldset>
-        <fieldset className="ag-filter-options">
-          <legend>Grup yapısı</legend>
-          {(
-            [
-              ['all', 'Tüm gruplar'],
-              ['main', 'Ana gruplar'],
-              ['sub', 'Alt gruplar'],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              aria-pressed={kind === key}
-              onClick={() => setKind(key)}
-            >
-              {label}
-              {kind === key && <Check size={16} />}
-            </button>
-          ))}
-        </fieldset>
-        <Button className="w-full" onClick={() => setFiltersOpen(false)}>
-          Listeyi göster
-        </Button>
-      </GroupsDialog>
+
       <GroupsDialog
         open={Boolean(currentAction)}
         title={currentAction?.name || 'Grup işlemleri'}
@@ -763,6 +698,7 @@ export default function GroupsPage() {
                 closeActions();
                 setNotice(null);
                 setDeleteTarget(currentAction);
+                setDeleteError('');
               }}
             >
               <Trash2 size={19} />
@@ -807,19 +743,12 @@ export default function GroupsPage() {
           Bu işlem geri alınamaz. İçinde ürün veya alt grup bulunan gruplar
           silinemez; önce onları taşıyın veya kaldırın.
         </p>
-        {notice?.error && (
+        {deleteError && (
           <p role="alert" className="ag-form-error">
-            {notice.text}
+            {deleteError}
           </p>
         )}
         <div className="ag-form-actions">
-          <Button
-            variant="secondary"
-            disabled={busy}
-            onClick={() => setDeleteTarget(null)}
-          >
-            Vazgeç
-          </Button>
           <Button
             className="ag-delete-button"
             disabled={busy}

@@ -149,14 +149,6 @@ export default function GroupModal({
           </label>
         </fieldset>
         <div className="ag-form-actions">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onClose}
-            disabled={saving}
-          >
-            Vazgeç
-          </Button>
           <Button type="submit" disabled={saving || !current}>
             {saving ? 'Kaydediliyor…' : 'Kaydet'}
           </Button>

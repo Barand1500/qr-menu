@@ -1,12 +1,9 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useId, useRef, useState, type MouseEvent } from 'react';
 import {
-  Check,
   ChevronDown,
   GripVertical,
   ImagePlus,
-  LoaderCircle,
   MoreHorizontal,
-  X,
 } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -47,6 +44,7 @@ export default function GroupListRow({
   const input = useRef<HTMLInputElement>(null),
     file = useRef<HTMLInputElement>(null);
   const submitBusy = useRef(false);
+  const hintId = useId();
   const {
     attributes,
     listeners,
@@ -161,6 +159,8 @@ export default function GroupListRow({
               value={value}
               maxLength={200}
               disabled={busy}
+              enterKeyHint="done"
+              aria-describedby={hintId}
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {
@@ -169,27 +169,9 @@ export default function GroupListRow({
                 }
               }}
             />
-            <button
-              type="submit"
-              className="ag-icon"
-              aria-label="Adı kaydet"
-              disabled={busy || !value.trim()}
-            >
-              {busy ? (
-                <LoaderCircle size={18} className="animate-spin" />
-              ) : (
-                <Check size={18} />
-              )}
-            </button>
-            <button
-              type="button"
-              className="ag-icon"
-              aria-label="Ad değişikliğinden vazgeç"
-              disabled={busy}
-              onClick={cancel}
-            >
-              <X size={17} />
-            </button>
+            <small id={hintId} className="ag-rename__hint">
+              {busy ? 'Kaydediliyor…' : 'Enter ile kaydet · Esc ile vazgeç'}
+            </small>
           </form>
         ) : (
           <button

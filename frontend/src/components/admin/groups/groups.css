@@ -38,9 +38,10 @@
   border: 1px solid var(--admin-card-border);
   background: var(--admin-card);
   border-radius: 20px;
-  overflow: clip;
+  overflow: visible;
 }
 .ag-toolbar {
+  position: relative;
   display: flex;
   gap: 14px;
   padding: 18px 24px;
@@ -361,44 +362,71 @@
   color: var(--admin-accent-text);
 }
 .ag-rename {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
+  position: relative;
   min-width: 0;
 }
 .ag-rename input {
-  flex: 1 1 110px;
   min-width: 0;
   width: 100%;
-  min-height: 44px;
-  padding: 8px;
+  min-height: 58px;
+  padding: 8px 9px 23px;
   border: 1px solid var(--admin-accent);
   border-radius: 8px;
   background: var(--admin-card);
   color: var(--admin-text);
   font: inherit;
 }
-.ag-rename .ag-icon {
-  width: 36px;
-  min-width: 36px;
+.ag-rename__hint {
+  position: absolute;
+  inset: auto 9px 7px;
+  color: var(--admin-text-subtle);
+  font-size: 10px;
+  line-height: 1.2;
+  pointer-events: none;
 }
-.ag-notice {
+.ag-filter-wrap {
+  flex-shrink: 0;
+}
+.ag-filter-panel {
+  position: absolute;
+  top: calc(100% - 4px);
+  right: 12px;
+  z-index: 10;
+  width: 320px;
+  max-width: calc(100% - 24px);
+  max-height: var(--ag-filter-space, calc(100dvh - 160px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 16px 16px;
+  border: 1px solid var(--admin-card-border);
+  border-radius: 16px;
+  background: var(--admin-card);
+  box-shadow: 0 14px 38px #10203024;
+  animation: ag-reveal 0.18s ease both;
+}
+.ag-filter-panel > header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  border-inline-start: 3px solid #419272;
-  padding: 6px 10px 6px 14px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  background: var(--admin-card);
+  margin-bottom: 12px;
   font-size: 13px;
-  overflow-wrap: anywhere;
+  font-weight: 600;
 }
-.ag-notice.is-error {
-  border-color: #d75757;
-  color: var(--admin-text);
+.ag-filter-panel .ag-filter-options {
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.ag-filter-panel .ag-filter-options:last-child {
+  margin-bottom: 0;
+}
+.ag-filter-panel .ag-filter-options button {
+  font-size: 12px;
+  padding-inline: 10px;
+}
+.ag-filter-reset {
+  min-height: 44px;
+  font-size: 12px;
+  color: var(--admin-accent-text);
 }
 .ag-footnote {
   margin: 15px 4px;
@@ -875,11 +903,9 @@
     font-size: 10px;
     margin-bottom: 6px;
   }
-  .ag-rename {
-    gap: 2px;
-  }
   .ag-rename input {
-    flex-basis: 100%;
+    min-height: 70px;
+    padding-bottom: 32px;
     font-size: 16px;
   }
   .ag-dialog {

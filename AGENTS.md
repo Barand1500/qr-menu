@@ -12,8 +12,11 @@ Bu dosya, bu depoda çalışan tüm yapay zeka asistanları ve geliştiriciler i
 
 - Panel sayfa sayfa sadeleştirilecek; ele alınmayan sayfaları topluca değiştirmeyin. Masaüstünde doğrudan düzenleme, mobilde tek sütun ve rahat dokunma alanları hedefleyin.
 - Telefonda bilgiye ulaşmak için yatay kaydırma gerektirmeyin. Geniş tabloları anlamlı satır/kart yerleşimine dönüştürün; uzun adlar okunabilsin. Gereksiz sütunları ve tekrar eden işlem düğmelerini kaldırın.
-- Mobil filtreler, işlemler ve ayrıntılar gerektiğinde alttan açılan, kendi içinde dikey kayabilen pencereler kullanmalı. Kapatma, geri/Escape, odak, kısa ekran, ekran klavyesi ve güvenli ekran boşluklarını dikkate alın. Sürükleme/sağ tık tek erişim yolu olmasın.
+- Mobil işlemler ve ayrıntılar gerektiğinde alttan açılan, kendi içinde dikey kayabilen pencereler kullanmalı. Basit filtreler için düğme altındaki küçük paneli tercih edin. Kapatma, geri/Escape, odak, kısa ekran, ekran klavyesi ve güvenli ekran boşluklarını dikkate alın. Sürükleme/sağ tık tek erişim yolu olmasın.
 - Hareketler kısa ve amaca yönelik olmalı; hareket azaltma tercihine uyun. Özgünlüğü süslerden çok işi kolaylaştıran etkileşimlerde arayın. Her sayfayı dar telefon, tablet ve masaüstünde doğrulayın; fiziksel cihazda yapılmayan kontrolü yapılmış gibi sunmayın.
+- İşlem bildirimlerini sayfa akışına blok ekleyerek göstermeyin; yerleşimi kaydırmayan, kısa animasyonlu ve kendiliğinden kapanan toast kullanın. Formdaki kalıcı hata/alan doğrulamasını gerektiğinde ayrıca koruyun.
+- Modalların dışına veya arka plana tıklamak modalı kapatmamalı. Kullanıcı X veya Escape ile kapatır; başarılı Kaydet/Sil gibi tamamlanan işlemler kendi akışını bitirebilir. Gereksiz ikinci kapatma düğmesi eklemeyin. İşlem sürerken kapatmayı engelleyin. Bu kural yeni/düzenlenen admin pencerelerine uygulanır; diğer sayfaları ayrıca ele almadan topluca değiştirmeyin.
+- Basit liste filtreleri modal gerektirmez; düğmenin altında küçük, doğrudan seçimle uygulanan panel kullanın. Seçili kutuyu panelin vurgu rengiyle belirtin; ek tik ikonları koymayın. Filtre paneli modal değildir; dış tıklamayla kapanabilir ve sayfayı kilitlemez.
 
 ## Kod ve mevcut davranış
 

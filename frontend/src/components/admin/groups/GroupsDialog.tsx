@@ -94,9 +94,6 @@ export default function GroupsDialog({
           nodes[0].focus();
         }
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !busy) onClose();
-      }}
     >
       <div className="ag-dialog__surface">
         <span className="ag-dialog__handle" aria-hidden="true" />
