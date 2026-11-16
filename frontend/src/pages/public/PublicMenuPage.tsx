@@ -42,6 +42,7 @@ import {
 import PublicSocialLinks from '@/components/public/PublicSocialLinks';
 import AboutPageView from '@/components/public/AboutPageView';
 import SahneAboutPage from '@/components/public/sahne/SahneAboutPage';
+import SahneSocialLinks from '@/components/public/sahne/SahneSocialLinks';
 import { parseAboutPage, type AboutPageConfig } from '@/lib/aboutPage';
 import '@/about-page.css';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
@@ -899,7 +900,7 @@ function PublicMenuPageInner({
               logoUrl={menu.restaurant.logoUrl}
               photos={signInPhotos}
               lang={lang}
-              social={<PublicSocialLinks links={menu.socialLinks || []} />}
+              social={<SahneSocialLinks links={menu.socialLinks || []} lang={lang} />}
               onBack={() => setTab('home')}
             />
           ) : (

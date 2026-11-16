@@ -366,7 +366,8 @@
   border-top: 1px solid #f6eee426;
   padding: 30px 0;
 }
-.sh-about[data-motion='on'] .sh-about__values li::before {
+.sh-about[data-motion='on'] .sh-about__values li::before,
+.sh-about[data-motion='on'] .sh-about__values li:last-child::after {
   content: '';
   position: absolute;
   inset: -1px 0 auto;
@@ -374,6 +375,9 @@
   background: #ffb44a88;
   transform: scaleX(var(--entry, 1));
   transform-origin: left;
+}
+.sh-about[data-motion='on'] .sh-about__values li:last-child::after {
+  inset: auto 0 -1px;
 }
 .sh-about[data-motion='on'] .sh-about__values h3 {
   transform: translateY(calc((1 - var(--entry, 1)) * 18px));
@@ -439,6 +443,9 @@
   letter-spacing: -0.055em;
 }
 .sh-about__invitation button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -458,13 +465,80 @@
 .sh-about__invitation button:hover {
   translate: 0 -3px;
 }
+.sh-about__invitation button:focus-visible {
+  translate: 0 -3px;
+}
+.sh-about__invitation button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    110deg,
+    transparent 25%,
+    #ffffff45 50%,
+    transparent 75%
+  );
+  transform: translateX(-130%);
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sh-about__invitation button:is(:hover, :focus-visible)::before {
+  transform: translateX(130%);
+}
+.sh-about__cta-copy {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  line-height: 1.5;
+}
+.sh-about__cta-copy > span {
+  display: block;
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.25s;
+}
+.sh-about__cta-copy > span:last-child {
+  position: absolute;
+  inset: 0;
+  transform: translateY(110%);
+  opacity: 0;
+}
+.sh-about__invitation
+  button:is(:hover, :focus-visible)
+  .sh-about__cta-copy
+  > span:first-child {
+  transform: translateY(-110%);
+  opacity: 0;
+}
+.sh-about__invitation
+  button:is(:hover, :focus-visible)
+  .sh-about__cta-copy
+  > span:last-child {
+  transform: none;
+  opacity: 1;
+}
 .sh-about__invitation button b {
+  position: relative;
+  overflow: hidden;
   display: grid;
   place-items: center;
   width: 50px;
   height: 50px;
   border-radius: 50%;
   background: #1a0d0510;
+}
+.sh-about__invitation button b svg {
+  position: absolute;
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sh-about__invitation button b svg:last-child {
+  transform: translate(-150%, 150%);
+}
+.sh-about__invitation button:is(:hover, :focus-visible) b svg:first-child {
+  transform: translate(150%, -150%);
+}
+.sh-about__invitation button:is(:hover, :focus-visible) b svg:last-child {
+  transform: none;
 }
 .sh-about__colophon {
   display: flex;
@@ -479,12 +553,6 @@
   font:
     11px/1.6 Inter,
     sans-serif;
-}
-.sh-about .public-social__btn {
-  background: transparent !important;
-  border: 1px solid #f6eee42e;
-  box-shadow: none;
-  color: #f6eee4;
 }
 .sh-about[data-motion='on'] [data-about-reveal] {
   opacity: 0;
@@ -692,7 +760,27 @@
     transform: none !important;
     opacity: 1 !important;
   }
-  .sh-about__values li::before {
+  .sh-about__values li::before,
+  .sh-about__values li::after {
+    display: none;
+  }
+  .sh-about__invitation button:is(:hover, :focus-visible) {
+    translate: none;
+  }
+  .sh-about__invitation button::before {
+    display: none;
+  }
+  .sh-about__invitation button .sh-about__cta-copy > span:first-child {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  .sh-about__invitation button .sh-about__cta-copy > span:last-child {
+    display: none;
+  }
+  .sh-about__invitation button b svg:first-child {
+    transform: none !important;
+  }
+  .sh-about__invitation button b svg:last-child {
     display: none;
   }
 }

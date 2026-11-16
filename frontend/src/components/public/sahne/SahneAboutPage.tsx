@@ -416,8 +416,14 @@ export default function SahneAboutPage({
             <i>{en ? 'at the table.' : 'buluşalım.'}</i>
           </h2>
           <button type="button" onClick={onBack}>
-            <span>{en ? 'Explore the menu' : 'Menüyü keşfet'}</span>
-            <b>
+            <span className="sh-about__cta-copy">
+              <span>{en ? 'Explore the menu' : 'Menüyü keşfet'}</span>
+              <span aria-hidden="true">
+                {en ? 'Explore the menu' : 'Menüyü keşfet'}
+              </span>
+            </span>
+            <b aria-hidden="true">
+              <ArrowUpRight size={23} />
               <ArrowUpRight size={23} />
             </b>
           </button>
