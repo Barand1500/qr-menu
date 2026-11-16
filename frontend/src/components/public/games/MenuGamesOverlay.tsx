@@ -1,14 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  ArrowLeft,
-  ArrowUpRight,
-  Check,
-  Gamepad2,
-  Layers3,
-  Search,
-  Timer,
-  X,
-} from 'lucide-react';
+import { ArrowLeft, Check, Gamepad2, X } from 'lucide-react';
+import SahneGamesLobby from './SahneGamesLobby';
 import { useSheetFocus } from '../sofra/SofraSheet';
 import '../sahne/sahne-entertainment.css';
 import BlitzGame, {
@@ -80,7 +72,7 @@ export default function MenuGamesOverlay({
 
   return (
     <div
-      className={`menu-games${sahne ? ' sh-games' : ''}`}
+      className={`menu-games${sahne ? ' sh-games' + (!active ? ' sh-games--lobby' : '') : ''}`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="menu-games-title"
@@ -124,27 +116,13 @@ export default function MenuGamesOverlay({
         </header>
 
         <div className="menu-games__body" key={active || 'catalog'}>
-          {sahne && !active && (
-            <div className="sh-games__intro">
-              <h3>
-                {lang.startsWith('tr') ? (
-                  <>
-                    Masada <i>oyun var.</i>
-                  </>
-                ) : (
-                  <>
-                    Time to <i>play.</i>
-                  </>
-                )}
-              </h3>
-              <p>
-                {lang.startsWith('tr')
-                  ? 'Tek başına bir rekor. Ya da masada küçük bir rekabet.'
-                  : 'A solo challenge. Or a little friendly competition.'}
-              </p>
-            </div>
-          )}
-          {!active ? (
+          {sahne && !active ? (
+            <SahneGamesLobby
+              games={catalog.map((g) => g.id)}
+              lang={lang}
+              onPlay={setActive}
+            />
+          ) : !active ? (
             <div className="menu-games__grid">
               {catalog.map((g) => {
                 const entry = gameCatalogEntry(g.id, lang);
@@ -152,25 +130,9 @@ export default function MenuGamesOverlay({
                   <button
                     key={g.id}
                     type="button"
-                    className={`menu-games__tile sh-games__tile--${g.id}`}
+                    className="menu-games__tile"
                     onClick={() => setActive(g.id)}
                   >
-                    {sahne && (
-                      <span className="sh-games__art" aria-hidden="true">
-                        {g.id === 'memory' ? (
-                          <Layers3 />
-                        ) : g.id === 'xox' ? (
-                          <span className="sh-games__xox">
-                            ×<i>○</i>
-                          </span>
-                        ) : g.id === 'detective' ? (
-                          <Search />
-                        ) : (
-                          <Timer />
-                        )}
-                        <i className="sh-games__art-orbit" />
-                      </span>
-                    )}
                     <span className="menu-games__tile-ok" aria-hidden>
                       <Check className="w-3.5 h-3.5" strokeWidth={2.75} />
                     </span>
@@ -179,23 +141,9 @@ export default function MenuGamesOverlay({
                     </span>
                     <strong>{entry.title}</strong>
                     <span>{entry.blurb}</span>
-                    {sahne && (
-                      <ArrowUpRight
-                        className="sh-games__arrow"
-                        size={20}
-                        aria-hidden="true"
-                      />
-                    )}
                   </button>
                 );
               })}
-              {sahne && !catalog.length && (
-                <p>
-                  {lang.startsWith('tr')
-                    ? 'Oyunlar şu an kapalı.'
-                    : 'Games are currently unavailable.'}
-                </p>
-              )}
             </div>
           ) : active === 'memory' ? (
             <MemoryGame lang={lang} pairCount={pairCount} pairs={memoryPairs} />

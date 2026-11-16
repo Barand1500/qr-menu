@@ -17,6 +17,7 @@ import { notifyTableRequestCreated } from "@/lib/tableRequestNotify";
 import { notifyServiceCallConfirmed } from "@/lib/serviceCallFeedback";
 import { useTableSessionCode } from "@/components/public/TableSessionCodeGate";
 import { useSheetFocus, useSheetPresence } from "./sofra/SofraSheet";
+import SahneActivityArt from "./sahne/SahneActivityArt";
 import "./service-menu.css";
 
 // Per-service administration switches will be added separately.
@@ -28,8 +29,6 @@ const SERVICES = [
     en: "Waiter",
     detail: "Masanız için bir yardım eli.",
     detailEn: "A helping hand for your table.",
-    hint: "Masama gelsin",
-    hintEn: "Come to my table",
   },
   {
     kind: "hookah",
@@ -38,8 +37,6 @@ const SERVICES = [
     en: "Hookah attendant",
     detail: "Köz, hazırlık veya küçük bir rica.",
     detailEn: "Coals, preparation or a little help.",
-    hint: "İlgilenen biri gelsin",
-    hintEn: "Ask for assistance",
   },
   {
     kind: "valet",
@@ -48,8 +45,6 @@ const SERVICES = [
     en: "Valet",
     detail: "Siz hazırlanırken aracınız da hazırlansın.",
     detailEn: "Have your car ready when you are.",
-    hint: "Plakamı yazayım",
-    hintEn: "Enter my plate",
   },
 ] as const;
 type Kind = (typeof SERVICES)[number]["kind"];
@@ -202,15 +197,13 @@ export default function TableServiceButtons({
               aria-busy={!!busy}
             >
               <header className="service-concierge__header">
-                <span className="service-concierge__eyebrow">
-                  <span />
-                  {en ? "AT YOUR SERVICE" : "BİR İSTEĞİNİZ Mİ VAR?"}
-                  {tableCtx.masa && (
-                    <b>
-                      {en ? "Table" : "Masa"} {tableCtx.masa}
-                    </b>
-                  )}
+                <span className="service-concierge__brand">
+                  <BellRing size={21} />
                 </span>
+                <div>
+                  <small>{en ? "AT YOUR TABLE" : "MASANIZ İÇİN"}</small>
+                  <strong>{en ? "Service" : "Servis"}</strong>
+                </div>
                 <button
                   className="service-concierge__close"
                   type="button"
@@ -218,174 +211,194 @@ export default function TableServiceButtons({
                   onClick={close}
                   aria-label={en ? "Close" : "Kapat"}
                 >
-                  <X size={21} />
+                  <X size={20} />
                 </button>
               </header>
               <div
                 key={valet ? "valet" : "services"}
                 className="service-concierge__scene"
               >
-                {valet ? (
-                  <>
-                    <button
-                      type="button"
-                      className="service-concierge__back"
-                      disabled={!!busy}
-                      onClick={() => {
-                        setValet(false);
-                        setError("");
-                      }}
-                    >
-                      <ArrowLeft size={17} />
-                      {en ? "All services" : "Tüm servisler"}
-                    </button>
-                    <div className="service-concierge__valet-icon">
-                      <CarFront size={44} strokeWidth={1.3} />
-                    </div>
-                    <h2 id={titleId}>
-                      {en ? "Your car, next." : "Sırada aracınız var."}
-                    </h2>
-                    <p>
-                      {en
-                        ? "Enter your plate. We’ll pass it on to the team."
-                        : "Plakanızı yazın, vale talebinizi ekibe iletelim."}
-                    </p>
-                    <form
-                      className="service-concierge__form"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        void send("valet");
-                      }}
-                    >
-                      <label htmlFor={`${titleId}-plate`}>
-                        {en ? "VEHICLE PLATE" : "ARAÇ PLAKASI"}
-                      </label>
-                      <div className="service-concierge__plate">
-                        <span aria-hidden="true">
-                          <CarFront size={22} />
-                        </span>
-                        <input
-                          id={`${titleId}-plate`}
-                          placeholder="34 ABC 123"
-                          value={plate}
-                          onChange={(e) =>
-                            setPlate(e.target.value.toLocaleUpperCase("tr-TR"))
-                          }
-                          required
-                          minLength={4}
-                          maxLength={20}
-                          pattern="(?=.*[0-9])(?:[A-Z0-9ÇĞİÖŞÜ ]|-)+"
-                          autoComplete="off"
-                          autoCapitalize="characters"
-                          spellCheck={false}
-                          disabled={!!busy}
-                        />
-                      </div>
-                      <small>
-                        {en
-                          ? "Your plate is shared with the service team for this request."
-                          : "Plakanız bu çağrı için servis ekibine iletilir."}
-                      </small>
-                      <button
-                        type="submit"
-                        className="service-concierge__submit"
-                        disabled={!!busy}
-                      >
-                        {busy ? (
-                          <LoaderCircle className="is-spinning" size={21} />
-                        ) : (
-                          <CarFront size={21} />
-                        )}{" "}
-                        {busy
-                          ? en
-                            ? "Sending…"
-                            : "İletiliyor…"
-                          : en
-                            ? "Call valet"
-                            : "Valeyi çağır"}
-                        <ArrowUpRight size={21} />
-                      </button>
-                    </form>
-                  </>
-                ) : (
-                  <>
-                    <h2 id={titleId}>
-                      {en ? "Enjoy your time." : "Siz keyfinize bakın."}
-                    </h2>
-                    <p>
-                      {en
-                        ? "Who can we call for you?"
-                        : "Sizin için kimi çağıralım?"}
-                    </p>
-                    <div className="service-concierge__list">
-                      {SERVICES.map(
-                        (
-                          {
-                            kind,
-                            Icon,
-                            tr,
-                            en: nameEn,
-                            detail,
-                            detailEn,
-                            hint,
-                            hintEn,
-                          },
-                          i,
-                        ) => (
-                          <button
-                            key={kind}
-                            type="button"
-                            className={`service-concierge__choice service-concierge__choice--${kind}`}
-                            disabled={!!busy}
-                            style={{ "--service-i": i } as CSSProperties}
-                            onClick={() => {
-                              if (kind === "valet") {
-                                setValet(true);
-                                setError("");
-                              } else void send(kind);
-                            }}
-                          >
-                            <span className="service-concierge__symbol">
-                              {busy === kind ? (
-                                <LoaderCircle
-                                  className="is-spinning"
-                                  size={30}
-                                />
-                              ) : (
-                                <Icon size={30} strokeWidth={1.4} />
-                              )}
-                            </span>
-                            <span className="service-concierge__words">
-                              <strong>{en ? nameEn : tr}</strong>
-                              <span>{en ? detailEn : detail}</span>
-                              <em>
-                                {en ? hintEn : hint} <ArrowUpRight size={14} />
-                              </em>
-                            </span>
-                            <span
-                              className="service-concierge__number"
-                              aria-hidden="true"
-                            >
-                              0{i + 1}
-                            </span>
-                          </button>
-                        ),
-                      )}
-                    </div>
-                  </>
-                )}
-                {error && (
-                  <p role="alert" className="service-concierge__error">
-                    {error}
+                <aside className="service-concierge__intro">
+                  <span className="service-concierge__eyebrow">
+                    {tableCtx.masa
+                      ? `${en ? "TABLE" : "MASA"} ${tableCtx.masa}`
+                      : en
+                        ? "AT YOUR SERVICE"
+                        : "SİZİN İÇİN BURADAYIZ"}
+                  </span>
+                  <h2 id={titleId}>
+                    {valet
+                      ? en
+                        ? "Your car,"
+                        : "Aracınız"
+                      : en
+                        ? "Let us"
+                        : "Bir el"}
+                    <br />
+                    <i>
+                      {valet
+                        ? en
+                          ? "at the door."
+                          : "hazır olsun."
+                        : en
+                          ? "help."
+                          : "atalım."}
+                    </i>
+                  </h2>
+                  <p>
+                    {valet
+                      ? en
+                        ? "Leave your plate with us. We’ll let the valet know."
+                        : "Plakanızı bırakın. Vale talebinizi ekibe iletelim."
+                      : en
+                        ? "Whatever you need, we’re just a call away."
+                        : "İhtiyacınız ne olursa olsun, bir çağrı uzağınızdayız."}
                   </p>
-                )}
+                  <div className="service-concierge__drawing">
+                    <SahneActivityArt kind={valet ? "valet" : "service"} />
+                  </div>
+                  <span className="service-concierge__foot">
+                    {en ? "Make yourself at home." : "Siz keyfinize bakın."}
+                  </span>
+                </aside>
+                <div className="service-concierge__request">
+                  {valet ? (
+                    <>
+                      <button
+                        type="button"
+                        className="service-concierge__back"
+                        disabled={!!busy}
+                        onClick={() => {
+                          setValet(false);
+                          setError("");
+                        }}
+                      >
+                        <ArrowLeft size={16} />
+                        {en ? "All services" : "Tüm servisler"}
+                      </button>
+                      <h3>{en ? "Just your plate." : "Plakanız yeterli."}</h3>
+                      <form
+                        className="service-concierge__form"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          void send("valet");
+                        }}
+                      >
+                        <label htmlFor={`${titleId}-plate`}>
+                          {en ? "VEHICLE PLATE" : "ARAÇ PLAKASI"}
+                        </label>
+                        <div className="service-concierge__plate">
+                          <CarFront size={22} />
+                          <input
+                            id={`${titleId}-plate`}
+                            placeholder="34 ABC 123"
+                            value={plate}
+                            onChange={(e) =>
+                              setPlate(
+                                e.target.value.toLocaleUpperCase("tr-TR"),
+                              )
+                            }
+                            required
+                            minLength={4}
+                            maxLength={20}
+                            pattern="(?=.*[0-9])(?:[A-Z0-9ÇĞİÖŞÜ ]|-)+"
+                            autoComplete="off"
+                            autoCapitalize="characters"
+                            spellCheck={false}
+                            disabled={!!busy}
+                          />
+                        </div>
+                        <small>
+                          {en
+                            ? "Your plate is shared with the service team for this request."
+                            : "Plakanız bu çağrı için servis ekibine iletilir."}
+                        </small>
+                        <button
+                          type="submit"
+                          className="service-concierge__submit"
+                          disabled={!!busy}
+                        >
+                          <span>
+                            {busy
+                              ? en
+                                ? "Sending…"
+                                : "İletiliyor…"
+                              : en
+                                ? "Call valet"
+                                : "Valeyi çağır"}
+                          </span>
+                          <b>
+                            {busy ? (
+                              <LoaderCircle className="is-spinning" size={20} />
+                            ) : (
+                              <ArrowUpRight size={20} />
+                            )}
+                          </b>
+                        </button>
+                      </form>
+                    </>
+                  ) : (
+                    <>
+                      <div className="service-concierge__list-head">
+                        <span>
+                          {en ? "HOW CAN WE HELP?" : "NASIL YARDIMCI OLALIM?"}
+                        </span>
+                        <span>03</span>
+                      </div>
+                      <div className="service-concierge__list">
+                        {SERVICES.map(
+                          (
+                            { kind, Icon, tr, en: nameEn, detail, detailEn },
+                            i,
+                          ) => (
+                            <button
+                              key={kind}
+                              type="button"
+                              className={`service-concierge__choice service-concierge__choice--${kind}`}
+                              disabled={!!busy}
+                              style={{ "--service-i": i } as CSSProperties}
+                              onClick={() => {
+                                if (kind === "valet") {
+                                  setValet(true);
+                                  setError("");
+                                } else void send(kind);
+                              }}
+                            >
+                              <span className="service-concierge__symbol">
+                                {busy === kind ? (
+                                  <LoaderCircle
+                                    className="is-spinning"
+                                    size={24}
+                                  />
+                                ) : (
+                                  <Icon size={24} strokeWidth={1.5} />
+                                )}
+                              </span>
+                              <span className="service-concierge__words">
+                                <strong>{en ? nameEn : tr}</strong>
+                                <span>{en ? detailEn : detail}</span>
+                              </span>
+                              <span className="service-concierge__arrow">
+                                <ArrowUpRight size={20} />
+                              </span>
+                            </button>
+                          ),
+                        )}
+                      </div>
+                      <p className="service-concierge__hint">
+                        {en
+                          ? "Choose a service. We’ll let the team know."
+                          : "Birini seçin, ekibe haber verelim."}
+                      </p>
+                    </>
+                  )}
+                  {error && (
+                    <p role="alert" className="service-concierge__error">
+                      {error}
+                    </p>
+                  )}
+                </div>
               </div>
-              <footer className="service-concierge__footer">
-                <BellRing size={14} />
-                {en
-                  ? "One request. The right person."
-                  : "Tek bir çağrı. Doğru kişiye."}
-              </footer>
             </section>
           </div>,
           document.body,
