@@ -41,6 +41,7 @@ import {
 } from '@/lib/menuPaths';
 import PublicSocialLinks from '@/components/public/PublicSocialLinks';
 import AboutPageView from '@/components/public/AboutPageView';
+import SahneAboutPage from '@/components/public/sahne/SahneAboutPage';
 import { parseAboutPage, type AboutPageConfig } from '@/lib/aboutPage';
 import '@/about-page.css';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
@@ -744,7 +745,7 @@ function PublicMenuPageInner({
       onClose={() => setSideMenuOpen(false)}
       onTab={(t) => {
         setTab(t);
-        if (groupId) navigate(menuHomePath());
+        if (groupId && !(isSofra && t === 'about')) navigate(menuHomePath());
       }}
       onLangChange={changeLang}
       onDietaryPrefsChange={changeDietaryPrefs}
@@ -888,34 +889,32 @@ function PublicMenuPageInner({
                 ) : null
               }
             />
+          ) : tab === 'about' ? (
+            <SahneAboutPage
+              config={parseAboutPage(
+                menu.aboutPage ? JSON.stringify(menu.aboutPage) : null,
+                menu.about || menu.welcomeMessage || ''
+              )}
+              restaurantName={menu.restaurant.name}
+              logoUrl={menu.restaurant.logoUrl}
+              photos={signInPhotos}
+              lang={lang}
+              social={<PublicSocialLinks links={menu.socialLinks || []} />}
+              onBack={() => setTab('home')}
+            />
           ) : (
             <div className="sofra sofra-secondary-content">
               <button type="button" className="sofra-back" onClick={() => setTab('home')}>
                 <ArrowLeft size={17} aria-hidden />
                 {en ? 'Back to menu' : 'Menüye dön'}
               </button>
-              {tab === 'about' ? (
-                <AboutPageView
-                  config={parseAboutPage(
-                    menu.aboutPage ? JSON.stringify(menu.aboutPage) : null,
-                    menu.about || menu.welcomeMessage || ''
-                  )}
-                  restaurantName={menu.restaurant.name}
-                  social={<PublicSocialLinks links={menu.socialLinks || []} />}
-                />
-              ) : (
-                <div className="public-lang-list">
-                  {menu.languages.map((l) => (
-                    <button
-                      key={l.code}
-                      className="public-lang-btn"
-                      onClick={() => changeLang(l.code)}
-                    >
-                      {l.name}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div className="public-lang-list">
+                {menu.languages.map((l) => (
+                  <button key={l.code} className="public-lang-btn" onClick={() => changeLang(l.code)}>
+                    {l.name}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <SahneDock
