@@ -1,4 +1,5 @@
 import { searchMenu } from '../lib/menuSearch.js';
+import { parseServiceRequest } from '../lib/table-service-request.js';
 import { Router, type Request } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { loadSofraConfig } from '../lib/sofra.js';
@@ -1292,11 +1293,12 @@ router.post('/:slug/suggestions', async (req, res) => {
 
 router.post('/:slug/table-request', async (req, res) => {
   const slug = req.params.slug;
-  const { type, tableNumber, groupSlug, note, order } = req.body as {
+  const { type, tableNumber, groupSlug, note, plate, order } = req.body as {
     type?: string;
     tableNumber?: string;
     groupSlug?: string;
     note?: string;
+    plate?: string;
     order?: {
       items?: {
         productId?: number;
@@ -1321,10 +1323,13 @@ router.post('/:slug/table-request', async (req, res) => {
     return res.status(403).json({ message: 'Masa hizmeti kapalı' });
   }
 
-  const requestType = String(type || '').trim();
-  if (requestType !== 'waiter') {
-    return res.status(400).json({ message: 'Geçersiz istek türü' });
+  let service;
+  try {
+    service = parseServiceRequest(type, plate, note, order);
+  } catch (err) {
+    return res.status(400).json({ message: err instanceof Error ? err.message : 'Geçersiz istek' });
   }
+  const { requestType, noteText } = service;
 
   const masa = String(tableNumber || '').trim();
   if (!masa || masa.length > 40) {
@@ -1344,7 +1349,6 @@ router.post('/:slug/table-request', async (req, res) => {
     }
   }
 
-  const noteText = typeof note === 'string' ? note.trim().slice(0, 500) : '';
   let orderJson: string | null = null;
   let floorLines: FloorOrderItem[] = [];
   let stockItems: { productId: number | null; qty: number }[] = [];
@@ -1472,12 +1476,16 @@ router.post('/:slug/table-request', async (req, res) => {
     where: {
       restaurantId: restaurant.id,
       tableNumber: masa,
+      groupSlug: grup,
       type: requestType,
       createdAt: { gte: new Date(Date.now() - 45_000) },
     },
     orderBy: { createdAt: 'desc' },
   });
   if (recent) {
+    if (requestType === 'valet' && recent.note !== noteText) {
+      return res.status(409).json({ message: 'Önceki vale çağrınız iletildi. Farklı plaka için lütfen kısa bir süre bekleyin.' });
+    }
     // Aynı masa 45 sn içinde tekrar çağırırsa hata yerine idempotent başarı
     return res.json({
       ok: true,

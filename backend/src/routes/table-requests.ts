@@ -45,7 +45,7 @@ router.get('/stats', async (req, res) => {
     if (row.type === 'bill') {
       bill += 1;
       day.bill += 1;
-    } else {
+    } else if (row.type === 'waiter') {
       waiter += 1;
       day.waiter += 1;
     }

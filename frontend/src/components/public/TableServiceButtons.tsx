@@ -152,7 +152,9 @@ export default function TableServiceButtons({
       setError(
         en
           ? "Your request could not be sent. Please try again."
-          : err instanceof Error ? err.message : "Çağrı iletilemedi. Lütfen tekrar deneyin.",
+          : err instanceof Error
+            ? err.message
+            : "Çağrı iletilemedi. Lütfen tekrar deneyin.",
       );
     } finally {
       lock.current = false;
@@ -272,7 +274,7 @@ export default function TableServiceButtons({
                           required
                           minLength={4}
                           maxLength={20}
-                    pattern="(?=.*[0-9])(?:[A-Z0-9ÇĞİÖŞÜ ]|-)+"
+                          pattern="(?=.*[0-9])(?:[A-Z0-9ÇĞİÖŞÜ ]|-)+"
                           autoComplete="off"
                           autoCapitalize="characters"
                           spellCheck={false}
