@@ -548,8 +548,14 @@
   color: var(--ce-accent-2);
 }
 .customer-entry__forgot {
-  justify-self: end;
-  margin-top: -6px;
+  margin-inline-start: auto;
+}
+.customer-entry__password-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 .customer-entry__resend {
   justify-self: center;

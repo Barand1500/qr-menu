@@ -594,35 +594,40 @@ export default function CustomerSignIn({
                           {en ? 'At least 8 characters.' : 'En az 8 karakter.'}
                         </p>
                       )}
-                      {step === 'password' && (
-                        <button
-                          type="button"
-                          className="customer-entry__forgot"
-                          disabled={busy}
-                          onClick={() =>
-                            void run(async () =>
-                              receive(
-                                await customerEmailRequest<EmailChallenge>(
-                                  'code',
-                                  { email: normalizedEmail, purpose: 'reset' },
+                      <div className="customer-entry__password-actions">
+                        <label className="customer-entry__check">
+                          <input
+                            type="checkbox"
+                            checked={remember}
+                            onChange={(e) => setRemember(e.target.checked)}
+                            disabled={busy}
+                          />
+                          <span>{en ? 'Remember me' : 'Beni hatırla'}</span>
+                        </label>
+                        {step === 'password' && (
+                          <button
+                            type="button"
+                            className="customer-entry__forgot"
+                            disabled={busy}
+                            onClick={() =>
+                              void run(async () =>
+                                receive(
+                                  await customerEmailRequest<EmailChallenge>(
+                                    'code',
+                                    {
+                                      email: normalizedEmail,
+                                      purpose: 'reset',
+                                    },
+                                  ),
+                                  'reset',
                                 ),
-                                'reset',
-                              ),
-                            )
-                          }
-                        >
-                          {en ? 'Forgot password?' : 'Şifremi unuttum'}
-                        </button>
-                      )}
-                      <label className="customer-entry__check">
-                        <input
-                          type="checkbox"
-                          checked={remember}
-                          onChange={(e) => setRemember(e.target.checked)}
-                          disabled={busy}
-                        />
-                        <span>{en ? 'Remember me' : 'Beni hatırla'}</span>
-                      </label>
+                              )
+                            }
+                          >
+                            {en ? 'Forgot password?' : 'Şifremi unuttum'}
+                          </button>
+                        )}
+                      </div>
                       {step === 'create' && purpose === 'register' && (
                         <label className="customer-entry__check customer-entry__consent">
                           <input
