@@ -15,8 +15,8 @@ import {
   ArrowRight,
   ArrowUpRight,
   AlertCircle,
-  X,
 } from 'lucide-react';
+import AdminToast from '@/components/admin/AdminToast';
 import { Button, PageHeader, Spinner, Textarea } from '@/components/ui';
 import UnlockAddonModal from '@/components/UnlockAddonModal';
 import { useAddons } from '@/hooks/useAddons';
@@ -329,9 +329,9 @@ export default function BulkTranslatePage() {
 
       <header className="translate-intro">
         <div>
-          <p className="translate-eyebrow">BİR MENÜ. BİRÇOK DİL.</p>
-          <h2>Her misafire kendi dilinde.</h2>
-          <p>Dilinizi seçin, eksik metinleri birlikte tamamlayalım.</p>
+          <p className="translate-eyebrow">MENÜNÜZÜ DÜNYAYA AÇIN</p>
+          <h2>Bir menü, birçok dil.</h2>
+          <p>Eksikleri seçin. Çevirelim, menünüzde yerini alsın.</p>
         </div>
         <div className="translate-route" aria-label={`Türkçe → ${targetMeta?.name || 'Hedef dil'}`}>
           <span><LanguageFlag code="tr" size={20} /> Türkçe</span>
@@ -340,13 +340,7 @@ export default function BulkTranslatePage() {
         </div>
       </header>
 
-      {notice && (
-        <div className={`translate-notice ${notice.error ? 'is-error' : ''}`} role={notice.error ? 'alert' : 'status'}>
-          {notice.error ? <AlertCircle size={18} /> : <Check size={18} />}
-          <span>{notice.text}</span>
-          <button type="button" aria-label="Bildirimi kapat" onClick={() => setNotice(null)}><X size={16} /></button>
-        </div>
-      )}
+      <AdminToast notice={notice} onClose={() => setNotice(null)} />
 
       <section className="translate-workspace" aria-label="Çeviri çalışma alanı" aria-busy={busy} inert={busy}>
         <aside className="translate-languages">
