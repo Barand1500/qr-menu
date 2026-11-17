@@ -249,6 +249,7 @@ interface ProductModalProps {
   onClose: () => void;
   onSave: () => void;
   onFormChange: (form: ProductFormState) => void;
+  onRecommendationChange: (recommended: boolean) => void;
   onAddImages: (files: FileList | null) => void;
   onRemoveImage: (url: string) => void;
   onRemovePending: (id: string) => void;
@@ -274,6 +275,7 @@ export default function ProductModal({
   onClose,
   onSave,
   onFormChange,
+  onRecommendationChange,
   onAddImages,
   onRemoveImage,
   onRemovePending,
@@ -450,19 +452,27 @@ export default function ProductModal({
                     <button
                       type="button"
                       role="switch"
-                      aria-label="Önerilen ürün"
+                      aria-label="Ürünü menüde öne çıkar"
                       aria-checked={form.isRecommended}
                       disabled={saving}
                       className={`pe-recommended ${form.isRecommended ? 'is-selected' : ''}`}
-                      onClick={() =>
+                      onClick={() => {
+                        const recommended = !form.isRecommended;
                         onFormChange({
                           ...form,
-                          isRecommended: !form.isRecommended,
-                        })
-                      }
+                          isRecommended: recommended,
+                        });
+                        onRecommendationChange(recommended);
+                      }}
                     >
-                      <Star size={15} aria-hidden="true" />
-                      <span>Önerilen</span>
+                      <span className="pe-recommended__icon" aria-hidden="true">
+                        <Star size={17} />
+                      </span>
+                      <span className="pe-recommended__copy">
+                        <strong>{form.isRecommended ? 'Öne çıkarılacak' : 'Öne çıkar'}</strong>
+                        <small>Menünün üstünde göster</small>
+                      </span>
+                      <span className="pe-recommended__track" aria-hidden="true" />
                     </button>
                   </div>
                 </div>

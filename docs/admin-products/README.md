@@ -1,5 +1,7 @@
 # Ürün yönetimi — 16 Kasım 2026
 
+Öne çıkar seçimi: [açıklamalı, animasyonlu kontrol ve kendiliğinden kapanan toast](featured-control/README.md) (17 Kasım).
+
 Son sadeleştirme: [ürün modalında eşit alanlar, başlıkta önerilen seçimi ve yakın arama listesi](modal-polish/README.md) (17 Kasım).
 
 Güncel ürün formu: [ortalanmış modal ve 61 tariflik başlangıç kataloğu](catalog-modal/README.md) (17 Kasım).

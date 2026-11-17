@@ -9,9 +9,11 @@ export type AdminToastNotice = { text: string; error: boolean } | null;
 export default function AdminToast({
   notice,
   onClose,
+  className = '',
 }: {
   notice: AdminToastNotice;
   onClose: () => void;
+  className?: string;
 }) {
   const [leaving, setLeaving] = useState(false),
     [paused, setPaused] = useState(false);
@@ -34,7 +36,7 @@ export default function AdminToast({
   if (!notice) return null;
   return createPortal(
     <div
-      className={`admin-toast${notice.error ? ' is-error' : ''}${leaving ? ' is-leaving' : ''}`}
+      className={`admin-toast${notice.error ? ' is-error' : ''}${leaving ? ' is-leaving' : ''} ${className}`}
       role={notice.error ? 'alert' : 'status'}
       aria-atomic="true"
       onPointerEnter={() => setPaused(true)}

@@ -836,7 +836,11 @@ export default function ProductsPage() {
   if (!ready) return <Spinner />;
   return (
     <section className="ap-page" aria-label="Ürün yönetimi">
-      <AdminToast notice={notice} onClose={() => setNotice(null)} />
+      <AdminToast
+        notice={notice}
+        onClose={() => setNotice(null)}
+        className={modalOpen ? 'pe-modal-toast' : ''}
+      />
       <header className="ap-head">
         <div>
           <p className="ag-eyebrow">MENÜ ATÖLYESİ</p>
@@ -1190,6 +1194,14 @@ export default function ProductsPage() {
         onClose={closeForm}
         onSave={() => void saveForm()}
         onFormChange={setForm}
+        onRecommendationChange={(recommended) =>
+          setNotice({
+            error: false,
+            text: recommended
+              ? 'Bu lezzet başrolde! Kaydettiğinde menünün üstündeki önerilen ürünler arasında görünecek.'
+              : 'Öne çıkarma kaldırıldı. Kaydettiğinde ürün kendi kategorisinde gösterilmeye devam edecek.',
+          })
+        }
         onAddImages={addFiles}
         onRemoveImage={removeImage}
         onRemovePending={removePending}
