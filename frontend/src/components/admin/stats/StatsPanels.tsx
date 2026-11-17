@@ -171,7 +171,7 @@ export function RankingPanel({
             <span>Sıralama</span>
             <span>Görüntülenme</span>
           </div>
-          <ol className="ast-ranking__list">
+          <ol className="ast-ranking__list" tabIndex={0} aria-label={kind === 'products' ? 'Ürün sıralaması, kaydırılabilir liste' : 'Grup sıralaması, kaydırılabilir liste'}>
             {items.map((item, i) => (
               <li
                 key={item.id + '-' + i}

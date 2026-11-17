@@ -13,3 +13,6 @@ Kontroller: ay/yıl aralıkları ve anında filtreleme, eski yanıtın yeni rapo
 Ek test: frontend/tests/stats-model.test.mjs, üç saat diliminde takvim sınırları ve artık yıl; sayı temizleme ve sıralama.
 
 Tüm rakamlar örnektir. İlk 10 kayıt toplamı ile tekil ziyaretçi sayısı birbirine karıştırılmaz. Canlı veri, fiziksel cihaz, ekran okuyucu ve Safari/Zen test edilmedi.
+
+## Eşit paneller düzeltmesi
+equal-panels-*.png: 1440/1024/768/390/320 px, eşit genişlik/yükseklik ve dahili liste kaydırması ölçülerek doğrulandı. Başlık ve alt açıklama sabit, liste klavyeyle odaklanabilir.
