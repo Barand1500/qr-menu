@@ -80,8 +80,15 @@ export function fillDishDraft(
       : [...(product?.features || template?.features || [])],
     allergenTags: form.allergenTags.length ? form.allergenTags : [...allergens],
     prepTimeMinutes:
-      form.prepTimeMinutes || product?.prepTimeMinutes?.toString() || '',
-    calories: form.calories || product?.calories?.toString() || '',
+      form.prepTimeMinutes ||
+      product?.prepTimeMinutes?.toString() ||
+      template?.prepTimeMinutes?.toString() ||
+      '',
+    calories:
+      form.calories ||
+      product?.calories?.toString() ||
+      template?.calories?.toString() ||
+      '',
     translations: {
       ...form.translations,
       tr: {

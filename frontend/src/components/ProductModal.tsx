@@ -290,6 +290,12 @@ export default function ProductModal({
   const [poolPickerOpen, setPoolPickerOpen] = useState(false);
   const autoFill = useRef<DraftFill | null>(null);
   const [assistText, setAssistText] = useState('');
+  const [recipeSource, setRecipeSource] = useState<{
+    name: string;
+    url: string;
+    notice?: string;
+  } | null>(null);
+  const [recipeLoading, setRecipeLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -298,6 +304,7 @@ export default function ProductModal({
     setPoolPickerOpen(false);
     autoFill.current = null;
     setAssistText('');
+    setRecipeSource(null);
     const tr = languages.find((l) => l.code === 'tr');
     setActiveLang(tr?.code || languages[0]?.code || 'tr');
     // Yalnızca modal açıldığında sıfırla — onClose/languages her render'da değişebilir
@@ -382,15 +389,21 @@ export default function ProductModal({
     if (template || selected?.product) {
       const after = fillDishDraft(base, name, template, selected?.product);
       autoFill.current = { before: base, after, name };
+      setRecipeSource(template?.source || null);
       setAssistText(
         selected?.product
           ? 'Menünüzdeki ürün bilgileri alındı; dolu alanlarınız korundu.'
-          : 'Başlangıç kataloğundan örnek tarif dolduruldu. İçerik, alerjen ve tercihleri kendi tarifinizle kontrol edin.',
+          : template?.source?.kind === 'api'
+            ? template.source.name === 'TheMealDB'
+              ? 'TheMealDB tarif bilgileri alındı. Alerjen, kalori ve süre bu kaynakta yok; bunları kendi tarifinize göre girin.'
+              : 'Tiny Plates tarif bilgileri alındı. Alerjenleri, hazırlık süresini ve porsiyon kalorisini kendi tarifinizle kontrol edin.'
+            : 'Başlangıç kataloğundan örnek tarif dolduruldu. İçerik, alerjen ve tercihleri kendi tarifinizle kontrol edin.',
       );
       onFormChange(after);
     } else {
       autoFill.current = null;
       setAssistText('');
+      setRecipeSource(null);
       onFormChange(base);
     }
   }
@@ -503,6 +516,7 @@ export default function ProductModal({
               {activeTab === 'general' && (
                 <div className="pe-form">
                   <ProductNameField
+                    onResolvingChange={setRecipeLoading}
                     value={trTranslation.name}
                     productId={productId}
                     disabled={saving}
@@ -624,8 +638,22 @@ export default function ProductModal({
                   {assistText && (
                     <p className="pe-assist" role="status">
                       {assistText}
+                      {recipeSource && (
+                        <a
+                          href={recipeSource.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline"
+                        >
+                          {' '}
+                          Kaynak: {recipeSource.name}
+                        </a>
+                      )}
                       {trTranslation.ingredients && (
                         <small>İçerik: {trTranslation.ingredients}</small>
+                      )}
+                      {recipeSource?.notice && (
+                        <small>{recipeSource.notice}</small>
                       )}
                     </p>
                   )}
@@ -893,9 +921,13 @@ export default function ProductModal({
             <Button
               className="flex-1"
               onClick={onSave}
-              disabled={saving || missingTags.length > 0}
+              disabled={saving || recipeLoading || missingTags.length > 0}
             >
-              {saving ? 'Kaydediliyor...' : 'Kaydet'}
+              {saving
+                ? 'Kaydediliyor...'
+                : recipeLoading
+                  ? 'Tarif alınıyor…'
+                  : 'Kaydet'}
             </Button>
           </div>
         </div>

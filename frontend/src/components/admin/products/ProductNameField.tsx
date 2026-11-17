@@ -21,6 +21,8 @@ export type Suggestion = {
   name: string;
   product?: Product;
   template?: DishTemplate;
+  remoteId?: string;
+  remoteSource?: string;
 };
 
 export default function ProductNameField({
@@ -29,12 +31,14 @@ export default function ProductNameField({
   disabled,
   onChange,
   onSelect,
+  onResolvingChange,
 }: {
   value: string;
   productId?: number;
   disabled?: boolean;
   onChange: (value: string) => void;
   onSelect: (suggestion: Suggestion) => void;
+  onResolvingChange?: (pending: boolean) => void;
 }) {
   const id = useId(),
     root = useRef<HTMLDivElement>(null);
@@ -42,6 +46,62 @@ export default function ProductNameField({
     [dismissed, setDismissed] = useState(false);
   const [found, setFound] = useState<Product[]>([]),
     [active, setActive] = useState(-1);
+  const [remote, setRemote] = useState<
+    { id: string; name: string; source: string }[]
+  >([]);
+  const [remoteMessage, setRemoteMessage] = useState('');
+  const [selecting, setSelecting] = useState(false);
+  useEffect(() => {
+    onResolvingChange?.(selecting);
+    return () => onResolvingChange?.(false);
+  }, [selecting, onResolvingChange]);
+  const selection = useRef<AbortController | null>(null);
+  useEffect(() => {
+    setActive(-1);
+  }, [remote, found]);
+  useEffect(() => () => selection.current?.abort(), []);
+  useEffect(() => {
+    setRemote([]);
+    setRemoteMessage('');
+    if (!focused || dismissed || value.trim().length < 3) return;
+    const abort = new AbortController();
+    const timer = setTimeout(() => {
+      setRemoteMessage('Tarif kaynağında aranıyor…');
+      void api<{
+        data: { id: string; name: string; source: string }[];
+        developmentKey?: boolean;
+        source?: string;
+      }>(
+        `/api/admin/products/recipe-suggestions?search=${encodeURIComponent(value.trim())}`,
+        { signal: abort.signal },
+      )
+        .then((result) => {
+          if (abort.signal.aborted) return;
+          setRemote(Array.isArray(result.data) ? result.data : []);
+          setRemoteMessage(
+            result.developmentKey
+              ? 'TheMealDB · ücretsiz geliştirme bağlantısı'
+              : result.data?.length
+                ? `${result.source || 'Çevrimiçi'} tarif önerileri`
+                : 'Bu adla çevrimiçi tarif bulunamadı.',
+          );
+        })
+        .catch((error) => {
+          if (!abort.signal.aborted)
+            setRemoteMessage(
+              error?.status === 503
+                ? 'Ücretsiz Tiny Plates hesabının API anahtarını sunucuya ekleyin.'
+                : error?.status === 429
+                  ? 'Tarif arama sınırına ulaşıldı; yerel öneriler kullanılabilir.'
+                  : 'Çevrimiçi tarif kaynağına ulaşılamadı; yerel öneriler kullanılabilir.',
+            );
+        });
+    }, 900);
+    return () => {
+      clearTimeout(timer);
+      abort.abort();
+    };
+  }, [value, focused, dismissed]);
   useEffect(() => {
     setFound([]);
     setActive(-1);
@@ -79,6 +139,11 @@ export default function ProductNameField({
     ...DISH_NAMES.filter((name) => q && fold(name).includes(q)).map((name) => ({
       name,
     })),
+    ...remote.map((item) => ({
+      name: item.name,
+      remoteId: item.id,
+      remoteSource: item.source,
+    })),
   ]) {
     if (!choices.some((item) => fold(item.name) === fold(suggestion.name)))
       choices.push(suggestion);
@@ -87,9 +152,40 @@ export default function ProductNameField({
     (a, b) =>
       Number(fold(b.name).startsWith(q)) - Number(fold(a.name).startsWith(q)),
   );
-  const visible = choices.slice(0, 5),
+  const local = choices.filter((item) => !item.remoteId);
+  const visible = [
+      ...local.slice(0, remote.length ? 2 : 5),
+      ...choices.filter((item) => item.remoteId).slice(0, 3),
+    ],
     open = focused && !dismissed && q.length >= 2 && visible.length > 0;
-  function choose(item: Suggestion) {
+  async function choose(item: Suggestion) {
+    if (selecting) return;
+    if (item.remoteId) {
+      selection.current?.abort();
+      const abort = new AbortController();
+      selection.current = abort;
+      setSelecting(true);
+      setRemoteMessage('Tarif bilgileri alınıyor…');
+      try {
+        const result = await api<{ template: DishTemplate }>(
+          `/api/admin/products/recipe-suggestions/${encodeURIComponent(item.remoteId)}`,
+          { signal: abort.signal },
+        );
+        if (abort.signal.aborted) return;
+        onSelect({ name: result.template.name, template: result.template });
+        setDismissed(true);
+        setActive(-1);
+        setRemoteMessage('');
+      } catch {
+        if (!abort.signal.aborted)
+          setRemoteMessage(
+            'Tarif alınamadı. Tekrar seçebilir veya bilgileri yazabilirsiniz.',
+          );
+      } finally {
+        if (selection.current === abort) setSelecting(false);
+      }
+      return;
+    }
     onSelect(item);
     setDismissed(true);
     setActive(-1);
@@ -99,8 +195,11 @@ export default function ProductNameField({
       ref={root}
       className="pe-name"
       onBlur={(event) => {
-        if (!root.current?.contains(event.relatedTarget as Node))
+        if (!root.current?.contains(event.relatedTarget as Node)) {
           setFocused(false);
+          selection.current?.abort();
+          setSelecting(false);
+        }
       }}
     >
       <Input
@@ -114,13 +213,17 @@ export default function ProductNameField({
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         aria-activedescendant={
-          open && active >= 0 ? `${id}-${active}` : undefined
+          open && active >= 0 && active < visible.length
+            ? `${id}-${active}`
+            : undefined
         }
         onFocus={() => {
           setFocused(true);
           setDismissed(false);
         }}
         onChange={(event) => {
+          selection.current?.abort();
+          setSelecting(false);
           setDismissed(false);
           onChange(event.target.value);
         }}
@@ -129,6 +232,8 @@ export default function ProductNameField({
             event.preventDefault();
             event.stopPropagation();
             setDismissed(true);
+            selection.current?.abort();
+            setSelecting(false);
           }
           if (open && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
             event.preventDefault();
@@ -142,7 +247,7 @@ export default function ProductNameField({
                 visible.length,
             );
           }
-          if (open && event.key === 'Enter' && active >= 0) {
+          if (open && event.key === 'Enter' && active >= 0 && visible[active]) {
             event.preventDefault();
             choose(visible[active]);
           }
@@ -162,6 +267,7 @@ export default function ProductNameField({
               role="option"
               id={`${id}-${index}`}
               aria-selected={active === index}
+              disabled={disabled || selecting}
               onPointerDown={(event) => event.preventDefault()}
               onClick={() => choose(item)}
             >
@@ -171,15 +277,22 @@ export default function ProductNameField({
                 <small>
                   {item.product
                     ? 'Menünüzden · kayıtlı ürün bilgileri'
-                    : item.template
-                      ? 'Başlangıç kataloğu · örnek tarif'
-                      : 'Yemek adı önerisi'}
+                    : item.remoteId
+                      ? `${item.remoteSource || 'API'} · çevrimiçi tarif`
+                      : item.template
+                        ? 'Başlangıç kataloğu · örnek tarif'
+                        : 'Yemek adı önerisi'}
                 </small>
               </span>
               <ArrowUpLeft size={15} />
             </button>
           ))}
         </div>
+      )}
+      {remoteMessage && focused && !dismissed && (
+        <p className="pe-help" role="status" aria-live="polite">
+          {remoteMessage}
+        </p>
       )}
     </div>
   );

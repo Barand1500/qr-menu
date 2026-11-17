@@ -1,5 +1,8 @@
 /** Editable starting recipes, not verified information about a restaurant's actual dishes. */
 export type DishTemplate = {
+  source?: { name: string; url: string; kind: 'api'; notice?: string };
+  calories?: number;
+  prepTimeMinutes?: number;
   id: string;
   name: string;
   aliases: string[];

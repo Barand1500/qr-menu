@@ -5,6 +5,7 @@ import fs from 'fs';
 import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId, validateProduct } from '../lib/auth.js';
 import { config } from '../config.js';
+import recipeSuggestions from './recipe-suggestions.js';
 import {
   applyAllergenTagsToI18n,
   buildProductI18n,
@@ -47,6 +48,7 @@ import {
 
 const router = Router();
 router.use(authRequired);
+router.use('/recipe-suggestions', recipeSuggestions);
 
 const uploadDir = path.resolve(config.uploadDir);
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
