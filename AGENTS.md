@@ -10,6 +10,8 @@ Bu dosya, bu depoda çalışan tüm yapay zeka asistanları ve geliştiriciler i
 
 ### Admin panelinde responsive çalışma yönü
 
+- Sayfa başlıkları ortak `PageHeading` / `PageHeader` bileşenini kullanır: tek sayfa adı; gerekiyorsa altında tek kısa açıklama veya kayıt sayısı. Başlığın üstünde slogan/etiket, altında ikinci büyük başlık kullanmayın. Yazı ölçüleri `components/admin/page-heading.css` üzerinden yönetilir.
+
 - Panel sayfa sayfa sadeleştirilecek; ele alınmayan sayfaları topluca değiştirmeyin. Masaüstünde doğrudan düzenleme, mobilde tek sütun ve rahat dokunma alanları hedefleyin.
 - Telefonda bilgiye ulaşmak için yatay kaydırma gerektirmeyin. Geniş tabloları anlamlı satır/kart yerleşimine dönüştürün; uzun adlar okunabilsin. Gereksiz sütunları ve tekrar eden işlem düğmelerini kaldırın.
 - Mobil işlemler ve ayrıntılar gerektiğinde alttan açılan, kendi içinde dikey kayabilen pencereler kullanmalı. Basit filtreler için düğme altındaki küçük paneli tercih edin. Kapatma, geri/Escape, odak, kısa ekran, ekran klavyesi ve güvenli ekran boşluklarını dikkate alın. Sürükleme/sağ tık tek erişim yolu olmasın.

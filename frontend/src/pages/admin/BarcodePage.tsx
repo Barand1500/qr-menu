@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { LayoutGrid, Lock, Megaphone, Printer, QrCode } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAddons } from '@/hooks/useAddons';
-import { Spinner } from '@/components/ui';
+import { PageHeading, Spinner } from '@/components/ui';
 import { api, imageUrl } from '@/lib/api';
 import AdminToast, {
   type AdminToastNotice,
@@ -874,10 +874,7 @@ export default function BarcodePage() {
         className="bq-toast"
       />
       <header className="bq-head">
-        <div>
-          <h1>Barkod Yazdır</h1>
-          <p>Menüne götüren QR kartını tasarla, yazdır.</p>
-        </div>
+        <PageHeading title="Barkod Yazdır" subtitle="Menüye götüren QR kartını tasarla, yazdır." />
         {!narrow && (
           <button
             type="button"

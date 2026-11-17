@@ -7,13 +7,14 @@ import {
   Gamepad2,
   HandHelping,
   X,
-  Wind,
+  ReceiptText,
 } from "lucide-react";
 import {
   SERVICE_CALL_CONFIRMED_EVENT,
   type ServiceCallReceipt,
 } from "@/lib/serviceCallFeedback";
 import "./service-call-notice.css";
+import HookahIcon from './HookahIcon';
 
 const VISIBLE_MS = 6500;
 const EXIT_MS = 320;
@@ -90,8 +91,8 @@ export default function ServiceCallNotice({
       : notice.kind === "valet"
         ? CarFront
         : notice.kind === "hookah"
-          ? Wind
-          : Bell;
+          ? HookahIcon
+          : notice.kind === 'bill' ? ReceiptText : Bell;
   const title = notice.duplicate
     ? en
       ? "Your request is already sent"
@@ -108,6 +109,8 @@ export default function ServiceCallNotice({
           ? en
             ? "Hookah attendant called"
             : "Nargileci çağrıldı"
+          : notice.kind === 'bill'
+            ? en ? 'Bill requested' : 'Hesap istendi'
           : en
             ? "Request sent"
             : "Çağrın iletildi";

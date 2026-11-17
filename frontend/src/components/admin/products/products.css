@@ -506,9 +506,6 @@
   }
 }
 @media (max-width: 767px) {
-  .ap-head p:not(.ag-eyebrow) {
-    display: none;
-  }
   .ap-head h1 {
     margin-bottom: 0;
   }

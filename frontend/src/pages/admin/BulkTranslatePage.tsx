@@ -325,20 +325,7 @@ export default function BulkTranslatePage() {
 
   return (
     <div className="translate-page">
-      <PageHeader title="Toplu Çeviri" />
-
-      <header className="translate-intro">
-        <div>
-          <p className="translate-eyebrow">MENÜNÜZÜ DÜNYAYA AÇIN</p>
-          <h2>Bir menü, birçok dil.</h2>
-          <p>Eksikleri seçin. Çevirelim, menünüzde yerini alsın.</p>
-        </div>
-        <div className="translate-route" aria-label={`Türkçe → ${targetMeta?.name || 'Hedef dil'}`}>
-          <span><LanguageFlag code="tr" size={20} /> Türkçe</span>
-          <ArrowRight size={17} aria-hidden />
-          <span>{targetMeta ? <LanguageFlag code={targetMeta.code} size={20} /> : <Globe2 size={20} />}{targetMeta?.name || 'Hedef dil'}</span>
-        </div>
-      </header>
+      <PageHeader title="Toplu Çeviri" subtitle="Menünüzdeki eksik çevirileri tamamlayın." />
 
       <AdminToast notice={notice} onClose={() => setNotice(null)} />
 

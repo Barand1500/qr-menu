@@ -15,7 +15,7 @@ import {
 import { api } from '@/lib/api';
 import { getActiveLanguages } from '@/lib/languages';
 import { useDemoData } from '@/contexts/DemoDataContext';
-import { Button, Spinner } from '@/components/ui';
+import { Button, PageHeading, Spinner } from '@/components/ui';
 import AdminOverlay from '@/components/admin/AdminOverlay';
 import AdminToast, {
   type AdminToastNotice,
@@ -323,7 +323,7 @@ export default function ShowcasePage() {
         className={editor || deleteTarget ? 'sc-modal-toast' : ''}
       />
       <header className="sc-head">
-        <h1>Vitrin Görselleri</h1>
+        <PageHeading title="Vitrin Görselleri" />
         <Button
           onClick={() => open()}
           disabled={busy || loading || Boolean(loadError)}

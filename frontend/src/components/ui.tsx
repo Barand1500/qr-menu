@@ -1,4 +1,5 @@
 import { useId, useState, type ReactNode } from 'react';
+import './admin/page-heading.css';
 
 interface Props {
   children: ReactNode;
@@ -208,16 +209,33 @@ export function Badge({ active }: { active: boolean }) {
   );
 }
 
+export function PageHeading({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: ReactNode;
+}) {
+  return (
+    <div className="admin-page-heading">
+      <h1 className="admin-page-title">{title}</h1>
+      {subtitle && <p className="admin-page-subtitle">{subtitle}</p>}
+    </div>
+  );
+}
+
 export function PageHeader({
   title,
+  subtitle,
   actions,
 }: {
   title: string;
+  subtitle?: ReactNode;
   actions?: ReactNode;
 }) {
   return (
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <h1 className="text-2xl font-semibold text-[var(--admin-text)]">{title}</h1>
+      <PageHeading title={title} subtitle={subtitle} />
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );

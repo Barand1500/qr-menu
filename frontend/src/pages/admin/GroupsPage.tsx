@@ -36,7 +36,7 @@ import {
 } from '@dnd-kit/sortable';
 import { api, imageUrl } from '@/lib/api';
 import { getActiveLanguages, type AdminLanguage } from '@/lib/languages';
-import { Button, Spinner } from '@/components/ui';
+import { Button, PageHeading, Spinner } from '@/components/ui';
 import { AdminListPager } from '@/components/AdminListPager';
 import GroupModal, { type GroupFormState } from '@/components/GroupModal';
 import GroupProductsModal from '@/components/GroupProductsModal';
@@ -446,16 +446,7 @@ export default function GroupsPage() {
   return (
     <section className="ag-page" aria-label="Grup yönetimi">
       <header className="ag-head">
-        <div>
-          <p className="ag-eyebrow">MENÜ DÜZENİ</p>
-          <h1>
-            Gruplar<span>.</span>
-          </h1>
-          <p>
-            {groups.filter((g) => !g.isSubGroup).length} ana grup ·{' '}
-            {groups.filter((g) => g.isSubGroup).length} alt grup
-          </p>
-        </div>
+        <PageHeading title="Gruplar" subtitle={`${groups.filter((g) => !g.isSubGroup).length} ana grup · ${groups.filter((g) => g.isSubGroup).length} alt grup`} />
         <Button onClick={() => openForm(null)} disabled={busy}>
           <Plus size={18} />
           Grup ekle

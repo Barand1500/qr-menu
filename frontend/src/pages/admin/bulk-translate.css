@@ -19,7 +19,7 @@
   outline: 2px solid var(--admin-accent);
   outline-offset: 3px;
 }
-.translate-page input[type='checkbox'] {
+.translate-page input[type="checkbox"] {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
@@ -33,44 +33,12 @@
   letter-spacing: 0.13em;
   color: var(--admin-text-muted);
 }
-.translate-intro {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 12px 2px;
-}
-.translate-intro h2,
 .translate-locked h2 {
   margin: 9px 0;
   font-size: clamp(26px, 3vw, 40px);
   font-weight: 600;
   letter-spacing: -0.055em;
   line-height: 1.15;
-}
-.translate-intro p:last-child {
-  color: var(--admin-text-muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-.translate-route {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
-  background: var(--admin-card);
-  border: 1px solid var(--admin-card-border);
-  border-radius: 14px;
-  font-size: 12px;
-  flex-shrink: 0;
-}
-.translate-route span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.translate-route span:last-child {
-  font-weight: 600;
 }
 .translate-workspace {
   display: grid;
@@ -211,7 +179,7 @@
   background: var(--admin-accent-soft);
 }
 .translate-categories button.is-active:after {
-  content: '';
+  content: "";
   position: absolute;
   top: 14px;
   bottom: 14px;
@@ -570,15 +538,6 @@
 @media (max-width: 767px) {
   .translate-page {
     gap: 18px;
-  }
-  .translate-intro {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 16px;
-    padding: 0;
-  }
-  .translate-route {
-    display: none;
   }
   .translate-workspace {
     border-radius: 16px;

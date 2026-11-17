@@ -1,4 +1,4 @@
-export type ServiceKind = 'waiter' | 'hookah' | 'valet';
+export type ServiceKind = 'waiter' | 'bill' | 'hookah' | 'valet';
 
 /** Keep structured service inputs separate from the existing food-order flow. */
 export function parseServiceRequest(
@@ -7,7 +7,7 @@ export function parseServiceRequest(
   note: unknown,
   order: unknown,
 ) {
-  if (type !== 'waiter' && type !== 'hookah' && type !== 'valet') {
+  if (type !== 'waiter' && type !== 'bill' && type !== 'hookah' && type !== 'valet') {
     throw new Error('Geçersiz istek türü');
   }
   if (type !== 'waiter' && order != null) {

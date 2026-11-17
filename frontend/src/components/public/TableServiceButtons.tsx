@@ -7,7 +7,7 @@ import {
   CarFront,
   HandHelping,
   LoaderCircle,
-  Wind,
+  ReceiptText,
   X,
 } from "lucide-react";
 import { api, isCodeRequiredError } from "@/lib/api";
@@ -19,6 +19,7 @@ import { useTableSessionCode } from "@/components/public/TableSessionCodeGate";
 import { useSheetFocus, useSheetPresence } from "./sofra/SofraSheet";
 import SahneActivityArt from "./sahne/SahneActivityArt";
 import "./service-menu.css";
+import HookahIcon from './HookahIcon';
 
 // Per-service administration switches will be added separately.
 const SERVICES = [
@@ -31,8 +32,16 @@ const SERVICES = [
     detailEn: "A helping hand for your table.",
   },
   {
+    kind: "bill",
+    Icon: ReceiptText,
+    tr: "Hesap",
+    en: "Bill",
+    detail: "Hesabı masanıza getirelim.",
+    detailEn: "Let us bring the bill to your table.",
+  },
+  {
     kind: "hookah",
-    Icon: Wind,
+    Icon: HookahIcon,
     tr: "Nargileci",
     en: "Hookah attendant",
     detail: "Köz, hazırlık veya küçük bir rica.",
@@ -343,7 +352,7 @@ export default function TableServiceButtons({
                         <span>
                           {en ? "HOW CAN WE HELP?" : "NASIL YARDIMCI OLALIM?"}
                         </span>
-                        <span>03</span>
+                        <span>{String(SERVICES.length).padStart(2, '0')}</span>
                       </div>
                       <div className="service-concierge__list">
                         {SERVICES.map(

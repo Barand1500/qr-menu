@@ -26,7 +26,7 @@ import {
 import { api } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
 import { getActiveLanguages, type AdminLanguage } from '@/lib/languages';
-import { Button, Spinner } from '@/components/ui';
+import { Button, PageHeading, Spinner } from '@/components/ui';
 import { AdminListPager } from '@/components/AdminListPager';
 import ProductModal, { type ProductFormState } from '@/components/ProductModal';
 import ProductStockModal from '@/components/ProductStockModal';
@@ -842,13 +842,7 @@ export default function ProductsPage() {
         className={modalOpen ? 'pe-modal-toast' : ''}
       />
       <header className="ap-head">
-        <div>
-          <p className="ag-eyebrow">MENÜ ATÖLYESİ</p>
-          <h1>
-            Ürünler<span>.</span>
-          </h1>
-          <p>Lezzetlerinize yer açın.</p>
-        </div>
+        <PageHeading title="Ürünler" subtitle={`${total} ürün`} />
         <div className="ap-head__actions">
           <button
             className="ap-tools"
