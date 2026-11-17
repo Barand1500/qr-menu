@@ -66,11 +66,8 @@ export default function ProductNameField({
     if (!focused || dismissed || value.trim().length < 3) return;
     const abort = new AbortController();
     const timer = setTimeout(() => {
-      setRemoteMessage('Tarif kaynağında aranıyor…');
       void api<{
         data: { id: string; name: string; source: string }[];
-        developmentKey?: boolean;
-        source?: string;
       }>(
         `/api/admin/products/recipe-suggestions?search=${encodeURIComponent(value.trim())}`,
         { signal: abort.signal },
@@ -78,13 +75,7 @@ export default function ProductNameField({
         .then((result) => {
           if (abort.signal.aborted) return;
           setRemote(Array.isArray(result.data) ? result.data : []);
-          setRemoteMessage(
-            result.developmentKey
-              ? 'TheMealDB · ücretsiz geliştirme bağlantısı'
-              : result.data?.length
-                ? `${result.source || 'Çevrimiçi'} tarif önerileri`
-                : 'Bu adla çevrimiçi tarif bulunamadı.',
-          );
+          setRemoteMessage('');
         })
         .catch((error) => {
           if (!abort.signal.aborted)
@@ -165,7 +156,7 @@ export default function ProductNameField({
       const abort = new AbortController();
       selection.current = abort;
       setSelecting(true);
-      setRemoteMessage('Tarif bilgileri alınıyor…');
+      setRemoteMessage('');
       try {
         const result = await api<{ template: DishTemplate }>(
           `/api/admin/products/recipe-suggestions/${encodeURIComponent(item.remoteId)}`,

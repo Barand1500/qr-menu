@@ -1,5 +1,7 @@
 # Ürün yönetimi — 16 Kasım 2026
 
+Son sadeleştirme: [ürün modalında eşit alanlar, başlıkta önerilen seçimi ve yakın arama listesi](modal-polish/README.md) (17 Kasım).
+
 Güncel ürün formu: [ortalanmış modal ve 61 tariflik başlangıç kataloğu](catalog-modal/README.md) (17 Kasım).
 
 Gerçek tarif bağlantısı: [ücretsiz Tiny Plates API, otomatik alan doldurma ve kontroller](recipe-api/README.md) (17 Kasım). Bu güncelleme frontend ve backend birlikte deploy gerektirir; anahtar sunucuda ayrıca tanımlanır.

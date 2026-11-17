@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Plus, Pencil, Trash2 } from 'lucide-react';
+import { X, Plus, Pencil, Trash2, Star } from 'lucide-react';
 import { imageUrl } from '@/lib/api';
 import { Button, Input, Select } from '@/components/ui';
 import LanguageTabs, { type Language } from '@/components/LanguageTabs';
@@ -443,9 +443,28 @@ export default function ProductModal({
                   <p className="pe-eyebrow">
                     {mode === 'edit' ? 'MENÜNÜZDEN' : 'MENÜYE EKLE'}
                   </p>
-                  <h2 className="text-xl font-bold text-[var(--admin-text)]">
-                    {mode === 'edit' ? 'Ürünü düzenle' : 'Yeni ürün'}
-                  </h2>
+                  <div className="pe-title-row">
+                    <h2 className="text-xl font-bold text-[var(--admin-text)]">
+                      {mode === 'edit' ? 'Ürünü düzenle' : 'Yeni ürün'}
+                    </h2>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-label="Önerilen ürün"
+                      aria-checked={form.isRecommended}
+                      disabled={saving}
+                      className={`pe-recommended ${form.isRecommended ? 'is-selected' : ''}`}
+                      onClick={() =>
+                        onFormChange({
+                          ...form,
+                          isRecommended: !form.isRecommended,
+                        })
+                      }
+                    >
+                      <Star size={15} aria-hidden="true" />
+                      <span>Önerilen</span>
+                    </button>
+                  </div>
                 </div>
               </div>
               <button
@@ -744,34 +763,6 @@ export default function ProductModal({
                       />
                     </div>
                   </details>
-                  <div className="pe-toggles">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={form.isRecommended}
-                        onChange={(event) =>
-                          onFormChange({
-                            ...form,
-                            isRecommended: event.target.checked,
-                          })
-                        }
-                      />
-                      Önerilen ürün
-                    </label>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={form.isActive}
-                        onChange={(event) =>
-                          onFormChange({
-                            ...form,
-                            isActive: event.target.checked,
-                          })
-                        }
-                      />
-                      Menüde aktif
-                    </label>
-                  </div>
                 </div>
               )}
 
