@@ -77,6 +77,7 @@ export default function ShowcasePage() {
   const [drag, setDrag] = useState<number | null>(null),
     [drop, setDrop] = useState<number | null>(null);
   const dragRef = useRef<number | null>(null);
+  const refocusAdd = useRef(false);
   const reload = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setLoadError('');
@@ -117,6 +118,14 @@ export default function ShowcasePage() {
         .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id),
     [items, activeTab],
   );
+  // After a delete the add button gets focus, but only once it is enabled again.
+  useEffect(() => {
+    if (busy || !refocusAdd.current) return;
+    refocusAdd.current = false;
+    pageRef.current
+      ?.querySelector<HTMLButtonElement>('.sc-head > button')
+      ?.focus({ preventScroll: true });
+  }, [busy]);
   function open(item?: ShowcaseItem) {
     if (lock.current) return;
     setActions(null);
@@ -297,11 +306,7 @@ export default function ShowcasePage() {
       await api(`/api/admin/showcase/${deleteTarget.id}`, { method: 'DELETE' });
       setItems((list) => list.filter((i) => i.id !== deleteTarget.id));
       setDeleteTarget(null);
-      requestAnimationFrame(() =>
-        pageRef.current
-          ?.querySelector<HTMLButtonElement>('.sc-head > button')
-          ?.focus({ preventScroll: true }),
-      );
+      refocusAdd.current = true;
       setNotice({ error: false, text: 'Vitrin görseli silindi.' });
     } catch (error) {
       setFormError(message(error));

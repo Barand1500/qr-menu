@@ -40,3 +40,18 @@ Değişen uygulama dosyaları: `ShowcasePage.tsx`, yeni `components/admin/showca
 - [Mobil afişler](showcase-banners-390.png) · [Mobil hikâyeler](showcase-stories-390.png) · [Mobil editör](showcase-editor-390.png)
 - [Kısa telefon](showcase-stories-320.png) · [Mobil işlem menüsü](showcase-mobile-actions.png)
 - [Koyu kısa ekran editörü](showcase-short-dark-editor.png) · [Boş liste](showcase-empty-mobile.png)
+
+## Ürün bağlantısı seçici — 17 Kasım 2026
+
+Afiş/hikâye penceresindeki "Bağlantılı ürün" açılır listesi, çok ürünlü işletmelerde aranması zor olduğu için kaldırıldı. Yerine ürün kutucuğu ve tam pencere ürün seçici geldi; aynı bileşen afiş ve hikâye için, hem ekleme hem düzenlemede geçerlidir.
+
+- Formda ürün kutucuğu görünür: küçük fotoğraf, ürün adı, grup adı, Değiştir. Afişte (isteğe bağlı) yanında bağlantıyı kaldıran X vardır; hikâyede ürün zorunlu olduğundan X yoktur, eksikse kutucuk kırmızı vurgulanır.
+- Kutucuğa dokununca ürün seçici açılır: arama kutusu (Türkçe harf ve büyük/küçük harf fark etmez: "sogan" → Soğan), gruplara göre başlıklı liste (ürün sayısıyla), her satırda fotoğraf, ad, grup, fiyat, pasifse "Pasif". Bir ürüne tek dokunuşla seçilir ve forma dönülür. 260 ürünle denendi; tüm ürünler listelenir, sınır yoktur.
+- Grup süzgeci düğme altında küçük panel olarak açılır (modal değildir); seçili grup panelin vurgu renginde işaretlenir, ek tik yoktur. Dışa tıklama/Escape paneli kapatır.
+- Klavye: masaüstünde arama kutusu otomatik odaklanır; ↑/↓ ile gezilir, Enter seçer. Telefonda klavye kendiliğinden açılmaz (listeyi kapatmasın diye). Escape seçicide önce grup panelini, sonra seçiciyi kapatır (forma döner); formdayken pencereyi kapatır. Dış tık hiçbir zaman kapatmaz; kaydetme sürerken geri/kapat kilitlidir. Forma dönünce odak kutucuğa gelir.
+- Pencerede "Menüde göster" onay kutusu kaldırıldı: görünürlük karttaki Yayında/Gizli anahtarından ve işlem menüsünden yönetilir. Yeni kayıtlar yayında başlar; mevcut kaydın durumu düzenlemede korunur (gizli afiş kaydedilince gizli kalır).
+- Aynı sayfada silme sonrası odağın ekleme düğmesine dönmesi bazen kaçıyordu (düğme meşgulken odak isteniyordu); düğme etkinleşince odak verilecek şekilde düzeltildi.
+
+Kontrol: frontend üretim derlemesi; Chrome/taklit API ile 1440, 390 ve 320×480'de 260 ürünlü katalog: arama (büyük/küçük ve Türkçe harf), sıralama, sonuç yok/aramayı temizle, grup paneli ve Escape, tek dokunuşla seçim ve odak dönüşü, seçicide Escape, klavye ↑/↓/Enter (masaüstü), bağlantıyı kaldırıp kaydetme (productId null, isActive true), gizli afişin gizli kalması, hikâyede ürün zorunluluğu ve vurgusu, ürünsüz işletmede boş mesaj, taşma/ekran içinde kalma. Önceki vitrin paketi 1440/768/390/320'de, silme sonrası odak dahil üç kez tekrarda geçti. Fiziksel telefon, ekran klavyesi ve ekran okuyucu denenmedi.
+
+[Web seçici](pk-1440-02-picker.png) · [Web seçili ürün](pk-1440-06-selected.png) · [Mobil seçici](pk-390-02-picker.png) · [Mobil seçili ürün](pk-390-06-selected.png) · [Mobil hikâye, ürün eksik](pk-390-07-story-missing.png)

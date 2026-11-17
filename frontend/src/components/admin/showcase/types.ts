@@ -13,7 +13,15 @@ export type ShowcaseItem = {
   durationSeconds?: number;
   translations: (MediaText & { languageId: number; languageCode: string })[];
 };
-export type ProductOption = { id: number; name: string };
+export type ProductOption = {
+  id: number;
+  name: string;
+  groupName?: string;
+  imageUrl?: string | null;
+  price?: number;
+  currency?: { symbol?: string | null; code?: string | null } | null;
+  isActive?: boolean;
+};
 export type MediaForm = {
   name: string;
   productId: string;
