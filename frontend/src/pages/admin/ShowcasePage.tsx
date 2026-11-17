@@ -1,650 +1,534 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Plus,
-  Pencil,
-  EyeOff,
+  ArrowDown,
+  ArrowUp,
+  CirclePlay,
   Eye,
-  ChevronUp,
-  ChevronDown,
-  Trash2,
+  EyeOff,
+  ImagePlus,
   Monitor,
-  Smartphone,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
 } from 'lucide-react';
-import { api, imageUrl } from '@/lib/api';
-import { getActiveLanguages, type AdminLanguage } from '@/lib/languages';
+import { api } from '@/lib/api';
+import { getActiveLanguages } from '@/lib/languages';
 import { useDemoData } from '@/contexts/DemoDataContext';
-import { Badge, Button, Card, EmptyState, PageHeader, Spinner } from '@/components/ui';
-import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
-import ShowcaseModal, {
-  type ShowcaseFormState,
-  type ShowcaseTranslationFields,
-} from '@/components/ShowcaseModal';
-import StoryModal, { type StoryFormState } from '@/components/StoryModal';
-import AdminConfirmModal from '@/components/AdminConfirmModal';
+import { Button, Spinner } from '@/components/ui';
+import AdminOverlay from '@/components/admin/AdminOverlay';
+import AdminToast, {
+  type AdminToastNotice,
+} from '@/components/admin/AdminToast';
+import GroupsDialog from '@/components/admin/groups/GroupsDialog';
+import ShowcaseCard from '@/components/admin/showcase/ShowcaseCard';
+import ShowcaseEditor from '@/components/admin/showcase/ShowcaseEditor';
+import {
+  mediaForm,
+  mediaReady,
+  type Language,
+  type MediaEditor,
+  type MediaType,
+  type ProductOption,
+  type ShowcaseItem,
+} from '@/components/admin/showcase/types';
+import '@/components/admin/showcase/showcase.css';
 
-interface ShowcaseItem {
-  id: number;
-  name: string;
-  productId: number | null;
-  productName: string | null;
-  imageUrl?: string | null;
-  displayType: 'banner' | 'story';
-  sortOrder: number;
-  isActive: boolean;
-  durationSeconds?: number;
-  translations: {
-    languageId: number;
-    languageCode: string;
-    title1: string | null;
-    title2: string | null;
-  }[];
-}
-
-interface ProductOption {
-  id: number;
-  name: string;
-}
-
-interface Language extends AdminLanguage {}
-
-type VitrinTab = 'banner' | 'story';
-
-const emptyBannerForm = (): ShowcaseFormState => ({
-  name: '',
-  productId: '',
-  isActive: true,
-  translations: {},
-});
-
-const emptyStoryForm = (): StoryFormState => ({
-  name: '',
-  productId: '',
-  isActive: true,
-  durationSeconds: 5,
-});
-
-function buildBannerForm(item: ShowcaseItem): ShowcaseFormState {
-  const translations: Record<string, ShowcaseTranslationFields> = {};
-  for (const t of item.translations) {
-    translations[t.languageCode] = {
-      title1: t.title1 || '',
-      title2: t.title2 || '',
-    };
+async function allProducts(signal?: AbortSignal) {
+  const products: ProductOption[] = [];
+  for (let page = 1; ; page++) {
+    const result = await api<{
+      data: ProductOption[];
+      pagination?: { total: number };
+    }>(`/api/admin/products?limit=200&page=${page}`, { signal });
+    products.push(...result.data);
+    if (
+      !result.data.length ||
+      products.length >= (result.pagination?.total ?? products.length)
+    )
+      return products;
   }
-  return {
-    name: item.name,
-    productId: item.productId?.toString() || '',
-    isActive: item.isActive,
-    translations,
-  };
 }
-
-function buildStoryForm(item: ShowcaseItem): StoryFormState {
-  return {
-    name: item.name,
-    productId: item.productId?.toString() || '',
-    isActive: item.isActive,
-    durationSeconds: item.durationSeconds ?? 5,
-  };
-}
+const message = (error: unknown) =>
+  error instanceof Error
+    ? error.message
+    : 'İşlem tamamlanamadı. Tekrar deneyin.';
 
 export default function ShowcasePage() {
+  const pageRef = useRef<HTMLDivElement>(null);
   const { demoEnabled } = useDemoData();
   const [items, setItems] = useState<ShowcaseItem[]>([]);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [languages, setLanguages] = useState<Language[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<VitrinTab>('banner');
-
-  const [bannerModalOpen, setBannerModalOpen] = useState(false);
-  const [bannerMode, setBannerMode] = useState<'create' | 'edit'>('create');
-  const [editingBanner, setEditingBanner] = useState<ShowcaseItem | null>(null);
-  const [bannerForm, setBannerForm] = useState<ShowcaseFormState>(emptyBannerForm());
-  const [bannerImageFile, setBannerImageFile] = useState<File | null>(null);
-  const [bannerImagePreview, setBannerImagePreview] = useState<string | null>(null);
-
-  const [storyModalOpen, setStoryModalOpen] = useState(false);
-  const [storyMode, setStoryMode] = useState<'create' | 'edit'>('create');
-  const [editingStory, setEditingStory] = useState<ShowcaseItem | null>(null);
-  const [storyForm, setStoryForm] = useState<StoryFormState>(emptyStoryForm());
-  const [storyImageFile, setStoryImageFile] = useState<File | null>(null);
-  const [storyImagePreview, setStoryImagePreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true),
+    [loadError, setLoadError] = useState('');
+  const [activeTab, setActiveTab] = useState<MediaType>('banner');
+  const [editor, setEditor] = useState<MediaEditor | null>(null),
+    [preview, setPreview] = useState<string | null>(null);
+  const [formError, setFormError] = useState('');
+  const [busy, setBusy] = useState(false),
+    lock = useRef(false);
+  const [notice, setNotice] = useState<AdminToastNotice>(null);
+  const [actions, setActions] = useState<{
+    item: ShowcaseItem;
+    point: { x: number; y: number };
+  } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ShowcaseItem | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
-  const load = useCallback(async () => {
-    const [showcase, productList, langs] = await Promise.all([
-      api<ShowcaseItem[]>('/api/admin/showcase'),
-      api<{ data: { id: number; name: string }[] }>('/api/admin/products?limit=200'),
-      api<Language[]>('/api/admin/languages'),
-    ]);
-    setItems(showcase);
-    setProducts(productList.data);
-    setLanguages(getActiveLanguages(langs));
+  const [drag, setDrag] = useState<number | null>(null),
+    [drop, setDrop] = useState<number | null>(null);
+  const dragRef = useRef<number | null>(null);
+  const reload = useCallback(async (signal?: AbortSignal) => {
+    setLoading(true);
+    setLoadError('');
+    try {
+      const [data, langs, productList] = await Promise.all([
+        api<ShowcaseItem[]>('/api/admin/showcase', { signal }),
+        api<Language[]>('/api/admin/languages', { signal }),
+        allProducts(signal),
+      ]);
+      if (signal?.aborted) return;
+      setItems(data);
+      setProducts(productList);
+      setLanguages(getActiveLanguages(langs));
+    } catch (error) {
+      if (!signal?.aborted) setLoadError(message(error));
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
   }, []);
-
   useEffect(() => {
-    load().finally(() => setLoading(false));
-  }, [load]);
-
-  const banners = useMemo(
-    () =>
-      items
-        .filter((i) => i.displayType === 'banner')
-        .sort((a, b) => a.sortOrder - b.sortOrder),
-    [items]
-  );
-
-  const stories = useMemo(
-    () =>
-      items
-        .filter((i) => i.displayType === 'story')
-        .sort((a, b) => a.sortOrder - b.sortOrder),
-    [items]
-  );
-
+    const abort = new AbortController();
+    void reload(abort.signal);
+    return () => abort.abort();
+  }, [reload]);
   useEffect(() => {
-    if (!bannerImageFile) {
-      setBannerImagePreview(editingBanner?.imageUrl ? imageUrl(editingBanner.imageUrl) : null);
+    if (!editor?.file) {
+      setPreview(editor?.item?.imageUrl || null);
       return;
     }
-    const url = URL.createObjectURL(bannerImageFile);
-    setBannerImagePreview(url);
+    const url = URL.createObjectURL(editor.file);
+    setPreview(url);
     return () => URL.revokeObjectURL(url);
-  }, [bannerImageFile, editingBanner?.imageUrl]);
-
-  useEffect(() => {
-    if (!storyImageFile) {
-      setStoryImagePreview(editingStory?.imageUrl ? imageUrl(editingStory.imageUrl) : null);
+  }, [editor?.file, editor?.item?.imageUrl]);
+  const visible = useMemo(
+    () =>
+      items
+        .filter((i) => i.displayType === activeTab)
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id),
+    [items, activeTab],
+  );
+  function open(item?: ShowcaseItem) {
+    if (lock.current) return;
+    setActions(null);
+    setFormError('');
+    setEditor({
+      type: item?.displayType || activeTab,
+      item: item || null,
+      form: mediaForm(item),
+      file: null,
+    });
+  }
+  function close() {
+    if (!lock.current) {
+      setEditor(null);
+      setFormError('');
+    }
+  }
+  function begin() {
+    if (lock.current) return false;
+    lock.current = true;
+    setBusy(true);
+    return true;
+  }
+  function end() {
+    lock.current = false;
+    setBusy(false);
+  }
+  function merge(item: ShowcaseItem) {
+    setItems((list) =>
+      list.some((i) => i.id === item.id)
+        ? list.map((i) => (i.id === item.id ? item : i))
+        : [...list, item],
+    );
+  }
+  function chooseFile(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith('image/') || file.size > 8 * 1024 * 1024) {
+      setFormError('8 MB veya daha küçük bir görsel seçin.');
       return;
     }
-    const url = URL.createObjectURL(storyImageFile);
-    setStoryImagePreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [storyImageFile, editingStory?.imageUrl]);
-
-  async function uploadImage(id: number, file: File) {
-    const fd = new FormData();
-    fd.append('image', file);
-    await fetch(`/api/admin/showcase/${id}/image`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      body: fd,
-    });
+    setFormError('');
+    setEditor((value) => (value ? { ...value, file } : value));
   }
-
-  function openCreateBanner() {
-    setBannerMode('create');
-    setEditingBanner(null);
-    setBannerForm(emptyBannerForm());
-    setBannerImageFile(null);
-    setBannerImagePreview(null);
-    setBannerModalOpen(true);
-  }
-
-  function openEditBanner(item: ShowcaseItem) {
-    setBannerMode('edit');
-    setEditingBanner(item);
-    setBannerForm(buildBannerForm(item));
-    setBannerImageFile(null);
-    setBannerImagePreview(item.imageUrl ? imageUrl(item.imageUrl) : null);
-    setBannerModalOpen(true);
-  }
-
-  function openCreateStory() {
-    setStoryMode('create');
-    setEditingStory(null);
-    setStoryForm(emptyStoryForm());
-    setStoryImageFile(null);
-    setStoryImagePreview(null);
-    setStoryModalOpen(true);
-  }
-
-  function openEditStory(item: ShowcaseItem) {
-    setStoryMode('edit');
-    setEditingStory(item);
-    setStoryForm(buildStoryForm(item));
-    setStoryImageFile(null);
-    setStoryImagePreview(item.imageUrl ? imageUrl(item.imageUrl) : null);
-    setStoryModalOpen(true);
-  }
-
-  async function saveBanner() {
-    setSaving(true);
+  async function save() {
+    if (!editor || lock.current) return;
+    if (!editor.file && !editor.item?.imageUrl) {
+      setFormError('Menüde göstermek için bir görsel seçin.');
+      return;
+    }
+    if (editor.type === 'story' && !editor.form.productId) {
+      setFormError('Hikâyenin açacağı ürünü seçin.');
+      return;
+    }
+    if (
+      editor.type === 'story' &&
+      (!Number.isInteger(editor.form.durationSeconds) ||
+        editor.form.durationSeconds < 2 ||
+        editor.form.durationSeconds > 30)
+    ) {
+      setFormError('Gösterim süresi 2–30 saniye arasında olmalı.');
+      return;
+    }
+    if (!begin()) return;
+    setFormError('');
+    let metadataSaved = false;
     try {
-      const translations = languages.map((l) => ({
-        languageId: l.id,
-        title1: bannerForm.translations[l.code]?.title1 || '',
-        title2: bannerForm.translations[l.code]?.title2 || '',
-      }));
+      const form = editor.form;
       const payload = {
-        name: bannerForm.name,
-        productId: bannerForm.productId ? Number(bannerForm.productId) : null,
-        isActive: bannerForm.isActive,
-        displayType: 'banner',
-        translations,
+        name:
+          form.name.trim() ||
+          products.find((p) => String(p.id) === form.productId)?.name ||
+          (editor.type === 'story' ? 'Hikâye' : 'Afiş'),
+        productId: form.productId ? Number(form.productId) : null,
+        isActive: form.isActive,
+        displayType: editor.type,
+        durationSeconds: form.durationSeconds,
+        translations:
+          editor.type === 'banner'
+            ? languages.map((l) => ({
+                languageId: l.id,
+                title1: form.translations[l.code]?.title1 || '',
+                title2: form.translations[l.code]?.title2 || '',
+              }))
+            : [],
       };
-      if (editingBanner) {
-        await api(`/api/admin/showcase/${editingBanner.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(payload),
-        });
-        if (bannerImageFile) await uploadImage(editingBanner.id, bannerImageFile);
-      } else {
-        const created = await api<ShowcaseItem>('/api/admin/showcase', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        });
-        if (bannerImageFile) await uploadImage(created.id, bannerImageFile);
+      let saved = await api<ShowcaseItem>(
+        editor.item
+          ? `/api/admin/showcase/${editor.item.id}`
+          : '/api/admin/showcase',
+        { method: editor.item ? 'PUT' : 'POST', body: JSON.stringify(payload) },
+      );
+      metadataSaved = true;
+      merge(saved);
+      // Retain the created ID before upload: retry updates the same record.
+      setEditor((value) => (value ? { ...value, item: saved } : value));
+      if (editor.file) {
+        const body = new FormData();
+        body.append('image', editor.file);
+        saved = await api<ShowcaseItem>(
+          `/api/admin/showcase/${saved.id}/image`,
+          { method: 'POST', body },
+        );
+        merge(saved);
       }
-      setBannerModalOpen(false);
-      await load();
+      setEditor(null);
+      setNotice({ error: false, text: 'Vitrin görseli kaydedildi.' });
+    } catch (error) {
+      const text = metadataSaved
+        ? `Bilgiler kaydedildi, görsel yüklenemedi. Tekrar Kaydet'e basabilirsiniz. ${message(error)}`
+        : message(error);
+      setFormError(text);
+      setNotice({ error: true, text });
     } finally {
-      setSaving(false);
+      end();
     }
   }
-
-  async function saveStory() {
-    setSaving(true);
+  async function toggle(item: ShowcaseItem) {
+    if (!begin()) return;
+    setActions(null);
     try {
-      const payload = {
-        name: storyForm.name || 'Hikaye',
-        productId: Number(storyForm.productId),
-        isActive: storyForm.isActive,
-        displayType: 'story',
-        durationSeconds: storyForm.durationSeconds,
-        translations: [],
-      };
-      if (editingStory) {
-        await api(`/api/admin/showcase/${editingStory.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(payload),
-        });
-        if (storyImageFile) await uploadImage(editingStory.id, storyImageFile);
-      } else {
-        const created = await api<ShowcaseItem>('/api/admin/showcase', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        });
-        if (storyImageFile) await uploadImage(created.id, storyImageFile);
-      }
-      setStoryModalOpen(false);
-      await load();
+      const updated = await api<ShowcaseItem>(
+        `/api/admin/showcase/${item.id}/toggle`,
+        { method: 'PATCH' },
+      );
+      merge(updated);
+      setNotice({
+        error: false,
+        text: updated.isActive
+          ? `${item.name} menüde gösteriliyor.`
+          : `${item.name} menüde gizlendi.`,
+      });
+    } catch (error) {
+      setNotice({ error: true, text: message(error) });
     } finally {
-      setSaving(false);
+      end();
     }
   }
-
-  async function handleToggle(item: ShowcaseItem) {
-    const next = !item.isActive;
-    const snapshot = items;
-    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, isActive: next } : i)));
-    try {
-      await api(`/api/admin/showcase/${item.id}/toggle`, { method: 'PATCH' });
-    } catch {
-      setItems(snapshot);
-      window.alert('Durum güncellenemedi. Lütfen tekrar deneyin.');
-    }
-  }
-
-  async function moveStory(id: number, direction: -1 | 1) {
-    const list = [...stories];
-    const idx = list.findIndex((s) => s.id === id);
-    const swapIdx = idx + direction;
-    if (idx < 0 || swapIdx < 0 || swapIdx >= list.length) return;
-
-    [list[idx], list[swapIdx]] = [list[swapIdx], list[idx]];
-    const payload = list.map((s, i) => ({ id: s.id, sortOrder: i + 1 }));
-    const snapshot = items;
-    setItems((prev) => {
-      const others = prev.filter((i) => i.displayType !== 'story');
-      const updated = list.map((s, i) => ({ ...s, sortOrder: i + 1 }));
-      return [...others, ...updated];
-    });
+  async function reorder(id: number, targetId: number) {
+    setDrag(null);
+    setDrop(null);
+    dragRef.current = null;
+    const from = visible.findIndex((i) => i.id === id),
+      to = visible.findIndex((i) => i.id === targetId);
+    if (from < 0 || to < 0 || from === to || !begin()) return;
+    setActions(null);
+    const before = items,
+      list = [...visible];
+    const [moved] = list.splice(from, 1);
+    list.splice(to, 0, moved);
+    const ordered = list.map((item, index) => ({
+      ...item,
+      sortOrder: index + 1,
+    }));
+    setItems([...items.filter((i) => i.displayType !== activeTab), ...ordered]);
     try {
       await api('/api/admin/showcase/reorder/bulk', {
         method: 'PUT',
-        body: JSON.stringify({ items: payload }),
+        body: JSON.stringify({
+          items: ordered.map(({ id, sortOrder }) => ({ id, sortOrder })),
+        }),
       });
-    } catch {
-      setItems(snapshot);
-      window.alert('Sıralama güncellenemedi. Lütfen tekrar deneyin.');
-    }
-  }
-
-  function requestDelete(item: ShowcaseItem) {
-    setDeleteTarget(item);
-  }
-
-  async function confirmDelete() {
-    if (!deleteTarget || deleting) return;
-    const id = deleteTarget.id;
-    setDeleting(true);
-    const snapshot = items;
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    setDeleteTarget(null);
-    try {
-      await api(`/api/admin/showcase/${id}`, { method: 'DELETE' });
-    } catch {
-      setItems(snapshot);
-      window.alert('Silinemedi. Lütfen tekrar deneyin.');
+      setNotice({ error: false, text: 'Görsellerin sırası güncellendi.' });
+    } catch (error) {
+      setItems(before);
+      setNotice({ error: true, text: message(error) });
     } finally {
-      setDeleting(false);
+      end();
     }
   }
-
-  if (loading) return <Spinner />;
-
+  function move(item: ShowcaseItem, direction: -1 | 1) {
+    const index = visible.findIndex((i) => i.id === item.id);
+    const target = visible[index + direction];
+    if (target) void reorder(item.id, target.id);
+  }
+  async function remove() {
+    if (!deleteTarget || !begin()) return;
+    try {
+      await api(`/api/admin/showcase/${deleteTarget.id}`, { method: 'DELETE' });
+      setItems((list) => list.filter((i) => i.id !== deleteTarget.id));
+      setDeleteTarget(null);
+      requestAnimationFrame(() =>
+        pageRef.current
+          ?.querySelector<HTMLButtonElement>('.sc-head > button')
+          ?.focus({ preventScroll: true }),
+      );
+      setNotice({ error: false, text: 'Vitrin görseli silindi.' });
+    } catch (error) {
+      setFormError(message(error));
+      setNotice({ error: true, text: message(error) });
+    } finally {
+      end();
+    }
+  }
   return (
-    <div className="space-y-5 w-full">
-      <PageHeader title="Vitrin Görselleri" />
-
+    <div className="sc-page" ref={pageRef}>
+      <AdminToast
+        notice={notice}
+        onClose={() => setNotice(null)}
+        className={editor || deleteTarget ? 'sc-modal-toast' : ''}
+      />
+      <header className="sc-head">
+        <h1>Vitrin Görselleri</h1>
+        <Button
+          onClick={() => open()}
+          disabled={busy || loading || Boolean(loadError)}
+        >
+          <Plus size={18} />
+          <span>{activeTab === 'banner' ? 'Afiş ekle' : 'Hikâye ekle'}</span>
+        </Button>
+      </header>
+      <nav className="sc-tabs" aria-label="Vitrin türü">
+        {(['banner', 'story'] as const).map((type) => (
+          <button
+            type="button"
+            key={type}
+            aria-pressed={activeTab === type}
+            disabled={busy}
+            onClick={() => {
+              setActiveTab(type);
+              setDrag(null);
+              setDrop(null);
+              dragRef.current = null;
+            }}
+            className={activeTab === type ? 'is-active' : ''}
+          >
+            {type === 'banner' ? (
+              <Monitor size={18} />
+            ) : (
+              <CirclePlay size={18} />
+            )}
+            <span>{type === 'banner' ? 'Afişler' : 'Hikâyeler'}</span>
+            <small>{items.filter((i) => i.displayType === type).length}</small>
+          </button>
+        ))}
+      </nav>
       {demoEnabled && (
-        <div
-          className="px-4 py-3 rounded-2xl text-sm font-medium"
-          style={{
-            background: 'var(--admin-accent-soft)',
-            color: 'var(--admin-accent-text)',
-            border: '1px dashed var(--admin-accent)',
-          }}
-        >
-          Sahte veri modu aktif — müşteri menüsü önizlemesinde örnek veriler gösterilir. Burada gerçek kayıtları düzenlersiniz.
-        </div>
+        <p className="sc-demo">
+          Örnek müşteri görünümü açık; burada gerçek görselleri düzenliyorsun.
+        </p>
       )}
-
-      <div
-        className="flex gap-1 p-1 rounded-xl max-w-md"
-        style={{ background: 'var(--admin-input-bg)' }}
-      >
-        <button
-          type="button"
-          onClick={() => setActiveTab('banner')}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-semibold transition-all"
-          style={{
-            background: activeTab === 'banner' ? 'var(--admin-accent)' : 'transparent',
-            color:
-              activeTab === 'banner'
-                ? 'var(--admin-btn-primary-text)'
-                : 'var(--admin-text-muted)',
-          }}
-        >
-          <Monitor className="w-4 h-4" />
-          Web Banner
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('story')}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-semibold transition-all"
-          style={{
-            background: activeTab === 'story' ? 'var(--admin-accent)' : 'transparent',
-            color:
-              activeTab === 'story' ? 'var(--admin-btn-primary-text)' : 'var(--admin-text-muted)',
-          }}
-        >
-          <Smartphone className="w-4 h-4" />
-          Mobil Hikayeler
-        </button>
-      </div>
-
-      {activeTab === 'banner' ? (
-        <>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <p className="text-sm admin-text-muted max-w-2xl">
-              Web/tablet menüsünde üstte görünen geniş banner görselleri. Önerilen boyut 1920×600 px.
-            </p>
-            <Button onClick={openCreateBanner} className="shrink-0">
-              <Plus className="w-4 h-4" />
-              Yeni Banner
-            </Button>
-          </div>
-
-          <Card className="overflow-hidden !p-0">
-            <div className="overflow-x-auto admin-scroll">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr
-                    className="text-left text-xs uppercase tracking-wide admin-text-muted"
-                    style={{ background: 'var(--admin-input-bg)' }}
-                  >
-                    <th className="py-3.5 px-4 font-semibold w-[120px]">Önizleme</th>
-                    <th className="py-3.5 px-4 font-semibold">Adı</th>
-                    <th className="py-3.5 px-4 font-semibold hidden md:table-cell">İlgili Ürün</th>
-                    <th className="py-3.5 px-4 font-semibold">Durum</th>
-                    <th className="py-3.5 px-4 font-semibold w-[100px]">İşlem</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {banners.length === 0 ? (
-                    <tr>
-                      <td colSpan={5}>
-                        <EmptyState message="Henüz web banner eklenmemiş" />
-                      </td>
-                    </tr>
-                  ) : (
-                    banners.map((item) => (
-                      <tr
-                        key={item.id}
-                        onDoubleClick={() => openEditBanner(item)}
-                        className="border-b transition hover:bg-[var(--admin-accent-soft)]/30 admin-table-row--editable cursor-pointer"
-                        style={{
-                          borderColor: 'var(--admin-card-border)',
-                          opacity: item.isActive ? 1 : 0.4,
-                        }}
-                      >
-                        <td className="py-3.5 px-4">
-                          {item.imageUrl ? (
-                            <img
-                              src={imageUrl(item.imageUrl)}
-                              alt=""
-                              className="w-24 h-14 rounded-xl object-cover"
-                            />
-                          ) : (
-                            <div className="w-24 h-14 rounded-xl overflow-hidden shrink-0">
-                              <MenuMediaPlaceholder kind="product" size="sm" label={item.name} />
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 font-semibold">{item.name}</td>
-                        <td className="py-3.5 px-4 admin-text-muted hidden md:table-cell">
-                          {item.productName || '—'}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <Badge active={item.isActive} />
-                        </td>
-                        <td className="py-3.5 px-4" onDoubleClick={(e) => e.stopPropagation()}>
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => openEditBanner(item)}
-                              className="p-2 rounded-xl hover:bg-[var(--admin-accent-soft)]"
-                              style={{ color: 'var(--admin-accent)' }}
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleToggle(item)}
-                              className={`p-2 rounded-xl ${
-                                item.isActive ? 'text-amber-600' : 'text-emerald-600'
-                              }`}
-                            >
-                              {item.isActive ? (
-                                <EyeOff className="w-4 h-4" />
-                              ) : (
-                                <Eye className="w-4 h-4" />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => requestDelete(item)}
-                              className="p-2 rounded-xl text-red-500 hover:bg-red-50"
-                              title="Sil"
-                              aria-label="Sil"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </>
+      {loading ? (
+        <Spinner />
+      ) : loadError ? (
+        <div className="sc-empty" role="alert">
+          <p>{loadError}</p>
+          <Button onClick={() => void reload()}>Tekrar dene</Button>
+        </div>
       ) : (
         <>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <p className="text-sm admin-text-muted min-w-0 flex-1">
-              Sadece mobil menüde görünür — Instagram hikayesi gibi yuvarlak görseller. Tıklanınca
-              bağlı ürüne gider.
-            </p>
-            <Button onClick={openCreateStory} className="shrink-0">
-              <Plus className="w-4 h-4" />
-              Yeni Hikaye
-            </Button>
+          <div className="sc-section-line">
+            <span>
+              {activeTab === 'banner'
+                ? 'Menünün vitrini'
+                : 'Bir dokunuşla ürüne'}
+            </span>
+            <small>
+              {visible.filter((i) => i.isActive && mediaReady(i)).length}{' '}
+              yayında
+            </small>
           </div>
-
-          <Card className="p-4 sm:p-5">
-            {stories.length === 0 ? (
-              <EmptyState message="Henüz mobil hikaye eklenmemiş" />
-            ) : (
-              <div className="admin-stories-list">
-                {stories.map((story, index) => (
-                  <div
-                    key={story.id}
-                    onDoubleClick={() => openEditStory(story)}
-                    className={`admin-stories-card admin-table-row--editable cursor-pointer ${story.isActive ? '' : 'is-passive'}`}
-                  >
-                    <div className="admin-stories-card__ring">
-                      {story.imageUrl ? (
-                        <img src={imageUrl(story.imageUrl)} alt={story.name} />
-                      ) : (
-                        <MenuMediaPlaceholder kind="product" size="sm" label={story.name} />
-                      )}
-                    </div>
-
-                    <div className="admin-stories-card__body">
-                      <p className="admin-stories-card__name">{story.name}</p>
-                      <p className="admin-stories-card__product">{story.productName || '—'}</p>
-                      <span className="admin-stories-card__duration">
-                        {story.durationSeconds ?? 5} sn
-                      </span>
-                    </div>
-
-                    <div className="admin-stories-card__actions" onDoubleClick={(e) => e.stopPropagation()}>
-                      <div className="admin-stories-card__reorder">
-                        <button
-                          type="button"
-                          className="admin-stories-card__btn"
-                          onClick={() => moveStory(story.id, -1)}
-                          disabled={index === 0}
-                          title="Yukarı taşı"
-                          aria-label="Yukarı taşı"
-                        >
-                          <ChevronUp className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          className="admin-stories-card__btn"
-                          onClick={() => moveStory(story.id, 1)}
-                          disabled={index === stories.length - 1}
-                          title="Aşağı taşı"
-                          aria-label="Aşağı taşı"
-                        >
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <div className="admin-stories-card__toolbar">
-                        <button
-                          type="button"
-                          className="admin-stories-card__btn admin-stories-card__btn--accent"
-                          onClick={() => openEditStory(story)}
-                          title="Düzenle"
-                          aria-label="Düzenle"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          className={`admin-stories-card__btn ${
-                            story.isActive
-                              ? 'admin-stories-card__btn--warn'
-                              : 'admin-stories-card__btn--ok'
-                          }`}
-                          onClick={() => handleToggle(story)}
-                          title={story.isActive ? 'Mobilde gizle' : 'Mobilde göster'}
-                          aria-label={story.isActive ? 'Mobilde gizle' : 'Mobilde göster'}
-                        >
-                          {story.isActive ? (
-                            <EyeOff className="w-4 h-4" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          className="admin-stories-card__btn admin-stories-card__btn--danger"
-                          onClick={() => requestDelete(story)}
-                          title="Sil"
-                          aria-label="Sil"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
+          {!visible.length ? (
+            <div className="sc-empty">
+              <ImagePlus size={34} />
+              <h2>
+                {activeTab === 'banner'
+                  ? 'İlk izlenim, senin fotoğrafın.'
+                  : 'Menünün küçük hikâyeleri.'}
+              </h2>
+              <Button onClick={() => open()}>
+                <Plus size={17} />
+                {activeTab === 'banner'
+                  ? 'İlk afişi ekle'
+                  : 'İlk hikâyeyi ekle'}
+              </Button>
+            </div>
+          ) : (
+            <div className={`sc-grid sc-grid--${activeTab}`}>
+              {visible.map((item, index) => (
+                <ShowcaseCard
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  busy={busy}
+                  dragging={drag === item.id}
+                  dropTarget={drop === item.id && drag !== item.id}
+                  onEdit={() => open(item)}
+                  onToggle={() => void toggle(item)}
+                  onActions={(point) => setActions({ item, point })}
+                  onDrag={(id) => {
+                    dragRef.current = id;
+                    setDrag(id);
+                    setDrop(null);
+                  }}
+                  onDrop={(id, commit) => {
+                    if (dragRef.current === null) return;
+                    if (commit) void reorder(dragRef.current, id);
+                    else setDrop(id);
+                  }}
+                  onMove={(direction) => move(item, direction)}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
-
-      <ShowcaseModal
-        open={bannerModalOpen}
-        mode={bannerMode}
-        languages={languages}
-        products={products}
-        form={bannerForm}
-        imagePreview={bannerImagePreview}
-        saving={saving}
-        onClose={() => setBannerModalOpen(false)}
-        onSave={saveBanner}
-        onFormChange={setBannerForm}
-        onImageChange={setBannerImageFile}
-      />
-
-      <StoryModal
-        open={storyModalOpen}
-        mode={storyMode}
-        products={products}
-        form={storyForm}
-        imagePreview={storyImagePreview}
-        saving={saving}
-        onClose={() => setStoryModalOpen(false)}
-        onSave={saveStory}
-        onFormChange={setStoryForm}
-        onImageChange={setStoryImageFile}
-      />
-
-      <AdminConfirmModal
-        open={Boolean(deleteTarget)}
-        title={deleteTarget?.displayType === 'story' ? 'Hikâyeyi sil' : 'Bannerı sil'}
-        description="Seçili vitrin kaydı listeden kalıcı olarak kaldırılır."
-        highlight={
-          deleteTarget?.name ||
-          deleteTarget?.productName ||
-          (deleteTarget?.displayType === 'story' ? 'Hikâye' : 'Banner')
-        }
-        confirmLabel="Evet, sil"
-        busy={deleting}
-        onCancel={() => {
-          if (!deleting) setDeleteTarget(null);
-        }}
-        onConfirm={() => void confirmDelete()}
-      />
+      {editor && (
+        <ShowcaseEditor
+          editor={editor}
+          languages={languages}
+          products={products}
+          preview={preview}
+          busy={busy}
+          error={formError}
+          onChange={(form) =>
+            setEditor((value) => (value ? { ...value, form } : value))
+          }
+          onFile={chooseFile}
+          onClose={close}
+          onSave={() => void save()}
+        />
+      )}
+      <GroupsDialog
+        open={Boolean(actions)}
+        title={actions?.item.name || 'Görsel işlemleri'}
+        onClose={() => setActions(null)}
+        className="ag-actions sc-actions"
+        anchor={actions?.point}
+      >
+        {actions && (
+          <div className="ag-action-list">
+            <button type="button" onClick={() => open(actions.item)}>
+              <Pencil size={18} />
+              Düzenle
+            </button>
+            <button type="button" onClick={() => void toggle(actions.item)}>
+              {actions.item.isActive ? <EyeOff size={18} /> : <Eye size={18} />}
+              {actions.item.isActive ? 'Menüde gizle' : 'Menüde göster'}
+            </button>
+            <button
+              type="button"
+              disabled={visible[0]?.id === actions.item.id}
+              onClick={() => move(actions.item, -1)}
+            >
+              <ArrowUp size={18} />
+              Öne taşı
+            </button>
+            <button
+              type="button"
+              disabled={visible.at(-1)?.id === actions.item.id}
+              onClick={() => move(actions.item, 1)}
+            >
+              <ArrowDown size={18} />
+              Geri taşı
+            </button>
+            <button
+              type="button"
+              className="sc-danger"
+              onClick={() => {
+                setDeleteTarget(actions.item);
+                setFormError('');
+                setActions(null);
+              }}
+            >
+              <Trash2 size={18} />
+              Sil
+            </button>
+          </div>
+        )}
+      </GroupsDialog>
+      {deleteTarget && (
+        <AdminOverlay
+          label="Vitrin görselini sil"
+          busy={busy}
+          onClose={() => {
+            if (!lock.current) setDeleteTarget(null);
+          }}
+          className="sc-overlay"
+        >
+          <section className="relative sc-editor sc-delete">
+            <header className="sc-editor__head">
+              <h2>Bu görsel silinsin mi?</h2>
+              <button
+                type="button"
+                className="sc-icon"
+                aria-label="Pencereyi kapat"
+                disabled={busy}
+                onClick={() => setDeleteTarget(null)}
+              >
+                <X size={20} />
+              </button>
+            </header>
+            <div className="sc-editor__scroll">
+              <p>{deleteTarget.name}</p>
+              <small>Menüden kaldırılır. Bağlı ürün silinmez.</small>
+              {formError && (
+                <p className="sc-error" role="alert">
+                  {formError}
+                </p>
+              )}
+            </div>
+            <footer className="sc-editor__footer">
+              <Button
+                variant="danger"
+                disabled={busy}
+                onClick={() => void remove()}
+              >
+                {busy ? 'Siliniyor…' : 'Görseli sil'}
+              </Button>
+            </footer>
+          </section>
+        </AdminOverlay>
+      )}
     </div>
   );
 }
