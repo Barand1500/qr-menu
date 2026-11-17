@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X, Plus, Pencil, Trash2 } from 'lucide-react';
 import { imageUrl } from '@/lib/api';
 import { Button, Input, Select } from '@/components/ui';
@@ -11,6 +11,7 @@ import {
   catalogToOptions,
   dietIdsFromProduct,
   flagsFromDietSelection,
+  defaultPrefCatalog,
   type PrefCatalog,
 } from '@/lib/prefCatalog';
 import { ManageableTagPillGroup } from '@/components/CatalogTagManager';
@@ -18,9 +19,16 @@ import IngredientPoolPicker from '@/components/admin/IngredientPoolPicker';
 import { syncIngredientsFromPoolSelection } from '@/lib/ingredientPool';
 import '@/ingredient-pool.css';
 import AdminOverlay from '@/components/admin/AdminOverlay';
-import ProductNameField from '@/components/admin/products/ProductNameField';
+import ProductNameField, {
+  type Suggestion,
+} from '@/components/admin/products/ProductNameField';
 import ProductGallery from '@/components/admin/products/ProductGallery';
-import type { Product } from '@/components/admin/products/types';
+import { findDishTemplate, normalizeDishName } from '@/lib/dishCatalog';
+import {
+  fillDishDraft,
+  undoDraftFill,
+  type DraftFill,
+} from '@/components/admin/products/dishDraft';
 import '@/components/admin/products/product-editor.css';
 
 export interface ProductTranslationFields {
@@ -280,9 +288,7 @@ export default function ProductModal({
     'manual',
   );
   const [poolPickerOpen, setPoolPickerOpen] = useState(false);
-  const [suggestedProduct, setSuggestedProduct] = useState<Product | null>(
-    null,
-  );
+  const autoFill = useRef<DraftFill | null>(null);
   const [assistText, setAssistText] = useState('');
 
   useEffect(() => {
@@ -290,7 +296,7 @@ export default function ProductModal({
     setActiveTab(initialTab);
     setIngredientsMode('manual');
     setPoolPickerOpen(false);
-    setSuggestedProduct(null);
+    autoFill.current = null;
     setAssistText('');
     const tr = languages.find((l) => l.code === 'tr');
     setActiveLang(tr?.code || languages[0]?.code || 'tr');
@@ -338,6 +344,56 @@ export default function ProductModal({
     label:
       g.isSubGroup && g.parentName ? `${g.parentName} › ${g.name}` : g.name,
   }));
+  const missingAllergens = autoFill.current
+    ? form.allergenTags.filter(
+        (id) => !prefCatalog.allergens.some((tag) => tag.id === id),
+      )
+    : [];
+  const missingDiets = autoFill.current
+    ? dietIdsFromProduct(form, form.dietTags).filter(
+        (id) => !prefCatalog.diets.some((tag) => tag.id === id),
+      )
+    : [];
+  const missingTags = [...missingAllergens, ...missingDiets];
+  const builtins = defaultPrefCatalog();
+  function changeName(name: string, selected?: Suggestion) {
+    if (
+      !selected &&
+      autoFill.current &&
+      normalizeDishName(autoFill.current.name) === normalizeDishName(name)
+    ) {
+      onFormChange({
+        ...form,
+        translations: { ...form.translations, tr: { ...trTranslation, name } },
+      });
+      return;
+    }
+    const restored = undoDraftFill(form, autoFill.current);
+    const base = {
+      ...restored,
+      translations: {
+        ...restored.translations,
+        tr: { ...restored.translations.tr, name },
+      },
+    };
+    const template =
+      selected?.template ||
+      (mode === 'create' ? findDishTemplate(name) : undefined);
+    if (template || selected?.product) {
+      const after = fillDishDraft(base, name, template, selected?.product);
+      autoFill.current = { before: base, after, name };
+      setAssistText(
+        selected?.product
+          ? 'Menünüzdeki ürün bilgileri alındı; dolu alanlarınız korundu.'
+          : 'Başlangıç kataloğundan örnek tarif dolduruldu. İçerik, alerjen ve tercihleri kendi tarifinizle kontrol edin.',
+      );
+      onFormChange(after);
+    } else {
+      autoFill.current = null;
+      setAssistText('');
+      onFormChange(base);
+    }
+  }
 
   return (
     <AdminOverlay
@@ -375,7 +431,7 @@ export default function ProductModal({
                     {mode === 'edit' ? 'MENÜNÜZDEN' : 'MENÜYE EKLE'}
                   </p>
                   <h2 className="text-xl font-bold text-[var(--admin-text)]">
-                    {mode === 'edit' ? 'Ürünü düzenle' : 'Yeni bir lezzet.'}
+                    {mode === 'edit' ? 'Ürünü düzenle' : 'Yeni ürün'}
                   </h2>
                 </div>
               </div>
@@ -410,6 +466,39 @@ export default function ProductModal({
                 {error}
               </p>
             )}
+            {missingTags.length > 0 && (
+              <div role="alert" className="ag-form-error">
+                Önerilen bazı etiketler listenizde yok:{' '}
+                {missingTags
+                  .map(
+                    (id) =>
+                      [...builtins.allergens, ...builtins.diets].find(
+                        (tag) => tag.id === id,
+                      )?.label.tr || id,
+                  )
+                  .join(', ')}
+                . Alerjenler bölümünde kendi etiketinizi seçebilirsiniz.
+                <button
+                  type="button"
+                  className="pe-copy-tags"
+                  onClick={() =>
+                    onFormChange({
+                      ...form,
+                      allergenTags: form.allergenTags.filter(
+                        (id) => !missingAllergens.includes(id),
+                      ),
+                      ...flagsFromDietSelection(
+                        dietIdsFromProduct(form, form.dietTags).filter(
+                          (id) => !missingDiets.includes(id),
+                        ),
+                      ),
+                    })
+                  }
+                >
+                  Listemde olmayan önerileri kaldır
+                </button>
+              </div>
+            )}
             <fieldset disabled={saving} className="min-w-0">
               {activeTab === 'general' && (
                 <div className="pe-form">
@@ -417,48 +506,10 @@ export default function ProductModal({
                     value={trTranslation.name}
                     productId={productId}
                     disabled={saving}
-                    onChange={(name) => {
-                      setSuggestedProduct(null);
-                      setAssistText('');
-                      onFormChange({
-                        ...form,
-                        translations: {
-                          ...form.translations,
-                          tr: { ...trTranslation, name },
-                        },
-                      });
-                    }}
-                    onSelect={({ name, product }) => {
-                      const filled: string[] = [];
-                      if (
-                        !form.prepTimeMinutes &&
-                        product?.prepTimeMinutes != null
-                      )
-                        filled.push('süre');
-                      if (!form.calories && product?.calories != null)
-                        filled.push('kalori');
-                      setSuggestedProduct(product || null);
-                      setAssistText(
-                        filled.length
-                          ? 'Menünüzdeki kayıttan ' +
-                              filled.join(' ve ') +
-                              ' alındı. Tarif ve porsiyonu kontrol edin.'
-                          : '',
-                      );
-                      onFormChange({
-                        ...form,
-                        prepTimeMinutes:
-                          form.prepTimeMinutes ||
-                          product?.prepTimeMinutes?.toString() ||
-                          '',
-                        calories:
-                          form.calories || product?.calories?.toString() || '',
-                        translations: {
-                          ...form.translations,
-                          tr: { ...trTranslation, name },
-                        },
-                      });
-                    }}
+                    onChange={(name) => changeName(name)}
+                    onSelect={(suggestion) =>
+                      changeName(suggestion.name, suggestion)
+                    }
                   />
                   <div className="pe-primary-grid">
                     <Select
@@ -573,6 +624,9 @@ export default function ProductModal({
                   {assistText && (
                     <p className="pe-assist" role="status">
                       {assistText}
+                      {trTranslation.ingredients && (
+                        <small>İçerik: {trTranslation.ingredients}</small>
+                      )}
                     </p>
                   )}
                   <details className="pe-details">
@@ -606,41 +660,6 @@ export default function ProductModal({
                       <Plus size={17} />
                     </summary>
                     <div className="pe-details__body">
-                      {suggestedProduct &&
-                      (suggestedProduct.allergenTags?.length ||
-                        dietIdsFromProduct(
-                          suggestedProduct,
-                          suggestedProduct.dietTags,
-                        ).length) ? (
-                        <button
-                          type="button"
-                          className="pe-copy-tags"
-                          onClick={() => {
-                            const dietTags = [
-                              ...new Set([
-                                ...dietIdsFromProduct(form, form.dietTags),
-                                ...dietIdsFromProduct(
-                                  suggestedProduct,
-                                  suggestedProduct.dietTags,
-                                ),
-                              ]),
-                            ];
-                            onFormChange({
-                              ...form,
-                              ...flagsFromDietSelection(dietTags),
-                              allergenTags: [
-                                ...new Set([
-                                  ...form.allergenTags,
-                                  ...(suggestedProduct.allergenTags || []),
-                                ]),
-                              ],
-                            });
-                            setSuggestedProduct(null);
-                          }}
-                        >
-                          Kayıtlı ürünün alerjen ve tercihlerini de kullan
-                        </button>
-                      ) : null}
                       <ManageableTagPillGroup
                         title="Alerjenler"
                         hint="Tarifinizde bulunanları seçin."
@@ -871,7 +890,11 @@ export default function ProductModal({
             className="flex gap-3 px-6 py-4 border-t shrink-0"
             style={{ borderColor: 'var(--admin-card-border)' }}
           >
-            <Button className="flex-1" onClick={onSave} disabled={saving}>
+            <Button
+              className="flex-1"
+              onClick={onSave}
+              disabled={saving || missingTags.length > 0}
+            >
               {saving ? 'Kaydediliyor...' : 'Kaydet'}
             </Button>
           </div>

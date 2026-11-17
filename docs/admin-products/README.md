@@ -1,5 +1,7 @@
 # Ürün yönetimi — 16 Kasım 2026
 
+Güncel ürün formu: [ortalanmış modal ve 61 tariflik başlangıç kataloğu](catalog-modal/README.md) (17 Kasım).
+
 17 Kasım güncellemesi: [etkileşimli görsel önizlemesi, fotoğraf değiştirme ve sıralı fiyat animasyonu](interactions/README.md).
 
 Ürün oluşturma/düzenleme formunun sonraki sadeleştirmesi, öneriler ve sürüklenebilir galeri için [güncel form notlarına](editor/README.md) bakın. Aşağıdaki ekran görüntüleri ilk liste çalışmasını belgeler; güncel form görüntüleri bu bağlantıdadır. Form güncellemesi yalnızca frontend gerektirir; ilk liste çalışmasının backend arama düzeltmesi ayrıca korunur.

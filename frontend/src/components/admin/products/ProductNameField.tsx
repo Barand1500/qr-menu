@@ -3,79 +3,25 @@ import { ArrowUpLeft, Search } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Input } from '@/components/ui';
 import type { Product } from './types';
+import {
+  DISH_CATALOG,
+  type DishTemplate,
+  normalizeDishName,
+} from '@/lib/dishCatalog';
 
 // Names only: a dish name cannot establish a restaurant's recipe or portion size.
-const DISH_NAMES = [
-  'Tavuk',
-  'Tavuk pilav',
-  'Tavuk şiş',
-  'Tavuk dürüm',
-  'Tavuk burger',
-  'Tavuk sote',
-  'Tavuk salata',
-  'Tavuk çorbası',
-  'Izgara tavuk',
-  'Et döner',
-  'Et dürüm',
-  'Et sote',
-  'Izgara köfte',
-  'İskender',
-  'Adana kebap',
-  'Urfa kebap',
-  'Kuzu şiş',
-  'Hamburger',
-  'Cheeseburger',
-  'Margherita pizza',
-  'Karışık pizza',
-  'Mantarlı pizza',
-  'Lahmacun',
-  'Kaşarlı pide',
-  'Kıymalı pide',
-  'Menemen',
-  'Serpme kahvaltı',
-  'Sahanda yumurta',
-  'Sucuklu yumurta',
-  'Peynirli omlet',
-  'Kaşarlı tost',
-  'Karışık tost',
-  'Patates kızartması',
-  'Mercimek çorbası',
-  'Ezogelin çorbası',
-  'Domates çorbası',
-  'Çoban salata',
-  'Sezar salata',
-  'Mevsim salata',
-  'Akdeniz salata',
-  'Pirinç pilavı',
-  'Bulgur pilavı',
-  'Nohutlu pilav',
-  'Fettuccine Alfredo',
-  'Spagetti bolonez',
-  'Penne arrabbiata',
-  'Mantı',
-  'Künefe',
-  'Sütlaç',
-  'Tiramisu',
-  'Cheesecake',
-  'Çikolatalı sufle',
-  'Türk kahvesi',
-  'Filtre kahve',
-  'Latte',
-  'Cappuccino',
-  'Espresso',
-  'Çay',
-  'Limonata',
-  'Ayran',
-  'Portakal suyu',
-  'Su',
-];
+const DISH_NAMES = ['Tavuk'];
 const fold = (text: string) =>
   text
     .toLocaleLowerCase('tr')
     .replace(/ı/g, 'i')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
-type Suggestion = { name: string; product?: Product };
+export type Suggestion = {
+  name: string;
+  product?: Product;
+  template?: DishTemplate;
+};
 
 export default function ProductNameField({
   value,
@@ -123,6 +69,13 @@ export default function ProductNameField({
   const choices: Suggestion[] = [];
   for (const suggestion of [
     ...found.map((product) => ({ name: product.name, product })),
+    ...DISH_CATALOG.filter(
+      (dish) =>
+        q &&
+        [dish.name, ...dish.aliases].some((name) =>
+          normalizeDishName(name).includes(q),
+        ),
+    ).map((template) => ({ name: template.name, template })),
     ...DISH_NAMES.filter((name) => q && fold(name).includes(q)).map((name) => ({
       name,
     })),
@@ -217,8 +170,10 @@ export default function ProductNameField({
                 {item.name}
                 <small>
                   {item.product
-                    ? 'Menünüzden · kayıtlı süre ve kalori'
-                    : 'Yemek adı önerisi'}
+                    ? 'Menünüzden · kayıtlı ürün bilgileri'
+                    : item.template
+                      ? 'Başlangıç kataloğu · örnek tarif'
+                      : 'Yemek adı önerisi'}
                 </small>
               </span>
               <ArrowUpLeft size={15} />
