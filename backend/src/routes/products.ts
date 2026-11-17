@@ -747,6 +747,35 @@ router.post('/:id/images', upload.array('images', 12), async (req, res) => {
   res.json(await mapProduct(product, restaurantId!, languages));
 });
 
+// Replace one slot in one update; appending then deleting would change the cover/order on failures.
+router.post('/:id/images/replace', upload.single('image'), async (req, res, next) => {
+  let committed = false;
+  const discardUpload = () => {
+    if (req.file) fs.unlink(req.file.path, () => {});
+  };
+  try {
+    const restaurantId = await getRestaurantId(req);
+    const id = Number(req.params.id);
+    const existing = await prisma.product.findFirst({ where: { id, restaurantId: restaurantId! } });
+    if (!existing) { discardUpload(); return res.status(404).json({ message: 'Ürün bulunamadı' }); }
+    const current = parseProductImages(existing);
+    const url = typeof req.body.url === 'string' ? req.body.url : '';
+    if (!req.file || !req.file.mimetype.startsWith('image/') || !current.includes(url)) {
+      discardUpload();
+      return res.status(400).json({ message: 'Değiştirilecek görsel ve geçerli bir fotoğraf seçin.' });
+    }
+    const replacement = `/uploads/${req.file.filename}`;
+    const languages = await getLanguages();
+    const product = await prisma.product.update({ where: { id }, data: imagesPayload(current.map(image => image === url ? replacement : image)), include: { group: true, currency: true } });
+    committed = true;
+    return res.json(await mapProduct(product, restaurantId!, languages));
+  } catch (error) {
+    // A database failure leaves the original gallery intact.
+    if (!committed) discardUpload();
+    next(error);
+  }
+});
+
 router.delete('/:id/images', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   const id = Number(req.params.id);

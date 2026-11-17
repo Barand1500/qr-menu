@@ -38,6 +38,7 @@ import AdminToast, {
 } from '@/components/admin/AdminToast';
 import GroupsDialog from '@/components/admin/groups/GroupsDialog';
 import ProductRow from '@/components/admin/products/ProductRow';
+import type { PriceTransition } from '@/components/admin/products/AnimatedPrice';
 import {
   emptyForm,
   buildFormFromProduct,
@@ -139,6 +140,12 @@ export default function ProductsPage() {
       appliedAt: null,
     });
   const [categorySearch, setCategorySearch] = useState('');
+  const [priceTransitions, setPriceTransitions] = useState<
+    Record<number, PriceTransition>
+  >({});
+  useEffect(() => {
+    setPriceTransitions({});
+  }, [query]);
   useEffect(
     () => () =>
       pendingRef.current.forEach((file) => URL.revokeObjectURL(file.url)),
@@ -387,6 +394,11 @@ export default function ProductsPage() {
     raw: string,
   ) {
     if (!begin()) return false;
+    setPriceTransitions((previous) => {
+      const next = { ...previous };
+      delete next[product.id];
+      return next;
+    });
     try {
       let payload: object;
       if (field === 'price') {
@@ -471,6 +483,55 @@ export default function ProductsPage() {
       });
     } catch (e) {
       setNotice({ error: true, text: message(e) });
+    } finally {
+      setImageBusyId(null);
+      end();
+    }
+  }
+  async function manageImage(
+    product: Product,
+    action: 'order' | 'remove' | 'replace',
+    value: string[] | string,
+    file?: File,
+  ) {
+    if (!begin()) return false;
+    setImageBusyId(product.id);
+    try {
+      let body: BodyInit, method: string, endpoint: string;
+      if (action === 'replace') {
+        if (!file) return false;
+        validateFiles([file]);
+        const data = new FormData();
+        data.append('image', file);
+        data.append('url', String(value));
+        body = data;
+        method = 'POST';
+        endpoint = '/images/replace';
+      } else {
+        body = JSON.stringify(
+          action === 'order' ? { images: value } : { url: value },
+        );
+        method = action === 'order' ? 'PUT' : 'DELETE';
+        endpoint = action === 'order' ? '/images/reorder' : '/images';
+      }
+      const updated = await api<Product>(
+        `/api/admin/products/${product.id}${endpoint}`,
+        { method, body },
+      );
+      merge(updated);
+      setNotice({
+        error: false,
+        text:
+          action === 'replace'
+            ? 'Görsel değiştirildi.'
+            : action === 'remove'
+              ? 'Görsel kaldırıldı.'
+              : 'Görsel sırası kaydedildi.',
+      });
+      return true;
+    } catch (error) {
+      setNotice({ error: true, text: message(error) });
+      return false;
     } finally {
       setImageBusyId(null);
       end();
@@ -650,6 +711,30 @@ export default function ProductsPage() {
     setBulkOpen(false);
     if (!begin()) return;
     try {
+      const transitions: Record<number, PriceTransition> = {};
+      const token = Date.now();
+      let index = 0;
+      products.forEach((product) => {
+        const update = result.updates.find(
+          (update) => update.id === product.id,
+        );
+        if (update && update.price !== update.previousPrice)
+          transitions[product.id] = {
+            from: update.previousPrice,
+            to: update.price,
+            delay: index++ * 220,
+            token,
+          };
+      });
+      setPriceTransitions(transitions);
+      setProducts((previous) =>
+        previous.map((product) => {
+          const update = result.updates.find(
+            (update) => update.id === product.id,
+          );
+          return update ? { ...product, ...update } : product;
+        }),
+      );
       await load();
       await refreshSnapshot();
       setNotice({
@@ -664,6 +749,7 @@ export default function ProductsPage() {
     if (!snapshot.hasSnapshot || !begin()) return;
     setRestoreError('');
     try {
+      setPriceTransitions({});
       await api('/api/admin/products/bulk-price/restore', { method: 'POST' });
       setRestoreOpen(false);
       await load();
@@ -859,7 +945,7 @@ export default function ProductsPage() {
           </div>
           <div className={`ap-section-head${query.search ? ' is-search' : ''}`}>
             <div>
-              <p>{query.search ? 'ARAMA SONUÇLARI' : 'SOFRANIN İÇİNDEKİLER'}</p>
+              {query.search && <p>ARAMA SONUÇLARI</p>}
               <h2>
                 {query.search
                   ? `“${query.search}”`
@@ -908,6 +994,12 @@ export default function ProductsPage() {
                   }}
                   onActions={openActions}
                   onUpload={(files) => quickUpload(product, files)}
+                  onImageOrder={(urls) => manageImage(product, 'order', urls)}
+                  onImageRemove={(url) => manageImage(product, 'remove', url)}
+                  onImageReplace={(url, file) =>
+                    manageImage(product, 'replace', url, file)
+                  }
+                  priceTransition={priceTransitions[product.id]}
                 />
               ))
             ) : refreshing ? (

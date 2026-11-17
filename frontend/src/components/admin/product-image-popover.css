@@ -1,0 +1,97 @@
+.ap-image-popover {
+  position: fixed;
+  z-index: 70;
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--admin-card-border);
+  border-radius: 18px;
+  color: var(--admin-text);
+  background: var(--admin-card);
+  box-shadow: 0 16px 48px #10203026;
+  animation: ag-reveal 160ms ease both;
+}
+.ap-image-popover header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+.ap-image-popover header p {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 600;
+}
+.ap-image-popover header small {
+  color: var(--admin-text-muted);
+  font-size: 10px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.ap-image-popover header button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 9px;
+}
+.ap-image-popover header button:hover {
+  background: var(--admin-input-bg);
+}
+.ap-image-popover .pe-help {
+  font-size: 10px;
+  margin: 0 0 10px;
+}
+.ap-image-popover .pe-gallery {
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 9px;
+}
+.ap-image-popover .pe-photo__delete {
+  width: 30px;
+  height: 30px;
+  top: 5px;
+  right: 5px;
+  border-radius: 9px;
+}
+.ap-image-popover .pe-photo__drag {
+  cursor: grab;
+}
+.ap-image-popover button:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 2px;
+}
+.ap-price-change {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  border-radius: 7px;
+}
+.ap-price-change.is-revealing {
+  animation: ap-price-reveal 550ms ease both;
+}
+@keyframes ap-price-reveal {
+  0% {
+    translate: 0 4px;
+    background: var(--admin-accent-soft);
+    box-shadow: 0 0 0 7px var(--admin-accent-soft);
+    color: var(--admin-accent);
+  }
+  70% {
+    background: var(--admin-accent-soft);
+    box-shadow: 0 0 0 7px var(--admin-accent-soft);
+    color: var(--admin-accent);
+  }
+  100% {
+    translate: 0 0;
+    background: transparent;
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ap-image-popover,
+  .ap-price-change {
+    animation: none !important;
+  }
+}

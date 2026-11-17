@@ -27,12 +27,14 @@ function Photo({
   disabled,
   onRemove,
   hint,
+  onReplace,
 }: {
   photo: GalleryPhoto;
   index: number;
   disabled?: boolean;
   onRemove: () => void;
   hint: string;
+  onReplace?: () => void;
 }) {
   const {
     setNodeRef,
@@ -56,8 +58,13 @@ function Photo({
         {...attributes}
         {...listeners}
         aria-describedby={hint}
-        aria-label={`Görsel ${index + 1} sırasını değiştir`}
+        aria-label={
+          onReplace
+            ? `Görsel ${index + 1}: değiştir veya sırala`
+            : `Görsel ${index + 1} sırasını değiştir`
+        }
         disabled={disabled}
+        onClick={onReplace}
       >
         <img
           src={photo.src}
@@ -87,11 +94,15 @@ export default function ProductGallery({
   disabled,
   onOrder,
   onRemove,
+  onReplace,
+  immediate = false,
 }: {
   photos: GalleryPhoto[];
   disabled?: boolean;
   onOrder: (ids: string[]) => void;
   onRemove: (photo: GalleryPhoto) => void;
+  onReplace?: (photo: GalleryPhoto) => void;
+  immediate?: boolean;
 }) {
   const hint = useId(),
     [active, setActive] = useState<string | null>(null);
@@ -108,8 +119,19 @@ export default function ProductGallery({
   return (
     <>
       <p className="pe-help" id={hint}>
-        Basılı tutup sürükleyin. İlk görsel kapaktır. Klavyede boşluk ile tutun,
-        oklarla taşıyın.
+        {immediate ? (
+          <>
+            Sürükleyerek sırala · Tıklayarak değiştir
+            <span className="sr-only">
+              . İlk görsel kapaktır. Klavyede boşluk ile tutun, oklarla taşıyın.
+            </span>
+          </>
+        ) : (
+          <>
+            Basılı tutup sürükleyin. İlk görsel kapaktır. Klavyede boşluk ile
+            tutun, oklarla taşıyın.
+          </>
+        )}
       </p>
       <DndContext
         sensors={sensors}
@@ -136,7 +158,9 @@ export default function ProductGallery({
                 ? `Yeni sıra ${photos.findIndex((photo) => photo.id === over.id) + 1}.`
                 : undefined,
             onDragEnd: () =>
-              'Görsel bırakıldı. Sıralamayı yayınlamak için Kaydet’e basın.',
+              immediate
+                ? 'Görsel bırakıldı. Sıralama kaydediliyor.'
+                : 'Görsel bırakıldı. Sıralamayı yayınlamak için Kaydet’e basın.',
             onDragCancel: () => 'Taşıma iptal edildi.',
           },
         }}
@@ -154,6 +178,7 @@ export default function ProductGallery({
                 disabled={disabled}
                 hint={hint}
                 onRemove={() => onRemove(photo)}
+                onReplace={onReplace ? () => onReplace(photo) : undefined}
               />
             ))}
           </div>

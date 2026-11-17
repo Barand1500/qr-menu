@@ -1,8 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LoaderCircle } from 'lucide-react';
+import { LoaderCircle, X } from 'lucide-react';
 import { imageUrl } from '@/lib/api';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
+import ProductGallery from './products/ProductGallery';
+import './product-image-popover.css';
 
 interface ProductImageCellProps {
   name: string;
@@ -11,6 +13,9 @@ interface ProductImageCellProps {
   busy: boolean;
   disabled: boolean;
   onUpload: (files: File[]) => Promise<void>;
+  onOrder: (urls: string[]) => Promise<boolean>;
+  onRemove: (url: string) => Promise<boolean>;
+  onReplace: (url: string, file: File) => Promise<boolean>;
 }
 
 export default function ProductImageCell({
@@ -20,9 +25,17 @@ export default function ProductImageCell({
   busy,
   disabled,
   onUpload,
+  onOrder,
+  onRemove,
+  onReplace,
 }: ProductImageCellProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const replaceInput = useRef<HTMLInputElement>(null);
+  const replacement = useRef<string | null>(null);
+  const pinned = useRef(false),
+    suppressFocus = useRef(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 0, top: 0, width: 0 });
@@ -36,8 +49,36 @@ export default function ProductImageCell({
   }
 
   function hideGallery() {
-    closeTimer.current = setTimeout(() => setOpen(false), 120);
+    closeTimer.current = setTimeout(() => {
+      if (!pinned.current && !busy) setOpen(false);
+    }, 200);
   }
+  function closeGallery(returnFocus = false) {
+    if (busy) return;
+    pinned.current = false;
+    setOpen(false);
+    if (returnFocus) {
+      suppressFocus.current = true;
+      triggerRef.current?.focus();
+    }
+  }
+  useEffect(() => {
+    if (!photos.length) setOpen(false);
+  }, [photos.length]);
+  useEffect(() => {
+    if (!open) return;
+    const escape = (event: KeyboardEvent) => {
+      if (
+        event.key === 'Escape' &&
+        !popupRef.current?.contains(event.target as Node)
+      ) {
+        event.preventDefault();
+        closeGallery(true);
+      }
+    };
+    document.addEventListener('keydown', escape);
+    return () => document.removeEventListener('keydown', escape);
+  }, [open, busy]);
 
   useEffect(
     () => () => {
@@ -56,29 +97,40 @@ export default function ProductImageCell({
         return;
       }
       const width = Math.min(
-        photos.length * 116 + 12,
-        560,
+        Math.min(photos.length, 4) * 116 + 24,
+        500,
         window.innerWidth - 24,
       );
-      setPosition({
+      const height = popupRef.current?.getBoundingClientRect().height || 280;
+      const next = {
         width,
         left: Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)),
         top: Math.max(
           12,
-          rect.bottom + 192 <= window.innerHeight
-            ? rect.bottom + 8
-            : rect.top - 184,
+          Math.min(rect.top - height - 8, window.innerHeight - height - 12),
         ),
-      });
+      };
+      if (rect.bottom + height + 8 <= window.innerHeight)
+        next.top = rect.bottom + 8;
+      setPosition((previous) =>
+        previous.width === next.width &&
+        previous.left === next.left &&
+        previous.top === next.top
+          ? previous
+          : next,
+      );
     }
     placeGallery();
     window.addEventListener('resize', placeGallery);
     window.addEventListener('scroll', placeGallery, true);
+    const observer = new ResizeObserver(placeGallery);
+    if (popupRef.current) observer.observe(popupRef.current);
     return () => {
       window.removeEventListener('resize', placeGallery);
       window.removeEventListener('scroll', placeGallery, true);
+      observer.disconnect();
     };
-  }, [open, photos.length]);
+  }, [open, photos.length, busy]);
 
   return (
     <div onDoubleClick={(e) => e.stopPropagation()}>
@@ -92,8 +144,12 @@ export default function ProductImageCell({
         className="relative block rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--admin-accent)]"
         onMouseEnter={showGallery}
         onMouseLeave={hideGallery}
-        onFocus={showGallery}
-        onBlur={() => setOpen(false)}
+        onFocus={() => {
+          if (suppressFocus.current) suppressFocus.current = false;
+          else showGallery();
+        }}
+        aria-haspopup={photos.length ? 'dialog' : undefined}
+        aria-expanded={open}
         onClick={() => {
           if (window.matchMedia('(pointer: coarse)').matches) {
             setOpen(false);
@@ -105,7 +161,18 @@ export default function ProductImageCell({
           inputRef.current?.click();
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Escape') setOpen(false);
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            closeGallery();
+          }
+          if (e.key === 'ArrowDown' && photos.length) {
+            e.preventDefault();
+            pinned.current = true;
+            setOpen(true);
+            requestAnimationFrame(() =>
+              popupRef.current?.querySelector('button')?.focus(),
+            );
+          }
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             setOpen(false);
@@ -149,38 +216,79 @@ export default function ProductImageCell({
           if (files.length) void onUpload(files);
         }}
       />
+      <input
+        ref={replaceInput}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        aria-label={`${name} görselini değiştir`}
+        onChange={(event) => {
+          const file = event.target.files?.[0],
+            url = replacement.current;
+          event.target.value = '';
+          if (file && url) void onReplace(url, file);
+        }}
+      />
       {open &&
-        photos.length > 1 &&
+        photos.length > 0 &&
         createPortal(
           <div
-            role="tooltip"
+            ref={popupRef}
+            role="dialog"
+            aria-modal="false"
             aria-label={`${name} görselleri`}
-            className="fixed z-[70] rounded-2xl border border-[var(--admin-card-border)] bg-[var(--admin-card)] p-3 shadow-2xl"
+            className="ap-image-popover"
             style={position}
             onMouseEnter={showGallery}
             onMouseLeave={hideGallery}
             onDoubleClick={(e) => e.stopPropagation()}
+            onPointerDownCapture={() => {
+              pinned.current = true;
+            }}
+            onFocusCapture={() => {
+              pinned.current = true;
+            }}
+            onKeyDown={(event) => {
+              if (
+                event.key === 'Escape' &&
+                !(event.target as HTMLElement).closest(
+                  '[data-admin-escape-owner]',
+                )
+              ) {
+                event.preventDefault();
+                event.stopPropagation();
+                closeGallery(true);
+              }
+            }}
           >
-            <p className="mb-2 truncate text-xs font-semibold text-[var(--admin-text)]">
-              {name} · {photos.length} görsel
-            </p>
-            <div className="flex gap-3 overflow-x-auto pb-1 admin-scroll">
-              {photos.map((url, index) => (
-                <figure
-                  key={`${url}-${index}`}
-                  className="w-[104px] shrink-0 overflow-hidden rounded-xl border border-[var(--admin-card-border)] bg-[var(--admin-input-bg)]"
-                >
-                  <img
-                    src={imageUrl(url)}
-                    alt={`${name} — ${index + 1}. görsel`}
-                    className="h-[104px] w-full object-cover"
-                  />
-                  <figcaption className="py-1.5 text-center text-[10px] font-medium text-[var(--admin-text-muted)]">
-                    {index === 0 ? 'Kapak' : `Görsel ${index + 1}`}
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
+            <header>
+              <p>
+                {name} <small>· {photos.length} görsel</small>
+              </p>
+              <button
+                type="button"
+                aria-label="Görsel önizlemesini kapat"
+                disabled={busy}
+                onClick={() => closeGallery(true)}
+              >
+                <X size={16} />
+              </button>
+            </header>
+            <ProductGallery
+              immediate
+              disabled={disabled}
+              photos={photos.map((url) => ({ id: url, src: imageUrl(url) }))}
+              onOrder={(urls) => {
+                void onOrder(urls);
+              }}
+              onRemove={(photo) => {
+                void onRemove(photo.id);
+              }}
+              onReplace={(photo) => {
+                replacement.current = photo.id;
+                replaceInput.current?.click();
+              }}
+            />
           </div>,
           document.body,
         )}

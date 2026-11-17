@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import fs from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 const root = path.resolve(
@@ -43,6 +44,7 @@ const select = (where = {}) =>
         (where.isActive == null || p.isActive === where.isActive),
     )
     .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
+let failUpdate = false;
 globalThis.__productsPrisma = {
   user: {
     findUnique: async ({ where }) => ({
@@ -66,11 +68,13 @@ globalThis.__productsPrisma = {
         : select(where).slice(skip, take == null ? undefined : skip + take),
     count: async ({ where }) => select(where).length,
     findFirst: async ({ where }) => select(where)[0] || null,
-    update: async ({ where, data }) =>
-      Object.assign(
+    update: async ({ where, data }) => {
+      if (failUpdate) throw new Error('Test database failure');
+      return Object.assign(
         rows.find((p) => p.id === where.id),
         data,
-      ),
+      );
+    },
   },
   $transaction: async (promises) => Promise.all(promises),
 };
@@ -113,6 +117,9 @@ const router = (await import(pathToFileURL(path.join(out, 'router.mjs')).href))
 const app = express();
 app.use(express.json());
 app.use('/products', router);
+app.use((error, _req, res, _next) =>
+  res.status(500).json({ message: error.message }),
+);
 const server = app.listen(0, '127.0.0.1');
 await new Promise((r) => server.once('listening', r));
 const get = async (query, user = 1) => {
@@ -129,6 +136,60 @@ const get = async (query, user = 1) => {
   return { status: res.status, body: await res.json() };
 };
 try {
+  const replace = async (
+    url,
+    user = 1,
+    type = 'image/png',
+    withFile = true,
+  ) => {
+    const form = new FormData();
+    form.append('url', url);
+    if (withFile)
+      form.append('image', new Blob(['test image'], { type }), 'photo.png');
+    const response = await fetch(
+      `http://127.0.0.1:${server.address().port}/products/1/images/replace`,
+      {
+        method: 'POST',
+        body: form,
+        headers: user
+          ? {
+              Authorization: `Bearer ${jwt.sign({ userId: user, role: 'admin' }, process.env.JWT_SECRET)}`,
+            }
+          : {},
+      },
+    );
+    return { status: response.status, body: await response.json() };
+  };
+  rows[0].images = ['/uploads/cover.jpg', '/uploads/extra.jpg'];
+  rows[0].imageUrl = rows[0].images[0];
+  const firstReplace = await replace('/uploads/extra.jpg');
+  assert.equal(firstReplace.status, 200);
+  assert.equal(firstReplace.body.images.length, 2);
+  assert.equal(firstReplace.body.imageUrl, '/uploads/cover.jpg');
+  assert.notEqual(firstReplace.body.images[1], '/uploads/extra.jpg');
+  const coverReplace = await replace('/uploads/cover.jpg');
+  assert.equal(coverReplace.status, 200);
+  assert.equal(coverReplace.body.images.length, 2);
+  assert.equal(coverReplace.body.imageUrl, coverReplace.body.images[0]);
+  const savedImages = [...rows[0].images];
+  const fileCount = (await fs.readdir(process.env.UPLOAD_DIR)).length;
+  assert.equal((await replace('/uploads/missing.jpg')).status, 400);
+  assert.equal((await replace(savedImages[0], 2)).status, 404);
+  assert.equal((await replace(savedImages[0], null)).status, 401);
+  assert.equal((await replace(savedImages[0], 1, 'text/plain')).status, 400);
+  assert.equal(
+    (await replace(savedImages[0], 1, 'image/png', false)).status,
+    400,
+  );
+  failUpdate = true;
+  assert.equal((await replace(savedImages[0])).status, 500);
+  failUpdate = false;
+  assert.deepEqual(rows[0].images, savedImages);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.equal((await fs.readdir(process.env.UPLOAD_DIR)).length, fileCount);
+  console.log(
+    'PASS single-image replacement keeps order/cover, validates source/file/tenant/auth, preserves gallery and cleans upload on database failure.',
+  );
   assert.equal((await get('search=pizza', null)).status, 401);
   let result = await get('search=pizza&limit=15&page=1');
   assert.equal(result.body.pagination.total, 25);

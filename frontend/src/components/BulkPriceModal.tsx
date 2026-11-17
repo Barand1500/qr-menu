@@ -356,401 +356,408 @@ export default function BulkPriceModal({
           </div>
         </div>
 
-        <fieldset
-          disabled={loading || applying}
-          className="flex-1 min-w-0 overflow-y-auto admin-scroll p-5 space-y-4"
+        <div
+          className="flex-1 min-w-0 overflow-y-auto admin-scroll p-5"
+          style={{ minHeight: 0 }}
         >
-          {error && (
-            <div className="rounded-2xl px-3.5 py-2.5 text-sm text-red-600 bg-red-500/10 border border-red-500/20">
-              {error}
-            </div>
-          )}
-
-          {step === 'setup' && (
-            <>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
-                  Kapsam
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {(
-                    [
-                      { id: 'all', label: 'Tüm ürünler' },
-                      { id: 'category', label: 'Kategori' },
-                      { id: 'selected', label: 'Seçili ürünler' },
-                    ] as const
-                  ).map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setScope(opt.id)}
-                      className="rounded-2xl px-3 py-2.5 text-sm font-medium text-left transition border"
-                      style={{
-                        borderColor:
-                          scope === opt.id
-                            ? 'var(--admin-accent)'
-                            : 'var(--admin-card-border)',
-                        background:
-                          scope === opt.id
-                            ? 'var(--admin-accent-soft)'
-                            : 'var(--admin-input-bg)',
-                        color: 'var(--admin-text)',
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
+          <fieldset
+            disabled={loading || applying}
+            className="min-w-0 space-y-4"
+          >
+            {error && (
+              <div className="rounded-2xl px-3.5 py-2.5 text-sm text-red-600 bg-red-500/10 border border-red-500/20">
+                {error}
               </div>
+            )}
 
-              {scope === 'category' && (
-                <Select
-                  label="Kategori seçin"
-                  value={groupId}
-                  options={groupSelectOptions}
-                  onChange={(e) => setGroupId(e.target.value)}
-                />
-              )}
-
-              {scope === 'selected' && (
-                <div className="space-y-2">
-                  <Input
-                    label="Ürün ara..."
-                    value={pickSearch}
-                    onChange={(e) => setPickSearch(e.target.value)}
-                  />
-                  <div
-                    className="max-h-48 overflow-y-auto admin-scroll rounded-2xl border"
-                    style={{ borderColor: 'var(--admin-card-border)' }}
-                  >
-                    {pickLoading ? (
-                      <p className="p-3 text-sm admin-text-muted">
-                        Yükleniyor…
-                      </p>
-                    ) : filteredPicks.length === 0 ? (
-                      <p className="p-3 text-sm admin-text-muted">
-                        Ürün bulunamadı
-                      </p>
-                    ) : (
-                      filteredPicks.map((p) => {
-                        const on = selectedIds.includes(p.id);
-                        return (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => toggleProduct(p.id)}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 text-left border-b last:border-b-0 transition hover:bg-[var(--admin-accent-soft)]/40"
-                            style={{ borderColor: 'var(--admin-card-border)' }}
-                          >
-                            <span
-                              className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 border"
-                              style={{
-                                borderColor: on
-                                  ? 'var(--admin-accent)'
-                                  : 'var(--admin-card-border)',
-                                background: on
-                                  ? 'var(--admin-accent)'
-                                  : 'transparent',
-                                color: on ? '#fff' : 'transparent',
-                              }}
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                            </span>
-                            <span className="flex-1 min-w-0">
-                              <span className="block text-sm font-medium text-[var(--admin-text)] truncate">
-                                {p.name}
-                              </span>
-                              <span className="block text-xs admin-text-muted truncate">
-                                {p.groupName}
-                              </span>
-                            </span>
-                            <span className="text-xs font-medium admin-text-muted shrink-0">
-                              {formatMoney(p.price, p.currency)}
-                            </span>
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                  <p className="text-xs admin-text-muted">
-                    {selectedIds.length} ürün seçildi
+            {step === 'setup' && (
+              <>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
+                    Kapsam
                   </p>
-                </div>
-              )}
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
-                  İşlem
-                </p>
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  <button
-                    type="button"
-                    onClick={() => setDirection('up')}
-                    className="rounded-2xl px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 border transition"
-                    style={{
-                      borderColor:
-                        direction === 'up'
-                          ? 'var(--admin-accent)'
-                          : 'var(--admin-card-border)',
-                      background:
-                        direction === 'up'
-                          ? 'var(--admin-accent-soft)'
-                          : 'var(--admin-input-bg)',
-                    }}
-                  >
-                    <ArrowUp className="w-4 h-4" /> Zam
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDirection('down')}
-                    className="rounded-2xl px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 border transition"
-                    style={{
-                      borderColor:
-                        direction === 'down'
-                          ? 'var(--admin-accent)'
-                          : 'var(--admin-card-border)',
-                      background:
-                        direction === 'down'
-                          ? 'var(--admin-accent-soft)'
-                          : 'var(--admin-input-bg)',
-                    }}
-                  >
-                    <ArrowDown className="w-4 h-4" /> İndirim
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  <button
-                    type="button"
-                    onClick={() => setMode('percent')}
-                    className="rounded-2xl px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 border transition"
-                    style={{
-                      borderColor:
-                        mode === 'percent'
-                          ? 'var(--admin-accent)'
-                          : 'var(--admin-card-border)',
-                      background:
-                        mode === 'percent'
-                          ? 'var(--admin-accent-soft)'
-                          : 'var(--admin-input-bg)',
-                    }}
-                  >
-                    <Percent className="w-4 h-4" /> Yüzde
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMode('fixed')}
-                    className="rounded-2xl px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 border transition"
-                    style={{
-                      borderColor:
-                        mode === 'fixed'
-                          ? 'var(--admin-accent)'
-                          : 'var(--admin-card-border)',
-                      background:
-                        mode === 'fixed'
-                          ? 'var(--admin-accent-soft)'
-                          : 'var(--admin-input-bg)',
-                    }}
-                  >
-                    ₺ Sabit
-                  </button>
-                </div>
-                <Input
-                  label={valueLabel}
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  inputMode="decimal"
-                />
-              </div>
-
-              <div
-                className="rounded-2xl border p-3.5 space-y-3"
-                style={{
-                  borderColor: 'var(--admin-card-border)',
-                  background: 'var(--admin-input-bg)',
-                }}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--admin-text)]">
-                      Yuvarlama
-                    </p>
-                    <p className="text-xs admin-text-muted mt-0.5">
-                      Açıkken sonucu seçtiğiniz adıma yuvarlar
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={roundingOn}
-                    onClick={() => setRoundingOn((v) => !v)}
-                    className="relative w-11 h-6 rounded-full transition shrink-0"
-                    style={{
-                      background: roundingOn
-                        ? 'var(--admin-accent)'
-                        : 'var(--admin-card-border)',
-                    }}
-                  >
-                    <span
-                      className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"
-                      style={{
-                        transform: roundingOn
-                          ? 'translateX(20px)'
-                          : 'translateX(0)',
-                      }}
-                    />
-                  </button>
-                </div>
-
-                {roundingOn && (
-                  <div className="grid grid-cols-2 gap-2">
-                    {ROUNDING_CHOICES.map((c) => (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {(
+                      [
+                        { id: 'all', label: 'Tüm ürünler' },
+                        { id: 'category', label: 'Kategori' },
+                        { id: 'selected', label: 'Seçili ürünler' },
+                      ] as const
+                    ).map((opt) => (
                       <button
-                        key={c.value}
+                        key={opt.id}
                         type="button"
-                        onClick={() => setRoundingStep(c.value)}
-                        className="rounded-xl px-3 py-2 text-left border transition"
+                        onClick={() => setScope(opt.id)}
+                        className="rounded-2xl px-3 py-2.5 text-sm font-medium text-left transition border"
                         style={{
                           borderColor:
-                            roundingStep === c.value
+                            scope === opt.id
                               ? 'var(--admin-accent)'
                               : 'var(--admin-card-border)',
                           background:
-                            roundingStep === c.value
+                            scope === opt.id
                               ? 'var(--admin-accent-soft)'
-                              : 'var(--admin-card)',
+                              : 'var(--admin-input-bg)',
+                          color: 'var(--admin-text)',
                         }}
                       >
-                        <span className="block text-sm font-semibold text-[var(--admin-text)]">
-                          {c.label}
-                        </span>
-                        <span className="block text-[11px] admin-text-muted">
-                          {c.hint}
-                        </span>
+                        {opt.label}
                       </button>
                     ))}
                   </div>
-                )}
-              </div>
-            </>
-          )}
+                </div>
 
-          {step === 'options' && preview && (
-            <div className="space-y-3">
-              <div
-                className="rounded-2xl px-3.5 py-3 text-sm"
-                style={{
-                  background: 'var(--admin-accent-soft)',
-                  color: 'var(--admin-text)',
-                }}
-              >
-                <strong>{preview.withOptionsCount}</strong> üründe varyant /
-                seçenek fiyatı var. Bunlara ne yapalım?
-              </div>
-              <button
-                type="button"
-                onClick={() => void chooseOptions('base_only')}
-                disabled={loading}
-                className="w-full rounded-2xl border px-4 py-3.5 text-left transition hover:bg-[var(--admin-accent-soft)]/50"
-                style={{ borderColor: 'var(--admin-card-border)' }}
-              >
-                <span className="block text-sm font-semibold text-[var(--admin-text)]">
-                  Sadece ürün fiyatı
-                </span>
-                <span className="block text-xs admin-text-muted mt-1">
-                  Seçenek ek fiyatları aynı kalsın
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => void chooseOptions('base_and_options')}
-                disabled={loading}
-                className="w-full rounded-2xl border px-4 py-3.5 text-left transition hover:bg-[var(--admin-accent-soft)]/50"
-                style={{ borderColor: 'var(--admin-card-border)' }}
-              >
-                <span className="block text-sm font-semibold text-[var(--admin-text)]">
-                  Ürün + seçenek fiyatları
-                </span>
-                <span className="block text-xs admin-text-muted mt-1">
-                  Aynı zam / indirim seçeneklere de uygulansın
-                </span>
-              </button>
-            </div>
-          )}
-
-          {step === 'confirm' && preview && (
-            <div className="space-y-3">
-              <div
-                className="rounded-2xl px-3.5 py-3 text-sm flex flex-wrap gap-x-4 gap-y-1"
-                style={{ background: 'var(--admin-input-bg)' }}
-              >
-                <span>
-                  <strong>{changeLabel}</strong>
-                </span>
-                <span className="admin-text-muted">
-                  {preview.applyCount} ürün güncellenecek
-                </span>
-                {preview.warnCount > 0 && (
-                  <span className="text-amber-600 font-medium">
-                    {preview.warnCount} ürün atlanacak
-                  </span>
+                {scope === 'category' && (
+                  <Select
+                    label="Kategori seçin"
+                    value={groupId}
+                    options={groupSelectOptions}
+                    onChange={(e) => setGroupId(e.target.value)}
+                  />
                 )}
-                {optionsAction === 'base_and_options' && (
-                  <span className="admin-text-muted">
-                    Seçenek fiyatları dahil
-                  </span>
-                )}
-              </div>
 
-              <div
-                className="max-h-64 overflow-y-auto admin-scroll rounded-2xl border"
-                style={{ borderColor: 'var(--admin-card-border)' }}
-              >
-                {preview.lines.map((line) => (
-                  <div
-                    key={line.id}
-                    className="flex items-start gap-2 px-3 py-2.5 border-b last:border-b-0 text-sm"
-                    style={{
-                      borderColor: 'var(--admin-card-border)',
-                      background: line.skipped
-                        ? 'rgba(245, 158, 11, 0.08)'
-                        : undefined,
-                    }}
-                  >
-                    {line.skipped ? (
-                      <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    ) : (
-                      <span className="w-4 shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-[var(--admin-text)] truncate">
-                        {line.name}
-                      </p>
-                      <p className="text-xs admin-text-muted">
-                        {line.groupName}
-                      </p>
-                      {line.skipped && (
-                        <p className="text-xs text-amber-600 mt-0.5">
-                          İndirim sonrası fiyat 0’ın altına düşer — bu ürün
-                          atlanacak
+                {scope === 'selected' && (
+                  <div className="space-y-2">
+                    <Input
+                      label="Ürün ara..."
+                      value={pickSearch}
+                      onChange={(e) => setPickSearch(e.target.value)}
+                    />
+                    <div
+                      className="max-h-48 overflow-y-auto admin-scroll rounded-2xl border"
+                      style={{ borderColor: 'var(--admin-card-border)' }}
+                    >
+                      {pickLoading ? (
+                        <p className="p-3 text-sm admin-text-muted">
+                          Yükleniyor…
                         </p>
+                      ) : filteredPicks.length === 0 ? (
+                        <p className="p-3 text-sm admin-text-muted">
+                          Ürün bulunamadı
+                        </p>
+                      ) : (
+                        filteredPicks.map((p) => {
+                          const on = selectedIds.includes(p.id);
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => toggleProduct(p.id)}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 text-left border-b last:border-b-0 transition hover:bg-[var(--admin-accent-soft)]/40"
+                              style={{
+                                borderColor: 'var(--admin-card-border)',
+                              }}
+                            >
+                              <span
+                                className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 border"
+                                style={{
+                                  borderColor: on
+                                    ? 'var(--admin-accent)'
+                                    : 'var(--admin-card-border)',
+                                  background: on
+                                    ? 'var(--admin-accent)'
+                                    : 'transparent',
+                                  color: on ? '#fff' : 'transparent',
+                                }}
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </span>
+                              <span className="flex-1 min-w-0">
+                                <span className="block text-sm font-medium text-[var(--admin-text)] truncate">
+                                  {p.name}
+                                </span>
+                                <span className="block text-xs admin-text-muted truncate">
+                                  {p.groupName}
+                                </span>
+                              </span>
+                              <span className="text-xs font-medium admin-text-muted shrink-0">
+                                {formatMoney(p.price, p.currency)}
+                              </span>
+                            </button>
+                          );
+                        })
                       )}
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="admin-text-muted line-through text-xs">
-                        {formatMoney(line.oldPrice, line.currency)}
+                    <p className="text-xs admin-text-muted">
+                      {selectedIds.length} ürün seçildi
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
+                    İşlem
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => setDirection('up')}
+                      className="rounded-2xl px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 border transition"
+                      style={{
+                        borderColor:
+                          direction === 'up'
+                            ? 'var(--admin-accent)'
+                            : 'var(--admin-card-border)',
+                        background:
+                          direction === 'up'
+                            ? 'var(--admin-accent-soft)'
+                            : 'var(--admin-input-bg)',
+                      }}
+                    >
+                      <ArrowUp className="w-4 h-4" /> Zam
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDirection('down')}
+                      className="rounded-2xl px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 border transition"
+                      style={{
+                        borderColor:
+                          direction === 'down'
+                            ? 'var(--admin-accent)'
+                            : 'var(--admin-card-border)',
+                        background:
+                          direction === 'down'
+                            ? 'var(--admin-accent-soft)'
+                            : 'var(--admin-input-bg)',
+                      }}
+                    >
+                      <ArrowDown className="w-4 h-4" /> İndirim
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setMode('percent')}
+                      className="rounded-2xl px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 border transition"
+                      style={{
+                        borderColor:
+                          mode === 'percent'
+                            ? 'var(--admin-accent)'
+                            : 'var(--admin-card-border)',
+                        background:
+                          mode === 'percent'
+                            ? 'var(--admin-accent-soft)'
+                            : 'var(--admin-input-bg)',
+                      }}
+                    >
+                      <Percent className="w-4 h-4" /> Yüzde
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode('fixed')}
+                      className="rounded-2xl px-3 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 border transition"
+                      style={{
+                        borderColor:
+                          mode === 'fixed'
+                            ? 'var(--admin-accent)'
+                            : 'var(--admin-card-border)',
+                        background:
+                          mode === 'fixed'
+                            ? 'var(--admin-accent-soft)'
+                            : 'var(--admin-input-bg)',
+                      }}
+                    >
+                      ₺ Sabit
+                    </button>
+                  </div>
+                  <Input
+                    label={valueLabel}
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    inputMode="decimal"
+                  />
+                </div>
+
+                <div
+                  className="rounded-2xl border p-3.5 space-y-3"
+                  style={{
+                    borderColor: 'var(--admin-card-border)',
+                    background: 'var(--admin-input-bg)',
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--admin-text)]">
+                        Yuvarlama
                       </p>
-                      <p
-                        className={`font-semibold ${line.skipped ? 'text-amber-600' : 'text-[var(--admin-text)]'}`}
-                      >
-                        {formatMoney(line.newPrice, line.currency)}
+                      <p className="text-xs admin-text-muted mt-0.5">
+                        Açıkken sonucu seçtiğiniz adıma yuvarlar
                       </p>
                     </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={roundingOn}
+                      onClick={() => setRoundingOn((v) => !v)}
+                      className="relative w-11 h-6 rounded-full transition shrink-0"
+                      style={{
+                        background: roundingOn
+                          ? 'var(--admin-accent)'
+                          : 'var(--admin-card-border)',
+                      }}
+                    >
+                      <span
+                        className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"
+                        style={{
+                          transform: roundingOn
+                            ? 'translateX(20px)'
+                            : 'translateX(0)',
+                        }}
+                      />
+                    </button>
                   </div>
-                ))}
+
+                  {roundingOn && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {ROUNDING_CHOICES.map((c) => (
+                        <button
+                          key={c.value}
+                          type="button"
+                          onClick={() => setRoundingStep(c.value)}
+                          className="rounded-xl px-3 py-2 text-left border transition"
+                          style={{
+                            borderColor:
+                              roundingStep === c.value
+                                ? 'var(--admin-accent)'
+                                : 'var(--admin-card-border)',
+                            background:
+                              roundingStep === c.value
+                                ? 'var(--admin-accent-soft)'
+                                : 'var(--admin-card)',
+                          }}
+                        >
+                          <span className="block text-sm font-semibold text-[var(--admin-text)]">
+                            {c.label}
+                          </span>
+                          <span className="block text-[11px] admin-text-muted">
+                            {c.hint}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {step === 'options' && preview && (
+              <div className="space-y-3">
+                <div
+                  className="rounded-2xl px-3.5 py-3 text-sm"
+                  style={{
+                    background: 'var(--admin-accent-soft)',
+                    color: 'var(--admin-text)',
+                  }}
+                >
+                  <strong>{preview.withOptionsCount}</strong> üründe varyant /
+                  seçenek fiyatı var. Bunlara ne yapalım?
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void chooseOptions('base_only')}
+                  disabled={loading}
+                  className="w-full rounded-2xl border px-4 py-3.5 text-left transition hover:bg-[var(--admin-accent-soft)]/50"
+                  style={{ borderColor: 'var(--admin-card-border)' }}
+                >
+                  <span className="block text-sm font-semibold text-[var(--admin-text)]">
+                    Sadece ürün fiyatı
+                  </span>
+                  <span className="block text-xs admin-text-muted mt-1">
+                    Seçenek ek fiyatları aynı kalsın
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void chooseOptions('base_and_options')}
+                  disabled={loading}
+                  className="w-full rounded-2xl border px-4 py-3.5 text-left transition hover:bg-[var(--admin-accent-soft)]/50"
+                  style={{ borderColor: 'var(--admin-card-border)' }}
+                >
+                  <span className="block text-sm font-semibold text-[var(--admin-text)]">
+                    Ürün + seçenek fiyatları
+                  </span>
+                  <span className="block text-xs admin-text-muted mt-1">
+                    Aynı zam / indirim seçeneklere de uygulansın
+                  </span>
+                </button>
               </div>
-            </div>
-          )}
-        </fieldset>
+            )}
+
+            {step === 'confirm' && preview && (
+              <div className="space-y-3">
+                <div
+                  className="rounded-2xl px-3.5 py-3 text-sm flex flex-wrap gap-x-4 gap-y-1"
+                  style={{ background: 'var(--admin-input-bg)' }}
+                >
+                  <span>
+                    <strong>{changeLabel}</strong>
+                  </span>
+                  <span className="admin-text-muted">
+                    {preview.applyCount} ürün güncellenecek
+                  </span>
+                  {preview.warnCount > 0 && (
+                    <span className="text-amber-600 font-medium">
+                      {preview.warnCount} ürün atlanacak
+                    </span>
+                  )}
+                  {optionsAction === 'base_and_options' && (
+                    <span className="admin-text-muted">
+                      Seçenek fiyatları dahil
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  className="max-h-64 overflow-y-auto admin-scroll rounded-2xl border"
+                  style={{ borderColor: 'var(--admin-card-border)' }}
+                >
+                  {preview.lines.map((line) => (
+                    <div
+                      key={line.id}
+                      className="flex items-start gap-2 px-3 py-2.5 border-b last:border-b-0 text-sm"
+                      style={{
+                        borderColor: 'var(--admin-card-border)',
+                        background: line.skipped
+                          ? 'rgba(245, 158, 11, 0.08)'
+                          : undefined,
+                      }}
+                    >
+                      {line.skipped ? (
+                        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                      ) : (
+                        <span className="w-4 shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-[var(--admin-text)] truncate">
+                          {line.name}
+                        </p>
+                        <p className="text-xs admin-text-muted">
+                          {line.groupName}
+                        </p>
+                        {line.skipped && (
+                          <p className="text-xs text-amber-600 mt-0.5">
+                            İndirim sonrası fiyat 0’ın altına düşer — bu ürün
+                            atlanacak
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="admin-text-muted line-through text-xs">
+                          {formatMoney(line.oldPrice, line.currency)}
+                        </p>
+                        <p
+                          className={`font-semibold ${line.skipped ? 'text-amber-600' : 'text-[var(--admin-text)]'}`}
+                        >
+                          {formatMoney(line.newPrice, line.currency)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </fieldset>
+        </div>
 
         <div
           className="px-5 py-4 flex gap-2 shrink-0"

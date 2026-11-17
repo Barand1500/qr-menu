@@ -3,6 +3,7 @@ import { Clock, MoreHorizontal, Package, Sparkles } from 'lucide-react';
 import ProductImageCell from '@/components/admin/ProductImageCell';
 import { formatMoney } from '@/lib/api';
 import type { Product } from './types';
+import AnimatedPrice, { type PriceTransition } from './AnimatedPrice';
 
 export default function ProductRow({
   product: p,
@@ -14,6 +15,10 @@ export default function ProductRow({
   onStock,
   onActions,
   onUpload,
+  onImageOrder,
+  onImageRemove,
+  onImageReplace,
+  priceTransition,
 }: {
   product: Product;
   busy: boolean;
@@ -28,6 +33,10 @@ export default function ProductRow({
   onStock: (p: Product) => void;
   onActions: (p: Product, e: MouseEvent<HTMLElement>) => void;
   onUpload: (files: File[]) => Promise<void>;
+  onImageOrder: (urls: string[]) => Promise<boolean>;
+  onImageRemove: (url: string) => Promise<boolean>;
+  onImageReplace: (url: string, file: File) => Promise<boolean>;
+  priceTransition?: PriceTransition;
 }) {
   const [field, setField] = useState<'name' | 'price' | null>(null),
     [value, setValue] = useState('');
@@ -104,6 +113,9 @@ export default function ProductRow({
           busy={imageBusy}
           disabled={busy}
           onUpload={onUpload}
+          onOrder={onImageOrder}
+          onRemove={onImageRemove}
+          onReplace={onImageReplace}
         />
       </div>
       <div className="ap-product__identity">
@@ -139,7 +151,13 @@ export default function ProductRow({
             aria-label={`${p.name} fiyatını düzenle`}
             onClick={() => start('price')}
           >
-            <strong>{formatMoney(p.price, p.currency)}</strong>
+            <strong>
+              <AnimatedPrice
+                value={p.price}
+                currency={p.currency}
+                transition={priceTransition}
+              />
+            </strong>
             {p.optionGroups?.length ? <small>başlangıç fiyatı</small> : null}
           </button>
         )}
