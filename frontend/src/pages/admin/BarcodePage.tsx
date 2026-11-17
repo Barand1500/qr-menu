@@ -1,181 +1,115 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
-import { Link, useSearchParams } from 'react-router-dom';
-import {
-  Printer,
-  QrCode,
-  LayoutGrid,
-  Megaphone,
-  X,
-  Lock,
-  Plus,
-  Trash2,
-} from 'lucide-react';
-import { HexColorPicker, HexColorInput } from 'react-colorful';
-import { QRCodeSVG } from 'qrcode.react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { LayoutGrid, Lock, Megaphone, Printer, QrCode } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAddons } from '@/hooks/useAddons';
-import { Button, Card, Input, PageHeader, Select, Spinner } from '@/components/ui';
+import { Spinner } from '@/components/ui';
 import { api, imageUrl } from '@/lib/api';
-import { adminPath } from '@/lib/adminPath';
-import AddTableGroupModal from '@/components/AddTableGroupModal';
-import AddCampaignModal from '@/components/AddCampaignModal';
+import AdminToast, {
+  type AdminToastNotice,
+} from '@/components/admin/AdminToast';
 import CampaignMenuModal from '@/components/CampaignMenuModal';
-import PrintDesignerModal from '@/components/PrintDesignerModal';
+import {
+  ColorControl,
+  DesignDock,
+  Field,
+  FrameControl,
+  LogoControl,
+  TemplateControl,
+  TextControls,
+} from '@/components/admin/barcode/DesignControls';
+import {
+  CampaignDialog,
+  ConfirmDialog,
+  GroupDialog,
+  type GroupForm,
+} from '@/components/admin/barcode/Dialogs';
+import PrintDialog, {
+  type PrintSettings,
+} from '@/components/admin/barcode/PrintDialog';
+import PrintSheet, {
+  type PrintJob,
+} from '@/components/admin/barcode/PrintSheet';
+import Stage from '@/components/admin/barcode/Stage';
+import {
+  CampaignTargets,
+  TablesTargets,
+  Upsell,
+} from '@/components/admin/barcode/Targets';
+import {
+  DEFAULT_DESIGN,
+  DESIGN_KEY,
+  GROUPS_KEY,
+  defaultTableStyle,
+  isFrame,
+  loadDesign,
+  loadTableGroups,
+  normalizePrefix,
+  readTableStyle,
+  resolveColor,
+  slugify,
+  tableCode,
+  type CampaignRow,
+  type CardSpec,
+  type Design,
+  type GroupStyles,
+  type Mode,
+  type TableGroup,
+  type TableStyle,
+} from '@/components/admin/barcode/qr';
+import '@/components/admin/barcode/barcode.css';
 
-type ViewMode = 'classic' | 'tables' | 'campaign';
-
-const PAPER_SIZES = [
-  { value: 'a4', label: 'A4' },
-  { value: 'a5', label: 'A5' },
-  { value: '80mm', label: '80mm Termal' },
-  { value: '58mm', label: '58mm Termal' },
-];
-
-const QR_COLORS = [
-  { id: 'black', fg: '#0f172a', bg: '#ffffff', label: 'Siyah' },
-  { id: 'navy', fg: '#1e3a5f', bg: '#f8fafc', label: 'Lacivert' },
-  { id: 'ocean', fg: '#0369a1', bg: '#f0f9ff', label: 'Okyanus' },
-  { id: 'sky', fg: '#0284c7', bg: '#e0f2fe', label: 'Gök mavisi' },
-  { id: 'teal', fg: '#0f766e', bg: '#f0fdfa', label: 'Turkuaz' },
-  { id: 'forest', fg: '#14532d', bg: '#f0fdf4', label: 'Yeşil' },
-  { id: 'emerald', fg: '#047857', bg: '#ecfdf5', label: 'Zümrüt' },
-  { id: 'wine', fg: '#7f1d1d', bg: '#fff1f2', label: 'Bordo' },
-  { id: 'rose', fg: '#be123c', bg: '#fff1f2', label: 'Gül' },
-  { id: 'coral', fg: '#c2410c', bg: '#fff7ed', label: 'Mercan' },
-  { id: 'gold', fg: '#78350f', bg: '#fffbeb', label: 'Altın' },
-  { id: 'amber', fg: '#b45309', bg: '#fffbeb', label: 'Amber' },
-  { id: 'purple', fg: '#5b21b6', bg: '#f5f3ff', label: 'Mor' },
-  { id: 'slate', fg: '#475569', bg: '#f8fafc', label: 'Gri' },
-];
-
-const QR_FRAMES = [
-  { id: 'yok', label: 'Yok' },
-  { id: 'ince', label: 'İnce' },
-  { id: 'kalin', label: 'Kalın' },
-  { id: 'kelebek', label: 'Kelebek' },
-  { id: 'kesik', label: 'Kesik' },
-  { id: 'halka', label: 'Halka' },
-  { id: 'minimal', label: 'Minimal' },
-  { id: 'sarma', label: 'Sarmaşık' },
+const MODES = [
+  {
+    id: 'classic',
+    label: 'QR Menü',
+    short: 'Menü',
+    Icon: QrCode,
+    premium: false,
+  },
+  {
+    id: 'tables',
+    label: 'Masalar',
+    short: 'Masalar',
+    Icon: LayoutGrid,
+    premium: true,
+  },
+  {
+    id: 'campaign',
+    label: 'Kampanyalar',
+    short: 'Kampanya',
+    Icon: Megaphone,
+    premium: true,
+  },
 ] as const;
+type Look = Pick<Design, 'colorId' | 'withLogo' | 'frameId'>;
 
-type FrameId = (typeof QR_FRAMES)[number]['id'];
+const message = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
 
-interface CampaignRow {
-  id: number;
-  name: string;
-  slug: string;
-  itemCount: number;
+function useNarrow() {
+  const [narrow, setNarrow] = useState(
+    () => window.matchMedia('(max-width: 1099px)').matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1099px)');
+    const update = () => setNarrow(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  return narrow;
 }
 
-interface TableGroup {
-  id: string;
-  name: string;
-  count: number;
-  prefix: string;
-}
-
-interface TableStyle {
-  name: string;
-  colorId: string;
-  withLogo: boolean;
-  frameId: FrameId;
-}
-
-function slugify(text: string) {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ş/g, 's')
-    .replace(/ı/g, 'i')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
-function normalizePrefix(value: string) {
-  return value.trim().slice(0, 20);
-}
-
-function tableCode(n: number, prefix = '') {
-  const p = normalizePrefix(prefix);
-  return p ? `${p}-${n}` : String(n);
-}
-
-function defaultTableStyle(n: number, groupName = 'Masa', prefix = ''): TableStyle {
-  const p = normalizePrefix(prefix);
-  return {
-    name: p ? `${p}-${n}` : `${groupName} ${n}`,
-    colorId: 'black',
-    withLogo: false,
-    frameId: 'yok',
-  };
-}
-
-function normalizeHex(value: string): string | null {
-  const v = value.trim().toLowerCase();
-  if (/^#[0-9a-f]{6}$/.test(v)) return v;
-  if (/^#[0-9a-f]{3}$/.test(v)) {
-    return `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`;
-  }
-  return null;
-}
-
-function softBgFromFg(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const mix = (c: number) => Math.round(c * 0.1 + 255 * 0.9);
-  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
-}
-
-function resolveColor(colorId: string) {
-  const preset = QR_COLORS.find((c) => c.id === colorId);
-  if (preset) return preset;
-  const fg = normalizeHex(colorId) || '#0f172a';
-  return { id: 'custom', fg, bg: softBgFromFg(fg), label: 'Özel' };
-}
-
-const TABLE_GROUPS_KEY = 'menu-qr-barcode-table-groups';
-
-function loadTableGroupsState(): {
-  groups: TableGroup[];
-  activeGroupId: string;
-  groupStyles: Record<string, Record<number, TableStyle>>;
-} {
-  const fallback = {
-    groups: [
-      { id: 'salon', name: 'Salon', count: 12, prefix: '' },
-      { id: 'teras', name: 'Teras', count: 8, prefix: '' },
-    ],
-    activeGroupId: 'salon',
-    groupStyles: {} as Record<string, Record<number, TableStyle>>,
-  };
-  try {
-    const raw = localStorage.getItem(TABLE_GROUPS_KEY);
-    if (!raw) return fallback;
-    const parsed = JSON.parse(raw) as Partial<typeof fallback>;
-    if (!parsed.groups?.length) return fallback;
-    return {
-      groups: parsed.groups.map((g) => ({
-        id: g.id,
-        name: g.name,
-        count: g.count,
-        prefix: normalizePrefix(g.prefix || ''),
-      })),
-      activeGroupId:
-        parsed.groups.some((g) => g.id === parsed.activeGroupId)
-          ? (parsed.activeGroupId as string)
-          : parsed.groups[0].id,
-      groupStyles: parsed.groupStyles || {},
-    };
-  } catch {
-    return fallback;
-  }
+async function toDataUrl(src: string) {
+  const response = await fetch(src);
+  if (!response.ok) throw new Error('Logo alınamadı.');
+  const blob = await response.blob();
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 export default function BarcodePage() {
@@ -183,45 +117,72 @@ export default function BarcodePage() {
   const { isOwned, loading: addonsLoading } = useAddons();
   const qrPack = isOwned('qr-pack');
   const [searchParams] = useSearchParams();
+  const narrow = useNarrow();
+  const stageHost = useRef<HTMLDivElement>(null);
 
-  const [view, setView] = useState<ViewMode>('classic');
-  const [paperSize, setPaperSize] = useState('a4');
-  const [colorId, setColorId] = useState('black');
-  const [withLogo, setWithLogo] = useState(false);
-  const [frameId, setFrameId] = useState<FrameId>('yok');
-  const initialGroups = useMemo(() => loadTableGroupsState(), []);
-  const [groups, setGroups] = useState<TableGroup[]>(initialGroups.groups);
-  const [activeGroupId, setActiveGroupId] = useState(initialGroups.activeGroupId);
-  const [groupStyles, setGroupStyles] = useState<
-    Record<string, Record<number, TableStyle>>
-  >(initialGroups.groupStyles);
+  const [mode, setMode] = useState<Mode>('classic');
+  const [design, setDesign] = useState<Design>(loadDesign);
+  const initial = useMemo(loadTableGroups, []);
+  const [groups, setGroups] = useState<TableGroup[]>(initial.groups);
+  const [activeGroupId, setActiveGroupId] = useState(initial.activeGroupId);
+  const [styles, setStyles] = useState<GroupStyles>(initial.styles);
   const [groupsReady, setGroupsReady] = useState(false);
-  const [addingGroup, setAddingGroup] = useState(false);
+  const [groupsReadOk, setGroupsReadOk] = useState(false);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
-  const [editingTable, setEditingTable] = useState<number | null>(null);
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
-  const [campaignsLoading, setCampaignsLoading] = useState(false);
+  const [campaignState, setCampaignState] = useState<
+    'loading' | 'ready' | 'error'
+  >('loading');
+  const [campaignId, setCampaignId] = useState<number | null>(null);
   const [campaignSaving, setCampaignSaving] = useState(false);
-  const [selectedCampaign, setSelectedCampaign] = useState<CampaignRow | null>(null);
-  const [addingCampaign, setAddingCampaign] = useState(false);
-  const [editingCampaignName, setEditingCampaignName] = useState(false);
-  const [menuModalOpen, setMenuModalOpen] = useState(false);
+  const [notice, setNotice] = useState<AdminToastNotice>(null);
+  const [groupDialog, setGroupDialog] = useState<'create' | 'edit' | null>(
+    null,
+  );
+  const [campaignDialog, setCampaignDialog] = useState(false);
+  const [confirm, setConfirm] = useState<'group' | 'campaign' | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
+  const [printJob, setPrintJob] = useState<PrintJob | null>(null);
   const [callHighlight, setCallHighlight] = useState<{
     masa: string;
     type: string;
   } | null>(null);
-
-  const color = resolveColor(colorId);
   const [logoPath, setLogoPath] = useState<string | null>(
-    user?.restaurant.logoUrl ?? null
+    user?.restaurant.logoUrl ?? null,
+  );
+  const saveFailed = useRef(false);
+  const campaignName = useRef<{ id: number; name: string } | null>(null);
+
+  const origin = window.location.origin;
+  const logoSrc = logoPath ? imageUrl(logoPath) : '';
+  const restaurantName = user?.restaurant.name || 'Menü';
+  const notify = useCallback(
+    (text: string, error = false) => setNotice({ text, error }),
+    [],
   );
 
+  useEffect(
+    () => setLogoPath(user?.restaurant.logoUrl ?? null),
+    [user?.restaurant.logoUrl],
+  );
   useEffect(() => {
-    setLogoPath(user?.restaurant.logoUrl ?? null);
-  }, [user?.restaurant.logoUrl]);
+    api<{ restaurant: { logoUrl?: string | null } }>('/api/admin/settings')
+      .then((d) => setLogoPath(d.restaurant.logoUrl || null))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(DESIGN_KEY, JSON.stringify(design));
+    } catch {
+      /* storage may be blocked */
+    }
+  }, [design]);
 
+  // Table groups: the server copy wins, the local copy is the fallback.
   useEffect(() => {
+    const abort = new AbortController();
     api<{
       groups: {
         id: string;
@@ -231,1372 +192,887 @@ export default function BarcodePage() {
         styles?: Record<string, Partial<TableStyle>>;
       }[];
       activeGroupId: string;
-    }>('/api/admin/barcode/table-groups')
+    }>('/api/admin/barcode/table-groups', { signal: abort.signal })
       .then((d) => {
-        if (!d.groups?.length) return;
+        if (abort.signal.aborted) return;
+        if (!d.groups?.length) throw new Error('Masa grupları alınamadı.');
+        setGroupsReadOk(true);
         setGroups(
           d.groups.map((g) => ({
             id: g.id,
             name: g.name,
             count: g.count,
             prefix: normalizePrefix(g.prefix || ''),
-          }))
+          })),
         );
-        const nextStyles: Record<string, Record<number, TableStyle>> = {};
+        const next: GroupStyles = {};
         for (const g of d.groups) {
-          nextStyles[g.id] = {};
+          next[g.id] = {};
           for (const [key, style] of Object.entries(g.styles || {})) {
             const n = Number(key);
             if (!Number.isFinite(n)) continue;
-            nextStyles[g.id][n] = {
+            next[g.id][n] = {
               ...defaultTableStyle(n, g.name, g.prefix || ''),
               ...style,
-              frameId: (QR_FRAMES.some((f) => f.id === style.frameId)
-                ? style.frameId
-                : 'yok') as FrameId,
+              frameId: isFrame(style.frameId) ? style.frameId : 'yok',
             };
           }
         }
-        setGroupStyles(nextStyles);
+        setStyles(next);
         setActiveGroupId(
           d.groups.some((g) => g.id === d.activeGroupId)
             ? d.activeGroupId
-            : d.groups[0].id
+            : d.groups[0].id,
         );
       })
-      .catch(() => {})
-      .finally(() => setGroupsReady(true));
+      .catch(() => {
+        if (abort.signal.aborted) return;
+        setGroupsReadOk(false);
+        notify(
+          'Masa grupları alınamadı. Yerel kopya açık; sunucu kaydı durduruldu. Sayfayı yenileyerek tekrar deneyin.',
+          true,
+        );
+      })
+      .finally(() => {
+        if (!abort.signal.aborted) setGroupsReady(true);
+      });
+    return () => abort.abort();
   }, []);
-
   useEffect(() => {
     if (!groupsReady) return;
-    const masa = searchParams.get('masa');
-    const grup = searchParams.get('grup');
-    const viewParam = searchParams.get('view');
-    const tip = searchParams.get('tip');
-
-    if (viewParam === 'tables' || masa) setView('tables');
-    if (grup && groups.some((g) => g.id === grup)) setActiveGroupId(grup);
-
-    if (!masa) return;
-
-    const targetGroup =
-      groups.find((g) => g.id === (grup || activeGroupId)) || groups[0];
-    if (!targetGroup) return;
-
-    for (let n = 1; n <= targetGroup.count; n++) {
-      if (tableCode(n, targetGroup.prefix) === masa) {
-        setActiveGroupId(targetGroup.id);
-        setSelectedTable(n);
-        if (tip) setCallHighlight({ masa, type: tip });
-        break;
-      }
+    try {
+      localStorage.setItem(
+        GROUPS_KEY,
+        JSON.stringify({ groups, activeGroupId, groupStyles: styles }),
+      );
+    } catch {
+      /* storage may be blocked */
     }
-  }, [groupsReady, searchParams, groups, activeGroupId]);
-
-  useEffect(() => {
-    if (!groupsReady) return;
-    const payload = {
-      activeGroupId,
-      groups: groups.map((g) => ({
-        id: g.id,
-        name: g.name,
-        count: g.count,
-        prefix: g.prefix || '',
-        styles: Object.fromEntries(
-          Object.entries(groupStyles[g.id] || {}).map(([k, v]) => [k, v])
-        ),
-      })),
-    };
-    localStorage.setItem(TABLE_GROUPS_KEY, JSON.stringify({ groups, activeGroupId, groupStyles }));
+    if (!groupsReadOk) return;
     const timer = window.setTimeout(() => {
       api('/api/admin/barcode/table-groups', {
         method: 'PUT',
-        body: JSON.stringify(payload),
-      }).catch(() => {});
-    }, 700);
-    return () => window.clearTimeout(timer);
-  }, [groups, activeGroupId, groupStyles, groupsReady]);
-
-  useEffect(() => {
-    api<{ restaurant: { logoUrl?: string | null } }>('/api/admin/settings')
-      .then((d) => {
-        if (d.restaurant.logoUrl) setLogoPath(d.restaurant.logoUrl);
+        body: JSON.stringify({
+          activeGroupId,
+          groups: groups.map((g) => ({ ...g, styles: styles[g.id] || {} })),
+        }),
       })
-      .catch(() => {});
-  }, []);
+        .then(() => (saveFailed.current = false))
+        .catch(() => {
+          if (!saveFailed.current)
+            notify(
+              'Masa ayarları sunucuya kaydedilemedi. Bu tarayıcıda saklandı.',
+              true,
+            );
+          saveFailed.current = true;
+        });
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [groups, activeGroupId, styles, groupsReady, groupsReadOk, notify]);
 
-  useEffect(() => {
-    setCampaignsLoading(true);
+  const loadCampaigns = useCallback(() => {
+    setCampaignState('loading');
     api<{ campaigns: CampaignRow[] }>('/api/admin/campaigns')
       .then((d) => {
         setCampaigns(d.campaigns || []);
+        setCampaignState('ready');
       })
-      .catch(() => setCampaigns([]))
-      .finally(() => setCampaignsLoading(false));
+      .catch(() => setCampaignState('error'));
   }, []);
+  useEffect(loadCampaigns, [loadCampaigns]);
 
-  const logoSrc = logoPath ? imageUrl(logoPath) : '';
-  const origin = window.location.origin;
   const activeGroup =
     groups.find((g) => g.id === activeGroupId) || groups[0] || null;
-
-  const classicUrl = `${origin}/menu`;
-  const tableUrl =
-    selectedTable && activeGroup
-      ? `${origin}/menu?masa=${encodeURIComponent(tableCode(selectedTable, activeGroup.prefix))}&grup=${activeGroup.id}`
-      : classicUrl;
-  const campaignUrl = selectedCampaign
-    ? `${origin}/menu?kampanya=${selectedCampaign.slug}`
-    : classicUrl;
-
-  const activeUrl =
-    view === 'tables' ? tableUrl : view === 'campaign' ? campaignUrl : classicUrl;
-
-  const activeTitle =
-    view === 'tables' && selectedTable
-      ? getTableStyle(selectedTable).name
-      : view === 'campaign' && selectedCampaign
-        ? selectedCampaign.name
-        : user?.restaurant.name || 'Menü';
-
-  const tables = useMemo(() => {
-    const count = activeGroup ? Math.max(1, Math.min(60, activeGroup.count)) : 0;
-    return Array.from({ length: count }, (_, i) => i + 1);
-  }, [activeGroup]);
-
-  function getTableStyle(n: number): TableStyle {
-    const groupName = activeGroup?.name || 'Masa';
-    const prefix = activeGroup?.prefix || '';
-    const base = defaultTableStyle(n, groupName, prefix);
-    const prev = activeGroupId ? groupStyles[activeGroupId]?.[n] : undefined;
-    if (!prev) return base;
-    const frameOk = QR_FRAMES.some((f) => f.id === prev.frameId);
-    const autoName =
-      !prev.name ||
-      prev.name === String(n) ||
-      prev.name === `${groupName} ${n}` ||
-      prev.name.endsWith(`-${n}`) ||
-      prev.name.endsWith(` ${n}`);
-    return {
-      ...base,
-      ...prev,
-      name: autoName ? base.name : prev.name,
-      frameId: frameOk ? prev.frameId : base.frameId,
-    };
-  }
-
-  function patchTableStyle(n: number, patch: Partial<TableStyle>) {
-    if (!activeGroupId || !activeGroup) return;
-    setGroupStyles((prev) => ({
-      ...prev,
-      [activeGroupId]: {
-        ...prev[activeGroupId],
-        [n]: {
-          ...defaultTableStyle(n, activeGroup.name, activeGroup.prefix),
-          ...prev[activeGroupId]?.[n],
-          ...patch,
+  const tables = useMemo(
+    () =>
+      Array.from(
+        {
+          length: activeGroup
+            ? Math.max(1, Math.min(60, activeGroup.count))
+            : 0,
         },
+        (_, i) => i + 1,
+      ),
+    [activeGroup],
+  );
+  const styleOf = useCallback(
+    (n: number) =>
+      activeGroup
+        ? readTableStyle(activeGroup, styles, n)
+        : defaultTableStyle(n),
+    [activeGroup, styles],
+  );
+  const urlOf = useCallback(
+    (n: number) =>
+      `${origin}/menu?masa=${encodeURIComponent(tableCode(n, activeGroup?.prefix))}&grup=${encodeURIComponent(activeGroup?.id || '')}`,
+    [origin, activeGroup],
+  );
+
+  // Deep links from the call panel: ?view=tables&grup=…&masa=…&tip=…
+  useEffect(() => {
+    if (!groupsReady) return;
+    const masa = searchParams.get('masa'),
+      grup = searchParams.get('grup'),
+      view = searchParams.get('view'),
+      tip = searchParams.get('tip');
+    if ((view === 'tables' || masa) && qrPack) setMode('tables');
+    if (grup && groups.some((g) => g.id === grup)) setActiveGroupId(grup);
+    if (!masa) return;
+    const target =
+      groups.find((g) => g.id === (grup || activeGroupId)) || groups[0];
+    if (!target) return;
+    for (let n = 1; n <= target.count; n++) {
+      if (tableCode(n, target.prefix) === masa) {
+        setActiveGroupId(target.id);
+        setSelectedTable(n);
+        if (tip) {
+          setCallHighlight({ masa, type: tip });
+          const what =
+            tip === 'bill'
+              ? 'Hesap istendi'
+              : tip === 'valet'
+                ? 'Vale çağrıldı'
+                : tip === 'hookah'
+                  ? 'Nargileci çağrıldı'
+                  : 'Garson çağrıldı';
+          notify(`${what} · Masa ${masa}`);
+        }
+        break;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupsReady, searchParams, qrPack]);
+
+  // There is always something on the stage: pick the first table / campaign when none is chosen.
+  useEffect(() => {
+    if (
+      mode === 'tables' &&
+      activeGroup &&
+      (selectedTable === null || selectedTable > activeGroup.count)
+    )
+      setSelectedTable(1);
+  }, [mode, activeGroup, selectedTable]);
+  useEffect(() => {
+    if (mode !== 'campaign' || campaignState !== 'ready') return;
+    if (!campaigns.some((c) => c.id === campaignId))
+      setCampaignId(campaigns[0]?.id ?? null);
+  }, [mode, campaignState, campaigns, campaignId]);
+  const campaign = campaigns.find((c) => c.id === campaignId) || null;
+  useEffect(() => {
+    campaignName.current = campaign
+      ? { id: campaign.id, name: campaign.name }
+      : null;
+    // Only the selection matters: typing must not move the "last saved" name.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId]);
+
+  // ── Look of the card being edited
+  const locked = !qrPack;
+  const lockedMode = locked && mode !== 'classic';
+  const tableStyle =
+    mode === 'tables' && selectedTable ? styleOf(selectedTable) : null;
+  const look: Look = tableStyle
+    ? {
+        colorId: tableStyle.colorId,
+        withLogo: tableStyle.withLogo,
+        frameId: tableStyle.frameId,
+      }
+    : locked
+      ? { colorId: 'black', withLogo: false, frameId: 'yok' }
+      : {
+          colorId: design.colorId,
+          withLogo: design.withLogo,
+          frameId: design.frameId,
+        };
+  const lookColor = resolveColor(look.colorId);
+  const frameColor = lookColor.fg;
+
+  function patchTable(n: number, patch: Partial<TableStyle>) {
+    if (!activeGroup) return;
+    setStyles((prev) => ({
+      ...prev,
+      [activeGroup.id]: {
+        ...prev[activeGroup.id],
+        [n]: { ...readTableStyle(activeGroup, prev, n), ...patch },
       },
     }));
   }
-
-  function setActiveGroupCount(count: number) {
-    const next = Math.max(1, Math.min(60, count || 1));
-    setGroups((prev) =>
-      prev.map((g) => (g.id === activeGroupId ? { ...g, count: next } : g))
+  function patchLook(patch: Partial<Look>) {
+    if (mode === 'tables' && selectedTable) patchTable(selectedTable, patch);
+    else setDesign((d) => ({ ...d, ...patch }));
+  }
+  function applyToAll() {
+    if (!activeGroup || !tableStyle) return;
+    const { colorId, withLogo, frameId } = tableStyle;
+    setStyles((prev) => ({
+      ...prev,
+      [activeGroup.id]: Object.fromEntries(
+        tables.map((n) => [
+          n,
+          {
+            ...readTableStyle(activeGroup, prev, n),
+            colorId,
+            withLogo,
+            frameId,
+          },
+        ]),
+      ),
+    }));
+    notify(
+      `Renk, çerçeve ve logo ${activeGroup.name} grubundaki ${tables.length} masaya uygulandı.`,
     );
   }
 
-  function setActiveGroupPrefix(prefix: string) {
-    const next = normalizePrefix(prefix);
-    setGroups((prev) =>
-      prev.map((g) => (g.id === activeGroupId ? { ...g, prefix: next } : g))
-    );
-  }
+  const shape = locked ? { ...DEFAULT_DESIGN } : design;
+  const specOf = useCallback(
+    (
+      key: string,
+      title: string,
+      subtitle: string,
+      url: string,
+      l: Look,
+    ): CardSpec => {
+      const c = resolveColor(l.colorId);
+      return {
+        key,
+        title,
+        subtitle,
+        url,
+        fg: c.fg,
+        bg: c.bg,
+        logo: l.withLogo && logoSrc ? logoSrc : undefined,
+        frameId: l.frameId,
+        template: shape.template,
+        cta: shape.cta,
+        showUrl: shape.showUrl,
+      };
+    },
+    [logoSrc, shape.template, shape.cta, shape.showUrl],
+  );
+  const designLook: Look = locked
+    ? { colorId: 'black', withLogo: false, frameId: 'yok' }
+    : {
+        colorId: design.colorId,
+        withLogo: design.withLogo,
+        frameId: design.frameId,
+      };
+  const spec: CardSpec | null =
+    lockedMode || (mode === 'tables' && !groupsReady)
+      ? null
+      : mode === 'classic'
+        ? specOf('classic', restaurantName, '', `${origin}/menu`, designLook)
+        : mode === 'tables'
+          ? tableStyle && selectedTable
+            ? specOf(
+                `t-${activeGroup?.id}-${selectedTable}`,
+                tableStyle.name,
+                restaurantName,
+                urlOf(selectedTable),
+                look,
+              )
+            : null
+          : campaign
+            ? specOf(
+                `c-${campaign.id}`,
+                campaign.name,
+                restaurantName,
+                `${origin}/menu?kampanya=${encodeURIComponent(campaign.slug)}`,
+                designLook,
+              )
+            : null;
 
-  function createGroup(data: { name: string; count: number; prefix: string }) {
-    const name = data.name.trim();
-    if (!name) return;
-    let id = slugify(name) || `grup-${Date.now()}`;
+  // ── Actions
+  function createGroup(data: GroupForm) {
+    let id = slugify(data.name) || `grup-${Date.now()}`;
     if (groups.some((g) => g.id === id)) id = `${id}-${Date.now()}`;
-    const prefix = normalizePrefix(data.prefix || '');
-    const item: TableGroup = {
-      id,
-      name,
-      count: Math.max(1, Math.min(60, data.count || 8)),
-      prefix,
-    };
-    setGroups((prev) => [...prev, item]);
+    setGroups((prev) => [
+      ...prev,
+      {
+        id,
+        name: data.name,
+        count: data.count,
+        prefix: normalizePrefix(data.prefix),
+      },
+    ]);
     setActiveGroupId(id);
-    setSelectedTable(null);
-    setEditingTable(null);
+    setSelectedTable(1);
+    setGroupDialog(null);
+    notify(`${data.name} grubu eklendi.`);
   }
-
-  function deleteActiveGroup() {
-    if (groups.length <= 1 || !activeGroup) return;
-    if (!confirm(`“${activeGroup.name}” grubunu silmek istiyor musun?`)) return;
+  function editGroup(data: GroupForm) {
+    if (!activeGroup) return;
+    setStyles((prev) => ({
+      ...prev,
+      [activeGroup.id]: Object.fromEntries(
+        Object.entries(prev[activeGroup.id] || {}).map(([key, style]) => {
+          const n = Number(key),
+            autoName = defaultTableStyle(
+              n,
+              activeGroup.name,
+              activeGroup.prefix,
+            ).name;
+          return [
+            key,
+            {
+              ...style,
+              name:
+                !style.name ||
+                style.name === String(n) ||
+                style.name === autoName
+                  ? defaultTableStyle(n, data.name, data.prefix).name
+                  : style.name,
+            },
+          ];
+        }),
+      ),
+    }));
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.id === activeGroup.id
+          ? {
+              ...g,
+              name: data.name,
+              count: data.count,
+              prefix: normalizePrefix(data.prefix),
+            }
+          : g,
+      ),
+    );
+    setGroupDialog(null);
+    notify('Grup güncellendi.');
+  }
+  function deleteGroup() {
+    if (!activeGroup || groups.length <= 1) return;
     const next = groups.filter((g) => g.id !== activeGroup.id);
     setGroups(next);
     setActiveGroupId(next[0].id);
-    setGroupStyles((prev) => {
+    setStyles((prev) => {
       const copy = { ...prev };
       delete copy[activeGroup.id];
       return copy;
     });
-    setSelectedTable(null);
-    setEditingTable(null);
+    setSelectedTable(1);
+    setConfirm(null);
+    notify(`${activeGroup.name} grubu silindi.`);
   }
-
-  function handlePrint() {
-    if (view === 'tables' && !selectedTable) {
-      alert('Yazdırmak için bir masa seç');
-      return;
-    }
-    if (view === 'campaign' && !selectedCampaign) {
-      alert('Yazdırmak için bir kampanya seç');
-      return;
-    }
-    setPrintOpen(true);
-  }
-
   async function addCampaign(name: string) {
-    if (!name.trim() || campaignSaving) return;
+    if (campaignSaving) return;
     setCampaignSaving(true);
     try {
       const created = await api<CampaignRow>('/api/admin/campaigns', {
         method: 'POST',
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name }),
       });
       setCampaigns((prev) => [...prev, created]);
-      setSelectedCampaign(created);
-      setAddingCampaign(false);
-      setMenuModalOpen(true);
-    } catch {
-      alert('Kampanya eklenemedi');
+      setCampaignId(created.id);
+      setCampaignDialog(false);
+      setMenuOpen(true);
+      notify('Kampanya eklendi. Şimdi özel menüsünü hazırla.');
+    } catch (error) {
+      notify(message(error, 'Kampanya eklenemedi.'), true);
     } finally {
       setCampaignSaving(false);
     }
   }
-
-  async function deleteCampaign(id: number) {
+  async function deleteCampaign() {
+    if (!campaign || confirmBusy) return;
+    setConfirmBusy(true);
     try {
-      await api(`/api/admin/campaigns/${id}`, { method: 'DELETE' });
-      setCampaigns((prev) => prev.filter((x) => x.id !== id));
-      if (selectedCampaign?.id === id) {
-        setSelectedCampaign(null);
-        setMenuModalOpen(false);
-      }
-    } catch {
-      alert('Kampanya silinemedi');
+      await api(`/api/admin/campaigns/${campaign.id}`, { method: 'DELETE' });
+      setCampaigns((prev) => prev.filter((c) => c.id !== campaign.id));
+      setCampaignId(null);
+      setConfirm(null);
+      notify(`${campaign.name} kampanyası silindi.`);
+    } catch (error) {
+      notify(message(error, 'Kampanya silinemedi.'), true);
+    } finally {
+      setConfirmBusy(false);
     }
   }
-
-  function patchSelectedCampaignName(name: string) {
-    setSelectedCampaign((prev) => (prev ? { ...prev, name } : prev));
+  function renameCampaignLive(name: string) {
+    if (!campaign) return;
     setCampaigns((prev) =>
-      prev.map((c) => (c.id === selectedCampaign?.id ? { ...c, name } : c))
+      prev.map((c) => (c.id === campaign.id ? { ...c, name } : c)),
     );
   }
-
   async function commitCampaignName() {
-    if (!selectedCampaign) return;
-    const trimmed = selectedCampaign.name.trim();
-    if (!trimmed) {
-      patchSelectedCampaignName('Kampanya');
-      setEditingCampaignName(false);
+    if (!campaign) return;
+    const saved = campaignName.current;
+    const name = campaign.name.trim();
+    if (!name) {
+      renameCampaignLive(saved?.name || 'Kampanya');
       return;
     }
+    if (saved?.id === campaign.id && saved.name === name) return;
     try {
       const updated = await api<CampaignRow>(
-        `/api/admin/campaigns/${selectedCampaign.id}`,
+        `/api/admin/campaigns/${campaign.id}`,
         {
           method: 'PUT',
-          body: JSON.stringify({ name: trimmed }),
-        }
+          body: JSON.stringify({ name }),
+        },
       );
       setCampaigns((prev) =>
-        prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c))
+        prev.map((c) =>
+          c.id === updated.id
+            ? {
+                ...c,
+                ...updated,
+                name: c.name.trim() === name ? updated.name : c.name,
+              }
+            : c,
+        ),
       );
-      setSelectedCampaign((prev) =>
-        prev && prev.id === updated.id ? { ...prev, ...updated } : prev
-      );
-    } catch {
-      alert('Kampanya adı güncellenemedi');
-    } finally {
-      setEditingCampaignName(false);
+      if (campaignName.current?.id === updated.id)
+        campaignName.current = { id: updated.id, name: updated.name };
+    } catch (error) {
+      if (saved?.id === campaign.id)
+        setCampaigns((prev) =>
+          prev.map((c) =>
+            c.id === saved.id && c.name.trim() === name
+              ? { ...c, name: saved.name }
+              : c,
+          ),
+        );
+      notify(message(error, 'Kampanya adı güncellenemedi.'), true);
     }
+  }
+
+  async function copyLink() {
+    if (!spec) return false;
+    try {
+      await navigator.clipboard.writeText(spec.url);
+    } catch {
+      const area = document.createElement('textarea');
+      area.value = spec.url;
+      area.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand('copy');
+      area.remove();
+      if (!ok) {
+        notify('Bağlantı kopyalanamadı.', true);
+        return false;
+      }
+    }
+    return true;
+  }
+  async function download(kind: 'png' | 'svg') {
+    const svg =
+      stageHost.current?.querySelector<SVGSVGElement>('.bq-card__qr svg');
+    if (!svg || !spec) return;
+    try {
+      const copy = svg.cloneNode(true) as SVGSVGElement;
+      copy.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      copy.setAttribute('width', '1024');
+      copy.setAttribute('height', '1024');
+      // Images inside an SVG file cannot be fetched later, so the logo is embedded.
+      for (const image of Array.from(copy.querySelectorAll('image'))) {
+        const href = image.getAttribute('href');
+        if (href && !href.startsWith('data:')) {
+          try {
+            image.setAttribute('href', await toDataUrl(href));
+          } catch {
+            image.remove();
+            notify('Logo eklenemedi; QR logosuz indirildi.', true);
+          }
+        }
+      }
+      const markup = new XMLSerializer().serializeToString(copy);
+      const name = `${slugify(spec.title) || 'qr'}.${kind}`;
+      let blob: Blob;
+      if (kind === 'svg') blob = new Blob([markup], { type: 'image/svg+xml' });
+      else {
+        const img = new Image();
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error('QR görseli oluşturulamadı.'));
+          img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
+        });
+        const canvas = document.createElement('canvas');
+        const pad = 64;
+        canvas.width = canvas.height = 1024 + pad * 2;
+        const ctx = canvas.getContext('2d')!;
+        ctx.fillStyle = spec.bg;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, pad, pad, 1024, 1024);
+        blob = await new Promise<Blob>((resolve, reject) =>
+          canvas.toBlob(
+            (b) => (b ? resolve(b) : reject(new Error('PNG oluşturulamadı.'))),
+            'image/png',
+          ),
+        );
+      }
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      notify(`${name} indirildi.`);
+    } catch (error) {
+      notify(message(error, 'QR indirilemedi.'), true);
+    }
+  }
+  function print(settings: PrintSettings) {
+    if (!spec) return;
+    const cards =
+      settings.scope === 'all' && mode === 'tables' && activeGroup
+        ? tables.map((n) => {
+            const s = styleOf(n);
+            return specOf(
+              `t-${activeGroup.id}-${n}`,
+              s.name,
+              restaurantName,
+              urlOf(n),
+              s,
+            );
+          })
+        : Array.from(
+            {
+              length: Math.max(
+                1,
+                settings.paperId.endsWith('mm') ? 1 : settings.perPage,
+              ),
+            },
+            () => spec,
+          );
+    setPrintOpen(false);
+    setPrintJob({
+      cards,
+      paperId: settings.paperId,
+      perPage: settings.perPage,
+      cut: settings.cut,
+    });
   }
 
   if (addonsLoading) return <Spinner />;
 
-  const selectedStyle = selectedTable ? getTableStyle(selectedTable) : null;
-  const selectedColor = selectedStyle
-    ? resolveColor(selectedStyle.colorId)
-    : color;
+  const modeIndex = MODES.findIndex((m) => m.id === mode);
+  const compact = narrow && mode !== 'classic';
+  const upsellWhat = mode === 'tables' ? 'Masa QR’ları' : 'Kampanya QR’ları';
+  const shapeProps = {
+    template: shape.template,
+    onTemplate: (template: Design['template']) =>
+      setDesign((d) => ({ ...d, template })),
+  };
+  const panels = (
+    <>
+      <Field label="Şablon">
+        <TemplateControl
+          value={shapeProps.template}
+          fg={lookColor.fg}
+          bg={lookColor.bg}
+          onChange={shapeProps.onTemplate}
+        />
+      </Field>
+      <Field label="Renk">
+        <ColorControl
+          value={look.colorId}
+          onChange={(colorId) => patchLook({ colorId })}
+        />
+        <LogoControl
+          checked={look.withLogo}
+          hasLogo={Boolean(logoSrc)}
+          onChange={(withLogo) => patchLook({ withLogo })}
+        />
+      </Field>
+      <Field label="Çerçeve">
+        <FrameControl
+          value={look.frameId}
+          color={frameColor}
+          onChange={(frameId) => patchLook({ frameId })}
+        />
+      </Field>
+      <Field label="Yazılar">{textControls()}</Field>
+      {mode === 'tables' && activeGroup && tables.length > 1 && (
+        <button type="button" className="bq-apply" onClick={applyToAll}>
+          Bu tasarımı {activeGroup.name} grubundaki tüm masalara uygula
+        </button>
+      )}
+    </>
+  );
+  function textControls() {
+    return (
+      <TextControls
+        titleLabel={mode === 'tables' ? 'Masa adı' : 'Kampanya adı'}
+        title={mode === 'tables' ? tableStyle?.name : campaign?.name}
+        onTitle={
+          mode === 'tables' && selectedTable
+            ? (name) => patchTable(selectedTable, { name })
+            : mode === 'campaign' && campaign
+              ? renameCampaignLive
+              : undefined
+        }
+        onTitleCommit={
+          mode === 'tables' && selectedTable
+            ? () =>
+                patchTable(selectedTable, {
+                  name:
+                    (tableStyle?.name || '').trim() ||
+                    defaultTableStyle(
+                      selectedTable,
+                      activeGroup?.name,
+                      activeGroup?.prefix,
+                    ).name,
+                })
+            : mode === 'campaign'
+              ? () => void commitCampaignName()
+              : undefined
+        }
+        cta={design.cta}
+        onCta={(cta) => setDesign((d) => ({ ...d, cta }))}
+        showUrl={design.showUrl}
+        onShowUrl={(showUrl) => setDesign((d) => ({ ...d, showUrl }))}
+      />
+    );
+  }
+  const trayPanels = {
+    color: (
+      <>
+        <ColorControl
+          value={look.colorId}
+          onChange={(colorId) => patchLook({ colorId })}
+        />
+        <LogoControl
+          checked={look.withLogo}
+          hasLogo={Boolean(logoSrc)}
+          onChange={(withLogo) => patchLook({ withLogo })}
+        />
+        {mode === 'tables' && activeGroup && tables.length > 1 && (
+          <button type="button" className="bq-apply" onClick={applyToAll}>
+            Tüm masalara uygula
+          </button>
+        )}
+      </>
+    ),
+    frame: (
+      <FrameControl
+        value={look.frameId}
+        color={frameColor}
+        onChange={(frameId) => patchLook({ frameId })}
+      />
+    ),
+    template: (
+      <TemplateControl
+        value={shape.template}
+        fg={lookColor.fg}
+        bg={lookColor.bg}
+        onChange={shapeProps.onTemplate}
+      />
+    ),
+    text: textControls(),
+  };
+  const printLabel = 'Yazdır';
+  const allCount = mode === 'tables' && activeGroup ? tables.length : 0;
 
   return (
-    <div className="barcode-page">
-      <PageHeader
-        title="Barkod Yazdır"
-        actions={
-          view === 'tables' ? (
-            <Button type="button" onClick={() => setAddingGroup(true)}>
-              <Plus className="w-4 h-4" /> Grup Ekle
-            </Button>
-          ) : view === 'campaign' ? (
-            <div className="flex flex-wrap gap-2 justify-end">
-              <Button type="button" onClick={() => setAddingCampaign(true)}>
-                <Plus className="w-4 h-4" /> Kampanya Ekle
-              </Button>
-              {selectedCampaign && (
-                <>
-                  <Button type="button" onClick={() => setMenuModalOpen(true)}>
-                    <Megaphone className="w-4 h-4" /> Özel menü
-                  </Button>
-                  <Button type="button" onClick={handlePrint}>
-                    <Printer className="w-4 h-4" /> Yazdır
-                  </Button>
-                </>
-              )}
-            </div>
-          ) : (
-            <Button onClick={handlePrint}>
-              <Printer className="w-4 h-4" /> Yazdır
-            </Button>
-          )
-        }
+    <div className={`bq-page${narrow ? ' is-narrow' : ''}`}>
+      <AdminToast
+        notice={notice}
+        onClose={() => setNotice(null)}
+        className="bq-toast"
       />
-
-      <div className="flex flex-wrap gap-2 mb-5">
-        {(
-          [
-            { id: 'classic', label: 'Klasik QR', icon: QrCode },
-            { id: 'tables', label: 'Masa görünümü', icon: LayoutGrid, locked: !qrPack },
-            { id: 'campaign', label: 'Kampanya', icon: Megaphone, locked: !qrPack },
-          ] as const
-        ).map((tab) => {
-          const Icon = tab.icon;
-          const locked = 'locked' in tab && tab.locked;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              disabled={locked}
-              onClick={() => {
-                setView(tab.id);
-                setSelectedTable(null);
-                setSelectedCampaign(null);
-                setEditingTable(null);
-                setEditingCampaignName(false);
-                setAddingGroup(false);
-                setAddingCampaign(false);
-              }}
-              className={`barcode-mode-chip ${view === tab.id ? 'is-active' : ''} ${
-                locked ? 'is-locked' : ''
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label}
-              {locked && <Lock className="w-3.5 h-3.5 opacity-70" />}
-            </button>
-          );
-        })}
-      </div>
-
-      {!qrPack && (
-        <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Sade siyah QR ücretsiz. Renk, logo, masa ve kampanya için{' '}
-          <Link to={adminPath('extensions', 'qr')} className="font-semibold underline">
-            Eklentiler → QR
-          </Link>{' '}
-          paketini Kod Gir ile aç.
+      <header className="bq-head">
+        <div>
+          <h1>Barkod Yazdır</h1>
+          <p>Menüne götüren QR kartını tasarla, yazdır.</p>
         </div>
-      )}
-
-      <Card className="p-5 space-y-5">
-        {view === 'classic' && (
-          <>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
-                Kağıt boyutu
-              </p>
-              <select
-                value={paperSize}
-                onChange={(e) => setPaperSize(e.target.value)}
-                className="w-full max-w-xs rounded-xl border px-4 py-2.5 text-sm"
-                style={{
-                  borderColor: 'var(--admin-card-border)',
-                  background: 'var(--admin-input-bg)',
-                  color: 'var(--admin-text)',
+        {!narrow && (
+          <button
+            type="button"
+            className="bq-primary"
+            disabled={!spec}
+            onClick={() => setPrintOpen(true)}
+          >
+            <Printer size={18} /> {printLabel}
+          </button>
+        )}
+      </header>
+      <div
+        className="bq-modes"
+        role="group"
+        aria-label="Barkod türü"
+        style={{ '--i': modeIndex, '--n': MODES.length } as React.CSSProperties}
+      >
+        <i className="bq-modes__pill" aria-hidden="true" />
+        {MODES.map((m) => (
+          <button
+            type="button"
+            key={m.id}
+            aria-pressed={mode === m.id}
+            onClick={() => setMode(m.id)}
+          >
+            <m.Icon size={18} />
+            <span>{narrow ? m.short : m.label}</span>
+            {m.premium && locked && (
+              <Lock size={13} aria-label="QR paketi gerekli" />
+            )}
+          </button>
+        ))}
+      </div>
+      {lockedMode ? (
+        <Upsell what={upsellWhat} />
+      ) : (
+        <div className="bq-body">
+          <div className="bq-work" key={mode}>
+            {mode === 'tables' && !groupsReady && <Spinner />}
+            {mode === 'tables' && activeGroup && groupsReady && (
+              <TablesTargets
+                groups={groups}
+                active={activeGroup}
+                tables={tables}
+                selected={selectedTable}
+                logo={logoSrc}
+                callCode={callHighlight?.masa ?? null}
+                styleOf={styleOf}
+                urlOf={urlOf}
+                codeOf={(n) => tableCode(n, activeGroup.prefix)}
+                canDelete={groups.length > 1}
+                onGroup={(id) => {
+                  setActiveGroupId(id);
+                  setSelectedTable(1);
+                  setCallHighlight(null);
                 }}
-              >
-                {PAPER_SIZES.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {qrPack && (
-              <QrCustomizePanel
-                colorId={colorId}
-                onColorChange={setColorId}
-                withLogo={withLogo}
-                onLogoChange={setWithLogo}
-                hasLogo={!!logoSrc}
-                frameId={frameId}
-                onFrameChange={setFrameId}
-                accent={color.fg}
+                onAddGroup={() => setGroupDialog('create')}
+                onEditGroup={() => setGroupDialog('edit')}
+                onDeleteGroup={() => setConfirm('group')}
+                onCount={(count) =>
+                  setGroups((prev) =>
+                    prev.map((g) =>
+                      g.id === activeGroup.id ? { ...g, count } : g,
+                    ),
+                  )
+                }
+                onSelect={(n) => {
+                  setSelectedTable(n);
+                  setCallHighlight(null);
+                }}
               />
             )}
-
-            <QrPreview
-              title={activeTitle}
-              subtitle="Dijital menümüze QR kod ile ulaşın"
-              url={activeUrl}
-              fg={qrPack ? color.fg : '#0f172a'}
-              bg={qrPack ? color.bg : '#ffffff'}
-              logo={qrPack && withLogo ? logoSrc : undefined}
-              frameId={qrPack ? frameId : 'yok'}
-              size={200}
-            />
-          </>
-        )}
-
-        {view === 'tables' && activeGroup && (
-          <>
-            <div className="barcode-group-toolbar">
-              <div className="barcode-group-field">
-                <Select
-                  label="Grup"
-                  value={activeGroupId}
-                  onChange={(e) => {
-                    setActiveGroupId(e.target.value);
-                    setSelectedTable(null);
-                    setEditingTable(null);
-                  }}
-                  options={groups.map((g) => ({
-                    value: g.id,
-                    label: g.name,
-                  }))}
-                />
-              </div>
-              <div className="barcode-group-field barcode-group-field--count">
-                <Input
-                  label="Masa sayısı"
-                  type="number"
-                  min={1}
-                  max={60}
-                  value={String(activeGroup.count)}
-                  onChange={(e) =>
-                    setActiveGroupCount(Number(e.target.value) || 1)
-                  }
-                />
-              </div>
-              <div className="barcode-group-field barcode-group-field--prefix">
-                <Input
-                  label="Prefix"
-                  value={activeGroup.prefix || ''}
-                  onChange={(e) => setActiveGroupPrefix(e.target.value)}
-                  placeholder="örn. a"
-                />
-              </div>
-              {groups.length > 1 && (
-                <button
-                  type="button"
-                  className="barcode-group-delete"
-                  title="Grubu sil"
-                  onClick={deleteActiveGroup}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-
-            {callHighlight && (
-              <div
-                className={`barcode-call-alert barcode-call-alert--${callHighlight.type === 'bill' ? 'bill' : 'waiter'}`}
-                role="status"
-              >
-                <strong>
-                  {callHighlight.type === 'bill' ? 'Hesap istendi' : callHighlight.type === 'valet' ? 'Vale çağrıldı' : callHighlight.type === 'hookah' ? 'Nargileci çağrıldı' : 'Garson çağrıldı'}
-                </strong>
-                <span>Masa {callHighlight.masa}</span>
-                <button type="button" onClick={() => setCallHighlight(null)} aria-label="Kapat">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+            {mode === 'campaign' && (
+              <CampaignTargets
+                state={campaignState}
+                campaigns={campaigns}
+                selectedId={campaignId}
+                origin={origin}
+                onSelect={setCampaignId}
+                onAdd={() => setCampaignDialog(true)}
+                onMenu={() => setMenuOpen(true)}
+                onDelete={() => setConfirm('campaign')}
+                onRetry={loadCampaigns}
+              />
             )}
-
-            <div className="barcode-table-grid">
-              {tables.map((n) => {
-                const style = getTableStyle(n);
-                const c = resolveColor(style.colorId);
-                const masaUrl = `${origin}/menu?masa=${encodeURIComponent(tableCode(n, activeGroup.prefix))}&grup=${activeGroup.id}`;
-                const isCallTarget =
-                  callHighlight &&
-                  tableCode(n, activeGroup.prefix) === callHighlight.masa;
-                return (
-                  <button
-                    key={`${activeGroup.id}-${n}`}
-                    type="button"
-                    className={`barcode-table-card ${
-                      selectedTable === n ? 'is-active' : ''
-                    }${isCallTarget ? ' barcode-table-card--call' : ''}`}
-                    onClick={() => {
-                      setSelectedTable(n);
-                      setEditingTable(null);
-                    }}
-                  >
-                    <QRCodeSVG
-                      value={masaUrl}
-                      size={72}
-                      level="M"
-                      fgColor={c.fg}
-                      bgColor={c.bg}
-                      imageSettings={
-                        style.withLogo && logoSrc
-                          ? {
-                              src: logoSrc,
-                              height: 22,
-                              width: 22,
-                              excavate: true,
-                            }
-                          : undefined
-                      }
-                    />
-                    <span>{style.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {selectedTable && selectedStyle && (
-              <div className="barcode-enlarge">
-                <div className="flex items-start justify-end mb-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedTable(null);
-                      setEditingTable(null);
-                    }}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--admin-accent-soft)] shrink-0"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="mb-5">
-                  <QrCustomizePanel
-                    colorId={selectedStyle.colorId}
-                    onColorChange={(id) =>
-                      patchTableStyle(selectedTable, { colorId: id })
-                    }
-                    withLogo={selectedStyle.withLogo}
-                    onLogoChange={(v) =>
-                      patchTableStyle(selectedTable, { withLogo: v })
-                    }
-                    hasLogo={!!logoSrc}
-                    frameId={selectedStyle.frameId}
-                    onFrameChange={(id) =>
-                      patchTableStyle(selectedTable, { frameId: id })
-                    }
-                    accent={selectedColor.fg}
-                  />
-                </div>
-
-                <QrPreview
-                  title={selectedStyle.name}
-                  subtitle={user?.restaurant.name || ''}
-                  url={tableUrl}
-                  fg={selectedColor.fg}
-                  bg={selectedColor.bg}
-                  logo={
-                    selectedStyle.withLogo && logoSrc ? logoSrc : undefined
-                  }
-                  frameId={selectedStyle.frameId}
-                  size={220}
-                  titleEditable
-                  titleEditing={editingTable === selectedTable}
-                  onTitleEditStart={() => setEditingTable(selectedTable)}
-                  onTitleChange={(name) =>
-                    patchTableStyle(selectedTable, { name })
-                  }
-                  onTitleEditEnd={() => {
-                    const trimmed =
-                      selectedStyle.name.trim() || `Masa ${selectedTable}`;
-                    patchTableStyle(selectedTable, { name: trimmed });
-                    setEditingTable(null);
-                  }}
-                />
-                <Button className="w-full mt-4" onClick={handlePrint}>
-                  <Printer className="w-4 h-4" /> Bu masayı yazdır
-                </Button>
-              </div>
+            {mode === 'classic' && (
+              <section className="bq-card-panel bq-intro">
+                <h2>Herkesin ana menüsü</h2>
+                <p>
+                  Bu QR, işletmenin dijital menüsünü açar. Kapıya, vitrine,
+                  kartvizite ya da fişe koyabilirsin.
+                </p>
+              </section>
             )}
-          </>
-        )}
-
-        {view === 'campaign' && (
-          <>
-            {campaignsLoading ? (
-              <Spinner />
-            ) : campaigns.length === 0 ? (
-              <p className="text-sm admin-text-muted py-6 text-center">
-                Henüz kampanya yok. Yukarıdan <strong>Kampanya Ekle</strong> ile başla.
-              </p>
-            ) : (
-              <div className="barcode-campaign-grid">
-                {campaigns.map((c) => {
-                  const url = `${origin}/menu?kampanya=${c.slug}`;
-                  return (
-                    <div
-                      key={c.id}
-                      className={`barcode-campaign-card ${
-                        selectedCampaign?.id === c.id ? 'is-active' : ''
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        className="barcode-campaign-card__body"
-                        onClick={() => {
-                          setSelectedCampaign((prev) =>
-                            prev?.id === c.id ? null : c
-                          );
-                          setEditingCampaignName(false);
-                        }}
-                      >
-                        <QRCodeSVG
-                          value={url}
-                          size={72}
-                          level="M"
-                          fgColor={
-                            selectedCampaign?.id === c.id ? color.fg : '#0f172a'
-                          }
-                          bgColor={
-                            selectedCampaign?.id === c.id ? color.bg : '#ffffff'
-                          }
-                          imageSettings={
-                            selectedCampaign?.id === c.id && withLogo && logoSrc
-                              ? {
-                                  src: logoSrc,
-                                  height: 22,
-                                  width: 22,
-                                  excavate: true,
-                                }
-                              : undefined
-                          }
-                        />
-                        <span className="barcode-campaign-card__name">{c.name}</span>
-                        <span className="barcode-campaign-card__meta">
-                          {c.itemCount > 0 ? `${c.itemCount} ürün` : 'Menü yok'}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        className="barcode-campaign-card__delete"
-                        onClick={() => void deleteCampaign(c.id)}
-                        aria-label="Kampanyayı sil"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {selectedCampaign && (
-              <div className="barcode-enlarge">
-                <div className="flex items-start justify-end mb-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedCampaign(null);
-                      setEditingCampaignName(false);
-                    }}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--admin-accent-soft)] shrink-0"
-                    aria-label="Kapat"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {qrPack && (
-                  <div className="mb-5">
-                    <QrCustomizePanel
-                      colorId={colorId}
-                      onColorChange={setColorId}
-                      withLogo={withLogo}
-                      onLogoChange={setWithLogo}
-                      hasLogo={!!logoSrc}
-                      frameId={frameId}
-                      onFrameChange={setFrameId}
-                      accent={color.fg}
-                    />
-                  </div>
+            {!narrow && spec && (
+              <section className="bq-card-panel bq-design">
+                <h2>Tasarım</h2>
+                {locked ? (
+                  <Upsell what="Renk, çerçeve ve logo" />
+                ) : (
+                  <div className="bq-design__grid">{panels}</div>
                 )}
-
-                <QrPreview
-                  title={selectedCampaign.name}
-                  subtitle={user?.restaurant.name || ''}
-                  url={campaignUrl}
-                  fg={color.fg}
-                  bg={color.bg}
-                  logo={withLogo && logoSrc ? logoSrc : undefined}
-                  frameId={qrPack ? frameId : 'yok'}
-                  size={220}
-                  titleEditable
-                  titleEditing={editingCampaignName}
-                  onTitleEditStart={() => setEditingCampaignName(true)}
-                  onTitleChange={patchSelectedCampaignName}
-                  onTitleEditEnd={() => void commitCampaignName()}
-                />
-              </div>
+              </section>
             )}
-          </>
-        )}
-      </Card>
-
-      <AddTableGroupModal
-        open={addingGroup}
-        onClose={() => setAddingGroup(false)}
-        onAdd={createGroup}
+            {narrow && locked && spec && (
+              <Upsell what="Renk, çerçeve ve logo" />
+            )}
+          </div>
+          <div ref={stageHost} className="bq-stagehost">
+            <Stage
+              spec={spec}
+              heading={MODES[modeIndex].label}
+              compact={compact}
+              empty={
+                <span>
+                  Önizlemek için bir{' '}
+                  {mode === 'campaign' ? 'kampanya ekle' : 'masa seç'}.
+                </span>
+              }
+              onCopy={copyLink}
+              onPng={() => void download('png')}
+              onSvg={() => void download('svg')}
+            />
+          </div>
+        </div>
+      )}
+      {narrow && !lockedMode && (
+        <DesignDock
+          panels={trayPanels}
+          locked={locked || (mode === 'tables' && !groupsReady)}
+          printLabel={printLabel}
+          printDisabled={!spec}
+          onPrint={() => setPrintOpen(true)}
+        />
+      )}
+      <GroupDialog
+        open={groupDialog !== null}
+        initial={
+          groupDialog === 'edit' && activeGroup
+            ? {
+                name: activeGroup.name,
+                count: activeGroup.count,
+                prefix: activeGroup.prefix,
+              }
+            : null
+        }
+        onClose={() => setGroupDialog(null)}
+        onSubmit={groupDialog === 'edit' ? editGroup : createGroup}
       />
-
-      <AddCampaignModal
-        open={addingCampaign}
+      <CampaignDialog
+        open={campaignDialog}
         saving={campaignSaving}
-        onClose={() => setAddingCampaign(false)}
-        onAdd={addCampaign}
+        onClose={() => setCampaignDialog(false)}
+        onSubmit={(n) => void addCampaign(n)}
       />
-
+      <ConfirmDialog
+        open={confirm === 'group'}
+        title="Grup silinsin mi?"
+        text={`“${activeGroup?.name}” grubu ve masa tasarımları silinir. Basılı QR’lar eskisi gibi çalışmaya devam eder.`}
+        confirmLabel="Grubu sil"
+        onClose={() => setConfirm(null)}
+        onConfirm={deleteGroup}
+      />
+      <ConfirmDialog
+        open={confirm === 'campaign'}
+        title="Kampanya silinsin mi?"
+        text={`“${campaign?.name}” kampanyası ve özel menüsü silinir. Bu kampanyanın QR’ı artık çalışmaz.`}
+        confirmLabel="Kampanyayı sil"
+        busy={confirmBusy}
+        onClose={() => !confirmBusy && setConfirm(null)}
+        onConfirm={() => void deleteCampaign()}
+      />
       <CampaignMenuModal
-        open={menuModalOpen}
-        campaignId={selectedCampaign?.id ?? null}
-        campaignName={selectedCampaign?.name ?? ''}
-        onClose={() => setMenuModalOpen(false)}
+        open={menuOpen}
+        campaignId={campaign?.id ?? null}
+        campaignName={campaign?.name ?? ''}
+        onClose={() => setMenuOpen(false)}
         onSaved={(itemCount) => {
-          if (!selectedCampaign) return;
-          setCampaigns((prev) =>
-            prev.map((c) =>
-              c.id === selectedCampaign.id ? { ...c, itemCount } : c
-            )
-          );
-          setSelectedCampaign((prev) =>
-            prev ? { ...prev, itemCount } : prev
-          );
+          if (campaign)
+            setCampaigns((prev) =>
+              prev.map((c) => (c.id === campaign.id ? { ...c, itemCount } : c)),
+            );
         }}
       />
-
-      <PrintDesignerModal
+      <PrintDialog
         open={printOpen}
+        title={spec?.title || ''}
+        allCount={allCount}
+        allLabel={`${activeGroup?.name || 'Grup'} masalarının hepsi`}
         onClose={() => setPrintOpen(false)}
-        title={activeTitle}
-        subtitle={
-          view === 'classic'
-            ? 'Dijital menümüze QR kod ile ulaşın'
-            : user?.restaurant.name || ''
-        }
-        url={activeUrl}
-        fg={
-          view === 'tables' && selectedStyle
-            ? selectedColor.fg
-            : qrPack
-              ? color.fg
-              : '#0f172a'
-        }
-        bg={
-          view === 'tables' && selectedStyle
-            ? selectedColor.bg
-            : qrPack
-              ? color.bg
-              : '#ffffff'
-        }
-        logo={
-          view === 'tables' && selectedStyle
-            ? selectedStyle.withLogo && logoSrc
-              ? logoSrc
-              : undefined
-            : qrPack && withLogo && logoSrc
-              ? logoSrc
-              : undefined
-        }
-        size={220}
-        frameNode={
-          <QrFrameShell
-            frameId={
-              view === 'tables' && selectedStyle
-                ? selectedStyle.frameId
-                : qrPack
-                  ? frameId
-                  : 'yok'
-            }
-            color={
-              view === 'tables' && selectedStyle
-                ? selectedColor.fg
-                : qrPack
-                  ? color.fg
-                  : '#0f172a'
-            }
-          >
-            <QRCodeSVG
-              value={activeUrl}
-              size={220}
-              level="H"
-              fgColor={
-                view === 'tables' && selectedStyle
-                  ? selectedColor.fg
-                  : qrPack
-                    ? color.fg
-                    : '#0f172a'
-              }
-              bgColor={
-                view === 'tables' && selectedStyle
-                  ? selectedColor.bg
-                  : qrPack
-                    ? color.bg
-                    : '#ffffff'
-              }
-              imageSettings={
-                (
-                  view === 'tables' && selectedStyle
-                    ? selectedStyle.withLogo && logoSrc
-                    : qrPack && withLogo && logoSrc
-                )
-                  ? {
-                      src: logoSrc,
-                      height: Math.round(220 * 0.26),
-                      width: Math.round(220 * 0.26),
-                      excavate: true,
-                    }
-                  : undefined
-              }
-            />
-          </QrFrameShell>
-        }
+        onPrint={print}
       />
-    </div>
-  );
-}
-
-function FloralCorner({ variant }: { variant: FrameId }) {
-  const common = {
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-  };
-
-  if (variant === 'yok') {
-    return null;
-  }
-
-  if (variant === 'ince') {
-    return (
-      <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
-        <path {...common} strokeWidth="1.6" d="M6 28V10h18" />
-        <path {...common} strokeWidth="1.4" d="M10 10c4-7 12-7 16 0" />
-        <circle cx="10" cy="10" r="2.2" fill="currentColor" />
-        <path fill="currentColor" d="M18 6c3-4 8-3 9 1-4 1-7 3-9-1z" />
-      </svg>
-    );
-  }
-
-  if (variant === 'kalin') {
-    return (
-      <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
-        <path {...common} strokeWidth="3.4" d="M5 30V8h22" />
-        <path {...common} strokeWidth="2.2" d="M12 8c5-8 14-7 18 1" />
-        <circle cx="8" cy="8" r="3" fill="currentColor" />
-        <path fill="currentColor" d="M20 4c4-5 10-4 11 2-5 0-9 3-11-2z" />
-        <path fill="currentColor" d="M4 20c-5 4-4 10 2 11 0-5 3-9-2-11z" />
-      </svg>
-    );
-  }
-
-  if (variant === 'kelebek') {
-    return (
-      <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
-        {/* Sol kanat */}
-        <path
-          fill="currentColor"
-          d="M18 20c-9-2-14-9-12-15 5 1 10 5 12 11z"
-          opacity="0.9"
-        />
-        <path
-          fill="currentColor"
-          d="M18 21c-8 3-12 10-9 15 5-2 9-7 9-12z"
-          opacity="0.75"
-        />
-        {/* Sağ kanat (üst-köşe motifi için kısmi) */}
-        <path
-          fill="currentColor"
-          d="M19 19c2-7 8-12 14-11-2 6-7 10-14 11z"
-          opacity="0.85"
-        />
-        {/* Gövde */}
-        <ellipse cx="18.5" cy="20" rx="1.4" ry="4.2" fill="currentColor" />
-        <circle cx="18.5" cy="16.2" r="1.3" fill="currentColor" />
-        <path
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.2"
-          strokeLinecap="round"
-          d="M17.2 14.5c-1.5-2.5-0.5-4.5 0.5-5M19.8 14.5c1.5-2.5 0.5-4.5-0.5-5"
-        />
-        {/* Nokta detay */}
-        <circle cx="12" cy="12" r="1.1" fill="currentColor" opacity="0.55" />
-        <circle cx="11" cy="26" r="1" fill="currentColor" opacity="0.45" />
-      </svg>
-    );
-  }
-
-  if (variant === 'kesik') {
-    return (
-      <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
-        <path
-          {...common}
-          strokeWidth="2"
-          strokeDasharray="3.5 2.8"
-          d="M8 30V10h20"
-        />
-        <circle cx="10" cy="10" r="2.6" fill="currentColor" />
-        <circle cx="22" cy="8" r="1.5" fill="currentColor" />
-        <circle cx="8" cy="22" r="1.5" fill="currentColor" />
-        <path fill="currentColor" d="M16 5c2.5-3.5 7-3 8 1-3.5.5-6 2.5-8-1z" />
-      </svg>
-    );
-  }
-
-  if (variant === 'halka') {
-    return (
-      <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
-        <path {...common} strokeWidth="2" d="M8 28a20 20 0 0 1 20-20" />
-        <path {...common} strokeWidth="1.3" opacity="0.45" d="M12 30a18 18 0 0 1 18-18" />
-        <path fill="currentColor" d="M24 6c3-4 8-3 9 2-4 0-7 2-9-2z" />
-        <path fill="currentColor" d="M6 24c-4 3-3 8 2 9 0-4 2-7-2-9z" />
-        <circle cx="12" cy="12" r="2.3" fill="currentColor" />
-      </svg>
-    );
-  }
-
-  if (variant === 'minimal') {
-    return (
-      <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
-        <path {...common} strokeWidth="2.2" d="M8 24V10h14" />
-        <circle cx="10" cy="10" r="1.8" fill="currentColor" />
-      </svg>
-    );
-  }
-
-  // sarmaşık + çiçek
-  return (
-    <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden>
-      {/* Sarmaşık gövdesi */}
-      <path
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        d="M8 32C8 20 10 14 18 10c6-3 10-2 14 2"
-      />
-      <path
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        opacity="0.7"
-        d="M10 28c4-6 8-8 14-8"
-      />
-      {/* Yapraklar */}
-      <path fill="currentColor" d="M14 18c-4-5-2-9 2-10 1 4-1 8-2 10z" />
-      <path fill="currentColor" d="M20 12c3-5 8-5 10-1-4 2-7 4-10 1z" opacity="0.9" />
-      <path fill="currentColor" d="M12 24c-5-2-7 2-5 6 3-1 5-3 5-6z" opacity="0.85" />
-      {/* Çiçek */}
-      <circle cx="28" cy="10" r="2.2" fill="currentColor" />
-      <circle cx="25.2" cy="8.2" r="1.5" fill="currentColor" opacity="0.8" />
-      <circle cx="30.8" cy="8.2" r="1.5" fill="currentColor" opacity="0.8" />
-      <circle cx="25.2" cy="11.8" r="1.5" fill="currentColor" opacity="0.8" />
-      <circle cx="30.8" cy="11.8" r="1.5" fill="currentColor" opacity="0.8" />
-      <circle cx="28" cy="10" r="1" fill="#fff" opacity="0.9" />
-      {/* Küçük tomurcuk */}
-      <circle cx="10" cy="14" r="1.4" fill="currentColor" />
-      <circle cx="16" cy="28" r="1.2" fill="currentColor" opacity="0.7" />
-    </svg>
-  );
-}
-
-function QrFrameShell({
-  frameId,
-  color,
-  children,
-  thumb,
-}: {
-  frameId: FrameId;
-  color: string;
-  children: ReactNode;
-  thumb?: boolean;
-}) {
-  const bare = frameId === 'yok';
-  return (
-    <div
-      className={`barcode-qr-frame barcode-qr-frame--${frameId}${thumb ? ' is-thumb' : ''}`}
-      style={{ ['--qr-frame-color' as string]: color || '#0f172a' }}
-    >
-      {!bare && <span className="barcode-qr-frame-ring" aria-hidden />}
-      {!bare && (
-        <>
-          <span className="barcode-qr-frame-c tl" aria-hidden>
-            <FloralCorner variant={frameId} />
-          </span>
-          <span className="barcode-qr-frame-c tr" aria-hidden>
-            <FloralCorner variant={frameId} />
-          </span>
-          <span className="barcode-qr-frame-c bl" aria-hidden>
-            <FloralCorner variant={frameId} />
-          </span>
-          <span className="barcode-qr-frame-c br" aria-hidden>
-            <FloralCorner variant={frameId} />
-          </span>
-        </>
+      {printJob && (
+        <PrintSheet job={printJob} onDone={() => setPrintJob(null)} />
       )}
-      <div className="barcode-qr-frame-inner">{children}</div>
-    </div>
-  );
-}
-
-function QrCustomizePanel({
-  colorId,
-  onColorChange,
-  withLogo,
-  onLogoChange,
-  hasLogo,
-  frameId,
-  onFrameChange,
-  accent,
-}: {
-  colorId: string;
-  onColorChange: (id: string) => void;
-  withLogo: boolean;
-  onLogoChange: (v: boolean) => void;
-  hasLogo: boolean;
-  frameId: FrameId;
-  onFrameChange: (id: FrameId) => void;
-  accent: string;
-}) {
-  return (
-    <div className="barcode-customize">
-      <div className="barcode-customize-left space-y-4">
-        <ColorPicker value={colorId} onChange={onColorChange} />
-        <LogoToggle checked={withLogo} onChange={onLogoChange} hasLogo={hasLogo} />
-      </div>
-      <div className="barcode-customize-divider" aria-hidden />
-      <div className="barcode-customize-right">
-        <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
-          QR Çerçevesi
-        </p>
-        <div className="barcode-frame-grid">
-          {QR_FRAMES.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              className={`barcode-frame-chip ${frameId === f.id ? 'is-active' : ''}`}
-              onClick={() => onFrameChange(f.id)}
-            >
-              <QrFrameShell frameId={f.id} color={accent} thumb>
-                <span className="barcode-frame-thumb-qr" />
-              </QrFrameShell>
-              <span className="barcode-frame-chip-label">{f.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ColorPicker({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (id: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState('#2563eb');
-  const [pos, setPos] = useState({ top: 0, left: 0 });
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
-  const isCustom = !QR_COLORS.some((c) => c.id === value);
-  const customHex = normalizeHex(value) || draft;
-
-  useEffect(() => {
-    const hex = normalizeHex(value);
-    if (hex) setDraft(hex);
-  }, [value]);
-
-  useEffect(() => {
-    if (!open || !btnRef.current) return;
-    function place() {
-      const r = btnRef.current!.getBoundingClientRect();
-      const width = 220;
-      let left = r.right - width;
-      left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
-      const top = Math.min(r.bottom + 8, window.innerHeight - 320);
-      setPos({ top, left });
-    }
-    place();
-    window.addEventListener('resize', place);
-    window.addEventListener('scroll', place, true);
-    return () => {
-      window.removeEventListener('resize', place);
-      window.removeEventListener('scroll', place, true);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    let remove: (() => void) | undefined;
-    const timer = window.setTimeout(() => {
-      function onDoc(e: MouseEvent) {
-        const t = e.target as Node;
-        if (wrapRef.current?.contains(t) || popoverRef.current?.contains(t)) return;
-        setOpen(false);
-      }
-      function onKey(e: KeyboardEvent) {
-        if (e.key === 'Escape') setOpen(false);
-      }
-      document.addEventListener('mousedown', onDoc);
-      document.addEventListener('keydown', onKey);
-      remove = () => {
-        document.removeEventListener('mousedown', onDoc);
-        document.removeEventListener('keydown', onKey);
-      };
-    }, 0);
-    return () => {
-      window.clearTimeout(timer);
-      remove?.();
-    };
-  }, [open]);
-
-  function applyCustom(hex: string) {
-    const next = normalizeHex(hex) || hex;
-    setDraft(next);
-    onChange(next.toLowerCase());
-  }
-
-  return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
-        Renk
-      </p>
-      <div className="barcode-color-row">
-        {QR_COLORS.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              onChange(c.id);
-            }}
-            className={`barcode-color-swatch ${value === c.id ? 'is-active' : ''}`}
-            style={{ background: c.fg }}
-            title={c.label}
-          />
-        ))}
-        <div className="barcode-color-custom-wrap" ref={wrapRef}>
-          <button
-            ref={btnRef}
-            type="button"
-            className={`barcode-color-swatch barcode-color-custom ${
-              isCustom || open ? 'is-active' : ''
-            }`}
-            title="Özel renk"
-            aria-expanded={open}
-            aria-haspopup="dialog"
-            onClick={(e) => {
-              e.stopPropagation();
-              const next = !open;
-              setOpen(next);
-              if (next && !isCustom) applyCustom(draft);
-            }}
-          >
-            <span
-              className="barcode-color-custom-face"
-              style={isCustom ? { background: customHex } : undefined}
-            />
-          </button>
-
-          {open &&
-            createPortal(
-              <div
-                ref={popoverRef}
-                className="barcode-color-popover"
-                role="dialog"
-                aria-label="Özel renk seç"
-                style={{ top: pos.top, left: pos.left }}
-              >
-                <div className="barcode-color-popover-head">
-                  <span>Özel renk</span>
-                  <button
-                    type="button"
-                    className="barcode-color-popover-close"
-                    onClick={() => setOpen(false)}
-                    aria-label="Kapat"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <HexColorPicker color={customHex} onChange={applyCustom} />
-                <div className="barcode-color-popover-foot">
-                  <span
-                    className="barcode-color-popover-preview"
-                    style={{ background: customHex }}
-                  />
-                  <HexColorInput
-                    color={customHex}
-                    onChange={applyCustom}
-                    prefixed
-                    className="barcode-color-hex-input"
-                    aria-label="Hex renk kodu"
-                  />
-                </div>
-              </div>,
-              document.body
-            )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LogoToggle({
-  checked,
-  onChange,
-  hasLogo,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  hasLogo: boolean;
-}) {
-  return (
-    <label
-      className={`flex items-center gap-2.5 text-sm select-none ${
-        hasLogo ? 'cursor-pointer text-[var(--admin-text)]' : 'cursor-not-allowed opacity-60'
-      }`}
-    >
-      <input
-        type="checkbox"
-        checked={checked && hasLogo}
-        onChange={(e) => onChange(e.target.checked)}
-        disabled={!hasLogo}
-        className="rounded accent-[var(--admin-accent)]"
-      />
-      Logo ortalı QR
-      {!hasLogo && (
-        <span className="text-xs admin-text-muted">(önce Ayarlar’dan logo yükle)</span>
-      )}
-    </label>
-  );
-}
-
-function QrPreview({
-  title,
-  subtitle,
-  url,
-  fg,
-  bg,
-  logo,
-  size,
-  frameId = 'yok',
-  titleEditable,
-  titleEditing,
-  onTitleEditStart,
-  onTitleChange,
-  onTitleEditEnd,
-}: {
-  title: string;
-  subtitle: string;
-  url: string;
-  fg: string;
-  bg: string;
-  logo?: string;
-  size: number;
-  frameId?: FrameId;
-  titleEditable?: boolean;
-  titleEditing?: boolean;
-  onTitleEditStart?: () => void;
-  onTitleChange?: (name: string) => void;
-  onTitleEditEnd?: () => void;
-}) {
-  return (
-    <div className="barcode-print-root barcode-preview-only">
-      <div
-        className="barcode-print-card"
-        style={{
-          background: bg,
-          color: fg,
-          width: 'min(100%, 22rem)',
-        }}
-      >
-        {titleEditable && titleEditing ? (
-          <input
-            autoFocus
-            className="barcode-qr-title-input"
-            value={title}
-            onChange={(e) => onTitleChange?.(e.target.value)}
-            onBlur={() => onTitleEditEnd?.()}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === 'Escape') {
-                (e.target as HTMLInputElement).blur();
-              }
-            }}
-            style={{ color: fg, borderColor: fg }}
-          />
-        ) : (
-          <h2
-            className={`barcode-print-title ${
-              titleEditable ? 'barcode-qr-title-editable' : ''
-            }`}
-            style={{ color: fg }}
-            title={titleEditable ? 'Tıkla — adı değiştir' : undefined}
-            onClick={titleEditable ? onTitleEditStart : undefined}
-          >
-            {title}
-          </h2>
-        )}
-        {subtitle && (
-          <p className="barcode-print-subtitle" style={{ color: fg }}>
-            {subtitle}
-          </p>
-        )}
-        <QrFrameShell frameId={frameId} color={fg}>
-          <QRCodeSVG
-            value={url}
-            size={size}
-            level="H"
-            fgColor={fg}
-            bgColor={bg}
-            imageSettings={
-              logo
-                ? {
-                    src: logo,
-                    height: Math.round(size * 0.26),
-                    width: Math.round(size * 0.26),
-                    excavate: true,
-                  }
-                : undefined
-            }
-          />
-        </QrFrameShell>
-        <p className="barcode-print-url" style={{ color: fg }}>
-          {url}
-        </p>
-      </div>
     </div>
   );
 }
