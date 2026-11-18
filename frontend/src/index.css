@@ -12751,3 +12751,56 @@ body:has(.welcome-scene[data-theme-welcome='vibrant']) {
 }
 
 @import "./public-menu-color-modes.css";
+
+/* Admin kenar çubuğu alt eylemleri */
+.sidebar-footer-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  grid-auto-flow: column;
+  gap: 8px;
+}
+.sidebar-footer-btn {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 0;
+  color: var(--admin-sidebar-text);
+  background: rgba(255, 255, 255, 0.12);
+  border: 0;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+.sidebar-footer-btn:hover:not(:disabled) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.22);
+}
+.sidebar-footer-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+.sidebar-footer-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.sidebar-footer-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.sidebar-footer-btn--on,
+.sidebar-footer-btn--active,
+.sidebar-footer-btn--ai {
+  color: var(--admin-sidebar-active-text);
+  background: var(--admin-sidebar-active-bg);
+}
+.sidebar-footer-btn--on:hover:not(:disabled),
+.sidebar-footer-btn--active:hover:not(:disabled),
+.sidebar-footer-btn--ai:hover:not(:disabled) {
+  color: var(--admin-sidebar-active-text);
+  background: var(--admin-sidebar-active-bg);
+  filter: brightness(0.95);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-footer-btn {
+    transition: none;
+  }
+}
