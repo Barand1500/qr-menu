@@ -11,6 +11,7 @@ type SearchHit = { label: string; lat: number; lng: number };
 type Props = {
   value: GeoLockConfig;
   onChange: (next: GeoLockConfig) => void;
+  draftOnly?: boolean;
 };
 
 const homeIcon = L.divIcon({
@@ -22,7 +23,11 @@ const homeIcon = L.divIcon({
   iconAnchor: [17, 17],
 });
 
-export default function GeoLockMapEditor({ value, onChange }: Props) {
+export default function GeoLockMapEditor({
+  value,
+  onChange,
+  draftOnly = false,
+}: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapObj = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
@@ -50,7 +55,8 @@ export default function GeoLockMapEditor({ value, onChange }: Props) {
     // OSM karolarını kendi API'miz üzerinden çek (Referer / API key sorunu olmaz)
     const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
     L.tileLayer(`${apiBase}/api/map-tiles/{z}/{x}/{y}.png`, {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
     }).addTo(map);
 
@@ -107,7 +113,10 @@ export default function GeoLockMapEditor({ value, onChange }: Props) {
     if (!map || !marker || !circle) return;
     const next = L.latLng(value.lat, value.lng);
     const cur = marker.getLatLng();
-    if (Math.abs(cur.lat - next.lat) > 1e-6 || Math.abs(cur.lng - next.lng) > 1e-6) {
+    if (
+      Math.abs(cur.lat - next.lat) > 1e-6 ||
+      Math.abs(cur.lng - next.lng) > 1e-6
+    ) {
       marker.setLatLng(next);
       circle.setLatLng(next);
       map.panTo(next);
@@ -123,7 +132,7 @@ export default function GeoLockMapEditor({ value, onChange }: Props) {
     setSearching(true);
     try {
       const res = await api<SearchHit[]>(
-        `/api/admin/settings/geo-search?q=${encodeURIComponent(q)}`
+        `/api/admin/settings/geo-search?q=${encodeURIComponent(q)}`,
       );
       setHits(res);
       if (res[0]) applyHit(res[0]);
@@ -211,19 +220,33 @@ export default function GeoLockMapEditor({ value, onChange }: Props) {
       <div className="geo-lock-admin__map-wrap">
         <div ref={mapRef} className="geo-lock-admin__map" />
         <div className="geo-lock-admin__map-actions">
-          <button type="button" className="geo-lock-admin__map-btn" onClick={goHome}>
-            <House className="w-3.5 h-3.5" />
-            Eve git
-          </button>
           <button
             type="button"
-            className="geo-lock-admin__map-btn is-save"
-            disabled={savingHome}
-            onClick={() => void saveHome()}
+            className="geo-lock-admin__map-btn"
+            onClick={goHome}
           >
-            {homeSaved ? <Check className="w-3.5 h-3.5" /> : <House className="w-3.5 h-3.5" />}
-            {savingHome ? 'Kaydediliyor…' : homeSaved ? 'Ev kaydedildi' : 'Evi kaydet'}
+            <House className="w-3.5 h-3.5" />
+            Konuma dön
           </button>
+          {!draftOnly && (
+            <button
+              type="button"
+              className="geo-lock-admin__map-btn is-save"
+              disabled={savingHome}
+              onClick={() => void saveHome()}
+            >
+              {homeSaved ? (
+                <Check className="w-3.5 h-3.5" />
+              ) : (
+                <House className="w-3.5 h-3.5" />
+              )}
+              {savingHome
+                ? 'Kaydediliyor…'
+                : homeSaved
+                  ? 'Ev kaydedildi'
+                  : 'Evi kaydet'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -242,8 +265,10 @@ export default function GeoLockMapEditor({ value, onChange }: Props) {
           />
         </label>
         <p className="geo-lock-admin__coords">
-          Ev simgesini sürükleyin, sonra Evi kaydet · {value.lat.toFixed(5)},{' '}
-          {value.lng.toFixed(5)}
+          {draftOnly
+            ? 'İşaretçiyi sürükleyin, değişiklikleri kaydedin'
+            : 'Ev simgesini sürükleyin, sonra Evi kaydet'}{' '}
+          · {value.lat.toFixed(5)}, {value.lng.toFixed(5)}
         </p>
       </div>
     </div>

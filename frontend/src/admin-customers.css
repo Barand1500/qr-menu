@@ -1808,3 +1808,46 @@
     padding: 14px 20px max(14px, env(safe-area-inset-bottom));
   }
 }
+
+/* Seçici içindeki arama, ikinci bir çerçeveli form alanı değildir. */
+.admin-customers__reward-composer .admin-customers__combo-search input,
+.admin-customers__reward-composer .admin-customers__combo-search input:focus,
+.admin-customers__reward-composer
+  .admin-customers__combo-search
+  input:focus-visible {
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  box-shadow: none;
+  background: transparent;
+  min-height: 40px;
+  height: 40px;
+  padding: 8px 0;
+  font-size: 13px;
+}
+.admin-customers__combo-search {
+  padding: 0 10px;
+  gap: 9px;
+  border-radius: 7px 7px 0 0;
+}
+.admin-customers__combo-search:focus-within {
+  color: var(--admin-accent-text);
+  border-bottom-color: var(--admin-accent);
+}
+.admin-customers__combo-panel {
+  padding: 5px 7px 7px;
+  border-radius: 12px;
+  box-shadow: 0 12px 35px #0f172a18;
+}
+.admin-customers__combo-panel li > button {
+  min-height: 43px;
+  padding: 11px 10px;
+}
+.admin-customers__combo-panel li > button:hover {
+  background: var(--admin-input-bg);
+}
+@media (max-width: 600px) {
+  .admin-customers__reward-composer .admin-customers__combo-search input {
+    font-size: 16px;
+  }
+}

@@ -1,23 +1,52 @@
-import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Globe, Plug, MessageSquare, Building2, ImagePlus, Plus, Coins, Share2, Trash2, Music2, HandHelping, KeyRound, Sparkles, CalendarClock, Phone, MessageCircle, Copy, Check, MapPinned, Expand, Save } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  ArrowUpRight,
+  Building2,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Globe,
+  HandHelping,
+  ImagePlus,
+  KeyRound,
+  Link2,
+  MapPinned,
+  Phone,
+  Plug,
+  Plus,
+  Save,
+  Search,
+  Share2,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
-import { TranslatableTextarea } from '@/components/TranslatableField';
-import AddLanguageModal from '@/components/AddLanguageModal';
-import AddCurrencyModal from '@/components/AddCurrencyModal';
+import { PageHeader, Spinner } from '@/components/ui';
+import AdminOverlay from '@/components/admin/AdminOverlay';
+import AdminToast, {
+  type AdminToastNotice,
+} from '@/components/admin/AdminToast';
+import { autoTranslate } from '@/lib/translate';
 import SocialBrandIcon from '@/components/SocialBrandIcon';
-import { SocialDisplayIcon, CUSTOM_ICONS } from '@/components/SocialDisplayIcon';
+import {
+  SocialDisplayIcon,
+  CUSTOM_ICONS,
+} from '@/components/SocialDisplayIcon';
 import GeoLockMapEditor from '@/components/admin/GeoLockMapEditor';
-import AboutPageEditorModal from '@/components/admin/AboutPageEditorModal';
 import type { GeoLockConfig } from '@/lib/geoLock';
-import { DEFAULT_ABOUT_PAGE, parseAboutPage, type AboutPageConfig } from '@/lib/aboutPage';
-import '@/about-page.css';
+import { DEFAULT_ABOUT_PAGE, parseAboutPage } from '@/lib/aboutPage';
 import LanguageFlag from '@/components/LanguageFlag';
-import { catalogByCode, type CatalogLanguage } from '@/lib/languageCatalog';
-import { currencyCatalogByCode, type CatalogCurrency } from '@/lib/currencyCatalog';
+import {
+  LANGUAGE_CATALOG,
+  catalogByCode,
+  type CatalogLanguage,
+} from '@/lib/languageCatalog';
+import { CURRENCY_CATALOG, type CatalogCurrency } from '@/lib/currencyCatalog';
 import {
   CUSTOM_ICON_OPTIONS,
   mergeSocialConfigs,
@@ -34,22 +63,19 @@ import {
   SUPPORT_PHONE_TEL,
   supportWhatsAppUrl,
 } from '@/lib/supportContact';
+import '@/admin-settings.css';
 
+type SectionId =
+  'business' | 'menu' | 'localization' | 'social' | 'connections';
 interface Language {
   id: number;
   code: string;
   name: string;
   isActive: boolean;
 }
-
-interface Currency {
-  id: number;
-  code: string;
-  name: string;
+interface Currency extends Language {
   symbol: string;
-  isActive: boolean;
 }
-
 interface SettingsData {
   restaurant: {
     id: number;
@@ -59,1480 +85,1480 @@ interface SettingsData {
   };
   languages: Language[];
   currencies?: Currency[];
-  welcomeMessages: { languageId: number; languageCode: string; message: string }[];
+  welcomeMessages: {
+    languageId: number;
+    languageCode: string;
+    message: string;
+  }[];
   settings: Record<string, string>;
 }
-
-interface TranslateStatus {
-  openaiConfigured: boolean;
-  freeFallback: boolean;
-}
-
-function SettingsSection({
-  icon: Icon,
-  title,
-  children,
-  className = '',
-  bodyClassName = '',
-  action,
-  sectionId,
-  highlight,
-}: {
-  icon: typeof Globe;
+const SECTIONS: {
+  id: SectionId;
   title: string;
-  children: React.ReactNode;
+  description: string;
+  icon: typeof Globe;
+}[] = [
+  {
+    id: 'business',
+    title: 'İşletme',
+    description: 'İsim, logo ve hikâyeniz',
+    icon: Building2,
+  },
+  {
+    id: 'menu',
+    title: 'Menü deneyimi',
+    description: 'Karşılama, servis ve konum',
+    icon: HandHelping,
+  },
+  {
+    id: 'localization',
+    title: 'Dil ve para',
+    description: 'Menünüzün konuştuğu diller',
+    icon: Globe,
+  },
+  {
+    id: 'social',
+    title: 'Sosyal bağlantılar',
+    description: 'Hesaplarınız ve özel linkler',
+    icon: Share2,
+  },
+  {
+    id: 'connections',
+    title: 'Bağlantılar',
+    description: 'Entegrasyon ve lisans',
+    icon: Plug,
+  },
+];
+function Section({
+  title,
+  description,
+  children,
+  action,
+  className = '',
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+  action?: ReactNode;
   className?: string;
-  bodyClassName?: string;
-  action?: React.ReactNode;
-  sectionId?: string;
-  highlight?: boolean;
 }) {
   return (
-    <section
-      id={sectionId}
-      className={`admin-card overflow-hidden flex flex-col ${className}${
-        highlight ? ' settings-section--pulse' : ''
-      }`}
-    >
-      <div
-        className="flex items-center gap-2.5 px-5 py-3.5 shrink-0"
-        style={{
-          background: 'var(--admin-input-bg)',
-          borderBottom: '1px solid var(--admin-card-border)',
-        }}
-      >
-        <Icon className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
-        <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--admin-text)] flex-1">
-          {title}
-        </h3>
+    <section className={`ast-card ${className}`}>
+      <header className="ast-card-head">
+        <div>
+          <h2>{title}</h2>
+          {description && <p>{description}</p>}
+        </div>
         {action}
-      </div>
-      <div className={`p-5 flex-1 min-h-0 ${bodyClassName}`.trim()}>{children}</div>
+      </header>
+      <div className="ast-card-body">{children}</div>
     </section>
   );
 }
+function Toggle({
+  label,
+  description,
+  checked,
+  onChange,
+  disabled,
+  icon: Icon,
+}: {
+  label: string;
+  description?: string;
+  checked: boolean;
+  onChange: () => void;
+  disabled?: boolean;
+  icon?: typeof Globe;
+}) {
+  return (
+    <button
+      type="button"
+      className="ast-toggle"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onChange}
+    >
+      {Icon && <Icon size={20} strokeWidth={1.6} />}
+      <span>
+        <strong>{label}</strong>
+        {description && <small>{description}</small>}
+      </span>
+      <span className="ast-switch" aria-hidden="true">
+        <span />
+      </span>
+    </button>
+  );
+}
+const errorMessage = (err: unknown) =>
+  err instanceof Error ? err.message : 'İşlem tamamlanamadı.';
 
 export default function SettingsPage() {
   const { refreshUser } = useAuth();
   const { isOwned, isEnabled, setEnabled } = useAddons();
-  const assistantOwned = isOwned('menu-assistant');
-  const assistantEnabled = isEnabled('menu-assistant');
   const [searchParams, setSearchParams] = useSearchParams();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const pageRef = useRef<HTMLDivElement>(null);
-  const saveBtnRef = useRef<HTMLSpanElement>(null);
-  const [data, setData] = useState<SettingsData | null>(null);
-  const [currencies, setCurrencies] = useState<Currency[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [companyName, setCompanyName] = useState('');
-  const [companyAbout, setCompanyAbout] = useState('');
-  const [aboutPage, setAboutPage] = useState<AboutPageConfig>(DEFAULT_ABOUT_PAGE);
-  const [aboutEditorOpen, setAboutEditorOpen] = useState(false);
+  const [active, setActive] = useState<SectionId>(() =>
+    searchParams.get('focus') === 'languages' ? 'localization' : 'business',
+  );
+  const [navOpen, setNavOpen] = useState(false),
+    [revision, setRevision] = useState(0);
+  const [data, setData] = useState<SettingsData | null>(null),
+    [loading, setLoading] = useState(true),
+    [loadError, setLoadError] = useState(false);
+  const [languages, setLanguages] = useState<Language[]>([]),
+    [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [companyName, setCompanyName] = useState(''),
+    [companyAbout, setCompanyAbout] = useState('');
+  const aboutPage = useRef(DEFAULT_ABOUT_PAGE);
   const [messages, setMessages] = useState<Record<number, string>>({});
-  const [integrationEnabled, setIntegrationEnabled] = useState(false);
-  const [openaiApiKey, setOpenaiApiKey] = useState('');
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [addLangOpen, setAddLangOpen] = useState(false);
-  const [addingLang, setAddingLang] = useState(false);
-  const [addCurrencyOpen, setAddCurrencyOpen] = useState(false);
-  const [addingCurrency, setAddingCurrency] = useState(false);
-  const [translateStatus, setTranslateStatus] = useState<TranslateStatus | null>(null);
-  const [languagesHighlight, setLanguagesHighlight] = useState(false);
-  const [socialLinks, setSocialLinks] = useState<SocialLinkConfig[]>(mergeSocialConfigs([]));
-  const [welcomeMusicUrl, setWelcomeMusicUrl] = useState('');
-  const [tableServiceEnabled, setTableServiceEnabled] = useState(true);
-  const [tableSessionCodeEnabled, setTableSessionCodeEnabled] = useState(false);
-  const [tableSessionCodeTtl, setTableSessionCodeTtl] = useState(120);
+  const [integrationEnabled, setIntegrationEnabled] = useState(false),
+    [openaiApiKey, setOpenaiApiKey] = useState('');
+  const [logoFile, setLogoFile] = useState<File | null>(null),
+    [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [socialLinks, setSocialLinks] = useState<SocialLinkConfig[]>(
+    mergeSocialConfigs([]),
+  );
+  const [welcomeMusicUrl, setWelcomeMusicUrl] = useState(''),
+    [tableServiceEnabled, setTableServiceEnabled] = useState(true);
+  const [tableCodeEnabled, setTableCodeEnabled] = useState(false),
+    [tableCodeTtl, setTableCodeTtl] = useState(120);
   const [geoLock, setGeoLock] = useState<GeoLockConfig>({
     enabled: false,
     lat: 36.8121,
     lng: 34.6415,
     radiusMeters: 120,
   });
-  const [togglingMenuFeature, setTogglingMenuFeature] = useState<
-    'table' | 'table-code' | 'assistant' | null
-  >(null);
-  const [renewContactOpen, setRenewContactOpen] = useState(false);
-  const [codeCopied, setCodeCopied] = useState(false);
-  const [iconPickerFor, setIconPickerFor] = useState<string | null>(null);
-  const [iconPickerPos, setIconPickerPos] = useState<{ left: number; bottom: number } | null>(
-    null
-  );
-  const customIconInputRef = useRef<HTMLInputElement>(null);
-  const pendingCustomIconIdRef = useRef<string | null>(null);
-  const [uploadingIconFor, setUploadingIconFor] = useState<string | null>(null);
-  const [settingsDirty, setSettingsDirty] = useState(false);
-  const [saveInView, setSaveInView] = useState(true);
+  const [dirty, setDirty] = useState<SectionId[]>([]),
+    [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<AdminToastNotice>(null);
+  const [picker, setPicker] = useState<'language' | 'currency' | null>(null),
+    [catalogQuery, setCatalogQuery] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<{
+    kind: 'language' | 'currency';
+    id: number;
+    name: string;
+  } | null>(null);
+  const [catalogBusy, setCatalogBusy] = useState(false),
+    [assistantBusy, setAssistantBusy] = useState(false);
+  const [iconFor, setIconFor] = useState<string | null>(null),
+    [uploadingIcon, setUploadingIcon] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null),
+    iconInputRef = useRef<HTMLInputElement>(null);
+  const actionLock = useRef(false),
+    contentRef = useRef<HTMLDivElement>(null);
+  const [translating, setTranslating] = useState<string | null>(null);
+  const busy =
+    saving ||
+    catalogBusy ||
+    assistantBusy ||
+    uploadingIcon ||
+    translating !== null;
+  const toast = (text: string, error = false) => setNotice({ text, error });
+  const mark = (section: SectionId) =>
+    setDirty((list) => (list.includes(section) ? list : [...list, section]));
+  const { platforms: platformSocial, customs: customSocial } =
+    splitSocialConfigs(socialLinks);
+  const current = SECTIONS.find((s) => s.id === active)!;
 
   useEffect(() => {
-    const root = pageRef.current;
-    if (!root) return;
-    const markDirty = () => setSettingsDirty(true);
-    root.addEventListener('input', markDirty, true);
-    root.addEventListener('change', markDirty, true);
-    return () => {
-      root.removeEventListener('input', markDirty, true);
-      root.removeEventListener('change', markDirty, true);
-    };
-  }, [data]);
-
-  useEffect(() => {
-    const el = saveBtnRef.current;
-    if (!el || !data) return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        setSaveInView(Boolean(entry?.isIntersecting && entry.intersectionRatio >= 0.35));
-      },
-      { threshold: [0, 0.35, 1], rootMargin: '-4px 0px 0px 0px' }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [data]);
-
-  useEffect(() => {
-    Promise.all([
-      api<SettingsData>('/api/admin/settings'),
-      api<TranslateStatus>('/api/admin/translate/status').catch(() => ({
-        openaiConfigured: false,
-        freeFallback: true,
-      })),
-      api<Currency[]>('/api/admin/currencies').catch(() => [] as Currency[]),
-    ])
-      .then(([d, status, curs]) => {
+    const controller = new AbortController();
+    setLoading(true);
+    setLoadError(false);
+    api<SettingsData>('/api/admin/settings', { signal: controller.signal })
+      .then(async (d) => {
+        let curs = d.currencies;
+        if (!curs)
+          curs = await api<Currency[]>('/api/admin/currencies', {
+            signal: controller.signal,
+          });
+        if (controller.signal.aborted) return;
         setData(d);
-        setCurrencies(d.currencies?.length ? d.currencies : curs);
+        setLanguages(d.languages);
+        setCurrencies(curs);
         setCompanyName(d.restaurant.name);
         setCompanyAbout(d.settings.company_about || '');
-        setAboutPage(
-          parseAboutPage(d.settings.company_about_page, d.settings.company_about || '')
+        aboutPage.current = parseAboutPage(
+          d.settings.company_about_page,
+          d.settings.company_about || '',
         );
-        setMessages(Object.fromEntries(d.welcomeMessages.map((m) => [m.languageId, m.message])));
+        setMessages(
+          Object.fromEntries(
+            d.welcomeMessages.map((m) => [m.languageId, m.message]),
+          ),
+        );
         setIntegrationEnabled(d.settings.integration_enabled === 'true');
         setOpenaiApiKey(d.settings.openai_api_key || '');
-        setLogoPreview(d.restaurant.logoUrl ? imageUrl(d.restaurant.logoUrl) : null);
+        setLogoPreview(
+          d.restaurant.logoUrl ? imageUrl(d.restaurant.logoUrl) : null,
+        );
         try {
           setSocialLinks(
-            mergeSocialConfigs(
-              d.settings.social_links ? JSON.parse(d.settings.social_links) : []
-            )
+            mergeSocialConfigs(JSON.parse(d.settings.social_links || '[]')),
           );
         } catch {
           setSocialLinks(mergeSocialConfigs([]));
         }
         setWelcomeMusicUrl(d.settings.welcome_music_url || '');
-        setTableServiceEnabled(isTableServiceEnabled(d.settings.menu_table_service_enabled));
-        setTableSessionCodeEnabled(
-          d.settings.table_session_code_enabled === 'true' ||
-            d.settings.table_session_code_enabled === '1'
+        setTableServiceEnabled(
+          isTableServiceEnabled(d.settings.menu_table_service_enabled),
         );
-        {
-          const ttl = Math.round(Number(d.settings.table_session_code_ttl_minutes));
-          setTableSessionCodeTtl(
-            Number.isFinite(ttl) ? Math.min(120, Math.max(15, ttl)) : 120
-          );
-        }
+        setTableCodeEnabled(
+          ['true', '1'].includes(d.settings.table_session_code_enabled),
+        );
+        const ttl = Number(d.settings.table_session_code_ttl_minutes);
+        setTableCodeTtl(
+          Number.isFinite(ttl) && ttl > 0
+            ? Math.min(120, Math.max(15, Math.round(ttl)))
+            : 120,
+        );
         try {
-          const raw = d.settings.geo_lock ? JSON.parse(d.settings.geo_lock) : null;
-          if (raw && typeof raw === 'object') {
+          const g = JSON.parse(d.settings.geo_lock || 'null');
+          if (
+            g &&
+            Number.isFinite(Number(g.lat)) &&
+            Number.isFinite(Number(g.lng))
+          )
             setGeoLock({
-              enabled: Boolean(raw.enabled),
-              lat: Number(raw.lat) || 36.8121,
-              lng: Number(raw.lng) || 34.6415,
-              radiusMeters: Number(raw.radiusMeters) || 120,
+              enabled: Boolean(g.enabled),
+              lat: Number(g.lat),
+              lng: Number(g.lng),
+              radiusMeters: Math.min(
+                2000,
+                Math.max(30, Number(g.radiusMeters) || 120),
+              ),
             });
-          }
         } catch {
-          /* keep default */
+          /* Defaults remain usable. */
         }
-        setTranslateStatus({
-          openaiConfigured:
-            status.openaiConfigured || Boolean(d.settings.openai_api_key?.trim()),
-          freeFallback: status.freeFallback !== false,
-        });
+        setDirty([]);
       })
-      .finally(() => setLoading(false));
-  }, []);
-
+      .catch(() => {
+        if (!controller.signal.aborted) setLoadError(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [revision]);
   useEffect(() => {
-    if (loading || searchParams.get('focus') !== 'languages') return;
-    const timer = window.setTimeout(() => {
-      const el = document.getElementById('settings-languages');
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setLanguagesHighlight(true);
-      window.setTimeout(() => setLanguagesHighlight(false), 2200);
-      const next = new URLSearchParams(searchParams);
-      next.delete('focus');
-      setSearchParams(next, { replace: true });
-    }, 120);
-    return () => window.clearTimeout(timer);
-  }, [loading, searchParams, setSearchParams]);
-
+    if (searchParams.get('focus') !== 'languages') return;
+    setActive('localization');
+    const next = new URLSearchParams(searchParams);
+    next.delete('focus');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
   useEffect(() => {
     if (!logoFile) return;
     const url = URL.createObjectURL(logoFile);
     setLogoPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [logoFile]);
-
   useEffect(() => {
-    setTranslateStatus((prev) =>
-      prev
-        ? { ...prev, openaiConfigured: Boolean(openaiApiKey.trim()) || prev.openaiConfigured }
-        : {
-            openaiConfigured: Boolean(openaiApiKey.trim()),
-            freeFallback: true,
-          }
-    );
-  }, [openaiApiKey]);
-
-  useEffect(() => {
-    if (!iconPickerFor) return;
-    const onScrollOrResize = () => {
-      setIconPickerFor(null);
-      setIconPickerPos(null);
+    if (!dirty.length) return;
+    const before = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIconPickerFor(null);
-        setIconPickerPos(null);
-      }
-    };
-    window.addEventListener('scroll', onScrollOrResize, true);
-    window.addEventListener('resize', onScrollOrResize);
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('scroll', onScrollOrResize, true);
-      window.removeEventListener('resize', onScrollOrResize);
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [iconPickerFor]);
+    window.addEventListener('beforeunload', before);
+    return () => window.removeEventListener('beforeunload', before);
+  }, [dirty.length]);
 
-  async function saveLanguages() {
-    if (!data) return;
-    await api('/api/admin/settings/languages', {
-      method: 'PUT',
-      body: JSON.stringify({
-        languages: data.languages.map((l) => ({ id: l.id, isActive: l.isActive })),
-      }),
-    });
+  function choose(section: SectionId) {
+    setActive(section);
+    setNavOpen(false);
+    contentRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
   }
-
-  async function saveCurrencies() {
-    await api('/api/admin/settings/currencies', {
-      method: 'PUT',
-      body: JSON.stringify({
-        currencies: currencies.map((c) => ({ id: c.id, isActive: c.isActive })),
-      }),
-    });
-  }
-
-  async function toggleTableService() {
-    const next = !tableServiceEnabled;
-    setTogglingMenuFeature('table');
-    try {
-      await api('/api/admin/settings/menu-features', {
-        method: 'PUT',
-        body: JSON.stringify({ tableService: next }),
-      });
-      setTableServiceEnabled(next);
-    } catch {
-      /* leave previous state */
-    } finally {
-      setTogglingMenuFeature(null);
+  async function save() {
+    if (actionLock.current || !data || !dirty.length) return;
+    if (dirty.includes('business') && !companyName.trim()) {
+      setActive('business');
+      toast('İşletme adı gerekli.', true);
+      return;
     }
-  }
-
-  async function toggleTableSessionCode() {
-    const next = !tableSessionCodeEnabled;
-    setTogglingMenuFeature('table-code');
-    try {
-      await api('/api/admin/settings/menu-features', {
-        method: 'PUT',
-        body: JSON.stringify({
-          tableSessionCode: next,
-          tableSessionCodeTtlMinutes: tableSessionCodeTtl,
-        }),
-      });
-      setTableSessionCodeEnabled(next);
-    } catch {
-      /* leave previous state */
-    } finally {
-      setTogglingMenuFeature(null);
+    if (dirty.includes('menu') && /spotify\.com/i.test(welcomeMusicUrl)) {
+      setActive('menu');
+      toast('YouTube veya doğrudan ses dosyası bağlantısı kullanın.', true);
+      return;
     }
-  }
-
-  async function saveTableSessionCodeTtl(ttl: number) {
-    const next = Math.min(24 * 60, Math.max(15, ttl));
-    setTableSessionCodeTtl(next);
-    try {
-      await api('/api/admin/settings/menu-features', {
-        method: 'PUT',
-        body: JSON.stringify({
-          tableSessionCode: tableSessionCodeEnabled,
-          tableSessionCodeTtlMinutes: next,
-        }),
-      });
-    } catch {
-      /* ignore */
-    }
-  }
-
-  async function toggleMenuAssistant() {
-    if (!assistantOwned) return;
-    setTogglingMenuFeature('assistant');
-    try {
-      await setEnabled('menu-assistant', !assistantEnabled);
-    } catch {
-      /* leave previous state */
-    } finally {
-      setTogglingMenuFeature(null);
-    }
-  }
-
-  async function handleSave() {
+    actionLock.current = true;
     setSaving(true);
-    try {
-      await api('/api/admin/settings/company', {
+    let partial = false;
+    const put = (path: string, body: unknown) =>
+      api('/api/admin/settings/' + path, {
         method: 'PUT',
-        body: JSON.stringify({
-          name: companyName,
-          about: companyAbout,
-          aboutPage: { ...aboutPage, body: companyAbout },
-        }),
+        body: JSON.stringify(body),
       });
-      await api('/api/admin/settings/welcome-messages', {
-        method: 'PUT',
-        body: JSON.stringify({
+    try {
+      if (dirty.includes('business')) {
+        await put('company', {
+          name: companyName.trim(),
+          about: companyAbout,
+          aboutPage: { ...aboutPage.current, body: companyAbout },
+        });
+        partial = true;
+        if (logoFile) {
+          const fd = new FormData();
+          fd.append('logo', logoFile);
+          const res = await api<{ logoUrl: string }>(
+            '/api/admin/settings/logo',
+            { method: 'POST', body: fd },
+          );
+          setLogoPreview(imageUrl(res.logoUrl));
+          setLogoFile(null);
+        }
+      }
+      if (dirty.includes('localization')) {
+        await put('languages', {
+          languages: languages.map((l) => ({ id: l.id, isActive: l.isActive })),
+        });
+        partial = true;
+        await put('currencies', {
+          currencies: currencies.map((c) => ({
+            id: c.id,
+            isActive: c.isActive,
+          })),
+        });
+      }
+      if (dirty.includes('menu')) {
+        await put('welcome-messages', {
           messages: Object.entries(messages).map(([languageId, message]) => ({
             languageId: Number(languageId),
             message,
           })),
-        }),
-      });
-      await saveLanguages();
-      await saveCurrencies();
-      await api('/api/admin/settings/integration', {
-        method: 'PUT',
-        body: JSON.stringify({
-          enabled: integrationEnabled,
-          openaiApiKey,
-        }),
-      });
-      await api('/api/admin/settings/social', {
-        method: 'PUT',
-        body: JSON.stringify({ links: socialLinks }),
-      });
-      await api('/api/admin/settings/welcome-music', {
-        method: 'PUT',
-        body: JSON.stringify({ url: welcomeMusicUrl }),
-      });
-      await api('/api/admin/settings/menu-features', {
-        method: 'PUT',
-        body: JSON.stringify({
-          tableService: tableServiceEnabled,
-          tableSessionCode: tableSessionCodeEnabled,
-          tableSessionCodeTtlMinutes: tableSessionCodeTtl,
-        }),
-      });
-      await api('/api/admin/settings/geo-lock', {
-        method: 'PUT',
-        body: JSON.stringify(geoLock),
-      });
-      if (logoFile) {
-        const fd = new FormData();
-        fd.append('logo', logoFile);
-        const token =
-          localStorage.getItem('token') || sessionStorage.getItem('token');
-        const logoRes = await fetch('/api/admin/settings/logo', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: fd,
         });
-        if (!logoRes.ok) throw new Error('Logo yüklenemedi');
-        setLogoFile(null);
+        partial = true;
+        await put('welcome-music', { url: welcomeMusicUrl });
+        await put('menu-features', {
+          tableService: tableServiceEnabled,
+          tableSessionCode: tableCodeEnabled,
+          tableSessionCodeTtlMinutes: tableCodeTtl,
+        });
+        await put('geo-lock', geoLock);
       }
-      await refreshUser();
-      setSettingsDirty(false);
-      alert('Ayarlar kaydedildi');
+      if (dirty.includes('social')) {
+        await put('social', { links: socialLinks });
+        partial = true;
+      }
+      if (dirty.includes('connections')) {
+        await put('integration', { enabled: integrationEnabled, openaiApiKey });
+        partial = true;
+      }
+      setDirty([]);
+      toast('Değişiklikler kaydedildi.');
+      void refreshUser().catch(() =>
+        toast(
+          'Ayarlar kaydedildi. Panel bilgileri için sayfayı yenileyebilirsiniz.',
+          true,
+        ),
+      );
+    } catch (err) {
+      toast(
+        (partial
+          ? 'Bazı ayarlar kaydedilmiş olabilir. Taslağınız korunuyor; tekrar deneyin. '
+          : '') + errorMessage(err),
+        true,
+      );
     } finally {
+      actionLock.current = false;
       setSaving(false);
     }
   }
-
-  function toggleLanguage(id: number) {
-    if (!data) return;
-    const lang = data.languages.find((l) => l.id === id);
-    if (!lang || lang.code === 'tr') return;
-    setSettingsDirty(true);
-    setData({
-      ...data,
-      languages: data.languages.map((l) =>
-        l.id === id ? { ...l, isActive: !l.isActive } : l
-      ),
-    });
+  function openPicker(kind: 'language' | 'currency') {
+    setCatalogQuery('');
+    setPicker(kind);
   }
-
-  function toggleCurrency(id: number) {
-    setSettingsDirty(true);
-    setCurrencies((prev) => {
-      const target = prev.find((c) => c.id === id);
-      if (!target || target.code === 'TRY') return prev;
-      return prev.map((c) => (c.id === id ? { ...c, isActive: !c.isActive } : c));
-    });
-  }
-
-  async function handleDeleteLanguage(lang: Language) {
-    if (lang.code === 'tr') return;
-    if (!window.confirm(`“${lang.name}” dilini silmek istediğinize emin misiniz?`)) return;
+  async function addCatalog(item: CatalogLanguage | CatalogCurrency) {
+    if (actionLock.current || !picker) return;
+    actionLock.current = true;
+    setCatalogBusy(true);
     try {
-      await api(`/api/admin/languages/${lang.id}`, { method: 'DELETE' });
-      setData((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          languages: prev.languages.filter((l) => l.id !== lang.id),
-        };
-      });
-      setMessages((prev) => {
-        const next = { ...prev };
-        delete next[lang.id];
-        return next;
-      });
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Dil silinemedi');
-    }
-  }
-
-  async function handleDeleteCurrency(currency: Currency) {
-    if (currency.code === 'TRY') return;
-    if (
-      !window.confirm(`“${currency.name}” para birimini silmek istediğinize emin misiniz?`)
-    ) {
-      return;
-    }
-    try {
-      await api(`/api/admin/currencies/${currency.id}`, { method: 'DELETE' });
-      setCurrencies((prev) => prev.filter((c) => c.id !== currency.id));
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Para birimi silinemedi');
-    }
-  }
-
-  async function handleAddLanguage(lang: CatalogLanguage) {
-    setAddingLang(true);
-    try {
-      const created = await api<Language>('/api/admin/languages', {
-        method: 'POST',
-        body: JSON.stringify({ code: lang.code, name: lang.name }),
-      });
-      setData((prev) => {
-        if (!prev) return prev;
-        const exists = prev.languages.some((l) => l.id === created.id);
-        return {
-          ...prev,
-          languages: exists
-            ? prev.languages.map((l) => (l.id === created.id ? created : l))
-            : [...prev.languages, created],
-        };
-      });
-      setMessages((prev) => ({ ...prev, [created.id]: prev[created.id] || '' }));
-      setAddLangOpen(false);
-    } catch (err) {
-      // DB'de var ama liste eskiyse sunucudan senkronize et
-      try {
-        const all = await api<Language[]>('/api/admin/languages');
-        setData((prev) => (prev ? { ...prev, languages: all } : prev));
-        const found = all.find((l) => l.code === lang.code);
-        if (found) {
-          setMessages((prev) => ({ ...prev, [found.id]: prev[found.id] || '' }));
-          setAddLangOpen(false);
-          return;
-        }
-      } catch {
-        /* ignore sync errors */
+      if (picker === 'language') {
+        const created = await api<Language>('/api/admin/languages', {
+          method: 'POST',
+          body: JSON.stringify({ code: item.code, name: item.name }),
+        });
+        setLanguages((list) =>
+          list.some((l) => l.id === created.id)
+            ? list.map((l) => (l.id === created.id ? created : l))
+            : [...list, created],
+        );
+        setMessages((m) => ({ ...m, [created.id]: m[created.id] || '' }));
+      } else {
+        const c = item as CatalogCurrency;
+        const created = await api<Currency>('/api/admin/currencies', {
+          method: 'POST',
+          body: JSON.stringify({
+            code: c.code,
+            name: c.name,
+            symbol: c.symbol,
+          }),
+        });
+        setCurrencies((list) =>
+          list.some((l) => l.id === created.id)
+            ? list.map((l) => (l.id === created.id ? created : l))
+            : [...list, created],
+        );
       }
-      alert(err instanceof Error ? err.message : 'Dil eklenemedi');
-    } finally {
-      setAddingLang(false);
-    }
-  }
-
-  async function handleAddCurrency(currency: CatalogCurrency) {
-    setAddingCurrency(true);
-    try {
-      const created = await api<Currency>('/api/admin/currencies', {
-        method: 'POST',
-        body: JSON.stringify({
-          code: currency.code,
-          name: currency.name,
-          symbol: currency.symbol,
-        }),
-      });
-      setCurrencies((prev) => {
-        const exists = prev.some((c) => c.id === created.id);
-        return exists
-          ? prev.map((c) => (c.id === created.id ? created : c))
-          : [...prev, created];
-      });
-      setAddCurrencyOpen(false);
+      setPicker(null);
+      toast(item.name + ' eklendi.');
     } catch (err) {
-      try {
-        const all = await api<Currency[]>('/api/admin/currencies');
-        setCurrencies(all);
-        if (all.some((c) => c.code === currency.code)) {
-          setAddCurrencyOpen(false);
-          return;
-        }
-      } catch {
-        /* ignore */
-      }
-      alert(err instanceof Error ? err.message : 'Para birimi eklenemedi');
+      toast(errorMessage(err), true);
     } finally {
-      setAddingCurrency(false);
+      actionLock.current = false;
+      setCatalogBusy(false);
     }
   }
-
-  if (loading || !data) return <Spinner />;
-
-  const activeLanguages = [...data.languages.filter((l) => l.isActive)].sort((a, b) =>
-    a.code === 'tr' ? -1 : b.code === 'tr' ? 1 : 0
-  );
-  const trLanguage = data.languages.find((l) => l.code === 'tr');
-  const trWelcomeMessage = trLanguage ? messages[trLanguage.id] || '' : '';
-  const sortedLanguages = [...data.languages].sort((a, b) => {
-    if (a.code === 'tr') return -1;
-    if (b.code === 'tr') return 1;
-    return a.name.localeCompare(b.name, 'tr');
-  });
-  const sortedCurrencies = [...currencies].sort((a, b) => {
-    if (a.code === 'TRY') return -1;
-    if (b.code === 'TRY') return 1;
-    return a.name.localeCompare(b.name, 'tr');
-  });
-
-  const { platforms: platformSocial, customs: customSocial } = splitSocialConfigs(socialLinks);
-  const filledSocialCount = socialLinks.filter((s) => s.value.trim()).length;
-
+  async function deleteCatalog() {
+    if (actionLock.current || !deleteTarget) return;
+    actionLock.current = true;
+    setCatalogBusy(true);
+    try {
+      const target = deleteTarget;
+      await api(
+        `/api/admin/${target.kind === 'language' ? 'languages' : 'currencies'}/${target.id}`,
+        { method: 'DELETE' },
+      );
+      if (target.kind === 'language') {
+        setLanguages((list) => list.filter((l) => l.id !== target.id));
+        setMessages((m) => {
+          const next = { ...m };
+          delete next[target.id];
+          return next;
+        });
+      } else setCurrencies((list) => list.filter((c) => c.id !== target.id));
+      setDeleteTarget(null);
+      toast(target.name + ' silindi.');
+    } catch (err) {
+      toast(errorMessage(err), true);
+    } finally {
+      actionLock.current = false;
+      setCatalogBusy(false);
+    }
+  }
+  async function toggleAssistant() {
+    if (actionLock.current || !isOwned('menu-assistant')) return;
+    actionLock.current = true;
+    setAssistantBusy(true);
+    try {
+      await setEnabled('menu-assistant', !isEnabled('menu-assistant'));
+      toast('Menü Asistanı güncellendi.');
+    } catch (err) {
+      toast(errorMessage(err), true);
+    } finally {
+      actionLock.current = false;
+      setAssistantBusy(false);
+    }
+  }
   function updateSocial(id: string, patch: Partial<SocialLinkConfig>) {
-    setSettingsDirty(true);
-    setSocialLinks((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+    setSocialLinks((list) =>
+      list.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+    );
+    mark('social');
   }
-
-  function addCustomSocial() {
-    setSettingsDirty(true);
-    setSocialLinks((prev) => [...prev, newCustomSocialLink()]);
-  }
-
-  function removeCustomSocial(id: string) {
-    setSettingsDirty(true);
-    setSocialLinks((prev) => prev.filter((s) => s.id !== id));
-    if (iconPickerFor === id) {
-      setIconPickerFor(null);
-      setIconPickerPos(null);
+  async function uploadIcon(file: File) {
+    if (actionLock.current || !iconFor) return;
+    actionLock.current = true;
+    setUploadingIcon(true);
+    try {
+      const fd = new FormData();
+      fd.append('icon', file);
+      const res = await api<{ iconUrl: string }>(
+        '/api/admin/settings/social-icon',
+        { method: 'POST', body: fd },
+      );
+      updateSocial(iconFor, { iconUrl: res.iconUrl, iconKey: 'link' });
+      setIconFor(null);
+      toast('İkon yüklendi. Yayınlamak için kaydedin.');
+    } catch (err) {
+      toast(errorMessage(err), true);
+    } finally {
+      actionLock.current = false;
+      setUploadingIcon(false);
     }
   }
-
-  function closeIconPicker() {
-    setIconPickerFor(null);
-    setIconPickerPos(null);
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(String(data?.restaurant.id));
+      toast('Restoran kodu kopyalandı.');
+    } catch {
+      toast('Kod kopyalanamadı.', true);
+    }
   }
-
-  function openIconPicker(id: string, anchor: HTMLElement) {
-    if (iconPickerFor === id) {
-      closeIconPicker();
+  async function translateMessage(lang: Language) {
+    if (actionLock.current) return;
+    const source = languages.find((l) => l.code === 'tr');
+    const text = source ? messages[source.id]?.trim() : '';
+    if (!text) {
+      toast('Önce Türkçe karşılama metnini yazın.', true);
       return;
     }
-    const rect = anchor.getBoundingClientRect();
-    setIconPickerPos({
-      left: Math.min(rect.left, window.innerWidth - 220),
-      bottom: window.innerHeight - rect.top + 8,
-    });
-    setIconPickerFor(id);
-  }
-
-  async function uploadCustomIcon(id: string, file: File) {
-    setUploadingIconFor(id);
+    actionLock.current = true;
+    setTranslating(lang.code);
     try {
-      const body = new FormData();
-      body.append('icon', file);
-      const res = await api<{ iconUrl: string }>('/api/admin/settings/social-icon', {
-        method: 'POST',
-        body,
-      });
-      updateSocial(id, { iconUrl: res.iconUrl, iconKey: 'link' });
-      closeIconPicker();
+      const translated = await autoTranslate(text, 'tr', lang.code);
+      setMessages((m) => ({ ...m, [lang.id]: translated }));
+      mark('menu');
+      toast('Çeviri hazır. Yayınlamak için kaydedin.');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'İkon yüklenemedi');
+      toast(errorMessage(err), true);
     } finally {
-      setUploadingIconFor(null);
+      actionLock.current = false;
+      setTranslating(null);
     }
   }
-
+  function socialRow(
+    row: SocialLinkConfig,
+    name: string,
+    placeholder: string,
+    phone = false,
+    custom = false,
+  ) {
+    return (
+      <div className="ast-social-row" key={row.id}>
+        <div className="ast-social-identity">
+          {custom ? (
+            <button
+              type="button"
+              className="ast-social-icon"
+              aria-label={`${row.label || 'Özel link'} ikonunu seç`}
+              onClick={() => setIconFor(row.id)}
+            >
+              <SocialDisplayIcon
+                id={row.id}
+                iconKey={row.iconKey}
+                iconUrl={row.iconUrl}
+                className="w-5 h-5"
+              />
+            </button>
+          ) : (
+            <span className="ast-social-icon">
+              {SOCIAL_PLATFORMS.find((p) => p.id === row.id) ? (
+                <SocialBrandIcon
+                  id={SOCIAL_PLATFORMS.find((p) => p.id === row.id)!.id}
+                  className="w-5 h-5"
+                />
+              ) : (
+                <Link2 size={20} />
+              )}
+            </span>
+          )}
+          {custom ? (
+            <label>
+              Bağlantı adı
+              <input
+                value={row.label || ''}
+                onChange={(e) =>
+                  updateSocial(row.id, { label: e.target.value })
+                }
+                aria-label="Özel link adı"
+                placeholder="Örn. Yol tarifi"
+              />
+            </label>
+          ) : (
+            <strong>{name}</strong>
+          )}
+          {custom && (
+            <button
+              type="button"
+              className="ast-icon-button is-danger"
+              aria-label="Özel linki kaldır"
+              onClick={() => {
+                setSocialLinks((list) => list.filter((s) => s.id !== row.id));
+                mark('social');
+              }}
+            >
+              <Trash2 size={17} />
+            </button>
+          )}
+        </div>
+        <input
+          className="ast-social-url"
+          type={phone ? 'tel' : 'text'}
+          aria-label={custom ? 'Özel link' : name}
+          placeholder={placeholder}
+          value={row.value}
+          onChange={(e) => updateSocial(row.id, { value: e.target.value })}
+        />
+        <div
+          className="ast-visibility"
+          role="group"
+          aria-label={`${name} görünürlüğü`}
+        >
+          {(['showWelcome', 'showMenu'] as const).map((key) => (
+            <button
+              type="button"
+              key={key}
+              aria-pressed={row[key]}
+              onClick={() => updateSocial(row.id, { [key]: !row[key] })}
+            >
+              {row[key] && <Check size={13} />}{' '}
+              {key === 'showWelcome' ? 'Karşılama' : 'Menü'}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (loading)
+    return (
+      <div className="ast-loading">
+        <PageHeader title="Ayarlar" />
+        <Spinner />
+      </div>
+    );
+  if (loadError || !data)
+    return (
+      <div className="ast-page">
+        <PageHeader title="Ayarlar" />
+        <div className="ast-load-error" role="alert">
+          <Plug size={32} />
+          <h2>Ayarlar yüklenemedi.</h2>
+          <p>Mevcut ayarlarınız değiştirilmedi.</p>
+          <button
+            className="ast-button"
+            onClick={() => setRevision((v) => v + 1)}
+          >
+            Tekrar dene
+          </button>
+        </div>
+      </div>
+    );
+  const activeLanguages = [...languages.filter((l) => l.isActive)].sort(
+    (a, b) =>
+      a.code === 'tr'
+        ? -1
+        : b.code === 'tr'
+          ? 1
+          : a.name.localeCompare(b.name, 'tr'),
+  );
+  const days = daysUntilLicenseEnd(data.restaurant.licenseExpiresAt);
+  const catalogItems =
+    picker === 'language' ? LANGUAGE_CATALOG : CURRENCY_CATALOG;
+  const existing = new Set(
+    (picker === 'language' ? languages : currencies).map((l) =>
+      l.code.toLowerCase(),
+    ),
+  );
+  const filtered = catalogItems.filter((item) =>
+    [item.code, item.name, 'nativeName' in item ? item.nativeName : ''].some(
+      (s) =>
+        s
+          .toLocaleLowerCase('tr')
+          .includes(catalogQuery.trim().toLocaleLowerCase('tr')),
+    ),
+  );
   return (
-    <div className="space-y-5 w-full" ref={pageRef}>
+    <div className={`ast-page${dirty.length ? ' has-draft' : ''}`}>
       <PageHeader
         title="Ayarlar"
-        actions={
-          <span ref={saveBtnRef} className="inline-flex">
-            <Button onClick={() => void handleSave()} disabled={saving}>
-              {saving ? 'Kaydediliyor...' : 'Kaydet'}
-            </Button>
-          </span>
-        }
+        subtitle="İşletmenizin menüsünü, dilini ve bağlantılarını yönetin."
       />
-
-      <div className="grid lg:grid-cols-2 gap-5">
-        <SettingsSection
-          sectionId="settings-languages"
-          highlight={languagesHighlight}
-          icon={Globe}
-          title="Dil Ayarları"
-          action={
-            <button
-              type="button"
-              onClick={() => setAddLangOpen(true)}
-              className="inline-flex items-center gap-1 h-8 px-2.5 rounded-xl text-xs font-bold transition hover:opacity-90"
-              style={{ background: 'var(--admin-accent)', color: '#fff' }}
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Dil Ekle
-            </button>
-          }
-        >
-          <div className="space-y-1">
-            {sortedLanguages.length === 0 ? (
-              <p className="text-sm admin-text-muted py-4 text-center">
-                Henüz dil yok. + Dil Ekle ile başla.
-              </p>
+      <div className="ast-layout">
+        <aside className="ast-nav" aria-label="Ayar bölümleri">
+          <div className="ast-nav-identity">
+            {logoPreview ? (
+              <img src={logoPreview} alt="" />
             ) : (
-              sortedLanguages.map((lang) => {
-                const catalog = catalogByCode(lang.code);
-                const isProtected = lang.code === 'tr';
-                return (
-                  <div
-                    key={lang.id}
-                    className="flex items-center justify-between py-3 px-3 rounded-xl transition hover:bg-[var(--admin-accent-soft)]/30 gap-3"
-                    style={{ borderBottom: '1px solid var(--admin-card-border)' }}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="leading-none shrink-0 inline-flex">
-                        <LanguageFlag code={lang.code} size={22} />
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-[var(--admin-text)] truncate">
-                          {lang.name}
-                        </p>
-                        <p className="text-[11px] admin-text-muted uppercase tracking-wide">
-                          {lang.code}
-                          {catalog?.nativeName ? ` · ${catalog.nativeName}` : ''}
-                          {isProtected ? ' · Varsayılan' : ''}
-                        </p>
-                      </div>
-                    </div>
-                    {!isProtected && (
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <span className="text-xs admin-text-muted">Aktif</span>
-                          <input
-                            type="checkbox"
-                            checked={lang.isActive}
-                            onChange={() => toggleLanguage(lang.id)}
-                            className="w-4 h-4 rounded accent-[var(--admin-accent)]"
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteLanguage(lang)}
-                          className="p-2 rounded-xl hover:bg-red-500/10 text-red-500 transition"
-                          title="Sil"
-                          aria-label={`${lang.name} dilini sil`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
+              <Building2 size={27} />
             )}
-          </div>
-        </SettingsSection>
-
-        <SettingsSection
-          icon={Coins}
-          title="Para Birimleri"
-          action={
-            <button
-              type="button"
-              onClick={() => setAddCurrencyOpen(true)}
-              className="inline-flex items-center gap-1 h-8 px-2.5 rounded-xl text-xs font-bold transition hover:opacity-90"
-              style={{ background: 'var(--admin-accent)', color: '#fff' }}
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Para Birimi
-            </button>
-          }
-        >
-          <div className="space-y-1">
-            {sortedCurrencies.length === 0 ? (
-              <p className="text-sm admin-text-muted py-4 text-center">
-                Henüz para birimi yok. + Para Birimi ile ekle.
-              </p>
-            ) : (
-              sortedCurrencies.map((currency) => {
-                const catalog = currencyCatalogByCode(currency.code);
-                const isProtected = currency.code === 'TRY';
-                return (
-                  <div
-                    key={currency.id}
-                    className="flex items-center justify-between py-3 px-3 rounded-xl transition hover:bg-[var(--admin-accent-soft)]/30 gap-3"
-                    style={{ borderBottom: '1px solid var(--admin-card-border)' }}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-xl leading-none shrink-0 w-8 text-center">
-                        {catalog?.flag || '💱'}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-[var(--admin-text)] truncate">
-                          {currency.symbol} · {currency.name}
-                        </p>
-                        <p className="text-[11px] admin-text-muted uppercase tracking-wide">
-                          {currency.code}
-                          {isProtected ? ' · Varsayılan' : ''}
-                        </p>
-                      </div>
-                    </div>
-                    {!isProtected && (
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <span className="text-xs admin-text-muted">Aktif</span>
-                          <input
-                            type="checkbox"
-                            checked={currency.isActive}
-                            onChange={() => toggleCurrency(currency.id)}
-                            className="w-4 h-4 rounded accent-[var(--admin-accent)]"
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteCurrency(currency)}
-                          className="p-2 rounded-xl hover:bg-red-500/10 text-red-500 transition"
-                          title="Sil"
-                          aria-label={`${currency.name} para birimini sil`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </SettingsSection>
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-5 items-stretch">
-        <SettingsSection icon={Plug} title="Entegrasyon Ayarları">
-          <div className="flex flex-col gap-3.5">
-            <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl hover:bg-[var(--admin-accent-soft)]/30 transition">
-              <input
-                type="checkbox"
-                checked={integrationEnabled}
-                onChange={(e) => setIntegrationEnabled(e.target.checked)}
-                className="w-4 h-4 mt-0.5 rounded accent-[var(--admin-accent)]"
-              />
-              <div>
-                <p className="text-sm font-medium text-[var(--admin-text)]">
-                  Entegrasyonu etkinleştir
-                </p>
-                <p className="text-xs admin-text-muted mt-1">
-                  Harici POS veya sipariş sistemleri ile bağlantı
-                </p>
-              </div>
-            </label>
-
-            <div className="settings-openai-box rounded-2xl p-3.5">
-              <Input
-                label="OpenAI API Anahtarı"
-                type="password"
-                value={openaiApiKey}
-                onChange={(e) => setOpenaiApiKey(e.target.value)}
-                placeholder="sk-..."
-              />
-              <p className="text-[11px] admin-text-muted mt-2 leading-relaxed">
-                Oto çeviri için ChatGPT anahtarınızı yapıştırın. Kayıtlıysa önce OpenAI kullanılır.
-              </p>
+            <div>
+              <strong>{companyName || 'İşletmeniz'}</strong>
+              <span>Restoran #{data.restaurant.id}</span>
             </div>
-
-            {data && (
-              <div className="settings-license-box">
-                <div className="settings-license-box__head">
-                  <span className="settings-license-box__icon" aria-hidden>
-                    <CalendarClock className="w-4 h-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="settings-license-box__title">Abonelik / Lisans</p>
-                    {data.restaurant.licenseExpiresAt && (
-                      <p className="settings-license-box__date">
-                        Bitiş: {formatLicenseDate(data.restaurant.licenseExpiresAt)}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {(() => {
-                  const days = daysUntilLicenseEnd(data.restaurant.licenseExpiresAt);
-                  if (days === null) {
-                    return (
-                      <p className="settings-license-box__status settings-license-box__status--muted">
-                        Lisans süreniz henüz tanımlanmadı. Yenileme için bizimle iletişime geçin.
-                      </p>
-                    );
-                  }
-                  if (days < 0) {
-                    return (
-                      <p className="settings-license-box__status settings-license-box__status--danger">
-                        Aboneliğiniz sona erdi ({Math.abs(days)} gün önce)
-                      </p>
-                    );
-                  }
-                  if (days === 0) {
-                    return (
-                      <p className="settings-license-box__status settings-license-box__status--danger">
-                        Aboneliğiniz bugün sona eriyor
-                      </p>
-                    );
-                  }
-                  return (
-                    <p
-                      className={`settings-license-box__status${
-                        days <= 7
-                          ? ' settings-license-box__status--danger'
-                          : days <= 30
-                            ? ' settings-license-box__status--warn'
-                            : ' settings-license-box__status--ok'
-                      }`}
-                    >
-                      Aboneliğinizin bitmesine <strong>{days}</strong> gün kaldı
-                    </p>
-                  );
-                })()}
-
-                {!renewContactOpen ? (
-                  <div className="settings-license-box__renew">
-                    <p>Yenilemek ister misiniz?</p>
+          </div>
+          {SECTIONS.map((s, i) => (
+            <button
+              type="button"
+              key={s.id}
+              aria-current={active === s.id ? 'page' : undefined}
+              onClick={() => choose(s.id)}
+            >
+              <s.icon size={20} strokeWidth={1.5} />
+              <span>
+                <strong>{s.title}</strong>
+                <small>{s.description}</small>
+              </span>
+              {dirty.includes(s.id) ? (
+                <i aria-label="Kaydedilmedi" />
+              ) : (
+                <span className="ast-nav-index">0{i + 1}</span>
+              )}
+            </button>
+          ))}
+          <p>Değişiklikleriniz siz kaydedince yayınlanır.</p>
+        </aside>
+        <div className="ast-main" ref={contentRef}>
+          <button
+            type="button"
+            className="ast-mobile-nav"
+            aria-expanded={navOpen}
+            onClick={() => setNavOpen(true)}
+          >
+            <current.icon size={20} />
+            <span>{current.title}</span>
+            <ChevronDown size={18} />
+          </button>
+          <fieldset className="ast-workspace" disabled={busy} key={active}>
+            {active === 'business' && (
+              <>
+                <Section
+                  title="İşletmenin kimliği"
+                  description="Misafirleriniz sizi bu isim ve logoyla tanısın."
+                >
+                  <div className="ast-brand-edit">
                     <button
                       type="button"
-                      className="settings-license-box__renew-btn"
-                      onClick={() => setRenewContactOpen(true)}
+                      className="ast-logo"
+                      onClick={() => fileRef.current?.click()}
+                      aria-label="Logo değiştir"
                     >
-                      Evet, iletişime geç
+                      {logoPreview ? (
+                        <img src={logoPreview} alt="Logo önizleme" />
+                      ) : (
+                        <Building2 size={36} />
+                      )}
+                      <span>
+                        <ImagePlus size={15} />
+                      </span>
+                    </button>
+                    <div>
+                      <label>
+                        İşletme adı
+                        <input
+                          value={companyName}
+                          onChange={(e) => {
+                            setCompanyName(e.target.value);
+                            mark('business');
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="ast-text-button"
+                        onClick={() => fileRef.current?.click()}
+                      >
+                        Logoyu değiştir <ArrowUpRight size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </Section>
+                <Section
+                  title="Hakkımızda"
+                  description="Mekânınızı en iyi siz anlatırsınız."
+                >
+                  <label className="ast-about-label">
+                    İşletmenizin hikâyesi
+                    <textarea
+                      aria-label="İşletmenizin hikâyesi"
+                      rows={9}
+                      value={companyAbout}
+                      onChange={(e) => {
+                        setCompanyAbout(e.target.value);
+                        mark('business');
+                      }}
+                      placeholder="Kapınızdan giren misafirlerin sizi tanımasını sağlayın…"
+                    />
+                  </label>
+                  <div className="ast-field-foot">
+                    <span>Menünüzdeki Hakkımızda sayfasında görünür.</span>
+                    <span>
+                      {companyAbout.length.toLocaleString('tr')} karakter
+                    </span>
+                  </div>
+                </Section>
+              </>
+            )}
+            {active === 'localization' && (
+              <>
+                <Section
+                  title="Menünün dilleri"
+                  description="Türkçe sabit kalır; diğer dilleri dilediğinizde açabilirsiniz."
+                  action={
+                    <button
+                      type="button"
+                      className="ast-button"
+                      onClick={() => openPicker('language')}
+                    >
+                      <Plus size={16} /> Dil ekle
+                    </button>
+                  }
+                >
+                  <div className="ast-catalog-list">
+                    {[...languages]
+                      .sort((a, b) =>
+                        a.code === 'tr'
+                          ? -1
+                          : b.code === 'tr'
+                            ? 1
+                            : a.name.localeCompare(b.name, 'tr'),
+                      )
+                      .map((lang) => (
+                        <div className="ast-catalog-row" key={lang.id}>
+                          <LanguageFlag code={lang.code} size={25} />
+                          <div>
+                            <strong>{lang.name}</strong>
+                            <small>
+                              {catalogByCode(lang.code)?.nativeName ||
+                                lang.code}
+                            </small>
+                          </div>
+                          {lang.code === 'tr' ? (
+                            <span className="ast-fixed-label">Varsayılan</span>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                role="switch"
+                                className="ast-mini-switch"
+                                aria-label={`${lang.name} dilini göster`}
+                                aria-checked={lang.isActive}
+                                onClick={() => {
+                                  setLanguages((list) =>
+                                    list.map((l) =>
+                                      l.id === lang.id
+                                        ? { ...l, isActive: !l.isActive }
+                                        : l,
+                                    ),
+                                  );
+                                  mark('localization');
+                                }}
+                              >
+                                <span className="ast-switch">
+                                  <span />
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                className="ast-icon-button is-danger"
+                                aria-label={`${lang.name} dilini sil`}
+                                onClick={() =>
+                                  setDeleteTarget({
+                                    kind: 'language',
+                                    id: lang.id,
+                                    name: lang.name,
+                                  })
+                                }
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </Section>
+                <Section
+                  title="Para birimleri"
+                  description="Ürünlerin fiyatlarında kullanabileceğiniz para birimleri."
+                  action={
+                    <button
+                      type="button"
+                      className="ast-button"
+                      onClick={() => openPicker('currency')}
+                    >
+                      <Plus size={16} /> Para birimi ekle
+                    </button>
+                  }
+                >
+                  <div className="ast-catalog-list">
+                    {[...currencies]
+                      .sort((a, b) =>
+                        a.code === 'TRY'
+                          ? -1
+                          : b.code === 'TRY'
+                            ? 1
+                            : a.code.localeCompare(b.code),
+                      )
+                      .map((c) => (
+                        <div className="ast-catalog-row" key={c.id}>
+                          <span className="ast-currency-symbol">
+                            {c.symbol}
+                          </span>
+                          <div>
+                            <strong>{c.name}</strong>
+                            <small>{c.code}</small>
+                          </div>
+                          {c.code === 'TRY' ? (
+                            <span className="ast-fixed-label">Varsayılan</span>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                role="switch"
+                                className="ast-mini-switch"
+                                aria-label={`${c.name} para birimini göster`}
+                                aria-checked={c.isActive}
+                                onClick={() => {
+                                  setCurrencies((list) =>
+                                    list.map((v) =>
+                                      v.id === c.id
+                                        ? { ...v, isActive: !v.isActive }
+                                        : v,
+                                    ),
+                                  );
+                                  mark('localization');
+                                }}
+                              >
+                                <span className="ast-switch">
+                                  <span />
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                className="ast-icon-button is-danger"
+                                aria-label={`${c.name} para birimini sil`}
+                                onClick={() =>
+                                  setDeleteTarget({
+                                    kind: 'currency',
+                                    id: c.id,
+                                    name: c.name,
+                                  })
+                                }
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </Section>
+              </>
+            )}
+            {active === 'menu' && (
+              <>
+                <Section
+                  title="İlk sözü siz söyleyin."
+                  description="Misafirlerinizi kendi dillerinde karşılayın."
+                >
+                  <div className="ast-welcome-fields">
+                    {activeLanguages.map((lang) => (
+                      <div key={lang.id} className="ast-welcome-field">
+                        <div>
+                          <span>
+                            <LanguageFlag code={lang.code} size={20} />
+                            {lang.name}
+                          </span>
+                          {lang.code !== 'tr' && (
+                            <button
+                              type="button"
+                              className="ast-text-button"
+                              aria-label={`${lang.name} metnini çevir`}
+                              onClick={() => void translateMessage(lang)}
+                            >
+                              <Sparkles size={14} />
+                              {translating === lang.code
+                                ? 'Çevriliyor…'
+                                : 'Türkçeden çevir'}
+                            </button>
+                          )}
+                        </div>
+                        <textarea
+                          aria-label={`Karşılama metni (${lang.name})`}
+                          rows={3}
+                          value={messages[lang.id] || ''}
+                          onChange={(e) => {
+                            setMessages((m) => ({
+                              ...m,
+                              [lang.id]: e.target.value,
+                            }));
+                            mark('menu');
+                          }}
+                        />
+                      </div>
+                    ))}
+                    {!activeLanguages.length && (
+                      <p>Önce bir dil etkinleştirin.</p>
+                    )}
+                  </div>
+                </Section>
+                <Section
+                  title="Servis ve masa"
+                  description="Menüden ekibinize ulaşmayı kolaylaştırın."
+                >
+                  <Toggle
+                    label="Garson çağır"
+                    description="Menüde servis çağrısını açar."
+                    icon={HandHelping}
+                    checked={tableServiceEnabled}
+                    onChange={() => {
+                      setTableServiceEnabled((v) => !v);
+                      mark('menu');
+                    }}
+                  />
+                  <Toggle
+                    label="Masa erişim kodu"
+                    description="Masa oturumuna kodla erişim."
+                    icon={KeyRound}
+                    checked={tableCodeEnabled}
+                    onChange={() => {
+                      setTableCodeEnabled((v) => !v);
+                      mark('menu');
+                    }}
+                  />
+                  {tableCodeEnabled && (
+                    <label className="ast-range">
+                      Kod süresi <b>{tableCodeTtl} dakika</b>
+                      <input
+                        type="range"
+                        min={15}
+                        max={120}
+                        step={5}
+                        value={tableCodeTtl}
+                        onChange={(e) => {
+                          setTableCodeTtl(Number(e.target.value));
+                          mark('menu');
+                        }}
+                      />
+                    </label>
+                  )}
+                  <Toggle
+                    label="Menü Asistanı"
+                    description={
+                      isOwned('menu-assistant')
+                        ? 'Değişiklik hemen uygulanır.'
+                        : 'Bu özellik hesabınızda etkin değil.'
+                    }
+                    icon={Sparkles}
+                    checked={isEnabled('menu-assistant')}
+                    disabled={!isOwned('menu-assistant')}
+                    onChange={() => void toggleAssistant()}
+                  />
+                </Section>
+                <Section
+                  title="Karşılama müziği"
+                  description="YouTube bağlantısı veya doğrudan MP3, M4A, OGG dosyası."
+                >
+                  <label>
+                    Müzik bağlantısı
+                    <input
+                      type="url"
+                      value={welcomeMusicUrl}
+                      onChange={(e) => {
+                        setWelcomeMusicUrl(e.target.value);
+                        mark('menu');
+                      }}
+                      placeholder="https://…"
+                    />
+                  </label>
+                  <p className="ast-hint">
+                    Boş bırakırsanız varsayılan ortam sesi kullanılır. Spotify
+                    bağlantısı desteklenmez.
+                  </p>
+                </Section>
+                <Section
+                  title="Konum kilidi"
+                  description="Menü erişimini işletmenizin çevresiyle sınırlandırın."
+                >
+                  <Toggle
+                    label="Konum kilidini kullan"
+                    icon={MapPinned}
+                    description="Açıkken bölge dışında veya konum izni olmadan menü açılmaz."
+                    checked={geoLock.enabled}
+                    onChange={() => {
+                      setGeoLock((g) => ({ ...g, enabled: !g.enabled }));
+                      mark('menu');
+                    }}
+                  />
+                  {geoLock.enabled && (
+                    <GeoLockMapEditor
+                      draftOnly
+                      value={geoLock}
+                      onChange={(g) => {
+                        setGeoLock(g);
+                        mark('menu');
+                      }}
+                    />
+                  )}
+                </Section>
+              </>
+            )}
+            {active === 'social' && (
+              <Section
+                title="Birlikte bağlantıda kalalım."
+                description="Her bağlantının karşılama ve menüde görünürlüğünü ayrı seçin."
+                action={
+                  <button
+                    type="button"
+                    className="ast-button"
+                    onClick={() => {
+                      setSocialLinks((list) => [
+                        ...list,
+                        newCustomSocialLink(),
+                      ]);
+                      mark('social');
+                    }}
+                  >
+                    <Plus size={16} /> Özel link
+                  </button>
+                }
+              >
+                <div className="ast-social-list">
+                  {SOCIAL_PLATFORMS.map((p) =>
+                    socialRow(
+                      platformSocial.find((s) => s.id === p.id) || {
+                        id: p.id,
+                        value: '',
+                        showWelcome: false,
+                        showMenu: false,
+                      },
+                      p.name,
+                      p.placeholder,
+                      p.kind === 'phone',
+                    ),
+                  )}
+                  {customSocial.map((row) =>
+                    socialRow(
+                      row,
+                      row.label || 'Özel link',
+                      'https://…',
+                      false,
+                      true,
+                    ),
+                  )}
+                </div>
+              </Section>
+            )}
+            {active === 'connections' && (
+              <>
+                <Section
+                  title="Entegrasyon"
+                  description="Harici POS veya sipariş sistemleriyle bağlantı."
+                >
+                  <Toggle
+                    label="Entegrasyonu etkinleştir"
+                    icon={Plug}
+                    checked={integrationEnabled}
+                    onChange={() => {
+                      setIntegrationEnabled((v) => !v);
+                      mark('connections');
+                    }}
+                  />
+                  <label className="ast-key-label">
+                    OpenAI API anahtarı
+                    <input
+                      type="password"
+                      value={openaiApiKey}
+                      autoComplete="off"
+                      onChange={(e) => {
+                        setOpenaiApiKey(e.target.value);
+                        mark('connections');
+                      }}
+                      placeholder="sk-…"
+                    />
+                  </label>
+                  <p className="ast-hint">
+                    Otomatik çeviride kayıtlı anahtar kullanılır.
+                  </p>
+                </Section>
+                <Section
+                  title="Lisans ve destek"
+                  description="Hesabınızın durumunu buradan takip edin."
+                >
+                  <div className="ast-license">
+                    <ShieldCheck size={32} strokeWidth={1.3} />
+                    <div>
+                      <strong>
+                        {days === null
+                          ? 'Lisans süresi tanımlanmamış'
+                          : days < 0
+                            ? 'Lisansınız sona erdi'
+                            : days === 0
+                              ? 'Lisansınız bugün sona eriyor'
+                              : `${days} gününüz var.`}
+                      </strong>
+                      {data.restaurant.licenseExpiresAt && days !== null && (
+                        <p>
+                          Bitiş:{' '}
+                          {formatLicenseDate(data.restaurant.licenseExpiresAt)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="ast-support-code">
+                    <span>
+                      Restoran kodunuz <b>{data.restaurant.id}</b>
+                    </span>
+                    <button
+                      type="button"
+                      className="ast-icon-button"
+                      aria-label="Restoran kodunu kopyala"
+                      onClick={() => void copyCode()}
+                    >
+                      <Copy size={17} />
                     </button>
                   </div>
-                ) : (
-                  <div className="settings-license-box__contact">
-                    <p className="settings-license-box__contact-hint">
-                      Lisans yenileme için bizi arayın veya WhatsApp’tan yazın. Restoran kodunuzu
-                      belirtmeyi unutmayın.
-                    </p>
-                    <a href={`tel:${SUPPORT_PHONE_TEL}`} className="settings-license-contact-row">
-                      <span className="settings-license-contact-row__icon">
-                        <Phone className="w-4 h-4" />
-                      </span>
+                  <div className="ast-support-links">
+                    <a href={`tel:${SUPPORT_PHONE_TEL}`}>
+                      <Phone size={18} />
                       <span>
-                        <strong>{SUPPORT_PHONE_DISPLAY}</strong>
-                        <em>Ara</em>
+                        {SUPPORT_PHONE_DISPLAY}
+                        <small>Destek ekibini ara</small>
                       </span>
+                      <ArrowUpRight size={17} />
                     </a>
                     <a
                       href={supportWhatsAppUrl(
-                        `Merhaba, Menu QR lisans yenileme talebi.\nRestoran kodu: ${data.restaurant.id}\nRestoran: ${data.restaurant.name}`
+                        `Merhaba, Menu QR lisans yenileme talebi. Restoran kodu: ${data.restaurant.id}. Restoran: ${data.restaurant.name}`,
                       )}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="settings-license-contact-row settings-license-contact-row--wa"
                     >
-                      <span
-                        className="settings-license-contact-row__icon"
-                        style={{ background: '#25D366' }}
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </span>
+                      <Link2 size={18} />
                       <span>
-                        <strong>WhatsApp ile yaz</strong>
-                        <em>Formu otomatik doldurur</em>
+                        WhatsApp<small>Destek ve lisans yenileme</small>
                       </span>
+                      <ArrowUpRight size={17} />
                     </a>
-                    <button
-                      type="button"
-                      className="settings-license-box__back"
-                      onClick={() => setRenewContactOpen(false)}
-                    >
-                      Kapat
-                    </button>
                   </div>
-                )}
-              </div>
+                </Section>
+              </>
             )}
-          </div>
-        </SettingsSection>
-
-        <SettingsSection icon={Building2} title="Firma Ayarları" className="flex flex-col">
-          <div className="flex flex-col gap-4 h-full">
-            {data && (
-              <div className="settings-restaurant-code shrink-0">
-                <div className="min-w-0">
-                  <p className="settings-restaurant-code__label">Restoran Kodunuz</p>
-                  <p className="settings-restaurant-code__hint">
-                    Destek veya yenileme talebinde bu kodu paylaşın
-                  </p>
-                </div>
-                <div className="settings-restaurant-code__value-wrap">
-                  <span className="settings-restaurant-code__value">{data.restaurant.id}</span>
-                  <button
-                    type="button"
-                    className="settings-restaurant-code__copy"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(String(data.restaurant.id)).then(() => {
-                        setCodeCopied(true);
-                        window.setTimeout(() => setCodeCopied(false), 1800);
-                      });
-                    }}
-                    aria-label="Kodu kopyala"
-                  >
-                    {codeCopied ? (
-                      <Check className="w-3.5 h-3.5" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="grid sm:grid-cols-2 gap-6 items-stretch flex-1 min-h-0">
-            <div className="flex flex-col gap-4 min-h-[240px]">
-              <Input
-                label="Firma Adı"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-              />
-              <div className="about-field-wrap flex-1 flex flex-col min-h-0">
-                <button
-                  type="button"
-                  className="about-expand-btn"
-                  title="Hakkında sayfasını özelleştir"
-                  aria-label="Hakkında sayfasını özelleştir"
-                  onClick={() => setAboutEditorOpen(true)}
-                >
-                  <Expand className="about-expand-btn__icon" strokeWidth={2} />
-                </button>
-                <Textarea
-                  label="Hakkında"
-                  value={companyAbout}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setCompanyAbout(v);
-                    setAboutPage((p) => ({ ...p, body: v }));
-                  }}
-                  className="flex-1 [&_.float-field]:h-full [&_.float-field__input]:min-h-[140px] [&_.float-field__input]:h-full [&_.float-field__input]:resize-none"
-                  rows={6}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col min-h-[240px]">
-              <p className="text-xs font-semibold uppercase tracking-wide admin-text-muted mb-2">
-                Logo
-              </p>
-              <div
-                className="flex-1 rounded-2xl border-2 border-dashed p-6 text-center transition hover:border-[var(--admin-accent)] cursor-pointer flex flex-col items-center justify-center min-h-[240px]"
-                style={{ borderColor: 'var(--admin-card-border)' }}
-                onClick={() => fileRef.current?.click()}
-              >
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
-                />
-                {logoPreview ? (
-                  <img
-                    src={logoPreview}
-                    alt="Logo önizleme"
-                    className="max-h-28 max-w-full object-contain mb-2"
-                  />
-                ) : (
-                  <ImagePlus
-                    className="w-10 h-10 mb-2"
-                    style={{ color: 'var(--admin-accent)' }}
-                  />
-                )}
-                <p className="text-sm font-medium text-[var(--admin-text)]">
-                  Logo yüklemek için tıklayın
-                </p>
-                <p className="text-xs admin-text-subtle mt-1">PNG, JPG — şeffaf arka plan önerilir</p>
-              </div>
-            </div>
-          </div>
-          </div>
-        </SettingsSection>
+          </fieldset>
+        </div>
       </div>
-
-      <div className="settings-welcome-split">
-        <SettingsSection
-          icon={MessageSquare}
-          title="Karşılama Metinleri"
-          className="settings-welcome-split__texts"
-          bodyClassName="settings-welcome-split__texts-body admin-scroll"
+      {dirty.length > 0 && (
+        <div
+          className="ast-savebar"
+          role="region"
+          aria-label="Değişiklikleri kaydet"
         >
-          <div className="grid sm:grid-cols-1 gap-4 float-field-stack">
-            {activeLanguages.length === 0 ? (
-              <p className="text-sm admin-text-muted">
-                Karşılama metni eklemek için en az bir dil aktif olmalı.
-              </p>
-            ) : (
-              activeLanguages.map((lang) => (
-                <TranslatableTextarea
-                  key={lang.id}
-                  label={`Karşılama metni (${lang.name})`}
-                  rows={3}
-                  sourceText={trWelcomeMessage}
-                  targetLang={lang.code}
-                  value={messages[lang.id] || ''}
-                  onChange={(val) => setMessages({ ...messages, [lang.id]: val })}
-                />
-              ))
-            )}
-          </div>
-        </SettingsSection>
-
-        <section className="admin-card overflow-hidden flex flex-col settings-welcome-split__social">
-          <div
-            className="w-full flex items-center gap-2.5 px-5 py-3.5 shrink-0"
-            style={{ background: 'var(--admin-input-bg)' }}
-          >
-            <Share2 className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
-            <span className="text-sm font-bold uppercase tracking-wide text-[var(--admin-text)] flex-1">
-              Sosyal Medya
-            </span>
-            <span className="text-[11px] font-semibold admin-text-muted">{filledSocialCount} dolu</span>
-          </div>
-
-          <div className="p-4 space-y-2 settings-welcome-split__social-body admin-scroll">
-            {SOCIAL_PLATFORMS.map((platform) => {
-              const row = platformSocial.find((s) => s.id === platform.id) || {
-                id: platform.id,
-                value: '',
-                showWelcome: false,
-                showMenu: false,
-              };
-              return (
-                <div key={platform.id} className="social-settings-row">
-                  <span
-                    className="social-settings-row__icon"
-                    style={{
-                      background:
-                        platform.id === 'instagram'
-                          ? 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)'
-                          : platform.color,
-                    }}
-                    title={platform.name}
-                  >
-                    <SocialBrandIcon id={platform.id} className="w-4 h-4 text-white" />
-                  </span>
-                  <input
-                    type={platform.kind === 'phone' ? 'tel' : 'url'}
-                    className="social-settings-row__input"
-                    placeholder={platform.placeholder}
-                    value={row.value}
-                    onChange={(e) => updateSocial(platform.id, { value: e.target.value })}
-                    aria-label={platform.name}
-                  />
-                  <label className="social-settings-row__toggle" title="Karşılamada göster">
-                    <input
-                      type="checkbox"
-                      checked={row.showWelcome}
-                      onChange={(e) =>
-                        updateSocial(platform.id, { showWelcome: e.target.checked })
-                      }
-                    />
-                    <span>Karşılama</span>
-                  </label>
-                  <label className="social-settings-row__toggle" title="Menüde göster">
-                    <input
-                      type="checkbox"
-                      checked={row.showMenu}
-                      onChange={(e) => updateSocial(platform.id, { showMenu: e.target.checked })}
-                    />
-                    <span>Menü</span>
-                  </label>
-                </div>
-              );
-            })}
-
-            {customSocial.map((row) => (
-              <div key={row.id} className="social-settings-row social-settings-row--custom">
-                <button
-                  type="button"
-                  className="social-settings-row__icon social-settings-row__icon--btn"
-                  style={{
-                    background: row.iconUrl ? 'transparent' : '#475569',
-                    overflow: 'hidden',
-                    padding: row.iconUrl ? 0 : undefined,
-                  }}
-                  title="İkon seç"
-                  onClick={(e) => openIconPicker(row.id, e.currentTarget)}
-                >
-                  <SocialDisplayIcon
-                    id={row.id}
-                    iconKey={row.iconKey}
-                    iconUrl={row.iconUrl}
-                    className="w-4 h-4 text-white"
-                  />
-                </button>
-                <input
-                  type="text"
-                  className="social-settings-row__input social-settings-row__input--label"
-                  placeholder="İsim (opsiyonel)"
-                  value={row.label || ''}
-                  onChange={(e) => updateSocial(row.id, { label: e.target.value })}
-                  aria-label="Özel link adı"
-                />
-                <input
-                  type="url"
-                  className="social-settings-row__input"
-                  placeholder="https://..."
-                  value={row.value}
-                  onChange={(e) => updateSocial(row.id, { value: e.target.value })}
-                  aria-label="Özel link"
-                />
-                <label className="social-settings-row__toggle" title="Karşılamada göster">
-                  <input
-                    type="checkbox"
-                    checked={row.showWelcome}
-                    onChange={(e) => updateSocial(row.id, { showWelcome: e.target.checked })}
-                  />
-                  <span>Karşılama</span>
-                </label>
-                <label className="social-settings-row__toggle" title="Menüde göster">
-                  <input
-                    type="checkbox"
-                    checked={row.showMenu}
-                    onChange={(e) => updateSocial(row.id, { showMenu: e.target.checked })}
-                  />
-                  <span>Menü</span>
-                </label>
-                <button
-                  type="button"
-                  className="social-settings-row__remove"
-                  title="Sil"
-                  onClick={() => removeCustomSocial(row.id)}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-
-            <button type="button" className="social-settings-add" onClick={addCustomSocial}>
-              <Plus className="w-4 h-4" />
-              Kendi linkini ekle
-            </button>
-
-            <input
-              ref={customIconInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                const id = pendingCustomIconIdRef.current;
-                pendingCustomIconIdRef.current = null;
-                e.target.value = '';
-                if (!file || !id) return;
-                void uploadCustomIcon(id, file);
-              }}
-            />
-          </div>
-        </section>
-      </div>
-
-      <SettingsSection icon={Music2} title="Karşılama Müziği / Çağırma Ayarları">
-        <div className="settings-welcome-music">
-          <p className="settings-welcome-music__hint">
-            YouTube video linki veya doğrudan ses dosyası (mp3, m4a, ogg) yapıştırın. Karşılama
-            ekranında bu müzik çalar. Boş bırakırsanız varsayılan ambient kullanılır. Spotify sayfa
-            linkleri desteklenmez.
-          </p>
-          <Input
-            label="Müzik linki"
-            type="url"
-            placeholder="https://www.youtube.com/watch?v=… veya https://…/muzik.mp3"
-            value={welcomeMusicUrl}
-            onChange={(e) => setWelcomeMusicUrl(e.target.value)}
-          />
-          {welcomeMusicUrl.trim() && /spotify\.com|open\.spotify/i.test(welcomeMusicUrl) && (
-            <p className="settings-welcome-music__warn">
-              Spotify linki desteklenmiyor. YouTube veya doğrudan mp3 linki kullanın.
-            </p>
-          )}
-
-          <div className="settings-menu-features">
-            <p className="settings-menu-features__caption">Menü çağırma</p>
-            <div className="settings-menu-features__row">
-              <button
-                type="button"
-                className="settings-feature-toggle"
-                role="switch"
-                aria-checked={tableServiceEnabled}
-                disabled={togglingMenuFeature === 'table'}
-                onClick={() => void toggleTableService()}
-              >
-                <span className="settings-feature-toggle__label">
-                  <HandHelping className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
-                  Garson çağır
-                </span>
-                <span
-                  className={`settings-switch${tableServiceEnabled ? ' is-on' : ''}`}
-                  aria-hidden
-                >
-                  <span className="settings-switch__knob" />
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="settings-feature-toggle"
-                role="switch"
-                aria-checked={tableSessionCodeEnabled}
-                disabled={togglingMenuFeature === 'table-code'}
-                onClick={() => void toggleTableSessionCode()}
-              >
-                <span className="settings-feature-toggle__label">
-                  <KeyRound className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
-                  Masa erişim kodu
-                </span>
-                <span
-                  className={`settings-switch${tableSessionCodeEnabled ? ' is-on' : ''}`}
-                  aria-hidden
-                >
-                  <span className="settings-switch__knob" />
-                </span>
-              </button>
-
-              {tableSessionCodeEnabled ? (
-                <label className="settings-feature-ttl">
-                  <span>Kod süresi: {tableSessionCodeTtl} dk</span>
-                  <input
-                    type="range"
-                    min={15}
-                    max={120}
-                    step={5}
-                    value={tableSessionCodeTtl}
-                    onChange={(e) => void saveTableSessionCodeTtl(Number(e.target.value))}
-                  />
-                </label>
-              ) : null}
-
-              <button
-                type="button"
-                className={`settings-feature-toggle${!assistantOwned ? ' is-disabled' : ''}`}
-                role="switch"
-                aria-checked={assistantEnabled}
-                disabled={!assistantOwned || togglingMenuFeature === 'assistant'}
-                onClick={() => void toggleMenuAssistant()}
-                title={
-                  assistantOwned
-                    ? undefined
-                    : 'Menü Asistanı için önce Eklentiler’den satın alın'
-                }
-              >
-                <span className="settings-feature-toggle__label">
-                  <Sparkles className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
-                  Menü Asistanı
-                </span>
-                <span
-                  className={`settings-switch${assistantEnabled ? ' is-on' : ''}`}
-                  aria-hidden
-                >
-                  <span className="settings-switch__knob" />
-                </span>
-              </button>
-            </div>
-            <p className="settings-menu-features__hint">
-              Menüdeki yüzen butonları buradan açıp kapatabilirsiniz. Menü Asistanı için önce
-              Eklentiler’den satın almanız gerekir.
-            </p>
-          </div>
-        </div>
-      </SettingsSection>
-
-      <SettingsSection icon={MapPinned} title="Konum Kilidi (QR Bölgesi)">
-        <div className="geo-lock-admin">
-          <p className="geo-lock-admin__hint">
-            Açıkken menü yalnızca seçtiğiniz daire içinde konum izni veren müşterilere açılır.
-            Dışarıdan QR okutanlar karşılama ekranını görmez; “Bölge dışındasınız” uyarısı alır.
-          </p>
+          <span>
+            <i />
+            <strong>Yayınlanmamış değişiklikler</strong>
+            <small>{dirty.length} bölümde düzenleme yaptınız.</small>
+          </span>
           <button
-            type="button"
-            className="settings-feature-toggle geo-lock-admin__toggle"
-            role="switch"
-            aria-checked={geoLock.enabled}
-            onClick={() => {
-              setSettingsDirty(true);
-              setGeoLock((g) => ({ ...g, enabled: !g.enabled }));
-            }}
+            className="ast-button is-primary"
+            disabled={busy}
+            onClick={() => void save()}
           >
-            <span className="settings-feature-toggle__label">
-              <MapPinned className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-accent)' }} />
-              Konum kilidini kullan
-            </span>
-            <span className={`settings-switch${geoLock.enabled ? ' is-on' : ''}`} aria-hidden>
-              <span className="settings-switch__knob" />
-            </span>
+            <Save size={17} />
+            {saving ? 'Kaydediliyor…' : 'Değişiklikleri kaydet'}
           </button>
-          {geoLock.enabled ? (
-            <GeoLockMapEditor
-              value={geoLock}
-              onChange={(next) => {
-                setSettingsDirty(true);
-                setGeoLock(next);
-              }}
-            />
-          ) : (
-            <p className="geo-lock-admin__hint">
-              Kilidi açınca bölge arayıp haritada restoran konumunu ve yarıçapı ayarlayabilirsiniz.
-            </p>
-          )}
         </div>
-      </SettingsSection>
-
-      {iconPickerFor &&
-        iconPickerPos &&
-        createPortal(
-          <>
-            <button
-              type="button"
-              className="social-icon-picker-backdrop"
-              aria-label="İkon seçiciyi kapat"
-              onClick={closeIconPicker}
-            />
-            <div
-              className="social-icon-picker social-icon-picker--portal"
-              style={{ left: iconPickerPos.left, bottom: iconPickerPos.bottom }}
-              role="dialog"
-              aria-label="İkon seç"
-            >
-              <div className="social-icon-picker__grid">
-                {CUSTOM_ICON_OPTIONS.map((opt) => {
-                  const Icon = CUSTOM_ICONS[opt.id];
-                  const row = customSocial.find((c) => c.id === iconPickerFor);
-                  const active = row?.iconKey === opt.id && !row?.iconUrl;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      title={opt.label}
-                      className={`social-icon-picker__item ${active ? 'is-active' : ''}`}
-                      onClick={() => {
-                        updateSocial(iconPickerFor, { iconKey: opt.id, iconUrl: null });
-                        closeIconPicker();
-                      }}
-                    >
-                      <Icon className="w-4 h-4" />
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                type="button"
-                className="social-icon-picker__upload"
-                disabled={uploadingIconFor === iconPickerFor}
-                onClick={() => {
-                  pendingCustomIconIdRef.current = iconPickerFor;
-                  customIconInputRef.current?.click();
-                }}
-              >
-                {uploadingIconFor === iconPickerFor ? 'Yükleniyor…' : 'Kendi görselini yükle'}
-              </button>
-            </div>
-          </>,
-          document.body
-        )}
-
-      <AddLanguageModal
-        open={addLangOpen}
-        existing={data.languages}
-        translateStatus={translateStatus}
-        saving={addingLang}
-        onClose={() => setAddLangOpen(false)}
-        onAdd={handleAddLanguage}
-      />
-
-      <AddCurrencyModal
-        open={addCurrencyOpen}
-        existing={currencies}
-        saving={addingCurrency}
-        onClose={() => setAddCurrencyOpen(false)}
-        onAdd={handleAddCurrency}
-      />
-
-      <AboutPageEditorModal
-        open={aboutEditorOpen}
-        initial={{ ...aboutPage, body: companyAbout }}
-        restaurantName={companyName || data?.restaurant.name || 'Restoran'}
-        saving={saving}
-        onClose={() => setAboutEditorOpen(false)}
-        onSave={async (config) => {
-          setAboutPage(config);
-          setCompanyAbout(config.body);
-          setSaving(true);
-          try {
-            await api('/api/admin/settings/company', {
-              method: 'PUT',
-              body: JSON.stringify({
-                name: companyName,
-                about: config.body,
-                aboutPage: config,
-              }),
-            });
-            setAboutEditorOpen(false);
-          } catch {
-            /* keep open */
-          } finally {
-            setSaving(false);
+      )}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        hidden
+        disabled={busy}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) {
+            if (!file.type.startsWith('image/')) {
+              toast('Bir görsel dosyası seçin.', true);
+              return;
+            }
+            setLogoFile(file);
+            mark('business');
           }
         }}
-        onCoverUploaded={(coverUrl) => {
-          setAboutPage((p) => ({ ...p, coverUrl }));
+      />
+      <input
+        ref={iconInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        disabled={busy}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) void uploadIcon(file);
         }}
       />
-
-      {createPortal(
-        <div
-          className={`settings-save-fab${settingsDirty && !saveInView ? ' is-visible' : ''}`}
-          aria-hidden={!(settingsDirty && !saveInView)}
+      <AdminToast notice={notice} onClose={() => setNotice(null)} />
+      {navOpen && (
+        <AdminOverlay label="Ayar bölümleri" onClose={() => setNavOpen(false)}>
+          <section className="relative ast-nav-sheet">
+            <header>
+              <h2>Neyi düzenleyelim?</h2>
+              <button
+                className="ast-icon-button"
+                aria-label="Kapat"
+                onClick={() => setNavOpen(false)}
+              >
+                <X size={20} />
+              </button>
+            </header>
+            {SECTIONS.map((s) => (
+              <button
+                type="button"
+                className="ast-nav-option"
+                key={s.id}
+                aria-current={active === s.id ? 'page' : undefined}
+                onClick={() => choose(s.id)}
+              >
+                <s.icon size={22} />
+                <span>
+                  <strong>{s.title}</strong>
+                  <small>{s.description}</small>
+                </span>
+                <ChevronRight size={17} />
+              </button>
+            ))}
+          </section>
+        </AdminOverlay>
+      )}
+      {picker && (
+        <AdminOverlay
+          label={picker === 'language' ? 'Dil ekle' : 'Para birimi ekle'}
+          busy={catalogBusy}
+          onClose={() => setPicker(null)}
         >
-          <button
-            type="button"
-            className="settings-save-fab__btn"
-            disabled={saving || !(settingsDirty && !saveInView)}
-            tabIndex={settingsDirty && !saveInView ? 0 : -1}
-            onClick={() => void handleSave()}
-          >
-            <span className="settings-save-fab__pulse" aria-hidden />
-            <Save className="w-4 h-4" />
-            <span className="settings-save-fab__copy">
-              <strong>{saving ? 'Kaydediliyor…' : 'Kaydet'}</strong>
-              <small>Buradan kaydedebilirsiniz</small>
-            </span>
-          </button>
-        </div>,
-        document.body
+          <section className="relative ast-picker">
+            <header>
+              <div>
+                <h2>
+                  {picker === 'language' ? 'Bir dil daha.' : 'Yeni para birimi'}
+                </h2>
+                <p>Seçtiğiniz kayıt hemen eklenir.</p>
+              </div>
+              <button
+                className="ast-icon-button"
+                aria-label="Kapat"
+                disabled={catalogBusy}
+                onClick={() => setPicker(null)}
+              >
+                <X size={20} />
+              </button>
+            </header>
+            <label className="ast-picker-search">
+              <Search size={18} />
+              <input
+                type="search"
+                aria-label="Katalogda ara"
+                placeholder={
+                  picker === 'language' ? 'Dil ara…' : 'Para birimi ara…'
+                }
+                value={catalogQuery}
+                onChange={(e) => setCatalogQuery(e.target.value)}
+                disabled={catalogBusy}
+              />
+            </label>
+            <ul>
+              {filtered.map((item) => (
+                <li key={item.code}>
+                  <button
+                    type="button"
+                    disabled={
+                      catalogBusy || existing.has(item.code.toLowerCase())
+                    }
+                    onClick={() => void addCatalog(item)}
+                  >
+                    {picker === 'language' ? (
+                      <LanguageFlag code={item.code} size={25} />
+                    ) : (
+                      <span className="ast-currency-symbol">
+                        {'symbol' in item ? item.symbol : item.code}
+                      </span>
+                    )}
+                    <span>
+                      <strong>{item.name}</strong>
+                      <small>{item.code}</small>
+                    </span>
+                    {existing.has(item.code.toLowerCase()) ? (
+                      <span className="ast-fixed-label">Ekli</span>
+                    ) : (
+                      <Plus size={17} />
+                    )}
+                  </button>
+                </li>
+              ))}
+              {!filtered.length && (
+                <li className="ast-picker-empty">Eşleşen kayıt bulunamadı.</li>
+              )}
+            </ul>
+          </section>
+        </AdminOverlay>
+      )}
+      {deleteTarget && (
+        <AdminOverlay
+          label="Kaydı sil"
+          busy={catalogBusy}
+          onClose={() => setDeleteTarget(null)}
+        >
+          <section className="relative ast-delete">
+            <header>
+              <Trash2 size={24} />
+              <button
+                className="ast-icon-button"
+                aria-label="Kapat"
+                disabled={catalogBusy}
+                onClick={() => setDeleteTarget(null)}
+              >
+                <X size={20} />
+              </button>
+            </header>
+            <h2>{deleteTarget.name} silinsin mi?</h2>
+            <p>
+              Bu {deleteTarget.kind === 'language' ? 'dil' : 'para birimi'} menü
+              seçeneklerinizden kaldırılacak.
+            </p>
+            <button
+              className="ast-button is-danger"
+              disabled={catalogBusy}
+              onClick={() => void deleteCatalog()}
+            >
+              {catalogBusy ? 'Siliniyor…' : 'Sil'}
+            </button>
+          </section>
+        </AdminOverlay>
+      )}
+      {iconFor && (
+        <AdminOverlay
+          label="Bağlantı ikonu"
+          busy={uploadingIcon}
+          onClose={() => setIconFor(null)}
+        >
+          <section className="relative ast-icons">
+            <header>
+              <h2>Bir ikon seçin.</h2>
+              <button
+                className="ast-icon-button"
+                aria-label="Kapat"
+                disabled={uploadingIcon}
+                onClick={() => setIconFor(null)}
+              >
+                <X size={20} />
+              </button>
+            </header>
+            <div>
+              {CUSTOM_ICON_OPTIONS.map((option) => {
+                const Icon = CUSTOM_ICONS[option.id];
+                return (
+                  <button
+                    type="button"
+                    key={option.id}
+                    disabled={uploadingIcon}
+                    onClick={() => {
+                      updateSocial(iconFor, {
+                        iconKey: option.id,
+                        iconUrl: null,
+                      });
+                      setIconFor(null);
+                    }}
+                  >
+                    <Icon size={24} />
+                    <span>{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              className="ast-button"
+              disabled={uploadingIcon}
+              onClick={() => iconInputRef.current?.click()}
+            >
+              <ImagePlus size={17} />
+              {uploadingIcon ? 'Yükleniyor…' : 'Kendi ikonumu yükle'}
+            </button>
+          </section>
+        </AdminOverlay>
       )}
     </div>
   );
