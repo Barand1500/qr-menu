@@ -60,6 +60,8 @@ import {
 } from '@/lib/demoData';
 import { Spinner } from '@/components/ui';
 import DashboardCalendar from '@/components/DashboardCalendar';
+import DashboardMobile from '@/components/admin/dashboard/DashboardMobile';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 type StatId =
   | 'stat-aktif'
@@ -1107,6 +1109,9 @@ const WIDGET_LABELS: Record<WidgetId, string> = {
 
 export default function DashboardPage() {
   const { demoEnabled } = useDemoData();
+  const { user } = useAuth();
+  // Telefonda sürükle-bırak yerine ayrı, dikey okunan bir düzen gösterilir
+  const isPhone = useMediaQuery('(max-width: 767px)');
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [topGroups, setTopGroups] = useState<TopItem[]>([]);
   const [topProducts, setTopProducts] = useState<TopItem[]>([]);
@@ -1323,6 +1328,18 @@ export default function DashboardPage() {
   }
 
   if (loading || !displaySummary) return <Spinner />;
+
+  if (isPhone) {
+    return (
+      <DashboardMobile
+        restaurantName={user?.restaurant.name || 'Menünüz'}
+        summary={displaySummary}
+        topGroups={displayTopGroups}
+        topProducts={displayTopProducts}
+        monthly={monthly}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
