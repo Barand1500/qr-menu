@@ -1,4 +1,4 @@
-/* Shared admin customer verification; rendered at document level. */
+﻿/* Kişisel kart doğrulama: yöntem solda, kod/QR sağda. */
 .mc-unlock {
   position: fixed;
   inset: 0;
@@ -7,194 +7,256 @@
   place-items: center;
   padding: 24px;
   color: var(--admin-text, #172033);
-  font:
-    14px/1.5 Arial,
-    sans-serif;
+  font-family: inherit;
+}
+.mc-unlock * {
+  box-sizing: border-box;
 }
 .mc-unlock__scrim {
   position: absolute;
   inset: 0;
-  background: #0f172a66;
-  border: 0;
-  backdrop-filter: blur(3px);
-  cursor: default;
+  background: #0c15234d;
+  backdrop-filter: blur(5px);
 }
 .mc-unlock__panel {
   position: relative;
-  width: min(100%, 440px);
-  max-height: calc(100svh - 48px);
+  width: min(100%, 620px);
+  max-height: calc(100dvh - 48px);
   overflow: auto;
-  padding: 28px;
+  overscroll-behavior: contain;
   background: var(--admin-card, #fff);
   border: 1px solid var(--admin-card-border, #e2e8f0);
-  border-radius: 18px;
-  box-shadow: 0 24px 80px #0f172a26;
+  border-radius: 22px;
+  box-shadow: 0 28px 100px #0f172a26;
   outline: none;
-  animation: customer-unlock-enter 0.18s ease both;
+  animation: customer-unlock-enter 0.25s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 .mc-unlock__head {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  margin-bottom: 24px;
+  padding: 26px 28px;
+  border-bottom: 1px solid var(--admin-card-border, #e2e8f0);
 }
 .mc-unlock__brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
+  min-width: 0;
 }
 .mc-unlock__brand-icon {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
-  background: var(--admin-accent-soft, #eff6ff);
-  color: var(--admin-accent, #2563eb);
+  width: 45px;
+  height: 50px;
+  flex-shrink: 0;
+  border: 1px solid var(--admin-card-border);
+  border-radius: 13px;
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent);
+}
+.mc-unlock__brand-icon svg {
+  width: 22px;
+  height: 22px;
 }
 .mc-unlock__head h3 {
   margin: 0;
-  font-size: 19px;
+  font-size: 21px;
+  line-height: 1.3;
   font-weight: 600;
-  letter-spacing: -0.025em;
-  color: var(--admin-text, #172033);
+  letter-spacing: -0.04em;
+}
+.mc-unlock__head p {
+  font-size: 11px;
+  color: var(--admin-text-muted);
+  margin: 5px 0 0;
 }
 .mc-unlock__close {
   display: grid;
   place-items: center;
-  border: 0;
-  border-radius: 8px;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 42px;
+  flex-shrink: 0;
+  border: 1px solid var(--admin-card-border);
+  border-radius: 50%;
   background: transparent;
-  color: var(--admin-text-muted, #64748b);
+  color: var(--admin-text-muted);
 }
 .mc-unlock__close:hover {
-  background: var(--admin-input-bg, #f8fafc);
+  background: var(--admin-input-bg);
+}
+.mc-unlock__body {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  min-height: 260px;
 }
 .mc-unlock__tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border-bottom: 1px solid var(--admin-card-border, #e2e8f0);
-  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  background: var(--admin-input-bg);
+  padding: 24px 12px;
+  border-right: 1px solid var(--admin-card-border);
 }
 .mc-unlock__tabs button {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
   justify-content: center;
-  padding: 12px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  min-height: 88px;
+  padding: 15px;
+  border: 1px solid transparent;
+  border-radius: 12px;
   background: transparent;
-  color: var(--admin-text-muted, #64748b);
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+  text-align: left;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+.mc-unlock__tabs button svg {
+  width: 20px;
+  height: 20px;
 }
 .mc-unlock__tabs button.is-active {
-  color: var(--admin-accent, #2563eb);
-  border-bottom-color: var(--admin-accent, #2563eb);
+  color: var(--admin-accent-text);
+  border-color: var(--admin-card-border);
+  background: var(--admin-card);
+  box-shadow: 0 3px 8px #0f172a05;
+}
+.mc-unlock__content {
+  padding: 27px 28px;
+  min-width: 0;
+}
+.mc-unlock__body:not(:has(.mc-unlock__tabs)) {
+  display: block;
 }
 .mc-unlock__error {
-  margin-bottom: 20px;
-  padding: 12px;
-  background: var(--admin-input-bg, #f8fafc);
-  border-inline-start: 3px solid #dc2626;
-  border-radius: 4px;
-  color: var(--admin-text, #172033);
-  font-size: 13px;
+  margin-bottom: 18px;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, #dc2626 30%, var(--admin-card-border));
+  border-radius: 9px;
+  background: var(--admin-input-bg);
+  color: #dc2626;
+  font-size: 12px;
+  line-height: 1.6;
 }
 .mc-unlock__form,
 .mc-unlock__actions,
 .mc-unlock__scan {
   display: grid;
-  gap: 22px;
+  gap: 24px;
+  animation: customer-unlock-content 0.2s ease both;
 }
 .mc-unlock__hint,
 .mc-unlock__lead {
   margin: 0;
-  color: var(--admin-text-muted, #64748b);
-  font-size: 13px;
-  line-height: 1.6;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+  line-height: 1.8;
 }
 .mc-unlock__otp {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 8px;
+  gap: 7px;
 }
 .mc-unlock .mc-unlock__otp-cell {
   width: 100%;
   min-width: 0;
-  height: 58px;
-  border: 1px solid var(--admin-input-border, #cbd5e1);
+  height: 62px;
+  padding: 0;
+  border: 1px solid var(--admin-card-border);
+  border-bottom: 2px solid var(--admin-card-border);
   border-radius: 9px;
   text-align: center;
-  color: var(--admin-text, #172033);
-  background: var(--admin-input-bg, #f8fafc);
-  font:
-    500 24px/1 Arial,
-    sans-serif;
+  color: var(--admin-text);
+  background: var(--admin-input-bg);
+  font-family: inherit;
+  font-size: 27px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   outline: none;
-  caret-color: var(--admin-accent, #2563eb);
+  box-shadow: none;
+  caret-color: var(--admin-accent);
+  transition:
+    background 0.18s,
+    border-color 0.18s;
+}
+.mc-unlock .mc-unlock__otp-cell::placeholder {
+  color: var(--admin-text-muted);
+  opacity: 0.4;
+}
+.mc-unlock .mc-unlock__otp-cell.is-filled {
+  border-bottom-color: var(--admin-accent);
+  background: var(--admin-accent-soft);
 }
 .mc-unlock .mc-unlock__otp-cell:focus {
-  border-color: var(--admin-accent, #2563eb);
-  box-shadow: 0 0 0 3px var(--admin-accent-soft, #eff6ff);
+  border-color: var(--admin-accent);
+  background: var(--admin-card);
+  box-shadow: 0 0 0 3px var(--admin-accent-soft);
 }
 .mc-unlock__submit {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 46px;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 48px;
+  padding: 12px 17px;
   border: 0;
-  border-radius: 9px;
-  padding: 12px 18px;
-  background: var(--admin-accent, #2563eb);
+  border-radius: 10px;
+  background: var(--admin-accent);
   color: var(--admin-btn-primary-text, #fff);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
+  transition: filter 0.2s;
+}
+.mc-unlock__submit:hover {
+  filter: brightness(1.05);
+}
+.mc-unlock button {
+  touch-action: manipulation;
 }
 .mc-unlock button:disabled {
-  opacity: 0.5;
-  cursor: default;
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .mc-unlock button:focus-visible {
-  outline: 2px solid var(--admin-accent, #2563eb);
+  outline: 2px solid var(--admin-accent);
   outline-offset: 3px;
 }
 .mc-unlock__choice {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px;
-  background: transparent;
-  border: 1px solid var(--admin-card-border, #e2e8f0);
-  border-radius: 10px;
-  text-align: start;
+  gap: 15px;
+  padding: 17px;
+  background: var(--admin-input-bg);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 12px;
+  text-align: left;
 }
 .mc-unlock__choice-icon {
-  color: var(--admin-accent, #2563eb);
+  color: var(--admin-accent);
 }
 .mc-unlock__choice-copy strong {
   display: block;
   font-size: 14px;
-  color: var(--admin-text, #172033);
+  color: var(--admin-text);
 }
 .mc-unlock__choice-copy small {
   display: block;
   margin-top: 4px;
-  color: var(--admin-text-muted, #64748b);
-  font-size: 12px;
+  color: var(--admin-text-muted);
+  font-size: 11px;
 }
 .mc-unlock__video-wrap {
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  max-height: 320px;
+  max-height: 300px;
   overflow: hidden;
   border-radius: 12px;
   background: #172033;
@@ -208,7 +270,7 @@
   position: absolute;
   inset: 16%;
   border: 2px solid #fff;
-  border-radius: 10px;
+  border-radius: 12px;
   box-shadow: 0 0 0 999px #0f172a55;
   pointer-events: none;
 }
@@ -217,41 +279,30 @@
   justify-content: center;
   align-items: center;
   gap: 8px;
-  color: var(--admin-accent, #2563eb);
+  color: var(--admin-accent);
+  font-size: 12px;
   margin: 0;
-  font-size: 13px;
 }
 @keyframes customer-unlock-enter {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(12px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
-@media (max-width: 480px) {
-  .mc-unlock {
-    padding: 16px;
+@keyframes customer-unlock-content {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
   }
-  .mc-unlock__panel {
-    padding: 22px 18px;
-    max-height: calc(100svh - 32px);
-  }
-  .mc-unlock__otp {
-    gap: 6px;
-  }
-  .mc-unlock .mc-unlock__otp-cell {
-    height: 50px;
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .mc-unlock__panel {
-    animation: none;
-  }
-}
-/* Telefonda kod/QR doğrulaması kendi içinde kayabilen alt pencere. */
 @media (max-width: 767px) {
   .mc-unlock {
     align-items: end;
@@ -260,18 +311,76 @@
   .mc-unlock__panel {
     width: 100%;
     max-height: calc(100dvh - 12px);
-    border-radius: 22px 22px 0 0;
-    padding: 22px 20px max(22px, env(safe-area-inset-bottom));
+    border-radius: 24px 24px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
   }
-  .mc-unlock__otp {
-    gap: 6px;
+  .mc-unlock__head {
+    padding: 22px 20px;
+    gap: 10px;
+  }
+  .mc-unlock__brand {
+    gap: 10px;
+  }
+  .mc-unlock__brand-icon {
+    width: 38px;
+    height: 44px;
+  }
+  .mc-unlock__head h3 {
+    font-size: 20px;
+  }
+  .mc-unlock__head p {
+    font-size: 10px;
+  }
+  .mc-unlock__body {
+    display: block;
+    min-height: 0;
+  }
+  .mc-unlock__tabs {
+    flex-direction: row;
+    border: 0;
+    padding: 18px 20px 0;
+    background: transparent;
+    gap: 10px;
+  }
+  .mc-unlock__tabs button {
+    flex: 1;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    min-height: 48px;
+    padding: 12px;
+    gap: 8px;
+    border-color: var(--admin-card-border);
+  }
+  .mc-unlock__tabs button.is-active {
+    border-color: var(--admin-accent);
+    background: var(--admin-accent-soft);
+  }
+  .mc-unlock__tabs button svg {
+    width: 17px;
+    height: 17px;
+  }
+  .mc-unlock__content {
+    padding: 24px 20px max(24px, env(safe-area-inset-bottom));
+  }
+  .mc-unlock__form,
+  .mc-unlock__actions,
+  .mc-unlock__scan {
+    gap: 23px;
   }
   .mc-unlock .mc-unlock__otp-cell {
-    height: 52px;
-    font-size: 22px;
+    height: 60px;
+    font-size: 26px;
   }
-  .mc-unlock__close {
-    width: 42px;
-    height: 42px;
+  .mc-unlock__submit {
+    min-height: 50px;
+    font-size: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mc-unlock *,
+  .mc-unlock {
+    animation: none !important;
+    transition: none !important;
   }
 }

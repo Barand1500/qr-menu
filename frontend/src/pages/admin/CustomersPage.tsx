@@ -123,6 +123,82 @@ const REWARD_KINDS: {
   { id: 'wallet', label: 'Tutar', hint: 'Puan = ₺ indirim', icon: Wallet },
 ];
 
+const REWARD_TEMPLATES: Record<
+  PointsRewardKind,
+  {
+    label: string;
+    points: string;
+    title: string;
+    amount: string;
+    percent: string;
+  }[]
+> = {
+  custom: [
+    {
+      label: 'Çay ikramı',
+      points: '50',
+      title: 'Bir çay bizden',
+      amount: '1',
+      percent: '10',
+    },
+    {
+      label: 'Kahve ikramı',
+      points: '100',
+      title: 'Bir kahve bizden',
+      amount: '1',
+      percent: '10',
+    },
+  ],
+  group: [
+    {
+      label: '%10 indirim · 250 puan',
+      points: '250',
+      title: '',
+      amount: '1',
+      percent: '10',
+    },
+    {
+      label: '%20 indirim · 500 puan',
+      points: '500',
+      title: '',
+      amount: '1',
+      percent: '20',
+    },
+  ],
+  wallet: [
+    {
+      label: '25 ₺ · 250 puan',
+      points: '250',
+      title: '',
+      amount: '25',
+      percent: '10',
+    },
+    {
+      label: '50 ₺ · 500 puan',
+      points: '500',
+      title: '',
+      amount: '50',
+      percent: '10',
+    },
+  ],
+  product: [
+    {
+      label: '100 puan',
+      points: '100',
+      title: '',
+      amount: '1',
+      percent: '10',
+    },
+    {
+      label: '250 puan',
+      points: '250',
+      title: '',
+      amount: '1',
+      percent: '10',
+    },
+  ],
+};
+
 function emptyRewardDraft(kind: PointsRewardKind = 'custom'): RewardDraft {
   return {
     kind,
@@ -972,7 +1048,7 @@ export default function CustomersPage() {
       Math.round(Number(rewardDraft.pointsCost) || 0),
     );
     if (pointsCost <= 0) {
-      setToast('Puan maliyeti gerekli');
+      setToast('Puan maliyeti gerekli', true);
       return null;
     }
 
@@ -986,7 +1062,7 @@ export default function CustomersPage() {
     if (kind === 'custom') {
       const title = rewardDraft.title.trim();
       if (!title) {
-        setToast('Başlık gerekli');
+        setToast('Başlık gerekli', true);
         return null;
       }
       return {
@@ -1008,7 +1084,7 @@ export default function CustomersPage() {
 
     if (kind === 'product') {
       if (!product) {
-        setToast('Ürün seçin');
+        setToast('Ürün seçin', true);
         return null;
       }
       return {
@@ -1030,11 +1106,11 @@ export default function CustomersPage() {
 
     if (kind === 'group') {
       if (!group) {
-        setToast('Grup seçin');
+        setToast('Grup seçin', true);
         return null;
       }
       if (!(discountPercent > 0 && discountPercent <= 100)) {
-        setToast('Geçerli bir indirim yüzdesi girin');
+        setToast('Geçerli bir indirim yüzdesi girin', true);
         return null;
       }
       return {
@@ -1055,7 +1131,7 @@ export default function CustomersPage() {
     }
 
     if (!(amountValue > 0)) {
-      setToast('İndirim tutarı gerekli');
+      setToast('İndirim tutarı gerekli', true);
       return null;
     }
     return {
@@ -1981,7 +2057,7 @@ export default function CustomersPage() {
                 <section className="relative admin-customers__reward-composer">
                   <div className="admin-customers__reward-composer-top">
                     <strong>
-                      {editingRewardId ? 'Kuralı düzenle' : 'Yeni kural'}
+                      {editingRewardId ? 'Ödülü düzenle' : 'Yeni ödül'}
                     </strong>
                     <button
                       type="button"
@@ -2017,10 +2093,71 @@ export default function CustomersPage() {
                         >
                           <Icon className="w-3.5 h-3.5" />
                           <span>{k.label}</span>
-                          <small>{k.hint}</small>
                         </button>
                       );
                     })}
+                  </div>
+
+                  <div className="customer-reward-start">
+                    <p>{rewardKindMeta(rewardDraft.kind).hint}</p>
+                    {!editingRewardId && (
+                      <div
+                        className="customer-reward-presets"
+                        role="group"
+                        aria-label="Ödül şablonları"
+                      >
+                        {REWARD_TEMPLATES[rewardDraft.kind].map((preset) => (
+                          <button
+                            type="button"
+                            key={preset.label}
+                            disabled={rewardsBusy}
+                            onClick={() =>
+                              setRewardDraft((d) => ({
+                                ...d,
+                                title: preset.title,
+                                pointsCost: preset.points,
+                                amountValue: preset.amount,
+                                discountPercent: preset.percent,
+                              }))
+                            }
+                          >
+                            <Plus size={13} />
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div
+                    className="customer-reward-preview"
+                    aria-label="Ödül önizlemesi"
+                  >
+                    <span className="customer-reward-preview-icon">
+                      <Gift size={26} strokeWidth={1.5} />
+                    </span>
+                    <div>
+                      <small>Müşterinizin göreceği ödül</small>
+                      <strong>
+                        {rewardDraft.kind === 'custom'
+                          ? rewardDraft.title.trim() || 'Bir güzellik sizden.'
+                          : rewardDraft.kind === 'product'
+                            ? rewardProducts.find(
+                                (p) => String(p.id) === rewardDraft.productId,
+                              )?.name || 'İkram edilecek ürünü seçin'
+                            : rewardDraft.kind === 'group'
+                              ? (rewardGroups.find(
+                                  (g) => String(g.id) === rewardDraft.groupId,
+                                )?.name || 'Seçili grupta') +
+                                ' %' +
+                                (rewardDraft.discountPercent || '0') +
+                                ' indirim'
+                              : (rewardDraft.amountValue || '0') + ' ₺ indirim'}
+                      </strong>
+                    </div>
+                    <span className="customer-reward-preview-points">
+                      <b>{rewardDraft.pointsCost || '—'}</b> puan
+                    </span>
                   </div>
 
                   <fieldset
@@ -2228,7 +2365,11 @@ export default function CustomersPage() {
                       onClick={() => void saveRewardDraft()}
                     >
                       <Check className="w-3.5 h-3.5" />
-                      {editingRewardId ? 'Kaydet' : 'Ekle'}
+                      {rewardsBusy
+                        ? 'Kaydediliyor…'
+                        : editingRewardId
+                          ? 'Kaydet'
+                          : 'Ekle'}
                     </button>
                   </div>
                 </section>

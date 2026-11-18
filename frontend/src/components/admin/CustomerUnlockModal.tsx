@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, KeyRound, Loader2, X } from 'lucide-react';
+import { ArrowUpRight, Camera, KeyRound, Loader2, X } from 'lucide-react';
 import { lookupCustomerByCodeOrQr } from '@/lib/customerUnlock';
 import './customer-unlock.css';
 
@@ -266,6 +266,7 @@ export default function CustomerUnlockModal({
             </span>
             <div>
               <h3>{title}</h3>
+              <p>Kişisel kart, kişisel erişim.</p>
             </div>
           </div>
           <button
@@ -279,141 +280,147 @@ export default function CustomerUnlockModal({
           </button>
         </header>
 
-        {mode !== 'menu' ? (
-          <div className="mc-unlock__tabs" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              disabled={busy}
-              className={mode === 'scan' ? 'is-active' : ''}
-              aria-selected={mode === 'scan'}
-              onClick={() => {
-                setError('');
-                setMode('scan');
-              }}
-            >
-              <Camera className="w-3.5 h-3.5" />
-              QR okut
-            </button>
-            <button
-              type="button"
-              role="tab"
-              disabled={busy}
-              className={mode === 'code' ? 'is-active' : ''}
-              aria-selected={mode === 'code'}
-              onClick={() => {
-                setError('');
-                setMode('code');
-              }}
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              Kod yaz
-            </button>
-          </div>
-        ) : null}
-
-        {error ? (
-          <div className="mc-unlock__error" role="alert">
-            {error}
-          </div>
-        ) : null}
-
-        {mode === 'menu' ? (
-          <div className="mc-unlock__actions">
-            <p className="mc-unlock__lead">
-              Müşterinin telefonundaki kişisel kodu okut veya 6 haneyi yaz.
-            </p>
-            <button
-              type="button"
-              className="mc-unlock__choice"
-              onClick={() => setMode('scan')}
-            >
-              <span className="mc-unlock__choice-icon">
-                <Camera className="w-5 h-5" />
-              </span>
-              <span className="mc-unlock__choice-copy">
-                <strong>QR okut</strong>
-                <small>Kamerayı aç, kodu tara</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className="mc-unlock__choice is-alt"
-              onClick={() => setMode('code')}
-            >
-              <span className="mc-unlock__choice-icon">
-                <KeyRound className="w-5 h-5" />
-              </span>
-              <span className="mc-unlock__choice-copy">
-                <strong>Kod yaz</strong>
-                <small>6 haneli kodu elle gir</small>
-              </span>
-            </button>
-          </div>
-        ) : null}
-
-        {mode === 'code' ? (
-          <form
-            className="mc-unlock__form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (codeValue.length !== 6) {
-                setError('6 haneli kodu eksiksiz gir');
-                return;
-              }
-              void submit({ code: codeValue });
-            }}
-          >
-            <p className="mc-unlock__hint">
-              {scanHint || 'Müşterinin profilindeki 6 haneli kodu girin.'}
-            </p>
-            <div className="mc-unlock__otp" onPaste={onDigitPaste}>
-              {digits.map((d, i) => (
-                <input
-                  key={i}
-                  ref={(el) => {
-                    inputsRef.current[i] = el;
-                  }}
-                  className={`mc-unlock__otp-cell${d ? ' is-filled' : ''}`}
-                  inputMode="numeric"
-                  disabled={busy}
-                  autoComplete={i === 0 ? 'one-time-code' : 'off'}
-                  maxLength={1}
-                  value={d}
-                  aria-label={`Hane ${i + 1}`}
-                  onChange={(e) => setDigitAt(i, e.target.value)}
-                  onKeyDown={(e) => onDigitKeyDown(i, e)}
-                  onFocus={(e) => e.target.select()}
-                />
-              ))}
+        <div className="mc-unlock__body">
+          {mode !== 'menu' ? (
+            <div className="mc-unlock__tabs" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                disabled={busy}
+                className={mode === 'scan' ? 'is-active' : ''}
+                aria-selected={mode === 'scan'}
+                onClick={() => {
+                  setError('');
+                  setMode('scan');
+                }}
+              >
+                <Camera className="w-3.5 h-3.5" />
+                QR okut
+              </button>
+              <button
+                type="button"
+                role="tab"
+                disabled={busy}
+                className={mode === 'code' ? 'is-active' : ''}
+                aria-selected={mode === 'code'}
+                onClick={() => {
+                  setError('');
+                  setMode('code');
+                }}
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                Kod yaz
+              </button>
             </div>
-            <button
-              type="submit"
-              className="mc-unlock__submit"
-              disabled={busy || codeValue.length !== 6}
-            >
-              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {busy ? 'Kontrol ediliyor…' : 'Müşteriyi aç'}
-            </button>
-          </form>
-        ) : null}
+          ) : null}
 
-        {mode === 'scan' ? (
-          <div className="mc-unlock__scan">
-            <div className="mc-unlock__video-wrap">
-              <video ref={videoRef} playsInline muted />
-              <span className="mc-unlock__frame" aria-hidden />
-            </div>
-            <p className="mc-unlock__hint">
-              {scanHint || 'QR’ı karenin içine hizala'}
-            </p>
-            {busy ? (
-              <p className="mc-unlock__busy">
-                <Loader2 className="w-4 h-4 animate-spin" /> Doğrulanıyor…
-              </p>
+          <div className="mc-unlock__content">
+            {error ? (
+              <div className="mc-unlock__error" role="alert">
+                {error}
+              </div>
+            ) : null}
+
+            {mode === 'menu' ? (
+              <div className="mc-unlock__actions">
+                <p className="mc-unlock__lead">
+                  Müşterinin telefonundaki kişisel kodu okut veya 6 haneyi yaz.
+                </p>
+                <button
+                  type="button"
+                  className="mc-unlock__choice"
+                  onClick={() => setMode('scan')}
+                >
+                  <span className="mc-unlock__choice-icon">
+                    <Camera className="w-5 h-5" />
+                  </span>
+                  <span className="mc-unlock__choice-copy">
+                    <strong>QR okut</strong>
+                    <small>Kamerayı aç, kodu tara</small>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="mc-unlock__choice is-alt"
+                  onClick={() => setMode('code')}
+                >
+                  <span className="mc-unlock__choice-icon">
+                    <KeyRound className="w-5 h-5" />
+                  </span>
+                  <span className="mc-unlock__choice-copy">
+                    <strong>Kod yaz</strong>
+                    <small>6 haneli kodu elle gir</small>
+                  </span>
+                </button>
+              </div>
+            ) : null}
+
+            {mode === 'code' ? (
+              <form
+                className="mc-unlock__form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (codeValue.length !== 6) {
+                    setError('6 haneli kodu eksiksiz gir');
+                    return;
+                  }
+                  void submit({ code: codeValue });
+                }}
+              >
+                <p className="mc-unlock__hint">
+                  {scanHint || 'Müşterinin profilindeki 6 haneli kodu girin.'}
+                </p>
+                <div className="mc-unlock__otp" onPaste={onDigitPaste}>
+                  {digits.map((d, i) => (
+                    <input
+                      key={i}
+                      ref={(el) => {
+                        inputsRef.current[i] = el;
+                      }}
+                      className={`mc-unlock__otp-cell${d ? ' is-filled' : ''}`}
+                      inputMode="numeric"
+                      disabled={busy}
+                      autoComplete={i === 0 ? 'one-time-code' : 'off'}
+                      maxLength={1}
+                      placeholder="·"
+                      value={d}
+                      aria-label={`Hane ${i + 1}`}
+                      onChange={(e) => setDigitAt(i, e.target.value)}
+                      onKeyDown={(e) => onDigitKeyDown(i, e)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="submit"
+                  className="mc-unlock__submit"
+                  disabled={busy || codeValue.length !== 6}
+                >
+                  {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {busy ? 'Kontrol ediliyor…' : 'Müşteriyi aç'}
+                  {!busy && <ArrowUpRight size={18} />}
+                </button>
+              </form>
+            ) : null}
+
+            {mode === 'scan' ? (
+              <div className="mc-unlock__scan">
+                <div className="mc-unlock__video-wrap">
+                  <video ref={videoRef} playsInline muted />
+                  <span className="mc-unlock__frame" aria-hidden />
+                </div>
+                <p className="mc-unlock__hint">
+                  {scanHint || 'QR’ı karenin içine hizala'}
+                </p>
+                {busy ? (
+                  <p className="mc-unlock__busy">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Doğrulanıyor…
+                  </p>
+                ) : null}
+              </div>
             ) : null}
           </div>
-        ) : null}
+        </div>
       </div>
     </div>,
     document.body,

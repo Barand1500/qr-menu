@@ -1,26 +1,35 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import {
-  Plus,
-  Pencil,
-  EyeOff,
-  Eye,
-  X,
-  UserCircle,
-  Lock,
-  Copy,
+  ArrowUpRight,
   Check,
-  Shuffle,
-  Search,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Eye,
+  EyeOff,
   Link2,
+  LockKeyhole,
+  Plus,
+  Search,
+  Settings2,
+  ShieldCheck,
+  Shuffle,
   Type,
+  UserRound,
+  UsersRound,
+  X,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { Badge, Button, Card, EmptyState, Input, PageHeader, Spinner } from '@/components/ui';
+import { PageHeader, Spinner } from '@/components/ui';
+import AdminOverlay from '@/components/admin/AdminOverlay';
+import AdminToast, {
+  type AdminToastNotice,
+} from '@/components/admin/AdminToast';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   adminPath,
-  BLOCKED_ADMIN_PATHS,
-  fetchAndCacheAdminPath,
   getAdminPathSlug,
+  normalizeAdminPath,
   setAdminPathSlug,
   suggestAdminPath,
   validateAdminPath,
@@ -31,6 +40,7 @@ import {
   setSiteTitle,
   validateSiteTitle,
 } from '@/lib/siteTitle';
+import '@/admin-users.css';
 
 interface UserItem {
   id: number;
@@ -40,702 +50,807 @@ interface UserItem {
   role: string;
   isActive: boolean;
 }
+const blankForm = () => ({
+  email: '',
+  password: '',
+  fullName: '',
+  phone: '',
+  role: 'staff',
+  isActive: true,
+});
+const message = (err: unknown) =>
+  err instanceof Error ? err.message : 'İşlem tamamlanamadı';
+const initials = (name: string) =>
+  name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((s) => s[0])
+    .slice(0, 2)
+    .join('')
+    .toLocaleUpperCase('tr') || '?';
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<UserItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<UserItem | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    email: '',
-    password: '',
-    fullName: '',
-    phone: '',
-    role: 'staff',
-    isActive: true,
-  });
-
-  const [panelPath, setPanelPath] = useState(getAdminPathSlug());
-  const [pathDraft, setPathDraft] = useState(getAdminPathSlug());
-  const [pathAck, setPathAck] = useState(false);
-  const [pathSaving, setPathSaving] = useState(false);
+  const { user: me } = useAuth();
+  const [users, setUsers] = useState<UserItem[]>([]),
+    [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true),
+    [loadError, setLoadError] = useState(false);
+  const [searchDraft, setSearchDraft] = useState(''),
+    [search, setSearch] = useState('');
+  const [page, setPage] = useState(1),
+    [revision, setRevision] = useState(0);
+  const [modalOpen, setModalOpen] = useState(false),
+    [editing, setEditing] = useState<UserItem | null>(null);
+  const [form, setForm] = useState(blankForm),
+    [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false),
+    [showPassword, setShowPassword] = useState(false);
+  const [toggling, setToggling] = useState<number | null>(null);
+  const mutationLock = useRef(false);
+  const [notice, setNotice] = useState<AdminToastNotice>(null);
+  const toast = (text: string, error = false) => setNotice({ text, error });
+  const [settingsOpen, setSettingsOpen] = useState(false),
+    [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsError, setSettingsError] = useState(false),
+    [settingsRevision, setSettingsRevision] = useState(0);
+  const [panelPath, setPanelPath] = useState(getAdminPathSlug),
+    [pathDraft, setPathDraft] = useState(getAdminPathSlug);
+  const [pathAck, setPathAck] = useState(false),
+    [pathSaving, setPathSaving] = useState(false);
   const [pathError, setPathError] = useState<string | null>(null);
-  const [pathOk, setPathOk] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [titleDraft, setTitleDraft] = useState(getSiteTitle());
-  const [titleSaving, setTitleSaving] = useState(false);
-  const [titleError, setTitleError] = useState<string | null>(null);
-  const [titleOk, setTitleOk] = useState<string | null>(null);
+  const [titleDraft, setTitleDraft] = useState(getSiteTitle),
+    [savedTitle, setSavedTitle] = useState(getSiteTitle);
+  const [titleSaving, setTitleSaving] = useState(false),
+    [titleError, setTitleError] = useState<string | null>(null);
+  const settingsLock = useRef(false),
+    redirectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+      undefined,
+    );
+  const pageSize = 20,
+    pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const settingsBusy = pathSaving || titleSaving;
+  const normalizedPath = pathDraft.trim() ? normalizeAdminPath(pathDraft) : '';
+  const pathChanged = normalizedPath !== panelPath;
 
-  async function load() {
-    const params = search ? `?search=${encodeURIComponent(search)}` : '';
-    const res = await api<{ data: UserItem[] }>(`/api/admin/users${params}`);
-    setUsers(res.data);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchDraft.trim());
+      setPage(1);
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [searchDraft]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setLoadError(false);
+    const query = new URLSearchParams({
+      page: String(page),
+      limit: String(pageSize),
+    });
+    if (search) query.set('search', search);
+    api<{ data: UserItem[]; pagination?: { total: number } }>(
+      `/api/admin/users?${query}`,
+      { signal: controller.signal },
+    )
+      .then((res) => {
+        if (controller.signal.aborted) return;
+        const count = res.pagination?.total ?? res.data.length;
+        if (page > Math.max(1, Math.ceil(count / pageSize))) {
+          setPage(Math.max(1, Math.ceil(count / pageSize)));
+          return;
+        }
+        setUsers(res.data);
+        setTotal(count);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setLoadError(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [search, page, revision]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setSettingsLoading(true);
+    setSettingsError(false);
+    Promise.all([
+      api<{ path: string }>('/api/admin/settings/admin-path', {
+        signal: controller.signal,
+      }),
+      api<{ title: string }>('/api/admin/settings/site-title', {
+        signal: controller.signal,
+      }),
+    ])
+      .then(([path, title]) => {
+        if (controller.signal.aborted) return;
+        const p = setAdminPathSlug(path.path),
+          t = setSiteTitle(title.title);
+        setPanelPath(p);
+        setPathDraft(p);
+        setTitleDraft(t);
+        setSavedTitle(t);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSettingsError(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setSettingsLoading(false);
+      });
+    return () => controller.abort();
+  }, [settingsRevision]);
+  useEffect(() => () => clearTimeout(redirectTimer.current), []);
+
+  function openUser(item?: UserItem) {
+    if (mutationLock.current) return;
+    setEditing(item || null);
+    setFormError(null);
+    setShowPassword(false);
+    setForm(
+      item
+        ? {
+            ...blankForm(),
+            email: item.email,
+            fullName: item.fullName,
+            phone: item.phone || '',
+            role: item.role === 'admin' ? 'admin' : 'staff',
+            isActive: item.isActive,
+          }
+        : blankForm(),
+    );
+    setModalOpen(true);
   }
-
-  useEffect(() => {
-    load().finally(() => setLoading(false));
-  }, [search]);
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await api<{ path: string }>('/api/admin/settings/admin-path');
-        const p = setAdminPathSlug(res.path);
-        setPanelPath(p);
-        setPathDraft(p);
-      } catch {
-        const p = await fetchAndCacheAdminPath();
-        setPanelPath(p);
-        setPathDraft(p);
-      }
-      try {
-        const res = await api<{ title: string }>('/api/admin/settings/site-title');
-        setTitleDraft(setSiteTitle(res.title));
-      } catch {
-        setTitleDraft(getSiteTitle());
-      }
-    })();
-  }, []);
-
-  async function saveSiteTitle() {
+  async function saveUser() {
+    if (mutationLock.current) return;
+    setFormError(null);
+    if (!form.fullName.trim()) {
+      setFormError('Ad soyad gerekli.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setFormError('Geçerli bir e-posta adresi yazın.');
+      return;
+    }
+    if (!editing && !form.password) {
+      setFormError('Yeni kullanıcı için şifre gerekli.');
+      return;
+    }
+    if (form.password && form.password.length < 6) {
+      setFormError('Şifre en az 6 karakter olmalı.');
+      return;
+    }
+    mutationLock.current = true;
+    setSaving(true);
+    try {
+      await api(
+        editing ? `/api/admin/users/${editing.id}` : '/api/admin/users',
+        {
+          method: editing ? 'PUT' : 'POST',
+          body: JSON.stringify({
+            email: form.email.trim(),
+            fullName: form.fullName.trim(),
+            phone: form.phone.trim(),
+            role: form.role,
+            isActive: form.isActive,
+            ...(form.password ? { password: form.password } : {}),
+          }),
+        },
+      );
+      setModalOpen(false);
+      toast(editing ? 'Kullanıcı güncellendi.' : 'Yeni kullanıcı eklendi.');
+      setRevision((v) => v + 1);
+    } catch (err) {
+      setFormError(message(err));
+    } finally {
+      mutationLock.current = false;
+      setSaving(false);
+    }
+  }
+  async function toggleUser(item: UserItem) {
+    if (mutationLock.current) return;
+    mutationLock.current = true;
+    setToggling(item.id);
+    try {
+      const updated = await api<UserItem>(
+        `/api/admin/users/${item.id}/toggle`,
+        { method: 'PATCH' },
+      );
+      setUsers((items) => items.map((u) => (u.id === item.id ? updated : u)));
+      toast(
+        updated.isActive ? 'Panel erişimi açıldı.' : 'Panel erişimi kapatıldı.',
+      );
+    } catch (err) {
+      toast(message(err), true);
+    } finally {
+      mutationLock.current = false;
+      setToggling(null);
+    }
+  }
+  async function saveTitle() {
+    if (settingsLock.current || settingsLoading || settingsError) return;
     setTitleError(null);
-    setTitleOk(null);
     const checked = validateSiteTitle(titleDraft);
     if (!checked.ok) {
       setTitleError(checked.message);
       return;
     }
+    settingsLock.current = true;
     setTitleSaving(true);
     try {
-      const res = await api<{ title: string }>('/api/admin/settings/site-title', {
-        method: 'PUT',
-        body: JSON.stringify({ title: checked.title }),
-      });
-      setTitleDraft(setSiteTitle(res.title));
-      setTitleOk('Sekme adı güncellendi');
-    } catch (e) {
-      setTitleError(e instanceof Error ? e.message : 'Kaydedilemedi');
+      const res = await api<{ title: string }>(
+        '/api/admin/settings/site-title',
+        { method: 'PUT', body: JSON.stringify({ title: checked.title }) },
+      );
+      const title = setSiteTitle(res.title);
+      setTitleDraft(title);
+      setSavedTitle(title);
+      toast('Sekme adı güncellendi.');
+    } catch (err) {
+      setTitleError(message(err));
     } finally {
+      settingsLock.current = false;
       setTitleSaving(false);
     }
   }
-
-  useEffect(() => {
-    if (!modalOpen) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setModalOpen(false);
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [modalOpen]);
-
-  function openCreate() {
-    setEditing(null);
-    setFormError(null);
-    setForm({ email: '', password: '', fullName: '', phone: '', role: 'staff', isActive: true });
-    setModalOpen(true);
-  }
-
-  function openEdit(user: UserItem) {
-    setEditing(user);
-    setFormError(null);
-    setForm({
-      email: user.email,
-      password: '',
-      fullName: user.fullName,
-      phone: user.phone || '',
-      role: user.role === 'admin' ? 'admin' : 'staff',
-      isActive: user.isActive,
-    });
-    setModalOpen(true);
-  }
-
-  async function handleSave() {
-    setFormError(null);
-    if (!form.fullName.trim()) {
-      setFormError('Ad soyad gerekli');
-      return;
-    }
-    if (!form.email.trim()) {
-      setFormError('E-posta gerekli');
-      return;
-    }
-    if (!editing && !form.password) {
-      setFormError('Yeni kullanıcı için şifre gerekli');
-      return;
-    }
-    if (form.password && form.password.length < 6) {
-      setFormError('Şifre en az 6 karakter olmalı');
-      return;
-    }
-
-    const payload = {
-      email: form.email.trim(),
-      fullName: form.fullName.trim(),
-      phone: form.phone,
-      role: form.role,
-      isActive: form.isActive,
-      ...(form.password && { password: form.password }),
-    };
-
-    setSaving(true);
-    try {
-      if (editing) {
-        await api(`/api/admin/users/${editing.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(payload),
-        });
-      } else {
-        await api('/api/admin/users', {
-          method: 'POST',
-          body: JSON.stringify({ ...payload, password: form.password }),
-        });
-      }
-      setModalOpen(false);
-      await load();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Kaydedilemedi');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleToggle(user: UserItem) {
-    const next = !user.isActive;
-    setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, isActive: next } : u)));
-    try {
-      await api(`/api/admin/users/${user.id}/toggle`, { method: 'PATCH' });
-    } catch {
-      setUsers((prev) =>
-        prev.map((u) => (u.id === user.id ? { ...u, isActive: user.isActive } : u))
-      );
-    }
-  }
-
-  async function savePanelPath() {
+  async function savePath() {
+    if (settingsLock.current || settingsLoading || settingsError) return;
     setPathError(null);
-    setPathOk(null);
     const checked = validateAdminPath(pathDraft);
     if (!checked.ok) {
       setPathError(checked.message);
       return;
     }
     if (checked.path !== panelPath && !pathAck) {
-      setPathError('Devam etmek için uyarı kutusunu onaylayın');
+      setPathError('Eski adresin kapanacağını onaylayın.');
       return;
     }
+    settingsLock.current = true;
     setPathSaving(true);
     try {
-      const res = await api<{ path: string }>('/api/admin/settings/admin-path', {
-        method: 'PUT',
-        body: JSON.stringify({ path: checked.path }),
-      });
+      const res = await api<{ path: string }>(
+        '/api/admin/settings/admin-path',
+        { method: 'PUT', body: JSON.stringify({ path: checked.path }) },
+      );
       const next = setAdminPathSlug(res.path);
       setPanelPath(next);
       setPathDraft(next);
       setPathAck(false);
-      setPathOk(`Panel yolu kaydedildi. Yeni adres: ${window.location.origin}${adminPath()}`);
+      toast('Panel adresi güncellendi.');
       if (next !== panelPath) {
-        window.setTimeout(() => {
-          window.location.assign(adminPath('users'));
-        }, 600);
+        redirectTimer.current = setTimeout(
+          () => window.location.assign(adminPath('users')),
+          650,
+        );
+      } else {
+        settingsLock.current = false;
+        setPathSaving(false);
       }
     } catch (err) {
-      setPathError(err instanceof Error ? err.message : 'Kaydedilemedi');
-    } finally {
+      setPathError(message(err));
+      settingsLock.current = false;
       setPathSaving(false);
     }
   }
-
-  async function copyPanelUrl() {
-    const url = `${window.location.origin}${adminPath()}`;
+  async function copyPath() {
     try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
+      await navigator.clipboard.writeText(
+        `${window.location.origin}${adminPath()}`,
+      );
+      toast('Panel adresi kopyalandı.');
     } catch {
-      setPathError('Kopyalanamadı');
+      toast('Adres kopyalanamadı.', true);
     }
   }
 
-  if (loading) return <Spinner />;
-
-  const pathChanged = normalizeDraft(pathDraft) !== panelPath;
-
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const draftSlug = normalizeDraft(pathDraft) || '…';
-
   return (
-    <div className="space-y-4">
+    <div className="au-page">
       <PageHeader
         title="Kullanıcılar"
+        subtitle={loading ? 'Panelinize erişen kişiler.' : `${total} kullanıcı`}
         actions={
-          <Button onClick={openCreate}>
-            <Plus className="w-4 h-4" />
-            Yeni Kullanıcı
-          </Button>
+          <div className="au-heading-actions">
+            <button className="au-button" onClick={() => setSettingsOpen(true)}>
+              <Settings2 size={17} /> Panel ayarları
+            </button>
+            <button
+              className="au-button is-primary"
+              disabled={saving || toggling !== null}
+              onClick={() => openUser()}
+            >
+              <Plus size={18} /> Kullanıcı ekle
+            </button>
+          </div>
         }
       />
-
-      <Card className="!p-0 overflow-hidden">
-        <div
-          className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 border-b"
-          style={{
-            borderColor: 'var(--admin-card-border)',
-            background: 'color-mix(in srgb, var(--admin-accent-soft) 55%, var(--admin-card))',
-          }}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <span
-              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: 'var(--admin-card)', border: '1px solid var(--admin-card-border)' }}
-            >
-              <Lock className="w-3.5 h-3.5" style={{ color: 'var(--admin-accent)' }} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-[var(--admin-text)] leading-tight">
-                Panel giriş adresi
-              </p>
-              <p className="text-[11px] admin-text-muted leading-snug">
-                Gizli tutun · Değişince eski yol kapanır · Yasak:{' '}
-                {BLOCKED_ADMIN_PATHS.map((p, i) => (
-                  <span key={p}>
-                    {i > 0 ? ', ' : null}
-                    <code className="text-[10px] font-semibold text-red-600">/{p}</code>
-                  </span>
-                ))}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-4 py-3 space-y-3">
-          <div className="flex flex-col lg:flex-row gap-2 lg:items-center">
-            <div
-              className="flex-1 flex items-stretch rounded-xl overflow-hidden min-w-0"
-              style={{
-                border: '1px solid var(--admin-card-border)',
-                background: 'var(--admin-input-bg)',
-              }}
-            >
-              <span
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 text-xs admin-text-muted shrink-0 border-r whitespace-nowrap"
-                style={{ borderColor: 'var(--admin-card-border)' }}
-              >
-                <Link2 className="w-3.5 h-3.5 opacity-60 shrink-0" />
-                <span>{origin}/</span>
-              </span>
-              <input
-                value={pathDraft}
-                onChange={(e) => {
-                  setPathDraft(e.target.value);
-                  setPathError(null);
-                  setPathOk(null);
-                }}
-                placeholder="panel-7k2x"
-                spellCheck={false}
-                autoCapitalize="off"
-                autoCorrect="off"
-                className="flex-1 min-w-0 px-3 py-2.5 text-sm font-medium outline-none bg-transparent text-[var(--admin-text)]"
-                aria-label="Panel yolu"
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setPathDraft(suggestAdminPath());
-                  setPathError(null);
-                  setPathOk(null);
-                }}
-                className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-xs font-semibold transition hover:bg-[var(--admin-accent-soft)]"
-                style={{
-                  border: '1px solid var(--admin-card-border)',
-                  color: 'var(--admin-text)',
-                  background: 'var(--admin-card)',
-                }}
-                title="Güçlü yol öner"
-              >
-                <Shuffle className="w-3.5 h-3.5" />
-                Öner
-              </button>
-              <button
-                type="button"
-                onClick={() => void copyPanelUrl()}
-                className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-xs font-semibold transition hover:bg-[var(--admin-accent-soft)]"
-                style={{
-                  border: '1px solid var(--admin-card-border)',
-                  color: 'var(--admin-text)',
-                  background: 'var(--admin-card)',
-                }}
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? 'Kopyalandı' : 'Kopyala'}
-              </button>
-              <Button
-                size="sm"
-                className="h-10"
-                disabled={pathSaving}
-                onClick={() => void savePanelPath()}
-              >
-                {pathSaving ? '…' : 'Kaydet'}
-              </Button>
-            </div>
-          </div>
-
-          <p className="text-[11px] admin-text-muted sm:hidden">
-            Tam adres:{' '}
-            <span className="font-medium text-[var(--admin-text)]">
-              {origin}/{draftSlug}
-            </span>
-          </p>
-
-          {pathChanged ? (
-            <label
-              className="flex items-start gap-2.5 rounded-xl px-3 py-2.5 cursor-pointer text-[12px] leading-snug"
-              style={{
-                border: '1px solid color-mix(in srgb, #b45309 28%, var(--admin-card-border))',
-                background: 'color-mix(in srgb, #f59e0b 10%, var(--admin-card))',
-                color: 'var(--admin-text)',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={pathAck}
-                onChange={(e) => setPathAck(e.target.checked)}
-                className="mt-0.5 w-3.5 h-3.5 rounded accent-[var(--admin-accent)] shrink-0"
-              />
-              <span>
-                Eski yol (<code className="text-[11px]">/{panelPath}</code>) kapanacak; yeni adres{' '}
-                <code className="text-[11px]">/{draftSlug}</code>. Yer imine ekleyin — unutursanız
-                panele giremezsiniz.
-              </span>
-            </label>
-          ) : null}
-
-          {pathError ? <p className="text-xs text-red-600">{pathError}</p> : null}
-          {pathOk ? <p className="text-xs text-emerald-600">{pathOk}</p> : null}
-        </div>
-      </Card>
-
-      <Card className="!p-0 overflow-hidden">
-        <div
-          className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 border-b"
-          style={{
-            borderColor: 'var(--admin-card-border)',
-            background: 'color-mix(in srgb, var(--admin-accent-soft) 55%, var(--admin-card))',
-          }}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <span
-              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: 'var(--admin-card)', border: '1px solid var(--admin-card-border)' }}
-            >
-              <Type className="w-3.5 h-3.5" style={{ color: 'var(--admin-accent)' }} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-[var(--admin-text)] leading-tight">
-                Site / sekme adı
-              </p>
-              <p className="text-[11px] admin-text-muted leading-snug">
-                Tarayıcı sekmesinde görünen ad · Yol değişmez · Varsayılan: {DEFAULT_SITE_TITLE}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-4 py-3 space-y-3">
-          <div className="flex flex-col lg:flex-row gap-2 lg:items-center">
-            <div
-              className="flex-1 flex items-stretch rounded-xl overflow-hidden min-w-0"
-              style={{
-                border: '1px solid var(--admin-card-border)',
-                background: 'var(--admin-input-bg)',
-              }}
-            >
-              <input
-                value={titleDraft}
-                onChange={(e) => {
-                  setTitleDraft(e.target.value);
-                  setTitleError(null);
-                  setTitleOk(null);
-                }}
-                placeholder={DEFAULT_SITE_TITLE}
-                maxLength={60}
-                className="flex-1 min-w-0 px-3 py-2.5 text-sm font-medium outline-none bg-transparent text-[var(--admin-text)]"
-                aria-label="Site / sekme adı"
-              />
-            </div>
-            <div className="flex flex-wrap gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setTitleDraft(DEFAULT_SITE_TITLE);
-                  setTitleError(null);
-                  setTitleOk(null);
-                }}
-                className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-xs font-semibold transition hover:bg-[var(--admin-accent-soft)]"
-                style={{
-                  border: '1px solid var(--admin-card-border)',
-                  color: 'var(--admin-text)',
-                  background: 'var(--admin-card)',
-                }}
-              >
-                Varsayılan
-              </button>
-              <Button
-                size="sm"
-                className="h-10"
-                disabled={titleSaving}
-                onClick={() => void saveSiteTitle()}
-              >
-                {titleSaving ? '…' : 'Kaydet'}
-              </Button>
-            </div>
-          </div>
-          <p className="text-[11px] admin-text-muted">
-            Önizleme:{' '}
-            <span className="font-medium text-[var(--admin-text)]">
-              {titleDraft.trim() || DEFAULT_SITE_TITLE}
-            </span>
-          </p>
-          {titleError ? <p className="text-xs text-red-600">{titleError}</p> : null}
-          {titleOk ? <p className="text-xs text-emerald-600">{titleOk}</p> : null}
-        </div>
-      </Card>
-
-      <Card className="overflow-hidden !p-0">
-        <div
-          className="px-4 py-3 border-b flex flex-wrap items-center gap-3"
-          style={{ borderColor: 'var(--admin-card-border)' }}
-        >
-          <div className="relative flex-1 min-w-[12rem] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 admin-text-muted pointer-events-none" />
+      <AdminToast notice={notice} onClose={() => setNotice(null)} />
+      <section className="au-directory" aria-label="Kullanıcı listesi">
+        <div className="au-toolbar">
+          <label className="au-search">
+            <Search size={18} />
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Ad veya e-posta ara…"
-              className="w-full h-10 pl-9 pr-3 rounded-xl text-sm outline-none"
-              style={{
-                background: 'var(--admin-input-bg)',
-                border: '1px solid var(--admin-card-border)',
-                color: 'var(--admin-text)',
-              }}
+              type="search"
+              aria-label="Kullanıcı ara"
+              placeholder="Ad veya e-posta ara"
+              value={searchDraft}
+              onChange={(e) => setSearchDraft(e.target.value)}
             />
+          </label>
+          <span>
+            <UsersRound size={16} /> Ekip erişimi
+          </span>
+        </div>
+        <div className="au-column-head" aria-hidden="true">
+          <span>Kullanıcı</span>
+          <span>İletişim</span>
+          <span>Rol</span>
+          <span>Panel erişimi</span>
+        </div>
+        {loading ? (
+          <div className="au-empty">
+            <Spinner />
           </div>
-          <p className="text-xs admin-text-muted ml-auto">{users.length} kullanıcı</p>
-        </div>
-
-        <div className="overflow-x-auto admin-scroll">
-          <table className="w-full text-sm">
-            <thead>
-              <tr
-                className="text-left text-xs uppercase tracking-wide admin-text-muted"
-                style={{ background: 'var(--admin-input-bg)' }}
+        ) : loadError ? (
+          <div className="au-empty" role="alert">
+            <UsersRound size={30} />
+            <p>Kullanıcılar yüklenemedi.</p>
+            <button
+              className="au-button"
+              onClick={() => setRevision((v) => v + 1)}
+            >
+              Tekrar dene
+            </button>
+          </div>
+        ) : !users.length ? (
+          <div className="au-empty">
+            <UsersRound size={34} />
+            <h2>
+              {search ? 'Bir eşleşme bulamadık.' : 'Ekibinizi buraya ekleyin.'}
+            </h2>
+            <p>
+              {search
+                ? 'Farklı bir ad veya e-posta deneyin.'
+                : 'Her çalışan kendi hesabıyla giriş yapsın.'}
+            </p>
+            {!search && (
+              <button
+                className="au-button is-primary"
+                onClick={() => openUser()}
               >
-                <th className="py-3.5 px-4 font-semibold">Ad Soyad</th>
-                <th className="py-3.5 px-4 font-semibold">E-posta</th>
-                <th className="py-3.5 px-4 font-semibold hidden md:table-cell">Rol</th>
-                <th className="py-3.5 px-4 font-semibold hidden sm:table-cell">GSM</th>
-                <th className="py-3.5 px-4 font-semibold">Durum</th>
-                <th className="py-3.5 px-4 font-semibold w-[100px]">İşlem</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.length === 0 ? (
-                <tr>
-                  <td colSpan={6}>
-                    <EmptyState message="Kullanıcı bulunamadı" />
-                  </td>
-                </tr>
-              ) : (
-                users.map((user) => (
-                  <tr
-                    key={user.id}
-                    onDoubleClick={() => openEdit(user)}
-                    className="border-b transition hover:bg-[var(--admin-accent-soft)]/30 admin-table-row--editable cursor-pointer"
-                    style={{
-                      borderColor: 'var(--admin-card-border)',
-                      opacity: user.isActive ? 1 : 0.45,
-                    }}
-                  >
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold"
-                          style={{
-                            background: 'var(--admin-accent-soft)',
-                            color: 'var(--admin-accent-text)',
-                          }}
-                        >
-                          {user.fullName.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="font-semibold text-[var(--admin-text)]">{user.fullName}</span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 admin-text-muted">{user.email}</td>
-                    <td className="py-3.5 px-4 hidden md:table-cell">
-                      <span
-                        className="inline-flex px-2 py-0.5 rounded-lg text-xs font-semibold"
-                        style={{
-                          background: 'var(--admin-accent-soft)',
-                          color: 'var(--admin-accent-text)',
-                        }}
-                      >
-                        {user.role === 'admin' ? 'Admin' : 'Personel'}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 admin-text-muted hidden sm:table-cell">
-                      {user.phone || '—'}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <Badge active={user.isActive} />
-                    </td>
-                    <td className="py-3.5 px-4" onDoubleClick={(e) => e.stopPropagation()}>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => openEdit(user)}
-                          className="p-2 rounded-xl transition hover:bg-[var(--admin-accent-soft)]"
-                          style={{ color: 'var(--admin-accent)' }}
-                          title="Düzenle"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleToggle(user)}
-                          className={`p-2 rounded-xl transition ${
-                            user.isActive
-                              ? 'hover:bg-amber-500/10 text-amber-500'
-                              : 'hover:bg-emerald-500/10 text-emerald-500'
-                          }`}
-                          title={user.isActive ? 'Pasifleştir' : 'Aktifleştir'}
-                        >
-                          {user.isActive ? (
-                            <EyeOff className="w-4 h-4" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="absolute inset-0 bg-black/35 backdrop-blur-[6px]" />
-          <div
-            className="relative w-full sm:max-w-md rounded-t-[28px] sm:rounded-[28px] shadow-2xl animate-slide-up p-6"
-            style={{
-              background: 'var(--admin-card)',
-              border: '1px solid var(--admin-card-border)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-4 mb-5">
-              <div className="flex items-start gap-3">
-                <div
-                  className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{ background: 'var(--admin-accent-soft)' }}
+                <Plus size={17} /> Kullanıcı ekle
+              </button>
+            )}
+          </div>
+        ) : (
+          <ul className="au-list">
+            {users.map((item, index) => (
+              <li
+                className={`au-row${item.isActive ? '' : ' is-inactive'}`}
+                key={item.id}
+                style={{ animationDelay: `${Math.min(index, 8) * 30}ms` }}
+              >
+                <button
+                  className="au-open"
+                  aria-label={`${item.fullName} kullanıcısını düzenle`}
+                  disabled={saving || toggling !== null}
+                  onClick={() => openUser(item)}
                 >
-                  <UserCircle className="w-5 h-5" style={{ color: 'var(--admin-accent)' }} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-[var(--admin-text)]">
-                    {editing ? 'Kullanıcı Düzenle' : 'Yeni Kullanıcı'}
-                  </h2>
-                  <p className="text-sm admin-text-muted mt-0.5">
-                    Panel girişi: e-posta + şifre → {window.location.origin}/login
-                  </p>
-                </div>
+                  <span className="au-person">
+                    <span className="au-avatar">{initials(item.fullName)}</span>
+                    <span>
+                      <strong>
+                        {item.fullName}
+                        {me?.id === item.id && <small>Siz</small>}
+                      </strong>
+                    </span>
+                  </span>
+                  <span className="au-contact">
+                    <span>{item.email}</span>
+                    {item.phone && <small>{item.phone}</small>}
+                  </span>
+                  <span
+                    className={`au-role${item.role === 'admin' ? ' is-admin' : ''}`}
+                  >
+                    {item.role === 'admin' ? (
+                      <ShieldCheck size={15} />
+                    ) : (
+                      <UserRound size={15} />
+                    )}{' '}
+                    {item.role === 'admin' ? 'Yönetici' : 'Personel'}
+                  </span>
+                  <ArrowUpRight className="au-row-arrow" size={18} />
+                </button>
+                <button
+                  className="au-access"
+                  role="switch"
+                  aria-checked={item.isActive}
+                  aria-label={`${item.fullName} panel erişimi`}
+                  disabled={toggling !== null || saving}
+                  onClick={() => void toggleUser(item)}
+                >
+                  <span className="au-switch">
+                    <span>
+                      {toggling === item.id ? (
+                        <span className="au-pending" />
+                      ) : item.isActive ? (
+                        <Check size={11} />
+                      ) : null}
+                    </span>
+                  </span>
+                  <span>{item.isActive ? 'Açık' : 'Kapalı'}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {!loading && !loadError && total > 0 && (
+          <footer className="au-pager">
+            <span>
+              {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} /{' '}
+              {total}
+            </span>
+            <div>
+              <button
+                aria-label="Önceki sayfa"
+                disabled={page <= 1}
+                onClick={() => setPage((v) => v - 1)}
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <span>
+                {page} / {pageCount}
+              </span>
+              <button
+                aria-label="Sonraki sayfa"
+                disabled={page >= pageCount}
+                onClick={() => setPage((v) => v + 1)}
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </footer>
+        )}
+      </section>
+      {modalOpen && (
+        <AdminOverlay
+          label={editing ? 'Kullanıcı düzenle' : 'Yeni kullanıcı'}
+          busy={saving}
+          onClose={() => {
+            if (!mutationLock.current) setModalOpen(false);
+          }}
+          className="au-overlay"
+        >
+          <section className="relative au-editor">
+            <header className="au-modal-head">
+              <span className="au-modal-icon">
+                <UserRound size={22} />
+              </span>
+              <div>
+                <h2>
+                  {editing ? 'Kullanıcı düzenle' : 'Ekibe birini ekleyin.'}
+                </h2>
+                <p>
+                  {editing
+                    ? editing.email
+                    : 'Panel için kişisel bir giriş hesabı.'}
+                </p>
               </div>
               <button
+                className="au-close"
+                aria-label="Kapat"
+                disabled={saving}
                 onClick={() => setModalOpen(false)}
-                className="p-2 rounded-xl hover:bg-[var(--admin-accent-soft)] admin-text-muted"
               >
-                <X className="w-5 h-5" />
+                <X size={20} />
               </button>
-            </div>
-
-            <div className="float-field-stack">
-              <Input
-                label="Ad Soyad"
-                value={form.fullName}
-                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-              />
-              <Input
-                label="E-posta"
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-              />
-              <Input
-                label={editing ? 'Yeni Şifre (opsiyonel)' : 'Şifre'}
-                type="password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-              />
-              <Input
-                label="GSM"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              />
-              <label className="block text-sm text-[var(--admin-text)]">
-                <span className="admin-text-muted text-xs font-semibold uppercase tracking-wide">
-                  Rol
-                </span>
-                <select
-                  className="mt-1.5 w-full rounded-xl border px-3 py-2.5 bg-[var(--admin-input-bg)] text-[var(--admin-text)]"
-                  style={{ borderColor: 'var(--admin-card-border)' }}
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
+            </header>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void saveUser();
+              }}
+            >
+              <fieldset className="au-fields" disabled={saving}>
+                <label className="au-wide">
+                  Ad soyad
+                  <input
+                    autoComplete="name"
+                    value={form.fullName}
+                    onChange={(e) =>
+                      setForm({ ...form, fullName: e.target.value })
+                    }
+                    required
+                  />
+                </label>
+                <label className="au-wide">
+                  E-posta
+                  <input
+                    type="email"
+                    autoComplete="off"
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm({ ...form, email: e.target.value })
+                    }
+                    required
+                  />
+                </label>
+                <label className="au-wide">
+                  {editing ? 'Yeni şifre' : 'Şifre'}
+                  {editing && (
+                    <small>Boş bırakırsanız mevcut şifre korunur.</small>
+                  )}
+                  <span className="au-password">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      minLength={6}
+                      required={!editing}
+                      value={form.password}
+                      onChange={(e) =>
+                        setForm({ ...form, password: e.target.value })
+                      }
+                    />
+                    <button
+                      type="button"
+                      aria-label={
+                        showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'
+                      }
+                      onClick={() => setShowPassword((v) => !v)}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </span>
+                </label>
+                <label className="au-wide">
+                  Telefon <small>İsteğe bağlı</small>
+                  <input
+                    type="tel"
+                    autoComplete="tel"
+                    value={form.phone}
+                    onChange={(e) =>
+                      setForm({ ...form, phone: e.target.value })
+                    }
+                  />
+                </label>
+                <div className="au-wide au-role-picker">
+                  <span>Rol</span>
+                  <div role="group" aria-label="Kullanıcı rolü">
+                    {['staff', 'admin'].map((role) => (
+                      <button
+                        type="button"
+                        key={role}
+                        aria-pressed={form.role === role}
+                        onClick={() => setForm({ ...form, role })}
+                      >
+                        {role === 'admin' ? (
+                          <ShieldCheck size={19} />
+                        ) : (
+                          <UserRound size={19} />
+                        )}{' '}
+                        {role === 'admin' ? 'Yönetici' : 'Personel'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <label className="au-active-field au-wide">
+                  <span>
+                    <strong>Panel erişimi</strong>
+                    <small>Kapalı hesaplar giriş yapamaz.</small>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={form.isActive}
+                    onChange={(e) =>
+                      setForm({ ...form, isActive: e.target.checked })
+                    }
+                  />
+                </label>
+              </fieldset>
+              {formError && (
+                <p className="au-error" role="alert">
+                  {formError}
+                </p>
+              )}
+              <footer className="au-form-footer">
+                <button
+                  className="au-button is-primary"
+                  disabled={saving}
+                  type="submit"
                 >
-                  <option value="staff">Personel</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </label>
-              <label className="flex items-center gap-2.5 cursor-pointer text-sm text-[var(--admin-text)] py-1">
-                <input
-                  type="checkbox"
-                  checked={form.isActive}
-                  onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-                  className="w-4 h-4 rounded accent-[var(--admin-accent)]"
-                />
-                Aktif kullanıcı (pasif ise giriş yapamaz)
-              </label>
-            </div>
-
-            {formError ? <p className="text-sm text-red-600 mt-3">{formError}</p> : null}
-
-            <div className="flex gap-3 mt-6">
-              <Button variant="secondary" className="flex-1" onClick={() => setModalOpen(false)}>
-                İptal
-              </Button>
-              <Button className="flex-1" disabled={saving} onClick={() => void handleSave()}>
-                {saving ? 'Kaydediliyor…' : 'Kaydet'}
-              </Button>
-            </div>
-          </div>
-        </div>
+                  {saving
+                    ? 'Kaydediliyor…'
+                    : editing
+                      ? 'Değişiklikleri kaydet'
+                      : 'Kullanıcıyı ekle'}
+                  <ArrowUpRight size={18} />
+                </button>
+              </footer>
+            </form>
+          </section>
+        </AdminOverlay>
+      )}
+      {settingsOpen && (
+        <AdminOverlay
+          label="Panel ayarları"
+          busy={settingsBusy}
+          onClose={() => {
+            if (!settingsLock.current) setSettingsOpen(false);
+          }}
+          className="au-overlay"
+        >
+          <section className="relative au-settings">
+            <header className="au-modal-head">
+              <span className="au-modal-icon">
+                <Settings2 size={22} />
+              </span>
+              <div>
+                <h2>Panel ayarları</h2>
+                <p>Giriş adresiniz ve tarayıcı sekmeniz.</p>
+              </div>
+              <button
+                className="au-close"
+                aria-label="Kapat"
+                disabled={settingsBusy}
+                onClick={() => setSettingsOpen(false)}
+              >
+                <X size={20} />
+              </button>
+            </header>
+            {settingsLoading ? (
+              <div className="au-empty">
+                <Spinner />
+              </div>
+            ) : settingsError ? (
+              <div className="au-empty" role="alert">
+                <p>Ayarlar yüklenemedi.</p>
+                <button
+                  className="au-button"
+                  onClick={() => setSettingsRevision((v) => v + 1)}
+                >
+                  Tekrar dene
+                </button>
+              </div>
+            ) : (
+              <>
+                <form
+                  className="au-setting-section"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void saveTitle();
+                  }}
+                >
+                  <div className="au-setting-title">
+                    <Type size={20} />
+                    <div>
+                      <h3>Sekme adı</h3>
+                      <p>Tarayıcının üstünde görünen isim.</p>
+                    </div>
+                  </div>
+                  <fieldset disabled={settingsBusy}>
+                    <label>
+                      Site / sekme adı
+                      <input
+                        maxLength={60}
+                        value={titleDraft}
+                        placeholder={DEFAULT_SITE_TITLE}
+                        onChange={(e) => {
+                          setTitleDraft(e.target.value);
+                          setTitleError(null);
+                        }}
+                      />
+                    </label>
+                    <div className="au-setting-actions">
+                      <button
+                        type="button"
+                        className="au-text-button"
+                        onClick={() => setTitleDraft(DEFAULT_SITE_TITLE)}
+                      >
+                        Varsayılana dön
+                      </button>
+                      <button
+                        className="au-button is-primary"
+                        disabled={titleDraft === savedTitle}
+                      >
+                        {titleSaving ? 'Kaydediliyor…' : 'Adı kaydet'}
+                      </button>
+                    </div>
+                  </fieldset>
+                  {titleError && (
+                    <p className="au-error" role="alert">
+                      {titleError}
+                    </p>
+                  )}
+                </form>
+                <form
+                  className="au-setting-section"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void savePath();
+                  }}
+                >
+                  <div className="au-setting-title">
+                    <LockKeyhole size={20} />
+                    <div>
+                      <h3>Panel giriş adresi</h3>
+                      <p>Adres değiştiğinde eski yol kapanır.</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="au-close"
+                      aria-label="Panel adresini kopyala"
+                      disabled={settingsBusy}
+                      onClick={() => void copyPath()}
+                    >
+                      <Copy size={17} />
+                    </button>
+                  </div>
+                  <fieldset disabled={settingsBusy}>
+                    <label>
+                      Panel yolu
+                      <span className="au-path-input">
+                        <Link2 size={17} />
+                        <span>/</span>
+                        <input
+                          value={pathDraft}
+                          aria-label="Panel yolu"
+                          spellCheck={false}
+                          autoCapitalize="off"
+                          autoCorrect="off"
+                          onChange={(e) => {
+                            setPathDraft(e.target.value);
+                            setPathAck(false);
+                            setPathError(null);
+                          }}
+                        />
+                      </span>
+                    </label>
+                    <p className="au-address">
+                      {window.location.origin}/{normalizedPath || '…'}
+                    </p>
+                    {pathChanged && (
+                      <label className="au-path-ack">
+                        <input
+                          type="checkbox"
+                          checked={pathAck}
+                          onChange={(e) => setPathAck(e.target.checked)}
+                        />
+                        <span>
+                          <strong>Yeni adresimi kaydettim.</strong> /{panelPath}{' '}
+                          kapanacak; yeni adres üzerinden devam edeceğim.
+                        </span>
+                      </label>
+                    )}
+                    <div className="au-setting-actions">
+                      <button
+                        className="au-text-button"
+                        type="button"
+                        onClick={() => {
+                          setPathDraft(suggestAdminPath());
+                          setPathAck(false);
+                          setPathError(null);
+                        }}
+                      >
+                        <Shuffle size={15} /> Adres öner
+                      </button>
+                      <button
+                        className="au-button is-primary"
+                        disabled={!pathChanged}
+                      >
+                        {pathSaving ? 'Yönlendiriliyor…' : 'Adresi kaydet'}
+                      </button>
+                    </div>
+                  </fieldset>
+                  {pathError && (
+                    <p className="au-error" role="alert">
+                      {pathError}
+                    </p>
+                  )}
+                </form>
+              </>
+            )}
+          </section>
+        </AdminOverlay>
       )}
     </div>
   );
-}
-
-function normalizeDraft(raw: string) {
-  return String(raw || '')
-    .trim()
-    .toLowerCase()
-    .replace(/^\/+/, '')
-    .replace(/\/+$/, '');
 }

@@ -1086,34 +1086,6 @@
   font-weight: 600;
   letter-spacing: -0.03em;
 }
-.admin-customers__reward-kinds {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  padding: 20px 24px;
-}
-.admin-customers__reward-kinds > button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 82px;
-  padding: 12px 8px;
-  border: 1px solid var(--admin-card-border);
-  border-radius: 12px;
-  font-size: 12px;
-  color: var(--admin-text-muted);
-}
-.admin-customers__reward-kinds small {
-  font-size: 9px;
-  line-height: 1.5;
-}
-.admin-customers__reward-kinds > button.is-active {
-  background: var(--admin-accent-soft);
-  border-color: var(--admin-accent);
-  color: var(--admin-accent-text);
-}
 .admin-customers__reward-fields {
   padding: 0 24px 22px;
   margin: 0;
@@ -1601,14 +1573,6 @@
   .admin-customers__reward-composer-top {
     padding: 18px 20px;
   }
-  .admin-customers__reward-kinds {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding: 18px 20px;
-    gap: 8px;
-  }
-  .admin-customers__reward-kinds > button {
-    min-height: 74px;
-  }
   .admin-customers__reward-fields {
     grid-template-columns: minmax(0, 1fr);
     padding: 0 20px 22px;
@@ -1660,4 +1624,187 @@
   top: 16px;
   right: 16px;
   z-index: 3;
+}
+
+/* Ödül atölyesi: kısa tür seçimi, tek dokunuşla şablon, canlı kart. */
+.admin-customers__reward-composer {
+  width: min(720px, 100%);
+}
+.admin-customers__reward-composer-top {
+  padding: 25px 28px;
+  background: var(--admin-card);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.admin-customers__reward-composer-top > strong {
+  font-size: 23px;
+  letter-spacing: -0.045em;
+  font-weight: 600;
+}
+.admin-customers__reward-kinds {
+  display: flex;
+  gap: 4px;
+  margin: 24px 28px 0;
+  padding: 4px;
+  border: 1px solid var(--admin-card-border);
+  border-radius: 12px;
+  background: var(--admin-input-bg);
+}
+.admin-customers__reward-kinds > button {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: 1;
+  min-height: 42px;
+  padding: 9px;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.admin-customers__reward-kinds > button.is-active {
+  background: var(--admin-card);
+  box-shadow: 0 2px 8px #0f172a0a;
+  color: var(--admin-accent-text);
+}
+.customer-reward-start {
+  padding: 13px 28px 20px;
+}
+.customer-reward-start > p {
+  font-size: 11px;
+  color: var(--admin-text-muted);
+  margin: 0 0 13px;
+}
+.customer-reward-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.customer-reward-presets > button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px dashed var(--admin-card-border);
+  border-radius: 20px;
+  font-size: 11px;
+  color: var(--admin-accent-text);
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.customer-reward-presets > button:hover {
+  border-color: var(--admin-accent);
+  background: var(--admin-accent-soft);
+}
+.customer-reward-preview {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border: 1px solid var(--admin-card-border);
+  border-left: 3px solid var(--admin-accent);
+  background: var(--admin-input-bg);
+  padding: 19px 20px;
+  margin: 0 28px 26px;
+  border-radius: 14px;
+  min-width: 0;
+}
+.customer-reward-preview-icon {
+  width: 44px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--admin-accent);
+}
+.customer-reward-preview > div {
+  flex: 1;
+  min-width: 0;
+}
+.customer-reward-preview small {
+  display: block;
+  font-size: 10px;
+  color: var(--admin-text-muted);
+  margin-bottom: 7px;
+}
+.customer-reward-preview strong {
+  display: block;
+  font-size: 18px;
+  line-height: 1.45;
+  letter-spacing: -0.035em;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.customer-reward-preview-points {
+  font-size: 10px;
+  color: var(--admin-text-muted);
+  display: grid;
+  gap: 2px;
+  text-align: right;
+  max-width: 32%;
+  overflow-wrap: anywhere;
+}
+.customer-reward-preview-points b {
+  font-size: 26px;
+  line-height: 1.2;
+  color: var(--admin-accent-text);
+  font-weight: 500;
+}
+.admin-customers__reward-fields {
+  padding-inline: 28px;
+  gap: 20px;
+}
+.admin-customers__reward-composer-actions {
+  padding: 17px 28px;
+}
+.admin-customers__reward-composer-actions > button {
+  min-height: 46px;
+  min-width: 170px;
+  border-radius: 10px;
+}
+@media (max-width: 600px) {
+  .admin-customers__reward-composer-top {
+    padding: 20px;
+  }
+  .admin-customers__reward-composer-top > strong {
+    font-size: 21px;
+  }
+  .admin-customers__reward-kinds {
+    margin: 20px 20px 0;
+    padding: 3px;
+    gap: 2px;
+  }
+  .admin-customers__reward-kinds > button {
+    font-size: 11px;
+    min-height: 42px;
+    padding: 8px 6px;
+    gap: 5px;
+  }
+  .customer-reward-start {
+    padding: 12px 20px 18px;
+  }
+  .customer-reward-preview {
+    margin: 0 20px 23px;
+    padding: 15px 12px;
+    gap: 8px;
+  }
+  .customer-reward-preview-icon {
+    width: 30px;
+  }
+  .customer-reward-preview strong {
+    font-size: 16px;
+  }
+  .customer-reward-preview-points b {
+    font-size: 23px;
+  }
+  .admin-customers__reward-fields {
+    padding-inline: 20px;
+  }
+  .admin-customers__reward-composer-actions {
+    padding: 14px 20px max(14px, env(safe-area-inset-bottom));
+  }
 }
