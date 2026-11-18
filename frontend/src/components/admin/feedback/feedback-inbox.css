@@ -1,4 +1,4 @@
-﻿.asg-page {
+.asg-page {
   min-width: 0;
   color: var(--admin-text);
 }
@@ -964,4 +964,18 @@
 .asg-empty > .asg-envelope {
   flex-shrink: 0;
   margin-bottom: 8px;
+}
+.asg-page--complaint .asg-note {
+  margin-top: 24px;
+  border-top: 1px solid var(--admin-card-border);
+}
+.asg-page--complaint .asg-message__bottom {
+  min-height: 14px;
+}
+.asg-page--complaint .asg-message__bottom > small {
+  margin-left: auto;
+}
+.asg-reader-sheet--complaint .asg-note {
+  margin-top: 24px;
+  border-top: 1px solid var(--admin-card-border);
 }

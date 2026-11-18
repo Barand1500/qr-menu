@@ -1,0 +1,491 @@
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Inbox,
+  Lightbulb,
+  MessageSquareText,
+  RefreshCw,
+  Search,
+  X,
+} from 'lucide-react';
+import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { PageHeader } from '@/components/ui';
+import AdminOverlay from '@/components/admin/AdminOverlay';
+import AdminToast, {
+  type AdminToastNotice,
+} from '@/components/admin/AdminToast';
+import FeedbackReader, {
+  FeedbackRating,
+  feedbackDate,
+} from '@/components/admin/feedback/FeedbackReader';
+import './feedback-inbox.css';
+
+import {
+  FEEDBACK_COPY,
+  type FeedbackItem,
+  type FeedbackKind,
+} from './feedback-model';
+type View = { filter: 'all' | 'unread'; query: string; page: number };
+const PAGE_SIZE = 20;
+
+export default function FeedbackInbox({ kind }: { kind: FeedbackKind }) {
+  const copy = FEEDBACK_COPY[kind];
+  const NoteIcon = kind === 'complaint' ? MessageSquareText : Lightbulb;
+  const { user } = useAuth();
+  const [view, setView] = useState<View>({ filter: 'all', query: '', page: 1 });
+  const [search, setSearch] = useState('');
+  const [items, setItems] = useState<FeedbackItem[]>([]);
+  const [unread, setUnread] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loaded, setLoaded] = useState('');
+  const [error, setError] = useState(false);
+  const [revision, setRevision] = useState(0);
+  const [selected, setSelected] = useState<FeedbackItem | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [notice, setNotice] = useState<AdminToastNotice>(null);
+  const lock = useRef(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const mounted = useRef(true);
+  const requestKey = JSON.stringify([kind, view, revision]);
+  const pending = loaded !== requestKey;
+  const active = selected || (!pending && !error ? items[0] : null);
+  const changeView = useCallback((next: View) => {
+    setSelected(null);
+    setConfirmDelete(false);
+    setView(next);
+  }, []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const query = search.trim();
+      if (query !== view.query) changeView({ ...view, query, page: 1 });
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [search, view, changeView]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setError(false);
+    const params = new URLSearchParams({
+      limit: String(PAGE_SIZE),
+      page: String(view.page),
+    });
+    if (view.filter === 'unread') params.set('unread', 'true');
+    if (view.query) params.set('q', view.query);
+    async function load() {
+      try {
+        const res = await api<{
+          data: FeedbackItem[];
+          unreadCount: number;
+          pagination?: { total: number };
+        }>('/api/admin/' + copy.endpoint + '?' + params, {
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        if (!Array.isArray(res.data)) throw new Error(copy.loadError);
+        const count = Number.isFinite(res.pagination?.total)
+          ? res.pagination!.total
+          : res.data.length;
+        const last = Math.max(1, Math.ceil(count / PAGE_SIZE));
+        if (view.page > last) {
+          setView((v) => ({ ...v, page: last }));
+          return;
+        }
+        setItems(res.data);
+        setUnread(
+          Number.isFinite(res.unreadCount) ? Math.max(0, res.unreadCount) : 0,
+        );
+        setTotal(Math.max(0, count));
+        setSelected((previous) =>
+          previous
+            ? res.data.find((row) => row.id === previous.id) || previous
+            : null,
+        );
+      } catch {
+        if (controller.signal.aborted) return;
+        setError(true);
+      }
+      if (!controller.signal.aborted) setLoaded(requestKey);
+    }
+    void load();
+    return () => controller.abort();
+  }, [view, revision, requestKey, copy.endpoint]);
+  useEffect(() => {
+    const media = matchMedia('(max-width: 767px)');
+    const resize = () => {
+      if (!media.matches) setMobileOpen(false);
+    };
+    media.addEventListener('change', resize);
+    return () => media.removeEventListener('change', resize);
+  }, []);
+  useEffect(() => {
+    if (!confirmDelete || mobileOpen) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !lock.current) {
+        event.preventDefault();
+        setConfirmDelete(false);
+      }
+    };
+    document.addEventListener('keydown', escape);
+    return () => document.removeEventListener('keydown', escape);
+  }, [confirmDelete, mobileOpen]);
+
+  async function markRead(item: FeedbackItem) {
+    if (lock.current || item.isRead) return;
+    lock.current = true;
+    setBusy(true);
+    try {
+      await api('/api/admin/' + copy.endpoint + '/' + item.id + '/read', {
+        method: 'PATCH',
+      });
+      if (!mounted.current) return;
+      setSelected({ ...item, isRead: true });
+      setUnread((v) => Math.max(0, v - 1));
+      setRevision((v) => v + 1);
+      setNotice({ error: false, text: copy.readToast });
+    } catch (err) {
+      if (mounted.current)
+        setNotice({
+          error: true,
+          text: err instanceof Error ? err.message : 'Kaydedilemedi.',
+        });
+    } finally {
+      lock.current = false;
+      if (mounted.current) setBusy(false);
+    }
+  }
+  async function remove(item: FeedbackItem) {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    try {
+      await api('/api/admin/' + copy.endpoint + '/' + item.id, {
+        method: 'DELETE',
+      });
+      if (!mounted.current) return;
+      setSelected(null);
+      setMobileOpen(false);
+      setConfirmDelete(false);
+      setRevision((v) => v + 1);
+      setNotice({ error: false, text: copy.deleteToast });
+      requestAnimationFrame(() =>
+        searchRef.current?.focus({ preventScroll: true }),
+      );
+    } catch (err) {
+      if (mounted.current)
+        setNotice({
+          error: true,
+          text: err instanceof Error ? err.message : copy.deleteError,
+        });
+    } finally {
+      lock.current = false;
+      if (mounted.current) setBusy(false);
+    }
+  }
+  function choose(item: FeedbackItem) {
+    setSelected(item);
+    setConfirmDelete(false);
+    if (matchMedia('(max-width: 767px)').matches) setMobileOpen(true);
+  }
+  const reader = active ? (
+    <FeedbackReader
+      key={active.id}
+      item={active}
+      kind={kind}
+      restaurantName={user?.restaurant.name}
+      busy={busy}
+      confirmDelete={confirmDelete}
+      onRead={() => void markRead(active)}
+      onDelete={() => void remove(active)}
+      onConfirmChange={setConfirmDelete}
+    />
+  ) : null;
+  return (
+    <div className={'asg-page asg-page--' + kind}>
+      <PageHeader
+        title={copy.title}
+        subtitle={
+          loaded
+            ? unread > 0
+              ? unread + copy.unreadSuffix
+              : copy.description
+            : copy.description
+        }
+      />
+      <AdminToast notice={notice} onClose={() => setNotice(null)} />
+      <div className="asg-toolbar">
+        <div className="asg-filters" aria-label={copy.filterLabel}>
+          <button
+            aria-pressed={view.filter === 'all'}
+            disabled={busy}
+            onClick={() => {
+              if (view.filter !== 'all')
+                changeView({ ...view, filter: 'all', page: 1 });
+            }}
+          >
+            Tümü
+          </button>
+          <button
+            aria-pressed={view.filter === 'unread'}
+            disabled={busy}
+            onClick={() => {
+              if (view.filter !== 'unread')
+                changeView({ ...view, filter: 'unread', page: 1 });
+            }}
+          >
+            Okunmamış {unread > 0 && <span>{unread}</span>}
+          </button>
+        </div>
+        <label className="asg-search">
+          <Search size={17} />
+          <input
+            ref={searchRef}
+            type="search"
+            aria-label={copy.searchLabel}
+            placeholder={copy.searchPlaceholder}
+            value={search}
+            disabled={busy}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && (
+            <button
+              aria-label="Aramayı temizle"
+              disabled={busy}
+              onClick={() => setSearch('')}
+            >
+              <X size={15} />
+            </button>
+          )}
+        </label>
+        <button
+          className="asg-refresh"
+          aria-label={copy.refreshLabel}
+          disabled={busy || pending}
+          onClick={() => setRevision((v) => v + 1)}
+        >
+          <RefreshCw size={17} className={pending ? 'is-spinning' : ''} />
+        </button>
+      </div>
+      <div
+        className={'asg-workspace' + (!pending && !active ? ' is-empty' : '')}
+      >
+        <section
+          className="asg-inbox"
+          aria-label={copy.listLabel}
+          aria-busy={pending}
+        >
+          <header>
+            <span>
+              <Inbox size={15} />
+              {copy.listHeading}
+            </span>
+            <span>{pending ? '…' : error ? '—' : total + ' ' + copy.noun}</span>
+          </header>
+          <div className="asg-list" key={JSON.stringify(view)}>
+            {pending ? (
+              <div
+                className="asg-loading"
+                role="status"
+                aria-label={copy.loadingLabel}
+              >
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <div key={i}>
+                    <i />
+                    <span />
+                    <span />
+                  </div>
+                ))}
+              </div>
+            ) : error ? (
+              <div className="asg-empty" role="alert">
+                <Inbox size={30} />
+                <strong>{copy.loadError}</strong>
+                <p>Bağlantıyı kontrol edip yeniden deneyin.</p>
+                <button onClick={() => setRevision((v) => v + 1)}>
+                  <RefreshCw size={15} />
+                  Yeniden dene
+                </button>
+              </div>
+            ) : !items.length ? (
+              <div className="asg-empty">
+                <div className="asg-envelope" aria-hidden="true">
+                  <div>
+                    <NoteIcon size={35} strokeWidth={1.2} />
+                  </div>
+                  <i />
+                </div>
+                <strong>
+                  {view.query
+                    ? copy.emptySearch
+                    : view.filter === 'unread'
+                      ? 'Hepsi okundu.'
+                      : copy.emptyInbox}
+                </strong>
+                <p>
+                  {view.query
+                    ? 'Başka bir kelimeyle yeniden bakabilirsiniz.'
+                    : view.filter === 'unread'
+                      ? copy.emptyUnreadHelp
+                      : copy.emptyInboxHelp}
+                </p>
+              </div>
+            ) : (
+              <ul>
+                {items.map((item, i) => (
+                  <li
+                    key={item.id}
+                    style={
+                      {
+                        '--note-delay': Math.min(i, 6) * 35 + 'ms',
+                      } as CSSProperties
+                    }
+                  >
+                    <button
+                      className={
+                        'asg-message ' +
+                        (active?.id === item.id ? 'is-selected ' : '') +
+                        (!item.isRead ? 'is-unread' : '')
+                      }
+                      aria-label={
+                        (item.fullName?.trim() || 'Misafir') + copy.readSuffix
+                      }
+                      aria-pressed={active?.id === item.id}
+                      onClick={() => choose(item)}
+                    >
+                      <span className="asg-avatar" aria-hidden="true">
+                        {(item.fullName?.trim() || 'Misafir')
+                          .split(/\s+/)
+                          .slice(0, 2)
+                          .map((word) => word[0])
+                          .join('')
+                          .toLocaleUpperCase('tr-TR')}
+                      </span>
+                      <span className="asg-message__copy">
+                        <span className="asg-message__heading">
+                          <strong>
+                            {item.fullName?.trim() || 'Bir misafiriniz'}
+                          </strong>
+                          <time dateTime={item.createdAt}>
+                            {feedbackDate(item.createdAt, true)}
+                          </time>
+                        </span>
+                        <span className="asg-message__text">
+                          {item.message?.trim() || copy.previewFallback}
+                        </span>
+                        <span className="asg-message__bottom">
+                          {kind === 'suggestion' && (
+                            <FeedbackRating rating={item.rating} />
+                          )}
+                          {!item.isRead && (
+                            <small>
+                              <i />
+                              Yeni
+                            </small>
+                          )}
+                        </span>
+                      </span>
+                      <ChevronRight className="asg-message__arrow" size={15} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <footer className="asg-pagination">
+            <span>
+              {pending
+                ? 'Yükleniyor…'
+                : error
+                  ? 'Bağlantı bekleniyor'
+                  : total
+                    ? (view.page - 1) * PAGE_SIZE +
+                      1 +
+                      '–' +
+                      Math.min(view.page * PAGE_SIZE, total) +
+                      ' / ' +
+                      total
+                    : '0 ' + copy.noun}
+            </span>
+            <div>
+              <button
+                aria-label="Önceki sayfa"
+                disabled={busy || pending || view.page === 1}
+                onClick={() => changeView({ ...view, page: view.page - 1 })}
+              >
+                <ChevronLeft size={17} />
+              </button>
+              <button
+                aria-label="Sonraki sayfa"
+                disabled={busy || pending || view.page * PAGE_SIZE >= total}
+                onClick={() => changeView({ ...view, page: view.page + 1 })}
+              >
+                <ChevronRight size={17} />
+              </button>
+            </div>
+          </footer>
+        </section>
+        <aside className="asg-reader" aria-label={copy.detailLabel}>
+          {reader || (
+            <div className="asg-reader-empty">
+              <div className="asg-envelope" aria-hidden="true">
+                <div>
+                  <NoteIcon size={35} strokeWidth={1.2} />
+                </div>
+                <i />
+              </div>
+              <h2>{copy.emptyReaderTitle}</h2>
+              <p>{copy.emptyReaderHelp}</p>
+            </div>
+          )}
+        </aside>
+      </div>
+      {mobileOpen && active && (
+        <AdminOverlay
+          label={copy.dialogLabel}
+          busy={busy}
+          onClose={() => setMobileOpen(false)}
+          onEscape={() => {
+            if (confirmDelete) {
+              setConfirmDelete(false);
+              return true;
+            }
+            return false;
+          }}
+          className="asg-reader-overlay"
+        >
+          <section
+            className={'relative asg-reader-sheet asg-reader-sheet--' + kind}
+          >
+            <header>
+              <span>{copy.title}</span>
+              <button
+                aria-label={copy.closeLabel}
+                disabled={busy}
+                onClick={() => {
+                  if (!lock.current) setMobileOpen(false);
+                }}
+              >
+                <X size={20} />
+              </button>
+            </header>
+            {reader}
+          </section>
+        </AdminOverlay>
+      )}
+    </div>
+  );
+}

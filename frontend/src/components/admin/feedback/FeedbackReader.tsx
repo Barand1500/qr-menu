@@ -1,16 +1,21 @@
-﻿import {
+import {
   CheckCheck,
   Lightbulb,
   Mail,
+  MessageSquareText,
   Phone,
   Quote,
   Star,
   Trash2,
 } from 'lucide-react';
 import { FeedbackReplyPanel } from '@/components/admin/FeedbackReplyPanel';
-import type { Suggestion } from '@/pages/admin/SuggestionsPage';
+import {
+  FEEDBACK_COPY,
+  type FeedbackItem,
+  type FeedbackKind,
+} from './feedback-model';
 
-export function suggestionDate(iso: string, compact = false) {
+export function feedbackDate(iso: string, compact = false) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return 'Tarih bilinmiyor';
   return new Intl.DateTimeFormat(
@@ -20,8 +25,11 @@ export function suggestionDate(iso: string, compact = false) {
       : { dateStyle: 'long', timeStyle: 'short' },
   ).format(date);
 }
-export function SuggestionRating({ rating }: { rating: number }) {
-  const safe = Number.isFinite(rating) ? Math.max(0, Math.min(5, rating)) : 0;
+export function FeedbackRating({ rating }: { rating?: number }) {
+  const safe =
+    typeof rating === 'number' && Number.isFinite(rating)
+      ? Math.max(0, Math.min(5, rating))
+      : 0;
   return (
     <span
       className="asg-rating"
@@ -42,8 +50,9 @@ export function SuggestionRating({ rating }: { rating: number }) {
   );
 }
 
-export default function SuggestionReader({
+export default function FeedbackReader({
   item,
+  kind,
   restaurantName,
   busy,
   confirmDelete,
@@ -51,7 +60,8 @@ export default function SuggestionReader({
   onDelete,
   onConfirmChange,
 }: {
-  item: Suggestion;
+  item: FeedbackItem;
+  kind: FeedbackKind;
   restaurantName?: string;
   busy: boolean;
   confirmDelete: boolean;
@@ -59,34 +69,35 @@ export default function SuggestionReader({
   onDelete: () => void;
   onConfirmChange: (value: boolean) => void;
 }) {
+  const copy = FEEDBACK_COPY[kind];
+  const NoteIcon = kind === 'complaint' ? MessageSquareText : Lightbulb;
   const hasContact = Boolean(item.phone?.trim() || item.email?.trim());
   return (
     <div className="asg-reader__inner">
       <div className="asg-reader__scroll" key={item.id}>
         <header className="asg-letter-head">
           <span className="asg-letter-head__icon">
-            <Lightbulb size={21} strokeWidth={1.5} />
+            <NoteIcon size={21} strokeWidth={1.5} />
           </span>
           <div>
-            <small>MİSAFİRİNİZDEN BİR NOT</small>
+            <small>{copy.letterLabel}</small>
             <h2>{item.fullName?.trim() || 'Bir misafiriniz'}</h2>
             <time dateTime={item.createdAt}>
-              {suggestionDate(item.createdAt)}
+              {feedbackDate(item.createdAt)}
             </time>
           </div>
           <span className={'asg-read-badge ' + (!item.isRead ? 'is-new' : '')}>
             {item.isRead ? 'Okundu' : 'Yeni'}
           </span>
         </header>
-        <div className="asg-letter-rating">
-          <SuggestionRating rating={item.rating} />
-        </div>
+        {kind === 'suggestion' && (
+          <div className="asg-letter-rating">
+            <FeedbackRating rating={item.rating} />
+          </div>
+        )}
         <div className="asg-note">
           <Quote size={30} strokeWidth={1.2} aria-hidden="true" />
-          <p>
-            {item.message?.trim() ||
-              'Misafiriniz bir not eklemeden puan bırakmış.'}
-          </p>
+          <p>{item.message?.trim() || copy.noMessage}</p>
         </div>
         <div className="asg-contact">
           {item.phone && (
@@ -105,13 +116,13 @@ export default function SuggestionReader({
         {hasContact ? (
           <section className="asg-reply">
             <div>
-              <h3>Küçük bir teşekkür, güzel bir başlangıç.</h3>
+              <h3>{copy.replyTitle}</h3>
               <p>Yanıtınız seçtiğiniz uygulamada açılır.</p>
             </div>
             <fieldset disabled={busy}>
               <FeedbackReplyPanel
                 key={item.id}
-                kind="suggestion"
+                kind={kind}
                 phone={item.phone}
                 email={item.email}
                 guestName={item.fullName}
@@ -131,16 +142,16 @@ export default function SuggestionReader({
           <div
             className="asg-confirm"
             role="group"
-            aria-label="Öneriyi silme onayı"
+            aria-label={copy.deleteGroup}
           >
-            <p>Bu not kalıcı olarak silinecek.</p>
+            <p>{copy.deleteConfirm}</p>
             <div>
               <button disabled={busy} onClick={() => onConfirmChange(false)}>
                 Vazgeç
               </button>
               <button className="is-danger" disabled={busy} onClick={onDelete}>
                 <Trash2 size={15} />
-                {busy ? 'Siliniyor…' : 'Öneriyi sil'}
+                {busy ? 'Siliniyor…' : copy.deleteLabel}
               </button>
             </div>
           </div>
@@ -156,7 +167,7 @@ export default function SuggestionReader({
             </button>
             <button
               className="asg-delete"
-              aria-label="Öneriyi sil"
+              aria-label={copy.deleteLabel}
               disabled={busy}
               onClick={() => onConfirmChange(true)}
             >
