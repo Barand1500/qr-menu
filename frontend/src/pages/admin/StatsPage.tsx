@@ -93,6 +93,11 @@ export default function StatsPage() {
       <PageHeader
         title="İstatistikler"
         subtitle="Menünüzde ne ilgi görüyor, birlikte bakalım."
+        actions={
+          demoEnabled ? (
+            <span className="ast-demo-badge">Örnek veri</span>
+          ) : undefined
+        }
       />
       <div className="ast-toolbar">
         <div className="ast-period-heading">
@@ -166,13 +171,6 @@ export default function StatsPage() {
             <RefreshCw size={17} />
           </button>
         </div>
-      </div>
-      <div className="ast-context">
-        <span className={demoEnabled ? 'is-demo' : ''}>
-          <i />
-          {demoEnabled ? 'Örnek veriler gösteriliyor' : 'Menü görüntülenmeleri'}
-        </span>
-        <p>Satış veya sipariş adedi içermez.</p>
       </div>
       <div
         aria-busy={pending}

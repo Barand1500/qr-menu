@@ -118,32 +118,6 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
-.ast-context {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 15px 2px 19px;
-  font-size: 10px;
-  color: var(--admin-text-muted);
-}
-.ast-context > span {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.ast-context i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--admin-accent);
-}
-.ast-context .is-demo {
-  color: #b45309;
-}
-.ast-context .is-demo i {
-  background: currentColor;
-}
 .ast-rankings {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -616,7 +590,9 @@
   }
 }
 @media (max-width: 1200px) {
-  .ast-ranking > .ast-panel__head { min-height: 152px; }
+  .ast-ranking > .ast-panel__head {
+    min-height: 152px;
+  }
   .ast-panel__head {
     flex-direction: column;
     gap: 15px;
@@ -649,7 +625,9 @@
   }
 }
 @media (max-width: 767px) {
-  .ast-ranking { height: 560px; }
+  .ast-ranking {
+    height: 560px;
+  }
   .ast-toolbar {
     padding: 16px;
     gap: 16px;
@@ -679,15 +657,6 @@
   }
   .ast-period-controls:not(:has(select[aria-label='Ay'])) {
     grid-template-columns: minmax(0, 1fr) 44px;
-  }
-  .ast-context {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 6px;
-    padding: 14px 2px 18px;
-  }
-  .ast-context > p {
-    font-size: 9px;
   }
   .ast-rankings {
     grid-template-columns: minmax(0, 1fr);
@@ -803,4 +772,14 @@
   .ast-bar > span {
     transform: scaleX(1);
   }
+}
+.ast-report {
+  margin-top: 20px;
+}
+.ast-demo-badge {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent-text);
+  font-size: 11px;
 }
