@@ -1,7 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Menu,
   LogOut,
   ExternalLink,
   ChevronDown,
@@ -10,6 +9,25 @@ import {
   Armchair,
   Construction,
   Smartphone,
+  LayoutDashboard,
+  UtensilsCrossed,
+  Layers,
+  Package,
+  Images,
+  ScanBarcode,
+  Languages,
+  Palette,
+  Gamepad2,
+  PartyPopper,
+  LayoutTemplate,
+  BarChart3,
+  Lightbulb,
+  MessageSquareWarning,
+  UsersRound,
+  UserCog,
+  Settings,
+  Sparkles,
+  CircleHelp,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemoData } from '@/contexts/DemoDataContext';
@@ -25,6 +43,7 @@ import { adminPreviewMenuUrl } from '@/lib/tableContext';
 import { adminPath } from '@/lib/adminPath';
 import { SHOW_LEGACY_THEME_SETTINGS, SHOW_EXTENSIONS_ENTRY } from '@/lib/adminThemeSettings';
 import { moveSidebarNavIndicator, isSidebarNavIndicatorAnimating } from '@/lib/sidebarNavIndicator';
+import MobileNav, { type MobileNavSection, type MobileNavAction } from '@/components/admin/MobileNav';
 import AdminPageTransition from '@/components/admin/AdminPageTransition';
 import '@/admin-tour.css';
 import '@/admin-ai.css';
@@ -151,6 +170,70 @@ export default function AdminLayout() {
   ];
 
   const closeMobile = () => setMobileOpen(false);
+
+  const navIcons: Record<string, typeof Package> = {
+    'nav-ozet': LayoutDashboard,
+    'nav-groups': Layers,
+    'nav-products': Package,
+    'nav-showcase': Images,
+    'nav-barcode': ScanBarcode,
+    'nav-bulk': Languages,
+    'nav-welcome-theme': PartyPopper,
+    'nav-menu-theme': LayoutTemplate,
+    'nav-games-screen': Gamepad2,
+    'nav-sofra-theme': Palette,
+    'nav-stats': BarChart3,
+    'nav-suggestions': Lightbulb,
+    'nav-complaints': MessageSquareWarning,
+    'nav-customers': UsersRound,
+    'nav-users': UserCog,
+    'nav-settings': Settings,
+  };
+  const toMobileItems = (list: { to: string; label: string; end?: boolean; tourId: string }[]) =>
+    list.map((i) => ({ to: i.to, label: i.label, end: i.end, icon: navIcons[i.tourId] ?? Package }));
+  const mobileSections: MobileNavSection[] = [
+    {
+      id: 'ozet',
+      label: 'Özet',
+      hint: 'Genel durum',
+      icon: LayoutDashboard,
+      tone: '#38bdf8',
+      items: toMobileItems(mainNav.filter((i) => i.tourId === 'nav-ozet')),
+    },
+    {
+      id: 'menu',
+      label: 'Menü',
+      hint: 'Grup, ürün ve vitrin',
+      icon: UtensilsCrossed,
+      tone: '#f97316',
+      items: toMobileItems(mainNav.filter((i) => i.tourId !== 'nav-ozet')),
+    },
+    {
+      id: 'gorunum',
+      label: 'Görünüm',
+      hint: 'Tema ve ekranlar',
+      icon: Palette,
+      tone: '#a855f7',
+      items: toMobileItems(startupNav),
+    },
+    {
+      id: 'rapor',
+      label: 'Raporlar',
+      hint: 'Sayılar ve geri bildirim',
+      icon: BarChart3,
+      tone: '#10b981',
+      items: toMobileItems(reportNav),
+    },
+    {
+      id: 'yonetim',
+      label: 'Yönetim',
+      hint: 'Müşteri, kullanıcı, ayar',
+      icon: Settings,
+      tone: '#3b82f6',
+      items: toMobileItems(managementNav),
+    },
+  ];
+
 
   function handleOpenTourGroup(group: TourOpenGroup) {
     if (group === 'startup') setStartupOpen(true);
@@ -284,6 +367,21 @@ export default function AdminLayout() {
       setMaintenanceBusy(false);
     }
   }
+  const mobileActions: MobileNavAction[] = [
+    { id: 'menu', label: 'Menüyü gör', icon: ExternalLink, onClick: openPublicMenu },
+    { id: 'ai', label: 'Asistan', icon: Sparkles, onClick: () => setAiOpen(true) },
+    {
+      id: 'maint',
+      label: 'Bakım modu',
+      icon: Construction,
+      on: maintenanceOn,
+      onClick: () => void toggleMaintenance(),
+    },
+    ...(SHOW_EXTENSIONS_ENTRY
+      ? [{ id: 'ext', label: 'Eklentiler', icon: Puzzle, onClick: () => navigate(adminPath('extensions')) }]
+      : []),
+    { id: 'tour', label: 'Tanıtım', icon: CircleHelp, onClick: () => setTourOpen(true) },
+  ];
   const sidebar = (
     <aside
       className="flex flex-col w-full h-full overflow-hidden"
@@ -416,12 +514,9 @@ export default function AdminLayout() {
             borderBottom: '1px solid var(--admin-header-border)',
           }}
         >
-          <button
-            className="lg:hidden p-2 rounded-lg hover:bg-[var(--admin-accent-soft)]"
-            onClick={() => setMobileOpen(true)}
-          >
-            <Menu className="w-5 h-5" style={{ color: 'var(--admin-text)' }} />
-          </button>
+          <span className="lg:hidden text-base font-bold tracking-tight" style={{ color: 'var(--admin-text)' }}>
+            Menu QR
+          </span>
 
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
             <ThemeToggleButton />
@@ -517,12 +612,14 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        <main className="flex-1 min-h-0 p-5 sm:p-6 lg:p-8 overflow-y-auto admin-scroll">
+        <main className="flex-1 min-h-0 p-5 pb-28 sm:p-6 sm:pb-28 lg:p-8 overflow-y-auto admin-scroll">
           <AdminPageTransition>
             <Outlet />
           </AdminPageTransition>
         </main>
       </div>
+
+      <MobileNav sections={mobileSections} actions={mobileActions} />
 
       <AdminTour
         open={tourOpen}
