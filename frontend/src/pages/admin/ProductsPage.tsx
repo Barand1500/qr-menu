@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type MouseEvent,
+  type RefObject,
 } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
@@ -11,6 +12,7 @@ import {
   Clock,
   Eye,
   EyeOff,
+  FolderOpen,
   Layers3,
   MoreHorizontal,
   Package,
@@ -71,6 +73,44 @@ const PAGE_SIZE = 15;
 const message = (e: unknown) =>
   e instanceof Error ? e.message : 'İşlem tamamlanamadı. Tekrar deneyin.';
 const priceValue = (value: string) => Number(value.trim().replace(',', '.'));
+/** Düğmenin altındaki küçük filtre paneli: dış tıklama / Escape ile kapanır, ekrana sığacak kadar yükselir. */
+function useFilterPanel(
+  open: boolean,
+  close: () => void,
+  root: RefObject<HTMLElement | null>,
+  panel: RefObject<HTMLElement | null>,
+) {
+  const closeRef = useRef(close);
+  closeRef.current = close;
+  useEffect(() => {
+    if (!open) return;
+    const outside = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) closeRef.current();
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeRef.current();
+        root.current?.querySelector('button')?.focus();
+      }
+    };
+    const place = () => {
+      const top = panel.current?.getBoundingClientRect().top || 0;
+      panel.current?.style.setProperty('--space', `${Math.max(100, innerHeight - top - 12)}px`);
+    };
+    place();
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', key);
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      document.removeEventListener('pointerdown', outside);
+      document.removeEventListener('keydown', key);
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [open, root, panel]);
+}
+
 export default function ProductsPage() {
   const [params, setParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]),
@@ -99,7 +139,9 @@ export default function ProductsPage() {
     [toolsOpen, setToolsOpen] = useState(false),
     [statusOpen, setStatusOpen] = useState(false);
   const statusRoot = useRef<HTMLDivElement>(null),
-    statusPanel = useRef<HTMLDivElement>(null);
+    statusPanel = useRef<HTMLDivElement>(null),
+    groupRoot = useRef<HTMLDivElement>(null),
+    groupPanel = useRef<HTMLDivElement>(null);
   const [actions, setActions] = useState<{
     product: Product;
     point: { x: number; y: number };
@@ -246,36 +288,8 @@ export default function ProductsPage() {
       abort.abort();
     };
   }, [load, retry, query.search]);
-  useEffect(() => {
-    if (!statusOpen) return;
-    const outside = (e: PointerEvent) => {
-      if (!statusRoot.current?.contains(e.target as Node)) setStatusOpen(false);
-    };
-    const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setStatusOpen(false);
-        statusRoot.current?.querySelector('button')?.focus();
-      }
-    };
-    const place = () => {
-      const top = statusPanel.current?.getBoundingClientRect().top || 0;
-      statusPanel.current?.style.setProperty(
-        '--space',
-        `${Math.max(100, innerHeight - top - 12)}px`,
-      );
-    };
-    place();
-    document.addEventListener('pointerdown', outside);
-    document.addEventListener('keydown', key);
-    window.addEventListener('scroll', place, true);
-    window.addEventListener('resize', place);
-    return () => {
-      document.removeEventListener('pointerdown', outside);
-      document.removeEventListener('keydown', key);
-      window.removeEventListener('scroll', place, true);
-      window.removeEventListener('resize', place);
-    };
-  }, [statusOpen]);
+  useFilterPanel(statusOpen, () => setStatusOpen(false), statusRoot, statusPanel);
+  useFilterPanel(categoryOpen, () => setCategoryOpen(false), groupRoot, groupPanel);
   function filter(patch: Partial<Query>) {
     setQuery((prev) => ({ ...prev, ...patch, page: 1 }));
   }
@@ -784,39 +798,11 @@ export default function ProductsPage() {
     parentName: g.parentName,
   }));
   const selectedGroup = groups.find((g) => String(g.id) === query.group);
-  const categoryButtons = (mobile = false) => (
-    <nav aria-label={mobile ? 'Grup seçimi' : 'Ürün grupları'}>
-      <button
-        className={!query.group ? 'is-active' : ''}
-        onClick={() => {
-          filter({ group: '' });
-          setCategoryOpen(false);
-        }}
-      >
-        Tüm ürünler<span>↗</span>
-      </button>
-      {groups
-        .filter(
-          (g) =>
-            !mobile ||
-            `${g.name} ${g.parentName || ''}`
-              .toLocaleLowerCase('tr')
-              .includes(categorySearch.toLocaleLowerCase('tr')),
-        )
-        .map((g) => (
-          <button
-            key={g.id}
-            className={`${query.group === String(g.id) ? 'is-active' : ''}${g.isSubGroup ? ' is-sub' : ''}`}
-            onClick={() => {
-              filter({ group: String(g.id) });
-              setCategoryOpen(false);
-            }}
-          >
-            {g.isSubGroup && <small>{g.parentName}</small>}
-            <span>{g.name}</span>
-          </button>
-        ))}
-    </nav>
+  const groupQuery = categorySearch.toLocaleLowerCase('tr').trim();
+  const visibleGroups = groups.filter(
+    (g) =>
+      !groupQuery ||
+      `${g.name} ${g.parentName || ''}`.toLocaleLowerCase('tr').includes(groupQuery),
   );
   if (metaError)
     return (
@@ -860,10 +846,6 @@ export default function ProductsPage() {
         </div>
       </header>
       <div className="ap-workspace">
-        <aside className="ap-categories">
-          <p>MENÜNÜN BÖLÜMLERİ</p>
-          {categoryButtons()}
-        </aside>
         <div className="ap-canvas">
           <div className="ap-toolbar">
             <label className="ap-search">
@@ -884,23 +866,90 @@ export default function ProductsPage() {
                 </button>
               )}
             </label>
-            <button
-              className="ap-category-trigger"
-              onClick={() => {
-                setCategorySearch('');
-                setCategoryOpen(true);
-              }}
-            >
-              <span>{selectedGroup?.name || 'Tüm gruplar'}</span>
-              <small>{refreshing ? '…' : `${total} ürün`}</small>
-              <ChevronDown size={15} />
-            </button>
+            <div className="ap-group-wrap" ref={groupRoot}>
+              <button
+                className={`ap-category-trigger${query.group ? ' is-active' : ''}`}
+                aria-haspopup="true"
+                aria-expanded={categoryOpen}
+                onClick={() => {
+                  setStatusOpen(false);
+                  setCategorySearch('');
+                  setCategoryOpen((v) => !v);
+                }}
+              >
+                <FolderOpen size={17} />
+                <span>{selectedGroup?.name || 'Tüm gruplar'}</span>
+                <small>{refreshing ? '…' : `${total} ürün`}</small>
+                <ChevronDown size={15} className={categoryOpen ? 'is-open' : ''} />
+              </button>
+              {categoryOpen && (
+                <div
+                  ref={groupPanel}
+                  className="ap-filter-panel ap-group-panel"
+                  role="region"
+                  aria-label="Bölüm filtresi"
+                >
+                  <header>
+                    <span>Hangi bölüm?</span>
+                    <button
+                      className="ag-icon"
+                      aria-label="Filtreyi kapat"
+                      onClick={() => setCategoryOpen(false)}
+                    >
+                      <X size={16} />
+                    </button>
+                  </header>
+                  {groups.length > 8 && (
+                    <label className="ap-group-search">
+                      <Search size={16} />
+                      <input
+                        aria-label="Grup bul"
+                        placeholder="Grup ara"
+                        value={categorySearch}
+                        onChange={(e) => setCategorySearch(e.target.value)}
+                      />
+                    </label>
+                  )}
+                  <div className="ap-pills">
+                    {!groupQuery && (
+                      <button
+                        aria-pressed={!query.group}
+                        onClick={() => {
+                          filter({ group: '' });
+                          setCategoryOpen(false);
+                        }}
+                      >
+                        Tüm ürünler
+                      </button>
+                    )}
+                    {visibleGroups.map((g) => (
+                      <button
+                        key={g.id}
+                        aria-pressed={query.group === String(g.id)}
+                        className={g.isSubGroup ? 'is-sub' : undefined}
+                        onClick={() => {
+                          filter({ group: String(g.id) });
+                          setCategoryOpen(false);
+                        }}
+                      >
+                        {g.isSubGroup && <small>{g.parentName}</small>}
+                        <span>{g.name}</span>
+                      </button>
+                    ))}
+                    {!visibleGroups.length && <p>Bu aramaya uyan grup yok.</p>}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="ap-status-wrap" ref={statusRoot}>
               <button
                 className={`ap-filter${query.status !== 'all' ? 'is-active' : ''}`}
                 aria-label="Ürün filtreleri"
                 aria-expanded={statusOpen}
-                onClick={() => setStatusOpen((v) => !v)}
+                onClick={() => {
+                  setCategoryOpen(false);
+                  setStatusOpen((v) => !v);
+                }}
               >
                 <SlidersHorizontal size={18} />
                 {query.status !== 'all' && <i />}
@@ -1049,24 +1098,6 @@ export default function ProductsPage() {
           </p>
         </div>
       </div>
-      <GroupsDialog
-        open={categoryOpen}
-        title="Hangi bölüm?"
-        subtitle="Ürünleri grubuna göre daraltın."
-        onClose={() => setCategoryOpen(false)}
-        className="ap-category-sheet"
-      >
-        <label className="ap-search">
-          <Search size={17} />
-          <input
-            aria-label="Grup bul"
-            placeholder="Grup ara"
-            value={categorySearch}
-            onChange={(e) => setCategorySearch(e.target.value)}
-          />
-        </label>
-        {categoryButtons(true)}
-      </GroupsDialog>
       <GroupsDialog
         open={toolsOpen}
         title="Menü araçları"
