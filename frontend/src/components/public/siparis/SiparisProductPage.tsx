@@ -1,12 +1,9 @@
 import { Link } from 'react-router-dom';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowLeft, Clock, Plus } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AlertTriangle, ArrowLeft, Check, Clock, Plus, UtensilsCrossed } from 'lucide-react';
 import { formatMoney, imageUrl } from '@/lib/api';
 import { menuProductPath } from '@/lib/menuPaths';
-import ProductImageGallery, {
-  ProductGalleryThumbs,
-  useProductGalleryIndex,
-} from '@/components/public/ProductImageGallery';
+import ProductImageGallery, { useProductGalleryIndex } from '@/components/public/ProductImageGallery';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import MenuColorModeToggle from '@/components/public/MenuColorModeToggle';
 import TableServiceButtons from '@/components/public/TableServiceButtons';
@@ -16,6 +13,7 @@ import SiparisProductOptions from '@/components/public/siparis/SiparisProductOpt
 import { useSiparisCart } from '@/hooks/useSiparisCart';
 import type { MenuColorMode } from '@/lib/menuColorMode';
 import type { ProductOptionGroup, SelectionMap } from '@/lib/productOptions';
+import './siparis-product.css';
 
 type ProductDetail = {
   id: number;
@@ -50,6 +48,10 @@ type RelatedProduct = {
   imageUrl?: string | null;
 };
 
+/**
+ * Ürün detayı (Sofra ve Sipariş temaları). Görsel kenardan kenara tam kaplar; başlık görselin
+ * üstünde durur, içerik kartı kaydırdıkça görselin üzerine çıkar. Sepet işlemi altta sabit çubukta.
+ */
 export default function SiparisProductPage({
   product,
   related,
@@ -60,8 +62,6 @@ export default function SiparisProductPage({
   slug,
   onBack,
   hideColorToggle = false,
-  renderHero,
-  compactOptions = false,
 }: {
   product: ProductDetail;
   related: RelatedProduct[];
@@ -72,24 +72,15 @@ export default function SiparisProductPage({
   slug: string | null | undefined;
   onBack: () => void;
   hideColorToggle?: boolean;
-  compactOptions?: boolean;
-  renderHero?: (gallery: ReactNode, image: string | undefined) => ReactNode;
 }) {
-  const { addItem, setSheetOpen, enabled: cartCtxOn } = useSiparisCart();
+  const { addItem, enabled: cartCtxOn } = useSiparisCart();
   const { index, setIndex } = useProductGalleryIndex(galleryImages.length);
-  const pageRef = useRef<HTMLDivElement>(null);
-  const [desktopSummary, setDesktopSummary] = useState(false);
-  useLayoutEffect(() => {
-    if (!compactOptions) return;
-    const media = pageRef.current?.ownerDocument.defaultView?.matchMedia('(min-width:1024px)');
-    if (!media) return;
-    const update = () => setDesktopSummary(media.matches);
-    update();
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, [compactOptions]);
   const mediaRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const [solid, setSolid] = useState(false);
   const addBtnRef = useRef<HTMLButtonElement>(null);
+  const addedTimer = useRef<number | undefined>(undefined);
+  const [added, setAdded] = useState(false);
   const en = (lang || 'tr').split('-')[0] === 'en';
   const tableServiceOn = product.menuFeatures?.tableService !== false;
   const variantsOn = product.menuFeatures?.siparisVariants !== false;
@@ -97,6 +88,7 @@ export default function SiparisProductPage({
   const showCart = cartEnabled && cartCtxOn;
   const soldOut = Boolean(product.soldOut);
   const optionGroups = variantsOn ? product.optionGroups || [] : [];
+  const hasOptions = optionGroups.length > 0;
 
   const [unitPrice, setUnitPrice] = useState(product.price);
   const [optionLabel, setOptionLabel] = useState('');
@@ -112,7 +104,25 @@ export default function SiparisProductPage({
   useEffect(() => {
     setUnitPrice(product.price);
     setOptionLabel('');
+    setAdded(false);
   }, [product.id, product.price]);
+
+  useEffect(() => () => window.clearTimeout(addedTimer.current), []);
+
+  // Görselin altına inince üst çubuk okunur, dolgun bir hâle geçer
+  useEffect(() => {
+    const onScroll = () => {
+      const limit = window.innerWidth >= 1024 ? 40 : (heroRef.current?.offsetHeight ?? 400) - 110;
+      setSolid(window.scrollY > limit);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, []);
 
   function add() {
     if (soldOut) return;
@@ -121,207 +131,181 @@ export default function SiparisProductPage({
       {
         productId: product.id,
         name,
-        price: optionGroups.length ? unitPrice : product.price,
+        price: hasOptions ? unitPrice : product.price,
         currency: product.currency,
         imageUrl: product.imageUrl ?? galleryImages[0] ?? null,
         calories: product.calories ?? null,
       },
       { fromEl: mediaRef.current || addBtnRef.current },
     );
+    setAdded(true);
+    window.clearTimeout(addedTimer.current);
+    addedTimer.current = window.setTimeout(() => setAdded(false), 1400);
   }
 
-  function addAndOpen() {
-    add();
-    window.setTimeout(() => setSheetOpen(true), 380);
-  }
+  const price = formatMoney(hasOptions ? unitPrice : product.price, product.currency);
+  const hasStats =
+    (product.calories != null && product.calories > 0) ||
+    (product.prepTimeMinutes != null && product.prepTimeMinutes > 0);
 
-  const gallery = (
-    <div className="siparis-detail__hero">
-      {galleryImages.length > 0 ? (
-        <>
-          <div className="siparis-detail__media" ref={mediaRef}>
-            {renderHero ? (
-              renderHero(
-                <ProductImageGallery
-                  images={galleryImages}
-                  index={index}
-                  onIndexChange={setIndex}
-                  alt={product.name}
-                />,
-                galleryImages[index],
-              )
-            ) : (
-              <ProductImageGallery
-                images={galleryImages}
-                index={index}
-                onIndexChange={setIndex}
-                alt={product.name}
-              />
-            )}
-          </div>
-          {galleryImages.length > 1 ? (
-            <ProductGalleryThumbs
-              images={galleryImages}
-              alt={product.name}
-              index={index}
-              onSelect={setIndex}
-            />
-          ) : null}
-        </>
-      ) : renderHero ? (
-        renderHero(
-          <div className="siparis-detail__ph">
-            <MenuMediaPlaceholder kind="product" size="lg" label={product.name} />
-          </div>,
-          undefined,
-        )
-      ) : (
-        <div className="siparis-detail__ph">
-          <MenuMediaPlaceholder kind="product" size="lg" label={product.name} />
-        </div>
-      )}
-    </div>
-  );
-  const summary = (
-    <>
-      <p className="siparis-detail__group">{product.group.name}</p>
-      <h1>{product.name}</h1>
-      <p className="siparis-detail__price">
-        {formatMoney(optionGroups.length ? unitPrice : product.price, product.currency)}
-        {optionGroups.length > 0 ? (
-          <span className="siparis-detail__price-hint">{en ? 'by selection' : 'seçime göre'}</span>
-        ) : null}
-      </p>
-
-      <div className="siparis-detail__stats">
-        {product.calories != null && product.calories > 0 ? (
-          <span>
-            <SiparisKcal calories={product.calories} />
-          </span>
-        ) : null}
-        {product.prepTimeMinutes != null && product.prepTimeMinutes > 0 ? (
-          <span>
-            <Clock className="w-4 h-4" />
-            {product.prepTimeMinutes} dk
-          </span>
-        ) : null}
-      </div>
-
-      {product.description ? <p className="siparis-detail__desc">{product.description}</p> : null}
-    </>
-  );
   return (
-    <div ref={pageRef} className={`siparis-detail${showCart ? ' siparis-detail--cart' : ''}`}>
-      <div className="siparis-detail__topbar">
-        <button type="button" className="siparis-detail__back" onClick={onBack} aria-label="Geri">
-          <ArrowLeft className="w-5 h-5" />
+    <div className={`pd${galleryImages.length === 0 ? ' pd--no-image' : ''}${showCart ? ' pd--bar' : ''}`}>
+      <header className={`pd-top${solid ? ' is-solid' : ''}`}>
+        <button type="button" className="pd-glass pd-top__back" onClick={onBack} aria-label="Geri">
+          <ArrowLeft size={20} />
         </button>
-        <p className="siparis-detail__brand">{product.restaurant.name}</p>
-        <div className="siparis-detail__top-actions">
+        <p className="pd-top__brand">{product.restaurant.name}</p>
+        <div className="pd-glass pd-top__actions">
           {showCart ? <SiparisCartButton alwaysShow /> : null}
           {!hideColorToggle && (
             <MenuColorModeToggle colorMode={colorMode} onToggle={toggleColorMode} />
           )}
           <TableServiceButtons lang={lang} slug={slug} enabled={tableServiceOn} />
         </div>
-      </div>
+      </header>
 
-      <div className="siparis-detail__layout">
-        {desktopSummary ? (
-          <div className="siparis-detail__visual">
-            {gallery}
-            <section className="siparis-detail__summary">{summary}</section>
+      <div className="pd-grid">
+        <section ref={heroRef} className="pd-hero" aria-label={product.name}>
+          <div className="pd-hero__media" ref={mediaRef}>
+            {galleryImages.length > 0 ? (
+              <ProductImageGallery
+                images={galleryImages}
+                index={index}
+                onIndexChange={setIndex}
+                alt={product.name}
+              />
+            ) : (
+              <div className="pd-hero__ph" aria-hidden>
+                <UtensilsCrossed size={64} strokeWidth={1.2} />
+              </div>
+            )}
           </div>
-        ) : (
-          gallery
-        )}
+          <div className="pd-hero__shade" aria-hidden />
 
-        <div className="siparis-detail__body">
-          {!desktopSummary && summary}
-
-          {optionGroups.length > 0 ? (
-            <SiparisProductOptions
-              key={product.id}
-              compact={compactOptions}
-              groups={optionGroups}
-              basePrice={product.price}
-              currency={product.currency}
-              onChange={onOptionsChange}
-            />
+          {galleryImages.length > 1 ? (
+            <div className="pd-dots" role="tablist" aria-label="Ürün görselleri">
+              {galleryImages.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  role="tab"
+                  aria-selected={i === index}
+                  aria-label={`Görsel ${i + 1}`}
+                  className={i === index ? 'is-active' : ''}
+                  onClick={() => setIndex(i)}
+                />
+              ))}
+            </div>
           ) : null}
 
-          <div
-            className={
-              compactOptions
-                ? 'siparis-detail__information is-compact'
-                : 'siparis-detail__information'
-            }
-          >
-            {product.ingredients ? (
-              <div className="siparis-detail__block">
-                <h2>{en ? 'Ingredients' : 'İçindekiler'}</h2>
-                <p>{product.ingredients}</p>
+          <div className="pd-hero__info">
+            <p className="pd-hero__brand">{product.restaurant.name}</p>
+            <p className="pd-chip">{product.group.name}</p>
+            <h1>{product.name}</h1>
+            <div className="pd-meta">
+              {!showCart ? <strong className="pd-meta__price">{price}</strong> : null}
+              {hasStats ? (
+                <>
+                  {product.calories != null && product.calories > 0 ? (
+                    <span className="pd-pill">
+                      <SiparisKcal calories={product.calories} />
+                    </span>
+                  ) : null}
+                  {product.prepTimeMinutes != null && product.prepTimeMinutes > 0 ? (
+                    <span className="pd-pill">
+                      <Clock size={15} />
+                      {product.prepTimeMinutes} dk
+                    </span>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+          </div>
+        </section>
+
+        <div className="pd-sheet">
+          <div className="pd-sheet__body">
+            {product.description ? <p className="pd-desc">{product.description}</p> : null}
+
+            {hasOptions ? (
+              <SiparisProductOptions
+                key={product.id}
+                groups={optionGroups}
+                basePrice={product.price}
+                currency={product.currency}
+                onChange={onOptionsChange}
+              />
+            ) : null}
+
+            {product.ingredients || product.allergens ? (
+              <div className="pd-facts">
+                {product.ingredients ? (
+                  <section className="pd-fact">
+                    <h2>
+                      <UtensilsCrossed size={15} />
+                      {en ? 'Ingredients' : 'İçindekiler'}
+                    </h2>
+                    <p>{product.ingredients}</p>
+                  </section>
+                ) : null}
+                {product.allergens ? (
+                  <section className="pd-fact pd-fact--warn">
+                    <h2>
+                      <AlertTriangle size={15} />
+                      {en ? 'Allergens' : 'Alerjenler'}
+                    </h2>
+                    <p>{product.allergens}</p>
+                  </section>
+                ) : null}
               </div>
             ) : null}
 
-            {product.allergens ? (
-              <div className="siparis-detail__block siparis-detail__block--warn">
-                <h2>{en ? 'Allergens' : 'Alerjenler'}</h2>
-                <p>{product.allergens}</p>
-              </div>
+            {related.length > 0 ? (
+              <section className="pd-related">
+                <h2>{en ? 'You may also like' : 'Bunlar da olabilir'}</h2>
+                <div className="pd-related__grid">
+                  {related.map((r) => (
+                    <Link key={r.id} to={menuProductPath(r.id)} className="pd-related__card">
+                      <span className="pd-related__img">
+                        {r.imageUrl ? (
+                          <img src={imageUrl(r.imageUrl)} alt="" loading="lazy" />
+                        ) : (
+                          <MenuMediaPlaceholder kind="product" size="sm" label={r.name} />
+                        )}
+                      </span>
+                      <span className="pd-related__name">{r.name}</span>
+                      <strong>{formatMoney(r.price, r.currency)}</strong>
+                    </Link>
+                  ))}
+                </div>
+              </section>
             ) : null}
           </div>
+
           {showCart ? (
-            <div className="siparis-detail__actions">
+            <div className="pd-bar">
               {soldOut ? (
-                <p className="siparis-detail__sold-out">{en ? 'Sold out today' : 'Bugün bitti'}</p>
+                <p className="pd-bar__sold">{en ? 'Sold out today' : 'Bugün bitti'}</p>
               ) : (
                 <>
+                  <div className="pd-bar__price">
+                    <small>{hasOptions ? (en ? 'By selection' : 'Seçime göre') : en ? 'Price' : 'Fiyat'}</small>
+                    <strong>{price}</strong>
+                  </div>
                   <button
                     ref={addBtnRef}
                     type="button"
-                    className="siparis-detail__add"
+                    className={`pd-bar__add${added ? ' is-added' : ''}`}
                     onClick={add}
                   >
-                    <Plus className="w-5 h-5" />
-                    {en ? 'Add to cart' : 'Sepete ekle'}
-                    {optionGroups.length > 0
-                      ? ` · ${formatMoney(unitPrice, product.currency)}`
-                      : ''}
-                  </button>
-                  <button
-                    type="button"
-                    className="siparis-detail__add siparis-detail__add--ghost"
-                    onClick={addAndOpen}
-                  >
-                    {en ? 'Add & view cart' : 'Ekle ve sepete git'}
+                    {added ? <Check size={20} strokeWidth={2.6} /> : <Plus size={20} strokeWidth={2.4} />}
+                    {added ? (en ? 'Added' : 'Eklendi') : en ? 'Add to cart' : 'Sepete ekle'}
                   </button>
                 </>
               )}
             </div>
-          ) : null}
-
-          {related.length > 0 ? (
-            <section className="siparis-detail__related">
-              <h2>{en ? 'You may also like' : 'Bunlar da olabilir'}</h2>
-              <div className="siparis-detail__related-grid">
-                {related.map((r) => (
-                  <Link
-                    key={r.id}
-                    to={menuProductPath(r.id)}
-                    className="siparis-detail__related-card"
-                  >
-                    {r.imageUrl ? (
-                      <img src={imageUrl(r.imageUrl)} alt="" />
-                    ) : (
-                      <MenuMediaPlaceholder kind="product" size="sm" label={r.name} />
-                    )}
-                    <span>{r.name}</span>
-                    <strong>{formatMoney(r.price, r.currency)}</strong>
-                  </Link>
-                ))}
-              </div>
-            </section>
+          ) : soldOut ? (
+            <p className="pd-bar__sold pd-bar__sold--inline">{en ? 'Sold out today' : 'Bugün bitti'}</p>
           ) : null}
         </div>
       </div>

@@ -1335,32 +1335,20 @@
 
 .public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-cats__icon,
 .public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-card,
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-rail__card,
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-detail__block,
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-detail__hero,
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-detail__related-card,
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-detail__back,
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-detail__stats span {
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-rail__card{
   background: #2a1c18;
   border-color: rgba(248, 113, 113, 0.12);
   color: var(--menu-text);
 }
 
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night']
-  .siparis-detail__top-actions
-  .public-menu-header__icon-btn {
-  background: #2a1c18;
-  color: #f8efe8;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
-}
+
 
 .public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-cats__icon--star {
   background: rgba(248, 113, 113, 0.12);
   color: #f87171;
 }
 
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-card__media,
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-detail__ph {
+.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-card__media{
   background: #241814;
 }
 
@@ -1382,11 +1370,7 @@
   border-color: rgba(248, 113, 113, 0.2);
 }
 
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-detail__add--ghost {
-  background: #2a1c18;
-  color: #f87171;
-  border-color: rgba(248, 113, 113, 0.4);
-}
+
 
 .public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-cart-sheet__allergy {
   background: rgba(245, 158, 11, 0.12);
@@ -1427,62 +1411,29 @@
   border-color: rgba(248, 113, 113, 0.35);
 }
 
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts {
-  border-top-color: rgba(248, 113, 113, 0.18);
-}
 
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__chip {
-  background: #2a1c18;
-  border-color: rgba(248, 113, 113, 0.22);
-  color: #f8efe8;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
-}
 
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__chip small {
-  color: #fca5a5;
-}
 
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__chip.is-on {
-  background: linear-gradient(135deg, #dc2626, #9f1239);
-  border-color: #dc2626;
-  color: #fff;
-}
 
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__chip.is-on small {
-  color: rgba(255, 255, 255, 0.9);
-}
 
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__chip:hover:not(.is-on) {
-  border-color: rgba(248, 113, 113, 0.45);
-}
 
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__multi-row {
-  background: #2a1c18;
-  border-color: rgba(248, 113, 113, 0.16);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
-}
 
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__multi-copy strong {
-  color: #f8efe8;
-}
 
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__multi-copy span {
-  color: #fca5a5;
-}
 
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__stepper em {
-  color: #f8efe8;
-}
 
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__total {
-  background: rgba(248, 113, 113, 0.12);
-  border-color: rgba(248, 113, 113, 0.28);
-}
 
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-opts__total.is-live {
-  background: rgba(248, 113, 113, 0.2);
-  border-color: rgba(248, 113, 113, 0.4);
-}
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* —— Lüks + Sipariş: Hakkımızda gece —— */
 .public-menu-page[data-theme-menu='luxury'] .about-page,

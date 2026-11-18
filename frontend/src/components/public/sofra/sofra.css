@@ -220,7 +220,7 @@ span[data-sofra-editable] {
   background: var(--sh-text);
   color: var(--sh-bg);
 }
-.sofra-public-shell .siparis-opts__chip,
+
 .sofra-public-shell .siparis-cart-sheet__qty button,
 .sofra-public-shell .siparis-cart-sheet__close {
   min-width: 44px;
@@ -251,49 +251,9 @@ span[data-sofra-editable] {
 }
 
 /* Product detail */
-.sofra-public-shell .siparis-detail__brand,
-.sofra-public-shell .siparis-detail h1 {
-  font-family: var(--sh-display);
-  color: var(--sh-text);
-}
-.sofra-public-shell .siparis-detail__topbar {
-  border-bottom: 1px solid var(--sh-line);
-  background: var(--sh-bg);
-}
-.sofra-public-shell .siparis-detail__layout {
-  max-width: 1250px;
-  margin: auto;
-}
-.sofra-public-shell .siparis-detail__body {
-  background: var(--sh-bg);
-  box-shadow: none;
-}
-.sofra-public-shell .siparis-detail__add {
-  background: var(--sh-accent);
-  border-color: var(--sh-accent);
-  color: var(--sh-on-accent);
-}
-.sofra-public-shell .siparis-detail__add--ghost {
-  background: transparent;
-  color: var(--sh-text);
-}
-.sofra-public-shell .siparis-detail__price {
-  color: var(--sh-accent-2);
-  font-family: var(--sh-display);
-}
-.sofra-public-shell .siparis-detail__hero {
-  border-radius: 18px;
-}
+
 .sofra-public-shell .public-product-gallery {
   border-radius: 16px;
-}
-.sofra-public-shell .siparis-detail__top-actions .menu-color-toggle {
-  display: none;
-}
-@media (max-width: 767px) {
-  .sofra-public-shell .siparis-detail__body {
-    padding-bottom: 130px;
-  }
 }
 
 /* Dietary preferences dialog */

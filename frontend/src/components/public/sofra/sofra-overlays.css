@@ -417,8 +417,7 @@
   box-shadow: none;
 }
 .sofra-public-shell .siparis-cart-sheet__badge,
-.sofra-public-shell .siparis-header-cart__badge,
-.sofra-public-shell .siparis-detail__top-actions .siparis-header-cart__badge {
+.sofra-public-shell .siparis-header-cart__badge{
   background: var(--sh-accent);
   color: var(--sh-on-accent);
 }

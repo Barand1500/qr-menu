@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Check, Minus, Plus } from 'lucide-react';
 import { formatMoney } from '@/lib/api';
 import {
   blockedOptionIds,
@@ -33,14 +34,13 @@ function optionPriceLabel(
   return null;
 }
 
+/** Ürün seçenekleri: tüm gruplar alt alta, seçim yapıldıkça fiyat üstteki sayfaya iletilir. */
 export default function SiparisProductOptions({
   groups,
   basePrice,
   currency,
   onChange,
-  compact = false,
 }: {
-  compact?: boolean;
   groups: ProductOptionGroup[];
   basePrice: number;
   currency?: { code?: string; symbol?: string } | null;
@@ -58,18 +58,13 @@ export default function SiparisProductOptions({
     [groups],
   );
 
-  const [activeGroupId, setActiveGroupId] = useState(activeGroups[0]?.id);
   const [selections, setSelections] = useState<SelectionMap>(() => defaultSelections(activeGroups));
 
   useEffect(() => {
     setSelections(defaultSelections(activeGroups));
   }, [activeGroups]);
 
-  const visibleGroupId = activeGroups.some((group) => group.id === activeGroupId)
-    ? activeGroupId
-    : activeGroups[0]?.id;
   const unitPrice = computePreviewUnitPrice(basePrice, activeGroups, selections);
-  const priceChanged = Math.abs(unitPrice - basePrice) > 0.001;
 
   const selectionLabel = useMemo(() => {
     const parts: string[] = [];
@@ -94,245 +89,174 @@ export default function SiparisProductOptions({
   }
 
   return (
-    <section
-      className={`siparis-opts${compact ? ' siparis-opts--compact' : ''}`}
-      aria-label="Ürün seçenekleri"
-    >
-      <header className="siparis-opts__head">
-        <h2>Seçenekler</h2>
-        <p>Boy, ekstra ve isteklerini buradan seç.</p>
-      </header>
+    <section className="pd-opts" aria-label="Ürün seçenekleri">
+      {activeGroups.map((g, groupIndex) => {
+        const picks = selections[g.id] || [];
+        const blocked = blockedOptionIds(activeGroups, selections);
+        const label = (
+          <div className="pd-opts__label">
+            <span className="pd-opts__step" aria-hidden>
+              {groupIndex + 1}
+            </span>
+            <h3>{g.name}</h3>
+            {g.required ? <small>Zorunlu</small> : null}
+          </div>
+        );
 
-      {compact && (
-        <div className="siparis-opts__navigation" aria-label="Seçenek bölümleri">
-          {activeGroups.map((g, i) => (
-            <button
-              type="button"
-              key={g.id}
-              aria-pressed={visibleGroupId === g.id}
-              onClick={() => setActiveGroupId(g.id)}
-            >
-              <span>{String(i + 1).padStart(2, '0')}</span>
-              {g.name}
-              <small>{groupSelectedQty(selections, g.id) || (g.required ? '*' : '')}</small>
-            </button>
-          ))}
-        </div>
-      )}
-      <div className="siparis-opts__groups">
-        {activeGroups.map((g) => {
-          const picks = selections[g.id] || [];
-          const blocked = blockedOptionIds(activeGroups, selections);
-
-          if (g.type === 'single') {
-            const visible = g.options.filter(
-              (o) => !blocked.has(o.id) || picks[0]?.optionId === o.id,
-            );
-            return (
+        if (g.type === 'single' || g.type === 'choice') {
+          const single = g.type === 'single';
+          const visible = g.options.filter((o) =>
+            single ? !blocked.has(o.id) || picks[0]?.optionId === o.id : !blocked.has(o.id),
+          );
+          return (
+            <div key={g.id} className="pd-opts__group">
+              {label}
               <div
-                key={g.id}
-                className={`siparis-opts__group${visibleGroupId === g.id ? ' is-active' : ''}`}
+                className="pd-opts__chips"
+                role={single ? 'radiogroup' : 'group'}
+                aria-label={g.name}
               >
-                <div className="siparis-opts__label">
-                  <span>
-                    {g.name}
-                    {g.required ? <i aria-hidden>*</i> : null}
-                  </span>
-                </div>
-                <div className="siparis-opts__chips" role="radiogroup" aria-label={g.name}>
-                  {!g.required ? (
+                {single && !g.required ? (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={!picks.length}
+                    className={`pd-opts__chip${!picks.length ? ' is-on' : ''}`}
+                    onClick={() => {
+                      const next = { ...selections };
+                      delete next[g.id];
+                      patch(next);
+                    }}
+                  >
+                    <span>Seçilmedi</span>
+                  </button>
+                ) : null}
+                {visible.map((o) => {
+                  const on = single
+                    ? picks[0]?.optionId === o.id
+                    : picks.some((x) => x.optionId === o.id);
+                  const priceText = optionPriceLabel(g, o.price, currency);
+                  return (
                     <button
+                      key={o.id}
                       type="button"
-                      role="radio"
-                      aria-checked={!picks.length}
-                      className={`siparis-opts__chip${!picks.length ? ' is-on' : ''}`}
+                      role={single ? 'radio' : undefined}
+                      aria-checked={single ? on : undefined}
+                      aria-pressed={single ? undefined : on}
+                      className={`pd-opts__chip${on ? ' is-on' : ''}`}
+                      data-sold-out={o.stockQty === 0 ? 'true' : undefined}
+                      disabled={o.stockQty === 0}
                       onClick={() => {
+                        if (single) {
+                          patch({ ...selections, [g.id]: [{ optionId: o.id, qty: 1 }] });
+                          return;
+                        }
+                        const nextPicks = on
+                          ? picks.filter((x) => x.optionId !== o.id)
+                          : [...picks, { optionId: o.id, qty: 1 }];
                         const next = { ...selections };
-                        delete next[g.id];
+                        if (nextPicks.length) next[g.id] = nextPicks;
+                        else delete next[g.id];
                         patch(next);
                       }}
                     >
-                      Seçilmedi
+                      <span>
+                        {o.name}
+                        {o.stockQty === 0 ? ' · bitti' : ''}
+                      </span>
+                      {priceText ? <small>{priceText}</small> : null}
+                      {on ? (
+                        <i aria-hidden>
+                          <Check size={12} strokeWidth={3} />
+                        </i>
+                      ) : null}
                     </button>
-                  ) : null}
-                  {visible.map((o) => {
-                    const on = picks[0]?.optionId === o.id;
-                    const priceText = optionPriceLabel(g, o.price, currency);
-                    return (
-                      <button
-                        key={o.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={on}
-                        className={`siparis-opts__chip${on ? ' is-on' : ''}`}
-                        data-sold-out={o.stockQty === 0 ? 'true' : undefined}
-                        disabled={o.stockQty === 0}
-                        onClick={() => {
-                          patch({
-                            ...selections,
-                            [g.id]: [{ optionId: o.id, qty: 1 }],
-                          });
-                        }}
-                      >
-                        <span>
-                          {o.name}
-                          {o.stockQty === 0 ? ' · bitti' : ''}
-                        </span>
-                        {priceText ? <small>{priceText}</small> : null}
-                      </button>
-                    );
-                  })}
-                </div>
+                  );
+                })}
               </div>
-            );
-          }
+            </div>
+          );
+        }
 
-          if (g.type === 'choice') {
-            const visible = g.options.filter((o) => !blocked.has(o.id));
-            return (
-              <div
-                key={g.id}
-                className={`siparis-opts__group${visibleGroupId === g.id ? ' is-active' : ''}`}
-              >
-                <div className="siparis-opts__label">
-                  <span>
-                    {g.name}
-                    {g.required ? <i aria-hidden>*</i> : null}
-                  </span>
-                </div>
-                <div className="siparis-opts__chips">
-                  {visible.map((o) => {
-                    const on = picks.some((x) => x.optionId === o.id);
-                    const priceText = optionPriceLabel(g, o.price, currency);
-                    return (
+        const groupQty = groupSelectedQty(selections, g.id);
+        const maxQty = effectiveMultiMaxTotalQty(activeGroups, selections, g);
+        const visible = g.options.filter((o) => !blocked.has(o.id));
+
+        return (
+          <div key={g.id} className="pd-opts__group">
+            {label}
+            {maxQty > 0 ? (
+              <p className="pd-opts__hint">
+                En fazla {maxQty}
+                {groupQty > 0 ? ` · seçilen ${groupQty}` : ''}
+              </p>
+            ) : null}
+            <ul className="pd-opts__multi">
+              {visible.map((o) => {
+                const cur = picks.find((x) => x.optionId === o.id);
+                const q = cur?.qty || 0;
+                const priceText = optionPriceLabel(g, o.price, currency);
+                return (
+                  <li
+                    key={o.id}
+                    className={`pd-opts__row${q > 0 ? ' is-on' : ''}`}
+                    data-sold-out={o.stockQty === 0 ? 'true' : undefined}
+                  >
+                    <div className="pd-opts__row-copy">
+                      <strong>
+                        {o.name}
+                        {o.stockQty === 0 ? ' · bitti' : ''}
+                      </strong>
+                      {priceText ? <span>{priceText}</span> : null}
+                    </div>
+                    <div className="pd-opts__stepper">
                       <button
-                        key={o.id}
                         type="button"
-                        aria-pressed={on}
-                        className={`siparis-opts__chip${on ? ' is-on' : ''}`}
-                        data-sold-out={o.stockQty === 0 ? 'true' : undefined}
-                        disabled={o.stockQty === 0}
+                        aria-label={`${o.name} azalt`}
+                        disabled={q <= 0}
                         onClick={() => {
-                          const nextPicks = on
-                            ? picks.filter((x) => x.optionId !== o.id)
-                            : [...picks, { optionId: o.id, qty: 1 }];
                           const next = { ...selections };
-                          if (nextPicks.length) next[g.id] = nextPicks;
-                          else delete next[g.id];
+                          if (q <= 1) {
+                            const rest = picks.filter((x) => x.optionId !== o.id);
+                            if (rest.length) next[g.id] = rest;
+                            else delete next[g.id];
+                          } else {
+                            next[g.id] = picks.map((x) =>
+                              x.optionId === o.id ? { ...x, qty: q - 1 } : x,
+                            );
+                          }
                           patch(next);
                         }}
                       >
-                        <span>
-                          {o.name}
-                          {o.stockQty === 0 ? ' · bitti' : ''}
-                        </span>
-                        {priceText ? <small>{priceText}</small> : null}
+                        <Minus size={16} />
                       </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          }
-
-          const groupQty = groupSelectedQty(selections, g.id);
-          const maxQty = effectiveMultiMaxTotalQty(activeGroups, selections, g);
-          const visible = g.options.filter((o) => !blocked.has(o.id));
-
-          return (
-            <div
-              key={g.id}
-              className={`siparis-opts__group${visibleGroupId === g.id ? ' is-active' : ''}`}
-            >
-              <div className="siparis-opts__label">
-                <span>
-                  {g.name}
-                  {g.required ? <i aria-hidden>*</i> : null}
-                </span>
-                {maxQty > 0 ? (
-                  <em>
-                    en fazla {maxQty}
-                    {groupQty > 0 ? ` · ${groupQty}` : ''}
-                  </em>
-                ) : null}
-              </div>
-              <ul className="siparis-opts__multi">
-                {visible.map((o) => {
-                  const cur = picks.find((x) => x.optionId === o.id);
-                  const q = cur?.qty || 0;
-                  const priceText = optionPriceLabel(g, o.price, currency);
-                  return (
-                    <li
-                      key={o.id}
-                      className="siparis-opts__multi-row"
-                      data-sold-out={o.stockQty === 0 ? 'true' : undefined}
-                    >
-                      <div className="siparis-opts__multi-copy">
-                        <strong>
-                          {o.name}
-                          {o.stockQty === 0 ? ' · bitti' : ''}
-                        </strong>
-                        {priceText ? <span>{priceText}</span> : null}
-                      </div>
-                      <div className="siparis-opts__stepper">
-                        <button
-                          type="button"
-                          aria-label={`${o.name} azalt`}
-                          disabled={q <= 0}
-                          onClick={() => {
-                            const next = { ...selections };
-                            if (q <= 1) {
-                              const rest = picks.filter((x) => x.optionId !== o.id);
-                              if (rest.length) next[g.id] = rest;
-                              else delete next[g.id];
-                            } else {
-                              next[g.id] = picks.map((x) =>
-                                x.optionId === o.id ? { ...x, qty: q - 1 } : x,
-                              );
-                            }
-                            patch(next);
-                          }}
-                        >
-                          −
-                        </button>
-                        <em>{q}</em>
-                        <button
-                          type="button"
-                          aria-label={`${o.name} artır`}
-                          disabled={o.stockQty === 0 || (maxQty > 0 && groupQty >= maxQty)}
-                          onClick={() => {
-                            if (maxQty > 0 && groupQty >= maxQty) return;
-                            const next = { ...selections };
-                            if (q === 0) next[g.id] = [...picks, { optionId: o.id, qty: 1 }];
-                            else {
-                              next[g.id] = picks.map((x) =>
-                                x.optionId === o.id ? { ...x, qty: q + 1 } : x,
-                              );
-                            }
-                            patch(next);
-                          }}
-                        >
-                          +
-                        </button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          );
-        })}
-      </div>
-
-      {compact && selectionLabel && (
-        <p className="siparis-opts__selection" aria-live="polite">
-          {selectionLabel}
-        </p>
-      )}
-      <div className={`siparis-opts__total${priceChanged ? ' is-live' : ''}`}>
-        <span>Seçime göre</span>
-        <strong>{formatMoney(unitPrice, currency)}</strong>
-      </div>
+                      <em>{q}</em>
+                      <button
+                        type="button"
+                        aria-label={`${o.name} artır`}
+                        disabled={o.stockQty === 0 || (maxQty > 0 && groupQty >= maxQty)}
+                        onClick={() => {
+                          if (maxQty > 0 && groupQty >= maxQty) return;
+                          const next = { ...selections };
+                          if (q === 0) next[g.id] = [...picks, { optionId: o.id, qty: 1 }];
+                          else {
+                            next[g.id] = picks.map((x) =>
+                              x.optionId === o.id ? { ...x, qty: q + 1 } : x,
+                            );
+                          }
+                          patch(next);
+                        }}
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })}
     </section>
   );
 }
