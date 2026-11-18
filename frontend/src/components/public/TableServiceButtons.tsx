@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import {
   ArrowLeft,
@@ -57,6 +57,19 @@ const SERVICES = [
   },
 ] as const;
 type Kind = (typeof SERVICES)[number]["kind"];
+
+// Açık servisler ve sırası sunucudan gelir; aynı menüdeki birden çok buton tek istek paylaşır.
+const KINDS_TTL_MS = 60_000;
+const kindsCache = new Map<string, { at: number; promise: Promise<Kind[] | null> }>();
+function loadServiceKinds(slug: string): Promise<Kind[] | null> {
+  const hit = kindsCache.get(slug);
+  if (hit && Date.now() - hit.at < KINDS_TTL_MS) return hit.promise;
+  const promise = api<{ kinds: Kind[] }>(`/api/menu/${slug}/services`)
+    .then((res) => (Array.isArray(res.kinds) ? res.kinds : null))
+    .catch(() => null);
+  kindsCache.set(slug, { at: Date.now(), promise });
+  return promise;
+}
 type Receipt = {
   id: number;
   type: string;
@@ -96,7 +109,25 @@ export default function TableServiceButtons({
     if (!lock.current) setOpen(false);
   };
   const ref = useSheetFocus(open, close);
+  const [kinds, setKinds] = useState<Kind[] | null>(null);
+  useEffect(() => {
+    if (!slug || !enabled) return;
+    let off = false;
+    void loadServiceKinds(slug).then((k) => {
+      if (!off) setKinds(k);
+    });
+    return () => {
+      off = true;
+    };
+  }, [slug, enabled]);
   if (!slug || !enabled) return null;
+  // Yönetici hiçbir servisi açık bırakmadıysa buton hiç görünmez
+  if (kinds && kinds.length === 0) return null;
+  const services = kinds
+    ? kinds
+        .map((k) => SERVICES.find((s) => s.kind === k))
+        .filter((s): s is (typeof SERVICES)[number] => Boolean(s))
+    : SERVICES;
 
   async function send(kind: Kind) {
     if (lock.current) return;
@@ -352,10 +383,10 @@ export default function TableServiceButtons({
                         <span>
                           {en ? "HOW CAN WE HELP?" : "NASIL YARDIMCI OLALIM?"}
                         </span>
-                        <span>{String(SERVICES.length).padStart(2, '0')}</span>
+                        <span>{String(services.length).padStart(2, '0')}</span>
                       </div>
                       <div className="service-concierge__list">
-                        {SERVICES.map(
+                        {services.map(
                           (
                             { kind, Icon, tr, en: nameEn, detail, detailEn },
                             i,

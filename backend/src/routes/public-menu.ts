@@ -42,7 +42,7 @@ import {
   MENU_SIPARIS_CONFIG_KEY,
   parseSiparisThemeConfig,
 } from '../lib/menu-siparis-config.js';
-import { isTableServiceEnabled, MENU_TABLE_SERVICE_KEY } from '../lib/table-service.js';
+import { loadTableServiceState } from '../lib/table-service.js';
 import { isMenuGamesEnabled, MENU_GAMES_CONFIG_KEY, MENU_GAMES_KEY, parseMenuGamesConfig, publicMenuGamesPayload } from '../lib/menu-games.js';
 import {
   TIME_MENU_KEY,
@@ -169,6 +169,16 @@ router.get('/resolve', async (_req, res) => {
 });
 
 /** Bakım modu durumu */
+// Menüdeki servis butonları: açık olanlar, gösterim sırasıyla
+router.get('/:slug/services', async (req, res) => {
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { slug: String(req.params.slug) },
+  });
+  if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
+  const state = await loadTableServiceState(restaurant.id);
+  res.json({ kinds: state.kinds });
+});
+
 router.get('/:slug/maintenance', async (req, res) => {
   const restaurant = await prisma.restaurant.findUnique({ where: { slug: req.params.slug } });
   if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
@@ -386,9 +396,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
   const prefCatalog = await loadPrefCatalog(restaurant.id);
   const [tableServiceSetting, gamesConfigSetting, gamesLegacySetting, animasyonConfigSetting, sadeConfigSetting, standartConfigSetting, aliveConfigSetting, luxuryConfigSetting, linearConfigSetting, siparisConfigSetting] =
     await Promise.all([
-    prisma.setting.findFirst({
-      where: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
-    }),
+    loadTableServiceState(restaurant.id),
     prisma.setting.findFirst({
       where: { restaurantId: restaurant.id, key: MENU_GAMES_CONFIG_KEY },
     }),
@@ -474,7 +482,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
       logoUrl: restaurant.logoUrl,
     },
     menuFeatures: {
-      tableService: isTableServiceEnabled(tableServiceSetting?.value),
+      tableService: tableServiceSetting.enabled,
       menuGames: publicMenuGamesPayload(gamesCfg),
       animasyonCart: animasyonCfg.cartEnabled,
       animasyonVariants: animasyonCfg.variantsEnabled,
@@ -590,11 +598,7 @@ router.get('/:slug', async (req, res) => {
         restaurantId_key: { restaurantId: restaurant.id, key: MENU_ASSISTANT_STYLE_KEY },
       },
     }),
-    prisma.setting.findUnique({
-      where: {
-        restaurantId_key: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
-      },
-    }),
+    loadTableServiceState(restaurant.id),
     prisma.setting.findUnique({
       where: {
         restaurantId_key: { restaurantId: restaurant.id, key: MENU_GAMES_CONFIG_KEY },
@@ -752,7 +756,7 @@ router.get('/:slug', async (req, res) => {
       menuAssistantStyle: menuAssistant
         ? parseMenuAssistantStyle(assistantStyleSetting?.value)
         : undefined,
-      tableService: isTableServiceEnabled(tableServiceSetting?.value),
+      tableService: tableServiceSetting.enabled,
       menuGames: publicMenuGamesPayload(
         parseMenuGamesConfig(gamesConfigSetting?.value, gamesLegacySetting?.value)
       ),
@@ -1316,10 +1320,8 @@ router.post('/:slug/table-request', async (req, res) => {
   const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
   if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
 
-  const tableServiceSetting = await prisma.setting.findFirst({
-    where: { restaurantId: restaurant.id, key: MENU_TABLE_SERVICE_KEY },
-  });
-  if (!isTableServiceEnabled(tableServiceSetting?.value)) {
+  const tableService = await loadTableServiceState(restaurant.id);
+  if (!tableService.enabled) {
     return res.status(403).json({ message: 'Masa hizmeti kapalı' });
   }
 
@@ -1330,6 +1332,9 @@ router.post('/:slug/table-request', async (req, res) => {
     return res.status(400).json({ message: err instanceof Error ? err.message : 'Geçersiz istek' });
   }
   const { requestType, noteText } = service;
+  if (!tableService.kinds.includes(requestType)) {
+    return res.status(403).json({ message: 'Bu servis şu an kapalı' });
+  }
 
   const masa = String(tableNumber || '').trim();
   if (!masa || masa.length > 40) {

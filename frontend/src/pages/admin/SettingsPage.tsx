@@ -56,7 +56,8 @@ import {
   type SocialLinkConfig,
 } from '@/lib/socialCatalog';
 import { useAddons } from '@/hooks/useAddons';
-import { isTableServiceEnabled } from '@/lib/tableService';
+import { resolveServiceItems, type MenuServiceItem } from '@/lib/tableService';
+import ServiceItemsEditor from '@/components/admin/ServiceItemsEditor';
 import { daysUntilLicenseEnd, formatLicenseDate } from '@/lib/license';
 import {
   SUPPORT_PHONE_DISPLAY,
@@ -220,7 +221,7 @@ export default function SettingsPage() {
     mergeSocialConfigs([]),
   );
   const [welcomeMusicUrl, setWelcomeMusicUrl] = useState(''),
-    [tableServiceEnabled, setTableServiceEnabled] = useState(true);
+    [serviceItems, setServiceItems] = useState<MenuServiceItem[]>(() => resolveServiceItems());
   const [tableCodeEnabled, setTableCodeEnabled] = useState(false),
     [tableCodeTtl, setTableCodeTtl] = useState(120);
   const [geoLock, setGeoLock] = useState<GeoLockConfig>({
@@ -300,8 +301,11 @@ export default function SettingsPage() {
           setSocialLinks(mergeSocialConfigs([]));
         }
         setWelcomeMusicUrl(d.settings.welcome_music_url || '');
-        setTableServiceEnabled(
-          isTableServiceEnabled(d.settings.menu_table_service_enabled),
+        setServiceItems(
+          resolveServiceItems(
+            d.settings.menu_table_service_enabled,
+            d.settings.menu_service_items,
+          ),
         );
         setTableCodeEnabled(
           ['true', '1'].includes(d.settings.table_session_code_enabled),
@@ -430,7 +434,7 @@ export default function SettingsPage() {
         partial = true;
         await put('welcome-music', { url: welcomeMusicUrl });
         await put('menu-features', {
-          tableService: tableServiceEnabled,
+          serviceItems,
           tableSessionCode: tableCodeEnabled,
           tableSessionCodeTtlMinutes: tableCodeTtl,
         });
@@ -1074,19 +1078,21 @@ export default function SettingsPage() {
                   </div>
                 </Section>
                 <Section
-                  title="Servis ve masa"
-                  description="Menüden ekibinize ulaşmayı kolaylaştırın."
+                  title="Menüdeki servisler"
+                  description="Müşterinin menüden çağırabileceği servisleri açın, kapatın ve sıralayın."
                 >
-                  <Toggle
-                    label="Garson çağır"
-                    description="Menüde servis çağrısını açar."
-                    icon={HandHelping}
-                    checked={tableServiceEnabled}
-                    onChange={() => {
-                      setTableServiceEnabled((v) => !v);
+                  <ServiceItemsEditor
+                    items={serviceItems}
+                    onChange={(next) => {
+                      setServiceItems(next);
                       mark('menu');
                     }}
                   />
+                </Section>
+                <Section
+                  title="Masa ve asistan"
+                  description="Masa erişimi ve menü asistanı."
+                >
                   <Toggle
                     label="Masa erişim kodu"
                     description="Masa oturumuna kodla erişim."

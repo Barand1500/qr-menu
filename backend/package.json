@@ -8,6 +8,7 @@
     "dev:setup": "prisma db push && prisma generate",
     "build": "tsc",
     "test:sofra": "node tests/theme-settings.test.mjs",
+    "test:services": "node tests/service-items.test.mjs",
     "test:login": "node tests/admin-login.test.mjs && node tests/login-mail.test.mjs",
     "test:customer": "node tests/customer-email.test.mjs && node tests/customer-mail.test.mjs",
     "start": "node dist/index.js",

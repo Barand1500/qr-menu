@@ -16,7 +16,11 @@ import {
   themeIdToAddon,
 } from '../addons/index.js';
 import { parseSocialLinks, serializeSocialLinks, type SocialLinkConfig } from '../lib/social.js';
-import { MENU_TABLE_SERVICE_KEY } from '../lib/table-service.js';
+import {
+  MENU_SERVICE_ITEMS_KEY,
+  MENU_TABLE_SERVICE_KEY,
+  parseServiceItemsInput,
+} from '../lib/table-service.js';
 import {
   MENU_GAMES_CONFIG_KEY,
   MENU_GAMES_KEY,
@@ -344,23 +348,34 @@ router.put('/welcome-music', async (req, res) => {
 
 router.put('/menu-features', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const { tableService, tableSessionCode, tableSessionCodeTtlMinutes, menuGames } = req.body as {
-    tableService?: boolean;
+  const { serviceItems, tableSessionCode, tableSessionCodeTtlMinutes, menuGames } = req.body as {
+    serviceItems?: unknown;
     tableSessionCode?: boolean;
     tableSessionCodeTtlMinutes?: number;
     menuGames?: boolean;
   };
 
-  if (typeof tableService === 'boolean') {
+  if (serviceItems !== undefined) {
+    const items = parseServiceItemsInput(serviceItems);
+    if (!items) return res.status(400).json({ message: 'Servis listesi geçersiz' });
+    const anyOn = items.some((i) => i.enabled);
     await prisma.setting.upsert({
-      where: {
-        restaurantId_key: { restaurantId: restaurantId!, key: MENU_TABLE_SERVICE_KEY },
+      where: { restaurantId_key: { restaurantId: restaurantId!, key: MENU_SERVICE_ITEMS_KEY } },
+      update: { value: JSON.stringify(items) },
+      create: {
+        restaurantId: restaurantId!,
+        key: MENU_SERVICE_ITEMS_KEY,
+        value: JSON.stringify(items),
       },
-      update: { value: tableService ? 'true' : 'false' },
+    });
+    // Eski tek anahtar da tutarlı kalsın (hiçbiri açık değilse kapalı)
+    await prisma.setting.upsert({
+      where: { restaurantId_key: { restaurantId: restaurantId!, key: MENU_TABLE_SERVICE_KEY } },
+      update: { value: anyOn ? 'true' : 'false' },
       create: {
         restaurantId: restaurantId!,
         key: MENU_TABLE_SERVICE_KEY,
-        value: tableService ? 'true' : 'false',
+        value: anyOn ? 'true' : 'false',
       },
     });
   }
@@ -424,7 +439,6 @@ router.put('/menu-features', async (req, res) => {
 
   res.json({
     ok: true,
-    tableService: tableService ?? true,
     menuGames: menuGames ?? true,
     tableSessionCode: tableSessionCode ?? false,
     tableSessionCodeTtlMinutes:
