@@ -28,6 +28,7 @@ import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageHeader, Spinner } from '@/components/ui';
 import AdminOverlay from '@/components/admin/AdminOverlay';
+import ImageBackgroundRemover from '@/components/admin/ImageBackgroundRemover';
 import AdminToast, {
   type AdminToastNotice,
 } from '@/components/admin/AdminToast';
@@ -216,6 +217,8 @@ export default function SettingsPage() {
   const [integrationEnabled, setIntegrationEnabled] = useState(false),
     [openaiApiKey, setOpenaiApiKey] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null),
+    // Seçilen logo, arka plan silme penceresinde karar verilene kadar burada bekler
+    [logoCandidate, setLogoCandidate] = useState<File | null>(null),
     [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [socialLinks, setSocialLinks] = useState<SocialLinkConfig[]>(
     mergeSocialConfigs([]),
@@ -1359,8 +1362,12 @@ export default function SettingsPage() {
               toast('Bir görsel dosyası seçin.', true);
               return;
             }
-            setLogoFile(file);
-            mark('business');
+            // PNG/JPEG/WebP için önce arka planı silme önerilir; SVG ve GIF olduğu gibi kullanılır
+            if (/^image\/(png|jpe?g|webp)$/.test(file.type)) setLogoCandidate(file);
+            else {
+              setLogoFile(file);
+              mark('business');
+            }
           }
         }}
       />
@@ -1408,6 +1415,23 @@ export default function SettingsPage() {
             ))}
           </section>
         </AdminOverlay>
+      )}
+      {logoCandidate && (
+        <ImageBackgroundRemover
+          file={logoCandidate}
+          subject="Logo"
+          onApply={(processed) => {
+            setLogoFile(processed);
+            setLogoCandidate(null);
+            mark('business');
+          }}
+          onKeep={() => {
+            setLogoFile(logoCandidate);
+            setLogoCandidate(null);
+            mark('business');
+          }}
+          onCancel={() => setLogoCandidate(null)}
+        />
       )}
       {picker && (
         <AdminOverlay
