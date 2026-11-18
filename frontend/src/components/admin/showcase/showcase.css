@@ -267,15 +267,6 @@
   font-size: 12px;
   color: var(--admin-text-muted);
 }
-.sc-status > span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--admin-accent);
-}
-.sc-status[aria-checked='false'] > span {
-  background: var(--admin-text-subtle);
-}
 .sc-icon {
   display: grid;
   place-items: center;

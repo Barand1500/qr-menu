@@ -387,25 +387,6 @@
 .ap-stock svg {
   flex-shrink: 0;
 }
-.ap-visible {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--admin-text-muted);
-  flex-shrink: 0;
-}
-.ap-visible i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--admin-text-subtle);
-}
-.ap-visible.is-on i {
-  background: #419272;
-}
 .ap-product.is-hidden .ap-product__photo {
   opacity: 0.6;
   filter: grayscale(0.6);
@@ -662,13 +643,9 @@
     grid-area: more;
     align-self: start;
   }
-  .ap-stock,
-  .ap-visible {
+  .ap-stock {
     min-height: 44px;
     font-size: 11px;
-  }
-  .ap-visible {
-    padding-inline: 8px;
   }
   .ap-product.is-renaming {
     grid-template-areas: 'photo identity identity' 'photo price price' 'availability availability availability';

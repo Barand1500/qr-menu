@@ -10,6 +10,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { imageUrl } from '@/lib/api';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import type { AdminGroup } from './types';
+import VisibilityToggle from '@/components/admin/VisibilityToggle';
 
 export default function GroupListRow({
   group,
@@ -228,18 +229,13 @@ export default function GroupListRow({
         <b>{group.productCount}</b>
         <span>ürün</span>
       </button>
-      <button
-        type="button"
-        className={`ag-visibility${group.isActive ? ' is-on' : ''}`}
-        role="switch"
-        aria-checked={group.isActive}
-        aria-label={`${group.name} menüde görünür`}
+      <VisibilityToggle
+        className="ag-visibility"
+        checked={group.isActive}
+        label={`${group.name} menüde görünür`}
         disabled={busy || contextOnly}
-        onClick={() => onToggle(group)}
-      >
-        <i />
-        <span>{group.isActive ? 'Açık' : 'Gizli'}</span>
-      </button>
+        onToggle={() => onToggle(group)}
+      />
       <button
         type="button"
         className="ag-icon ag-more"

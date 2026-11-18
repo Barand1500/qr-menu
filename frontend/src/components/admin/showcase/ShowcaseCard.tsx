@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { imageUrl } from '@/lib/api';
 import { mediaReady, type ShowcaseItem } from './types';
+import VisibilityToggle from '@/components/admin/VisibilityToggle';
 export function ShowcaseImage({
   src,
   alt = '',
@@ -147,18 +148,13 @@ export default function ShowcaseCard({
         </p>
         <div className="sc-card__tools">
           {mediaReady(item) ? (
-            <button
-              type="button"
-              role="switch"
-              aria-checked={item.isActive}
-              aria-label={`${item.name} menüde göster`}
+            <VisibilityToggle
+              checked={item.isActive}
+              label={`${item.name} menüde göster`}
+              onText="Yayında"
               disabled={busy}
-              onClick={onToggle}
-              className="sc-status"
-            >
-              <span />
-              {item.isActive ? 'Yayında' : 'Gizli'}
-            </button>
+              onToggle={onToggle}
+            />
           ) : (
             <button
               type="button"

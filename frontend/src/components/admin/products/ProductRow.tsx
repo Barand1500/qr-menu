@@ -4,6 +4,7 @@ import ProductImageCell from '@/components/admin/ProductImageCell';
 import { formatMoney } from '@/lib/api';
 import type { Product } from './types';
 import AnimatedPrice, { type PriceTransition } from './AnimatedPrice';
+import VisibilityToggle from '@/components/admin/VisibilityToggle';
 
 export default function ProductRow({
   product: p,
@@ -185,17 +186,12 @@ export default function ProductRow({
           </span>
           {p.stockResetHour != null && <Clock size={12} />}
         </button>
-        <button
-          className={`ap-visible${p.isActive ? ' is-on' : ''}`}
-          role="switch"
-          aria-checked={p.isActive}
-          aria-label={`${p.name} menüde görünür`}
+        <VisibilityToggle
+          checked={p.isActive}
+          label={`${p.name} menüde görünür`}
           disabled={busy}
-          onClick={() => onToggle(p)}
-        >
-          <i />
-          <span>{p.isActive ? 'Açık' : 'Gizli'}</span>
-        </button>
+          onToggle={() => onToggle(p)}
+        />
       </div>
       <button
         className="ag-icon ap-product__more"
