@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Plus } from 'lucide-react';
+import { ChevronRight, PackagePlus, Plus } from 'lucide-react';
 import { api, formatMoney, imageUrl } from '@/lib/api';
 import { Button, Spinner } from '@/components/ui';
 import { adminPath } from '@/lib/adminPath';
@@ -19,11 +19,14 @@ export default function GroupProductsModal({
   groupId,
   groupName,
   onClose,
+  onAssign,
 }: {
   open: boolean;
   groupId: number | null;
   groupName: string;
   onClose: () => void;
+  /** Mevcut ürünleri bu gruba toplu atama penceresini açar. */
+  onAssign?: () => void;
 }) {
   const navigate = useNavigate();
   const [products, setProducts] = useState<ProductItem[]>([]),
@@ -89,6 +92,12 @@ export default function GroupProductsModal({
         <>
           <div className="ag-product-tools">
             <span>{products.length} ürün</span>
+            {onAssign && (
+              <button onClick={onAssign}>
+                <PackagePlus size={14} className="inline mr-1" />
+                Mevcut ürünleri ata
+              </button>
+            )}
             <button
               onClick={() =>
                 go(`${adminPath('products')}?new=1&groupId=${groupId}`)

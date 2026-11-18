@@ -273,26 +273,6 @@
 .ag-products:hover {
   color: var(--admin-accent-text);
 }
-.ag-visibility {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 44px;
-  color: var(--admin-text-muted);
-  font-size: 12px;
-}
-.ag-visibility i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--admin-text-subtle);
-  flex-shrink: 0;
-}
-.ag-visibility.is-on i {
-  background: #419272;
-  box-shadow: 0 0 0 3px #41927212;
-}
 .ag-icon {
   min-width: 44px;
   width: 44px;
@@ -817,7 +797,7 @@
     padding: 0 6px 8px;
   }
   .ag-row {
-    grid-template-columns: 48px minmax(0, 1fr) 44px;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
     grid-template-areas: 'photo name more' 'photo products visibility';
     column-gap: 8px;
     row-gap: 0;
@@ -851,41 +831,13 @@
   }
   .ag-more {
     grid-area: more;
+    justify-self: end;
     width: 44px;
     min-width: 44px;
   }
   .ag-visibility {
     grid-area: visibility;
-    min-width: 44px;
-    min-height: 44px;
-  }
-  .ag-visibility span {
-    display: none;
-  }
-  .ag-visibility i {
-    width: 20px;
-    height: 11px;
-    background: var(--admin-card-border);
-    border-radius: 12px;
-    position: relative;
-  }
-  .ag-visibility i:after {
-    content: '';
-    position: absolute;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--admin-text-muted);
-    top: 2px;
-    left: 2px;
-    transition: translate 0.2s;
-  }
-  .ag-visibility.is-on i {
-    background: var(--admin-accent-soft);
-  }
-  .ag-visibility.is-on i:after {
-    background: var(--admin-accent);
-    translate: 9px 0;
+    justify-self: end;
   }
   .ag-children-summary {
     font-size: 10px;
@@ -896,7 +848,7 @@
     padding-inline-start: 4px;
   }
   .ag-row--sub {
-    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
     gap: 0 7px;
   }
   .ag-row--sub .ag-photo {
@@ -989,5 +941,313 @@
   .ag-dialog * {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* Gruba toplu ürün atama */
+.ag-assign {
+  width: min(760px, calc(100vw - 40px));
+  height: min(780px, calc(100dvh - 40px));
+}
+.ag-assign .ag-dialog__surface {
+  flex: 1;
+  min-height: 0;
+}
+.ag-assign .ag-dialog__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.aga-state {
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  flex: 1;
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--admin-text-muted);
+}
+.aga {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.aga-tools {
+  display: grid;
+  flex-shrink: 0;
+  gap: 10px;
+  padding: 16px 24px 12px;
+  border-bottom: 1px solid var(--admin-card-border);
+}
+.aga-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 6px 0 14px;
+  color: var(--admin-text-muted);
+  background: var(--admin-input-bg);
+  border: 1.5px solid var(--admin-input-border);
+  border-radius: 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.aga-search:focus-within {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px var(--admin-accent-soft);
+}
+.aga-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  color: var(--admin-text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+  font-size: 14px;
+}
+.aga-search button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--admin-text-muted);
+  border-radius: 10px;
+}
+.aga-from {
+  display: grid;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+}
+.aga-from select {
+  height: 44px;
+  padding: 0 12px;
+  color: var(--admin-text);
+  background: var(--admin-input-bg);
+  border: 1.5px solid var(--admin-input-border);
+  border-radius: 12px;
+  font-size: 14px;
+}
+.aga-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--admin-text-muted);
+}
+.aga-bar button {
+  min-height: 40px;
+  padding: 0 14px;
+  color: var(--admin-accent-text);
+  background: var(--admin-accent-soft);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.aga-bar button:disabled {
+  opacity: 0.5;
+}
+.aga-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 10px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+.aga-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 8px 10px;
+  border: 1.5px solid transparent;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.aga-row:hover:not(.is-here) {
+  background: var(--admin-input-bg);
+}
+.aga-row.is-on {
+  background: var(--admin-accent-soft);
+  border-color: var(--admin-accent);
+}
+.aga-row.is-here {
+  opacity: 0.5;
+  cursor: default;
+}
+.aga-row input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.aga-row input:focus-visible ~ .aga-check {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 2px;
+}
+.aga-check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  color: transparent;
+  border: 2px solid var(--admin-text-subtle);
+  border-radius: 50%;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.2s;
+}
+.aga-row.is-on .aga-check {
+  color: var(--admin-btn-primary-text);
+  background: var(--admin-accent);
+  border-color: var(--admin-accent);
+  transform: scale(1.08);
+}
+.aga-thumb {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  color: var(--admin-text-subtle);
+  background: var(--admin-input-bg);
+  border-radius: 12px;
+}
+.aga-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.aga-text {
+  flex: 1;
+  min-width: 0;
+}
+.aga-text strong {
+  display: block;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aga-text small {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--admin-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aga-price {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.aga-empty {
+  padding: 36px 12px;
+  text-align: center;
+  color: var(--admin-text-muted);
+  font-size: 13px;
+}
+.aga-foot {
+  display: grid;
+  flex-shrink: 0;
+  gap: 10px;
+  padding: 12px 24px max(16px, env(safe-area-inset-bottom));
+  background: var(--admin-card);
+  border-top: 1px solid var(--admin-card-border);
+}
+.aga-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--admin-text-muted);
+}
+.aga-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.aga-actions > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--admin-text-muted);
+}
+.aga-actions b {
+  font-size: 18px;
+  color: var(--admin-text);
+}
+.aga-actions > span button {
+  min-height: 40px;
+  padding: 0 8px;
+  color: var(--admin-accent-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+@media (max-width: 767px) {
+  .ag-assign {
+    width: 100%;
+    height: 94dvh;
+    max-height: 94dvh;
+  }
+  .aga-tools {
+    padding: 12px 16px 10px;
+  }
+  .aga-list {
+    padding: 8px 8px;
+  }
+  .aga-foot {
+    padding: 10px 16px max(14px, env(safe-area-inset-bottom));
+  }
+  .aga-submit {
+    min-height: 50px;
+    padding-inline: 22px;
+  }
+  .aga-search input {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 767px) and (max-height: 760px) {
+  .aga-from span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .aga-tools {
+    gap: 8px;
+    padding: 10px 16px 8px;
+  }
+  .ag-assign .ag-dialog__head {
+    padding: 10px 16px;
+  }
+  .ag-assign .ag-dialog__head h2 {
+    font-size: 18px;
+  }
+  .ag-assign .ag-dialog__head p {
+    margin-top: 2px;
+  }
+  .aga-foot {
+    gap: 6px;
   }
 }

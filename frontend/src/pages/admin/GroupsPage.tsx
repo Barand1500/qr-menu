@@ -13,6 +13,7 @@ import {
   EyeOff,
   FolderPlus,
   Package,
+  PackagePlus,
   Pencil,
   Plus,
   Search,
@@ -40,6 +41,7 @@ import { Button, PageHeading, Spinner } from '@/components/ui';
 import { AdminListPager } from '@/components/AdminListPager';
 import GroupModal, { type GroupFormState } from '@/components/GroupModal';
 import GroupProductsModal from '@/components/GroupProductsModal';
+import GroupAssignDialog from '@/components/admin/groups/GroupAssignDialog';
 import GroupListRow from '@/components/admin/groups/GroupListRow';
 import GroupsDialog from '@/components/admin/groups/GroupsDialog';
 import GroupFilters from '@/components/admin/groups/GroupFilters';
@@ -82,6 +84,7 @@ export default function GroupsPage() {
   const [formError, setFormError] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [productsGroup, setProductsGroup] = useState<Group | null>(null),
+    [assignGroup, setAssignGroup] = useState<Group | null>(null),
     [deleteTarget, setDeleteTarget] = useState<Group | null>(null);
   const [actions, setActions] = useState<{
     id: number;
@@ -632,6 +635,17 @@ export default function GroupsPage() {
             <button
               onClick={() => {
                 closeActions();
+                setAssignGroup(currentAction);
+              }}
+            >
+              <PackagePlus size={19} />
+              <span>
+                Ürün ata<small>Mevcut ürünleri bu gruba toplu ekleyin</small>
+              </span>
+            </button>
+            <button
+              onClick={() => {
+                closeActions();
                 setProductsGroup(currentAction);
               }}
             >
@@ -722,6 +736,27 @@ export default function GroupsPage() {
         groupId={productsGroup?.id ?? null}
         groupName={productsGroup?.name || ''}
         onClose={() => setProductsGroup(null)}
+        onAssign={() => {
+          const g = productsGroup;
+          setProductsGroup(null);
+          setAssignGroup(g);
+        }}
+      />
+      <GroupAssignDialog
+        open={Boolean(assignGroup)}
+        group={assignGroup}
+        onClose={() => setAssignGroup(null)}
+        onDone={(moved) => {
+          const name = assignGroup?.name;
+          setAssignGroup(null);
+          setNotice({
+            error: false,
+            text: moved
+              ? `${moved} ürün ${name} grubuna eklendi.`
+              : 'Seçilen ürünler zaten bu grupta.',
+          });
+          void reload();
+        }}
       />
       <GroupsDialog
         open={Boolean(deleteTarget)}

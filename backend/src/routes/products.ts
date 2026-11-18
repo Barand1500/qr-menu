@@ -157,6 +157,67 @@ router.get('/stats/validation', async (req, res) => {
   res.json({ valid, invalid, total: products.length });
 });
 
+// Gruba toplu ürün eklemek için hafif ürün listesi (tüm ürünler, hangi grupta oldukları ile)
+router.get('/picker', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const rows = await prisma.product.findMany({
+    where: { restaurantId: restaurantId! },
+    include: { group: true, currency: true },
+    orderBy: [{ group: { sortOrder: 'asc' } }, { sortOrder: 'asc' }, { id: 'asc' }],
+  });
+  res.json({
+    products: rows.map((p) => ({
+      id: p.id,
+      name: getProductField(p.i18n, 'tr', 'name'),
+      price: Number(p.price),
+      currency: p.currency ? { code: p.currency.code, symbol: p.currency.symbol } : null,
+      imageUrl: parseProductImages(p)[0] ?? null,
+      isActive: p.isActive,
+      groupId: p.groupId,
+      groupName: getGroupName(p.group.i18n),
+    })),
+  });
+});
+
+// Seçilen ürünleri bir gruba taşır (bir ürün tek grupta bulunur). Sıra: seçim sırasıyla grubun sonuna.
+router.post('/move-to-group', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const body = req.body as { groupId?: unknown; productIds?: unknown };
+  const target = Number(body.groupId);
+  if (!Number.isInteger(target)) return res.status(400).json({ message: 'Geçersiz grup' });
+  const ids = Array.isArray(body.productIds)
+    ? [...new Set(body.productIds.map(Number).filter((n) => Number.isInteger(n) && n > 0))]
+    : [];
+  if (!ids.length) return res.status(400).json({ message: 'Eklenecek ürünleri seçin' });
+  if (ids.length > 1000) return res.status(400).json({ message: 'Tek seferde en fazla 1000 ürün taşınabilir' });
+
+  const group = await prisma.group.findFirst({ where: { id: target, restaurantId: restaurantId! } });
+  if (!group) return res.status(400).json({ message: 'Geçersiz grup' });
+
+  const rows = await prisma.product.findMany({
+    where: { id: { in: ids }, restaurantId: restaurantId! },
+    select: { id: true, groupId: true },
+  });
+  if (rows.length !== ids.length) {
+    return res.status(400).json({ message: 'Seçilen ürünlerden bazıları bulunamadı' });
+  }
+  const groupOf = new Map(rows.map((r) => [r.id, r.groupId]));
+  const toMove = ids.filter((id) => groupOf.get(id) !== target);
+  if (!toMove.length) return res.json({ moved: 0, skipped: ids.length });
+
+  const sources = [...new Set(toMove.map((id) => groupOf.get(id)!))];
+  const max = await prisma.product.aggregate({ where: { groupId: target }, _max: { sortOrder: true } });
+  const base = max._max.sortOrder ?? 0;
+  await prisma.$transaction(
+    toMove.map((id, i) =>
+      prisma.product.update({ where: { id }, data: { groupId: target, sortOrder: base + i + 1 } }),
+    ),
+  );
+  for (const groupId of [...sources, target]) await compactProductSortOrders(groupId);
+
+  res.json({ moved: toMove.length, skipped: ids.length - toMove.length });
+});
+
 router.get('/bulk-price/status', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   const row = await prisma.setting.findUnique({
