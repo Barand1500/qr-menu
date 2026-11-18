@@ -135,7 +135,6 @@
 /* İskelet: mobilde tek sütun */
 .maint-shell {
   position: relative;
-  z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
@@ -401,57 +400,84 @@
   font-size: 0.82rem;
   color: var(--m-muted);
 }
-.maint-over__form {
+/* Ad girişi: tek hap, içinde kaydet düğmesi */
+.maint-name {
   display: flex;
-  gap: 0.4rem;
-  width: min(100%, 17rem);
-}
-.maint-over__form input {
-  flex: 1;
-  min-width: 0;
-  height: 2.75rem;
-  padding: 0 0.9rem;
-  border: 1px solid var(--m-line);
+  align-items: center;
+  gap: 0.5rem;
+  width: min(100%, 19rem);
+  height: 3.25rem;
+  padding: 0 0.4rem 0 1rem;
+  border: 1.5px solid var(--m-line);
   border-radius: 999px;
   background: rgba(255, 241, 220, 0.1);
-  color: var(--m-cream);
-  font: inherit;
-  font-size: 16px;
-  outline: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.maint-over__form input::placeholder {
-  color: var(--m-muted);
-}
-.maint-over__form input:focus-visible {
-  outline: 0;
-}
-.maint-over__form input:focus {
+.maint-name:focus-within {
   border-color: var(--m-amber);
+  box-shadow: 0 0 0 4px rgba(255, 180, 84, 0.18);
 }
-.maint-over__form button,
-.maint-over__again {
+.maint-name > svg {
+  flex: none;
+  color: var(--m-amber);
+}
+.maint-name input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--m-cream);
+  font-size: 16px;
+  font-weight: 600;
+  outline: 0;
+}
+.maint-name input::placeholder {
+  color: var(--m-muted);
+  font-weight: 500;
+}
+.maint-name button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #2b180e;
+  background: linear-gradient(145deg, #ffd48a, var(--m-amber));
+  font-weight: 800;
+  cursor: pointer;
+}
+.maint-name button:disabled {
+  opacity: 0.7;
+}
+.maint-over__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+.maint-over__again,
+.maint-over__rank {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
   min-height: 2.75rem;
   padding: 0 1.1rem;
-  border: 0;
+  border: 1px solid var(--m-line);
   border-radius: 999px;
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-.maint-over__form button {
-  color: #2b180e;
-  background: var(--m-amber);
-}
-.maint-over__again {
-  margin-top: 0.55rem;
   color: var(--m-cream);
   background: rgba(255, 241, 220, 0.12);
-  border: 1px solid var(--m-line);
+  font-size: 0.9rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.maint-over__again.is-primary {
+  color: #2b180e;
+  border-color: transparent;
+  background: linear-gradient(145deg, #ffd48a, var(--m-amber));
 }
 .maint-over__msg {
   margin: 0.4rem 0 0;
@@ -459,24 +485,136 @@
   color: var(--m-amber);
 }
 
-/* Sıralama: podyum + liste */
+/* Sıralama */
+.maint-teaser {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 3.5rem;
+  margin-top: 0.4rem;
+  padding: 0.55rem 0.9rem 0.55rem 0.6rem;
+  border: 0;
+  border-radius: 1.2rem;
+  color: var(--m-cream);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.maint-teaser__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.9rem;
+  color: #2b180e;
+  background: linear-gradient(145deg, #ffd48a, var(--m-amber));
+}
+.maint-teaser__text {
+  flex: 1;
+  min-width: 0;
+}
+.maint-teaser__text b,
+.maint-teaser__text small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.maint-teaser__text b {
+  font-size: 0.92rem;
+}
+.maint-teaser__text small {
+  margin-top: 1px;
+  font-size: 0.78rem;
+  color: var(--m-muted);
+}
+.maint-teaser > svg {
+  flex: none;
+  color: var(--m-muted);
+}
+
+.maint-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(10, 5, 2, 0.65);
+  backdrop-filter: blur(3px);
+  animation: maint-fade 0.2s ease both;
+}
+@keyframes maint-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes maint-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+/* Mobil: alttan açılan kutu (varsayılan gizli) */
 .maint-board {
-  padding: 1.1rem 1rem 1rem;
+  display: none;
+  position: fixed;
+  z-index: 41;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: min(86dvh, 40rem);
+  flex-direction: column;
+  padding: 0.5rem 1rem calc(1rem + env(safe-area-inset-bottom));
   border: 1px solid var(--m-line);
-  border-radius: 1.5rem;
-  background: var(--m-glass);
-  backdrop-filter: blur(8px);
+  border-bottom: 0;
+  border-radius: 1.75rem 1.75rem 0 0;
+  background: #2a190f;
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.55);
+}
+.maint-board.is-open {
+  display: flex;
+  animation: maint-sheet-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.maint-board__grab {
+  align-self: center;
+  width: 2.5rem;
+  height: 0.28rem;
+  margin-bottom: 0.4rem;
+  border-radius: 999px;
+  background: var(--m-line);
+}
+.maint-board__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
 }
 .maint-board h2 {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  margin: 0 0 1rem;
-  font-size: 0.95rem;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1.05rem;
   font-weight: 800;
 }
 .maint-board h2 svg {
   color: var(--m-amber);
+}
+.maint-board__close {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 0;
+  border-radius: 50%;
+  color: var(--m-cream);
+  background: rgba(255, 241, 220, 0.1);
+  cursor: pointer;
+}
+.maint-board__body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .maint-board__empty {
   margin: 0;
@@ -650,21 +788,32 @@
   outline-offset: 2px;
 }
 
-/* Geniş ekran: solda anlatım, sağda oyun */
+/* Geniş ekran: solda anlatım + sıralama kartı, sağda oyun */
 @media (min-width: 960px) {
   .maint-shell {
     grid-template-columns: minmax(0, 1fr) minmax(0, 30rem);
-    align-items: center;
-    gap: 3.5rem;
+    grid-template-areas: 'hero game' 'board game';
+    align-content: center;
+    align-items: start;
+    gap: 2rem 3.5rem;
     width: min(70rem, 100%);
     min-height: calc(100dvh - 3.2rem);
     padding: 1.5rem 2.5rem 6rem;
   }
+  .maint-play {
+    display: contents;
+  }
   .maint-hero {
+    grid-area: hero;
+    align-self: end;
     text-align: left;
   }
+  .maint-game {
+    grid-area: game;
+    align-self: center;
+  }
   .maint-hero h1 {
-    font-size: clamp(3.4rem, 5.5vw, 5rem);
+    font-size: clamp(2.8rem, 4.4vw, 4rem);
   }
   .maint-hero__lead {
     margin-left: 0;
@@ -672,6 +821,34 @@
   }
   .maint-chips {
     justify-content: flex-start;
+  }
+  .maint-dock {
+    left: auto;
+    right: max(2.5rem, calc((100vw - 70rem) / 2 + 2.5rem));
+    transform: none;
+    align-items: flex-end;
+  }
+  .maint-teaser,
+  .maint-board__grab,
+  .maint-board__close,
+  .maint-sheet-backdrop,
+  .maint-over__rank {
+    display: none;
+  }
+  .maint-board {
+    grid-area: board;
+    display: block;
+    position: static;
+    max-width: 30rem;
+    padding: 1.1rem 1.1rem 1rem;
+    border: 1px solid var(--m-line);
+    border-radius: 1.5rem;
+    background: var(--m-glass);
+    backdrop-filter: blur(8px);
+    box-shadow: none;
+  }
+  .maint-board__head {
+    margin-bottom: 1rem;
   }
 }
 
