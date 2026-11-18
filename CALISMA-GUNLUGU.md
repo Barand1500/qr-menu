@@ -557,6 +557,7 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 
 ## 2026-11-18 — Bakım modu
 
-- Admin kenar çubuğundaki bakım düğmesi artık alert yerine ortak AdminToast gösterir ("Bakım modu açıldı/kapandı"; hata kırmızı toast), işlem sürerken simge nabız atar. Kenar çubuğu alt düğmelerinin eksik stilleri index.css'e eklendi.
-- Müşteri bakım ekranı (MaintenanceGate + maintenance.css) yenilendi: animasyonlu zil, kısa metin, tek kartta iki adım (garsona söyle / oyna), Garson Koşusu aynen korundu. Bakım sürerken 30 sn'de bir sessiz kontrol yapılır, menü açılınca kendiliğinden gelir; "Menü açıldı mı?" düğmesi sayfayı yükleniyor ekranına çevirmeden kontrol eder, mobilde altta sabittir. Hareket azaltma desteklenir.
-- Kontrol: TypeScript ve Vite derlemesi geçti. Tarayıcı/telefonda görsel kontrol, gerçek bakım modu açma-kapama ve otomatik kontrolün canlı denemesi YAPILMADI. Backend değişmedi.
+- Admin kenar çubuğundaki bakım düğmesi alert yerine ortak AdminToast gösterir (açıldı/kapandı, hata kırmızı); işlem sürerken simge nabız atar. Kenar çubuğu alt düğmelerinin eksik stilleri index.css'e eklendi.
+- Müşteri bakım ekranı baştan tasarlandı (MaintenanceGate + maintenance.css): koyu 'gece mutfağı' teması, neon 'birazdan' vurgulu başlık, sarkan ampuller, yüzen 'Menü açıldı mı?' düğmesi; geniş ekranda solda anlatım, sağda oyun. Bakım sürerken 30 sn'de bir sessiz kontrol yapılır, menü açılınca kendiliğinden gelir.
+- Garson Koşusu yeniden yapıldı (MaintenanceRunnerGame): sabit 352x220 sahne CSS ile ölçeklenir (her ekranda aynı oynanış), gece mutfağı sahnesi, engel üstünde bahşiş toplama (+10 skor), erken basılan zıplamayı tamponlama, toz/sarsıntı efektleri, HTML skor/bahşiş/rekor şeridi, yeni rekor ekranı. Sıralama podyum + liste oldu, kullanıcının adı vurgulanır. Skor API'si/doğrulaması aynı (en çok 50000).
+- Kontrol: TypeScript ve Vite derlemesi geçti. Gerçek Chrome + taklit API ile 390/320/1440 px görsel kontrol, yatay taşma yok, oyun başlat/bahşiş toplama/ölüm ekranı çalıştı. Fiziksel telefon, gerçek API ile skor kaydı ve gerçek bakım modu geçişi denenmedi. Görsel/betikler frontend/node_modules/.qr-check (Git'e dahil değil).

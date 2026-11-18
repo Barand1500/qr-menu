@@ -10,6 +10,8 @@ type Props = {
   children: React.ReactNode;
 };
 
+const BULBS = Array.from({ length: 11 }, (_, i) => i);
+
 export default function MaintenanceGate({ slug, restaurantName, children }: Props) {
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
@@ -63,59 +65,57 @@ export default function MaintenanceGate({ slug, restaurantName, children }: Prop
 
   return (
     <div className="maint-screen" role="status" aria-live="polite">
-      <div className="maint-screen__bg" aria-hidden>
-        <span className="maint-screen__orb maint-screen__orb--a" />
-        <span className="maint-screen__orb maint-screen__orb--b" />
-        <span className="maint-screen__orb maint-screen__orb--c" />
+      <div className="maint-glow" aria-hidden>
+        <span className="maint-glow__a" />
+        <span className="maint-glow__b" />
+        {[0, 1, 2, 3, 4].map((i) => (
+          <span key={i} className="maint-steam" style={{ ['--i' as string]: i }} />
+        ))}
       </div>
 
-      <div className="maint-screen__layout">
-        <header className="maint-screen__top">
-          <div className="maint-bell" aria-hidden>
-            <span className="maint-bell__ring" />
-            <span className="maint-bell__ring maint-bell__ring--late" />
-            <span className="maint-bell__icon">
-              <ConciergeBell className="w-7 h-7" strokeWidth={1.7} />
-            </span>
-          </div>
-          <p className="maint-screen__eyebrow">{name || 'Restoranımız'}</p>
-          <h1>Menü birazdan geliyor</h1>
-          <p className="maint-screen__lead">
-            Mutfak kısa bir hazırlıkta. Siparişinizi garsonumuza söylemeniz yeterli.
+      <div className="maint-lights" aria-hidden>
+        {BULBS.map((i) => (
+          <span key={i} style={{ ['--i' as string]: i }} />
+        ))}
+      </div>
+
+      <main className="maint-shell">
+        <header className="maint-hero">
+          <span className="maint-status">
+            <i aria-hidden />
+            Mutfak hazırlıkta
+          </span>
+          {name ? <p className="maint-hero__name">{name}</p> : null}
+          <h1>
+            Menü <em>birazdan</em> geliyor
+          </h1>
+          <p className="maint-hero__lead">
+            Siparişiniz için masanıza gelen garsonumuza söylemeniz yeterli.
           </p>
+          <ul className="maint-chips">
+            <li>
+              <ConciergeBell size={16} /> Garsonumuza söyleyin
+            </li>
+            <li>
+              <Gamepad2 size={16} /> Beklerken oynayın
+            </li>
+          </ul>
         </header>
 
-        <section className="maint-screen__steps" aria-label="Ne yapabilirsiniz">
-          <div>
-            <ConciergeBell className="w-[18px] h-[18px]" />
-            <span>
-              <b>Garsonumuza söyleyin</b>
-              Siparişinizi masanıza gelen ekibimiz alır.
-            </span>
-          </div>
-          <div>
-            <Gamepad2 className="w-[18px] h-[18px]" />
-            <span>
-              <b>Beklerken oynayın</b>
-              Garson Koşusu’nda rekoru kırın.
-            </span>
-          </div>
-        </section>
-
         <MaintenanceRunnerGame slug={slug} />
+      </main>
 
-        <div className="maint-screen__dock">
-          <button
-            type="button"
-            className="maint-screen__retry"
-            disabled={checking}
-            onClick={() => void check(true)}
-          >
-            <RefreshCw className={`w-4 h-4${checking ? ' animate-spin' : ''}`} />
-            {checking ? 'Kontrol ediliyor…' : 'Menü açıldı mı?'}
-          </button>
-          <p>Menü açılınca bu sayfa kendiliğinden yenilenir.</p>
-        </div>
+      <div className="maint-dock">
+        <button
+          type="button"
+          className="maint-dock__btn"
+          disabled={checking}
+          onClick={() => void check(true)}
+        >
+          <RefreshCw size={16} className={checking ? 'animate-spin' : undefined} />
+          {checking ? 'Kontrol ediliyor…' : 'Menü açıldı mı?'}
+        </button>
+        <span>Menü açılınca sayfa kendiliğinden yenilenir</span>
       </div>
     </div>
   );
