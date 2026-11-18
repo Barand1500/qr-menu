@@ -251,3 +251,27 @@
     animation: none;
   }
 }
+/* Telefonda kod/QR doğrulaması kendi içinde kayabilen alt pencere. */
+@media (max-width: 767px) {
+  .mc-unlock {
+    align-items: end;
+    padding: 12px 0 0;
+  }
+  .mc-unlock__panel {
+    width: 100%;
+    max-height: calc(100dvh - 12px);
+    border-radius: 22px 22px 0 0;
+    padding: 22px 20px max(22px, env(safe-area-inset-bottom));
+  }
+  .mc-unlock__otp {
+    gap: 6px;
+  }
+  .mc-unlock .mc-unlock__otp-cell {
+    height: 52px;
+    font-size: 22px;
+  }
+  .mc-unlock__close {
+    width: 42px;
+    height: 42px;
+  }
+}

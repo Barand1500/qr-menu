@@ -18,9 +18,12 @@ type BarcodeDetectorLike = {
   detect: (source: ImageBitmapSource) => Promise<Array<{ rawValue?: string }>>;
 };
 
-function getBarcodeDetector(): (new (opts?: { formats?: string[] }) => BarcodeDetectorLike) | null {
+function getBarcodeDetector():
+  (new (opts?: { formats?: string[] }) => BarcodeDetectorLike) | null {
   const w = window as Window & {
-    BarcodeDetector?: new (opts?: { formats?: string[] }) => BarcodeDetectorLike;
+    BarcodeDetector?: new (opts?: {
+      formats?: string[];
+    }) => BarcodeDetectorLike;
   };
   return w.BarcodeDetector || null;
 }
@@ -59,8 +62,8 @@ export default function CustomerUnlockModal({
       if (e.key !== 'Tab') return;
       const nodes = Array.from(
         panelRef.current?.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), input:not(:disabled)'
-        ) || []
+          'button:not(:disabled), input:not(:disabled)',
+        ) || [],
       );
       const first = nodes[0],
         last = nodes[nodes.length - 1];
@@ -70,7 +73,8 @@ export default function CustomerUnlockModal({
       }
       if (
         e.shiftKey &&
-        (document.activeElement === first || document.activeElement === panelRef.current)
+        (document.activeElement === first ||
+          document.activeElement === panelRef.current)
       ) {
         e.preventDefault();
         last.focus();
@@ -154,7 +158,10 @@ export default function CustomerUnlockModal({
           } catch {
             /* frame skip */
           }
-          rafRef.current = window.setTimeout(() => void tick(), 280) as unknown as number;
+          rafRef.current = window.setTimeout(
+            () => void tick(),
+            280,
+          ) as unknown as number;
         };
         void tick();
       } catch {
@@ -215,17 +222,25 @@ export default function CustomerUnlockModal({
     if (char && index < 5) inputsRef.current[index + 1]?.focus();
   }
 
-  function onDigitKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+  function onDigitKeyDown(
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) {
     if (e.key === 'Backspace' && !digits[index] && index > 0) {
       inputsRef.current[index - 1]?.focus();
     }
-    if (e.key === 'ArrowLeft' && index > 0) inputsRef.current[index - 1]?.focus();
-    if (e.key === 'ArrowRight' && index < 5) inputsRef.current[index + 1]?.focus();
+    if (e.key === 'ArrowLeft' && index > 0)
+      inputsRef.current[index - 1]?.focus();
+    if (e.key === 'ArrowRight' && index < 5)
+      inputsRef.current[index + 1]?.focus();
   }
 
   function onDigitPaste(e: React.ClipboardEvent) {
     e.preventDefault();
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    const pasted = e.clipboardData
+      .getData('text')
+      .replace(/\D/g, '')
+      .slice(0, 6);
     if (!pasted) return;
     const next = Array.from({ length: 6 }, (_, i) => pasted[i] || '');
     setDigits(next);
@@ -236,15 +251,13 @@ export default function CustomerUnlockModal({
   if (!open) return null;
 
   return createPortal(
-    <div className="mc-unlock" role="dialog" aria-modal="true" aria-label={title}>
-      <button
-        type="button"
-        className="mc-unlock__scrim"
-        aria-label="Kapat"
-        tabIndex={-1}
-        disabled={busy}
-        onClick={onClose}
-      />
+    <div
+      className="mc-unlock"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
+      <div className="mc-unlock__scrim" aria-hidden="true" />
       <div className="mc-unlock__panel" ref={panelRef} tabIndex={-1}>
         <header className="mc-unlock__head">
           <div className="mc-unlock__brand">
@@ -310,7 +323,11 @@ export default function CustomerUnlockModal({
             <p className="mc-unlock__lead">
               Müşterinin telefonundaki kişisel kodu okut veya 6 haneyi yaz.
             </p>
-            <button type="button" className="mc-unlock__choice" onClick={() => setMode('scan')}>
+            <button
+              type="button"
+              className="mc-unlock__choice"
+              onClick={() => setMode('scan')}
+            >
               <span className="mc-unlock__choice-icon">
                 <Camera className="w-5 h-5" />
               </span>
@@ -387,7 +404,9 @@ export default function CustomerUnlockModal({
               <video ref={videoRef} playsInline muted />
               <span className="mc-unlock__frame" aria-hidden />
             </div>
-            <p className="mc-unlock__hint">{scanHint || 'QR’ı karenin içine hizala'}</p>
+            <p className="mc-unlock__hint">
+              {scanHint || 'QR’ı karenin içine hizala'}
+            </p>
             {busy ? (
               <p className="mc-unlock__busy">
                 <Loader2 className="w-4 h-4 animate-spin" /> Doğrulanıyor…
@@ -397,6 +416,6 @@ export default function CustomerUnlockModal({
         ) : null}
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

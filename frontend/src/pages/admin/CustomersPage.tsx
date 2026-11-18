@@ -32,9 +32,15 @@ import {
   Type,
   Camera,
   Hash,
+  ArrowLeft,
+  ArrowUpRight,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PageHeader, Spinner } from '@/components/ui';
+import AdminOverlay from '@/components/admin/AdminOverlay';
+import AdminToast, {
+  type AdminToastNotice,
+} from '@/components/admin/AdminToast';
 import { gsap, prefersReducedMotion, useGSAP } from '@/lib/gsapSetup';
 import CustomerUnlockModal from '@/components/admin/CustomerUnlockModal';
 import {
@@ -43,7 +49,6 @@ import {
 } from '@/lib/customerQrPreview';
 import { lookupCustomerByCodeOrQr } from '@/lib/customerUnlock';
 import '@/admin-customers.css';
-import '@/menu-customer.css';
 
 type CustomerDiscount = {
   type: 'percent' | 'amount';
@@ -160,14 +165,19 @@ function rewardCardCopy(rule: PointsRewardRule) {
   };
 }
 
-function sanitizeNumberInput(raw: string, opts?: { allowDecimal?: boolean }): string {
+function sanitizeNumberInput(
+  raw: string,
+  opts?: { allowDecimal?: boolean },
+): string {
   const allowDecimal = opts?.allowDecimal === true;
-  let cleaned = raw.replace(allowDecimal ? /[^\d.]/g : /\D/g, '');
+  const normalized = allowDecimal ? raw.replace(/,/g, '.') : raw;
+  let cleaned = normalized.replace(allowDecimal ? /[^\d.]/g : /\D/g, '');
   if (!allowDecimal) return cleaned;
   const firstDot = cleaned.indexOf('.');
   if (firstDot === -1) return cleaned;
   return (
-    cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '')
+    cleaned.slice(0, firstDot + 1) +
+    cleaned.slice(firstDot + 1).replace(/\./g, '')
   );
 }
 
@@ -180,6 +190,7 @@ function formatMoney(n: number) {
 }
 
 function formatDate(iso: string) {
+  if (Number.isNaN(new Date(iso).getTime())) return 'Tarih bilinmiyor';
   return new Intl.DateTimeFormat('tr-TR', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -238,10 +249,22 @@ function SearchableSelect({
   }, [open]);
 
   return (
-    <div className={`admin-customers__combo${open ? ' is-open' : ''}`} ref={rootRef}>
+    <div
+      className={`admin-customers__combo${open ? ' is-open' : ''}`}
+      ref={rootRef}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && open) {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen(false);
+          rootRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+        }
+      }}
+    >
       <button
         type="button"
         className="admin-customers__combo-trigger"
+        aria-label={placeholder}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => {
@@ -265,9 +288,6 @@ function SearchableSelect({
               placeholder="Ara…"
               aria-label="Ara"
               onChange={(e) => setQ(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') setOpen(false);
-              }}
             />
           </div>
           <ul>
@@ -300,7 +320,9 @@ function SearchableSelect({
 }
 
 export default function CustomersPage() {
-  const [workspace, setWorkspace] = useState<'customers' | 'rewards'>('customers');
+  const [workspace, setWorkspace] = useState<'customers' | 'rewards'>(
+    'customers',
+  );
   const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState<CustomerRow[]>([]);
   const [debtorCount, setDebtorCount] = useState(0);
@@ -318,11 +340,36 @@ export default function CustomersPage() {
   const [ledgerTotal, setLedgerTotal] = useState(0);
   const ledgerPageSize = 8;
   const [detailLoading, setDetailLoading] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [busy, setBusyState] = useState(false);
+  const busyRef = useRef(false);
+  function setBusy(value: boolean) {
+    busyRef.current = value;
+    setBusyState(value);
+  }
+  const [notice, setNotice] = useState<AdminToastNotice>(null);
+  const setToast = useCallback(
+    (text: string | null, error = false) =>
+      setNotice(text ? { text, error } : null),
+    [],
+  );
+  const [compact, setCompact] = useState(
+    () => matchMedia('(max-width: 1023px)').matches,
+  );
+  const [operation, setOperation] = useState<
+    'points' | 'discount' | 'debt' | 'payment' | null
+  >(null);
+  const [listError, setListError] = useState(false);
+  const [detailError, setDetailError] = useState(false);
+  const [listRevision, setListRevision] = useState(0);
+  const listRequest = useRef(0);
+  const [rewardsError, setRewardsError] = useState(false);
+  const [rewardRevision, setRewardRevision] = useState(0);
+  const [rewardDeleteId, setRewardDeleteId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<'manage' | 'ledger'>('manage');
   const [unlockOpen, setUnlockOpen] = useState(false);
-  const [unlockMode, setUnlockMode] = useState<'menu' | 'code' | 'scan'>('code');
+  const [unlockMode, setUnlockMode] = useState<'menu' | 'code' | 'scan'>(
+    'code',
+  );
   const deepLinkDone = useRef(false);
 
   const [pointsDraft, setPointsDraft] = useState('');
@@ -345,7 +392,9 @@ export default function CustomersPage() {
   const [rewardsBusy, setRewardsBusy] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [editingRewardId, setEditingRewardId] = useState<string | null>(null);
-  const [rewardDraft, setRewardDraft] = useState<RewardDraft>(() => emptyRewardDraft());
+  const [rewardDraft, setRewardDraft] = useState<RewardDraft>(() =>
+    emptyRewardDraft(),
+  );
 
   const detailShellRef = useRef<HTMLDivElement>(null);
   const detailBodyRef = useRef<HTMLDivElement>(null);
@@ -362,6 +411,25 @@ export default function CustomersPage() {
   const skipEnterAnimRef = useRef(false);
 
   useEffect(() => {
+    const media = matchMedia('(max-width: 1023px)');
+    const update = () => setCompact(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  function closeDetail() {
+    if (busyRef.current || deleteBusy) return;
+    animTokenRef.current++;
+    setSelectedId(null);
+    selectedIdRef.current = null;
+    setDetail(null);
+    setLedger([]);
+    setLedgerPage(1);
+    setLedgerTotal(0);
+    setOperation(null);
+  }
+
+  useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
 
@@ -374,54 +442,17 @@ export default function CustomersPage() {
         return;
       }
 
-      const ring = root.querySelector('.admin-customers__empty-ring');
       const icon = root.querySelector('.admin-customers__empty-icon');
-      const ghosts = root.querySelectorAll('.admin-customers__empty-ghost');
       const copy = root.querySelector('.admin-customers__empty-copy');
       const cue = root.querySelector('.admin-customers__empty-cue');
 
       gsap.fromTo(
         [icon, copy, cue].filter(Boolean),
         { opacity: 0, y: 10 },
-        { opacity: 1, y: 0, duration: 0.45, stagger: 0.06, ease: 'power2.out' }
+        { opacity: 1, y: 0, duration: 0.45, stagger: 0.06, ease: 'power2.out' },
       );
-
-      if (ring) {
-        gsap.to(ring, {
-          scale: 1.06,
-          opacity: 0.45,
-          duration: 2.2,
-          ease: 'sine.inOut',
-          yoyo: true,
-          repeat: -1,
-        });
-      }
-
-      if (ghosts.length) {
-        gsap.fromTo(
-          ghosts,
-          { x: 12, opacity: 0 },
-          {
-            x: 0,
-            opacity: 1,
-            duration: 0.5,
-            stagger: 0.08,
-            ease: 'power2.out',
-            delay: 0.15,
-          }
-        );
-        gsap.to(ghosts, {
-          x: -3,
-          duration: 1.8,
-          stagger: 0.12,
-          ease: 'sine.inOut',
-          yoyo: true,
-          repeat: -1,
-          delay: 0.7,
-        });
-      }
     },
-    { dependencies: [selectedId], scope: emptyHintRef, revertOnUpdate: true }
+    { dependencies: [selectedId], scope: emptyHintRef, revertOnUpdate: true },
   );
 
   useGSAP(
@@ -436,10 +467,10 @@ export default function CustomersPage() {
       gsap.fromTo(
         el,
         { y: -36, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.34, ease: 'power2.out' }
+        { y: 0, opacity: 1, duration: 0.34, ease: 'power2.out' },
       );
     },
-    { dependencies: [detail?.id], scope: detailShellRef }
+    { dependencies: [detail?.id], scope: detailShellRef },
   );
 
   useGSAP(
@@ -453,17 +484,22 @@ export default function CustomersPage() {
         gsap.set(card, { clearProps: 'all', autoAlpha: 1, y: 0, scale: 1 });
         return;
       }
-      gsap.fromTo(backdrop, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.22, ease: 'power2.out' });
+      gsap.fromTo(
+        backdrop,
+        { autoAlpha: 0 },
+        { autoAlpha: 1, duration: 0.22, ease: 'power2.out' },
+      );
       gsap.fromTo(
         card,
         { y: 28, scale: 0.94, autoAlpha: 0 },
-        { y: 0, scale: 1, autoAlpha: 1, duration: 0.38, ease: 'power3.out' }
+        { y: 0, scale: 1, autoAlpha: 1, duration: 0.38, ease: 'power3.out' },
       );
     },
-    { dependencies: [deleteTarget?.id] }
+    { dependencies: [deleteTarget?.id] },
   );
 
   const loadList = useCallback(async () => {
+    const request = ++listRequest.current;
     const params = new URLSearchParams({
       limit: String(pageSize),
       page: String(page),
@@ -475,6 +511,16 @@ export default function CustomersPage() {
       debtorCount: number;
       pagination: { page: number; limit: number; total: number };
     }>(`/api/admin/customers?${params}`);
+    if (request !== listRequest.current) return;
+    const lastPage = Math.max(
+      1,
+      Math.ceil((res.pagination?.total ?? res.data.length) / pageSize),
+    );
+    if (page > lastPage) {
+      setPage(lastPage);
+      return;
+    }
+    setListError(false);
     setItems(res.data);
     setDebtorCount(res.debtorCount);
     setTotal(res.pagination?.total ?? res.data.length);
@@ -488,10 +534,14 @@ export default function CustomersPage() {
     ]);
     setRewardRules(rewardsRes.rules || []);
     setRewardProducts(
-      (productsRes.data || []).map((p) => ({ id: p.id, name: p.name })).filter((p) => p.name)
+      (productsRes.data || [])
+        .map((p) => ({ id: p.id, name: p.name }))
+        .filter((p) => p.name),
     );
     setRewardGroups(
-      (groupsRes.data || []).map((g) => ({ id: g.id, name: g.name })).filter((g) => g.name)
+      (groupsRes.data || [])
+        .map((g) => ({ id: g.id, name: g.name }))
+        .filter((g) => g.name),
     );
   }, []);
 
@@ -501,6 +551,7 @@ export default function CustomersPage() {
     loadList()
       .catch(() => {
         if (!cancelled) {
+          setListError(true);
           setItems([]);
           setTotal(0);
         }
@@ -511,14 +562,15 @@ export default function CustomersPage() {
     return () => {
       cancelled = true;
     };
-  }, [loadList]);
+  }, [loadList, listRevision]);
 
   useEffect(() => {
     let cancelled = false;
     setRewardsLoading(true);
+    setRewardsError(false);
     loadRewards()
       .catch(() => {
-        if (!cancelled) setRewardRules([]);
+        if (!cancelled) setRewardsError(true);
       })
       .finally(() => {
         if (!cancelled) setRewardsLoading(false);
@@ -526,7 +578,7 @@ export default function CustomersPage() {
     return () => {
       cancelled = true;
     };
-  }, [loadRewards]);
+  }, [loadRewards, rewardRevision]);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -535,12 +587,6 @@ export default function CustomersPage() {
     }, 280);
     return () => window.clearTimeout(t);
   }, [searchDraft]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 2400);
-    return () => window.clearTimeout(t);
-  }, [toast]);
 
   function applyDetailForms(customer: CustomerRow) {
     setPointsDraft(String(customer.points));
@@ -570,11 +616,14 @@ export default function CustomersPage() {
 
   async function openCustomer(
     id: number,
-    opts?: { keepTab?: boolean; skipAnim?: boolean; ledgerPage?: number }
+    opts?: { keepTab?: boolean; skipAnim?: boolean; ledgerPage?: number },
   ) {
     const prevId = selectedIdRef.current;
     const shouldAnimOut =
-      !opts?.skipAnim && prevId != null && prevId !== id && detailBodyRef.current != null;
+      !opts?.skipAnim &&
+      prevId != null &&
+      prevId !== id &&
+      detailBodyRef.current != null;
 
     const token = ++animTokenRef.current;
     skipEnterAnimRef.current = Boolean(opts?.skipAnim);
@@ -586,6 +635,13 @@ export default function CustomersPage() {
     }
 
     setSelectedId(id);
+    selectedIdRef.current = id;
+    setDetailError(false);
+    if (prevId !== id) {
+      setDetail(null);
+      setLedger([]);
+      setOperation(null);
+    }
     if (!opts?.keepTab) setDetailTab('manage');
     if (prevId !== id) setLedgerPage(1);
     else if (opts?.ledgerPage != null) setLedgerPage(opts.ledgerPage);
@@ -609,12 +665,14 @@ export default function CustomersPage() {
       setDetailLoading(false);
     } catch (e) {
       if (token !== animTokenRef.current) return;
-      setToast(e instanceof Error ? e.message : 'Yüklenemedi');
+      setToast(e instanceof Error ? e.message : 'Yüklenemedi', true);
+      setDetailError(true);
       setDetailLoading(false);
     }
   }
 
   function requestOpenCustomer(id: number) {
+    if (busyRef.current || deleteBusy) return;
     if (isCustomerUnlocked(id)) {
       void openCustomer(id);
       return;
@@ -646,7 +704,7 @@ export default function CustomersPage() {
           await openCustomer(openId, { skipAnim: true });
         }
       } catch (e) {
-        setToast(e instanceof Error ? e.message : 'Kod doğrulanamadı');
+        setToast(e instanceof Error ? e.message : 'Kod doğrulanamadı', true);
         setUnlockMode('code');
         setUnlockOpen(true);
       } finally {
@@ -657,7 +715,7 @@ export default function CustomersPage() {
             next.delete('open');
             return next;
           },
-          { replace: true }
+          { replace: true },
         );
       }
     })();
@@ -680,21 +738,21 @@ export default function CustomersPage() {
           stagger: 0.035,
           ease: 'power2.out',
           overwrite: 'auto',
-        }
+        },
       );
       const undo = undoBtnRef.current;
       if (undo) {
         gsap.fromTo(
           undo,
           { scale: 0.86, opacity: 0 },
-          { scale: 1, opacity: 1, duration: 0.28, ease: 'back.out(1.6)' }
+          { scale: 1, opacity: 1, duration: 0.28, ease: 'back.out(1.6)' },
         );
       }
     },
     {
       dependencies: [ledger[0]?.id, ledger.length, detailTab, ledgerPage],
       revertOnUpdate: true,
-    }
+    },
   );
 
   async function refreshSelected(opts?: { skipAnim?: boolean }) {
@@ -708,17 +766,19 @@ export default function CustomersPage() {
   }
 
   async function savePoints(mode: 'set' | 'delta', value: number) {
-    if (!detail || busy) return;
+    if (!detail || busyRef.current) return;
     setBusy(true);
     try {
       await api(`/api/admin/customers/${detail.id}/points`, {
         method: 'PATCH',
-        body: JSON.stringify(mode === 'set' ? { set: value } : { delta: value }),
+        body: JSON.stringify(
+          mode === 'set' ? { set: value } : { delta: value },
+        ),
       });
       setToast('Puan güncellendi');
       await refreshSelected();
     } catch (e) {
-      setToast(e instanceof Error ? e.message : 'Puan kaydedilemedi');
+      setToast(e instanceof Error ? e.message : 'Puan kaydedilemedi', true);
     } finally {
       setBusy(false);
     }
@@ -729,7 +789,7 @@ export default function CustomersPage() {
     value?: number;
     note?: string;
   }) {
-    if (!detail || busy) return;
+    if (!detail || busyRef.current) return;
     const type = opts?.type ?? discountType;
     const value =
       opts?.value !== undefined ? opts.value : Number(discountDraft) || 0;
@@ -743,14 +803,14 @@ export default function CustomersPage() {
       setToast(value <= 0 ? 'İndirim kaldırıldı' : 'İndirim kaydedildi');
       await refreshSelected();
     } catch (e) {
-      setToast(e instanceof Error ? e.message : 'İndirim kaydedilemedi');
+      setToast(e instanceof Error ? e.message : 'İndirim kaydedilemedi', true);
     } finally {
       setBusy(false);
     }
   }
 
   async function addDebt() {
-    if (!detail || busy) return;
+    if (!detail || busyRef.current) return;
     const amount = Number(debtAmount);
     if (!(amount > 0)) return;
     setBusy(true);
@@ -766,14 +826,14 @@ export default function CustomersPage() {
       setLedgerPage(1);
       await refreshSelected();
     } catch (e) {
-      setToast(e instanceof Error ? e.message : 'Borç eklenemedi');
+      setToast(e instanceof Error ? e.message : 'Borç eklenemedi', true);
     } finally {
       setBusy(false);
     }
   }
 
   async function addPayment() {
-    if (!detail || busy) return;
+    if (!detail || busyRef.current) return;
     const amount = Number(payAmount);
     if (!(amount > 0)) return;
     setBusy(true);
@@ -789,14 +849,14 @@ export default function CustomersPage() {
       setLedgerPage(1);
       await refreshSelected();
     } catch (e) {
-      setToast(e instanceof Error ? e.message : 'Ödeme kaydedilemedi');
+      setToast(e instanceof Error ? e.message : 'Ödeme kaydedilemedi', true);
     } finally {
       setBusy(false);
     }
   }
 
   async function undoLast() {
-    if (!detail || busy || ledgerTotal <= 0) return;
+    if (!detail || busyRef.current || ledgerTotal <= 0) return;
     setBusy(true);
     try {
       const res = await api<{
@@ -812,7 +872,7 @@ export default function CustomersPage() {
       setToast('Son işlem geri alındı');
       await loadList();
     } catch (e) {
-      setToast(e instanceof Error ? e.message : 'Geri alınamadı');
+      setToast(e instanceof Error ? e.message : 'Geri alınamadı', true);
     } finally {
       setBusy(false);
     }
@@ -827,7 +887,7 @@ export default function CustomersPage() {
   async function confirmDelete() {
     if (!deleteTarget || deleteBusy) return;
     if (!deletePassword.trim()) {
-      setToast('Şifre gerekli');
+      setToast('Şifre gerekli', true);
       return;
     }
     setDeleteBusy(true);
@@ -847,13 +907,15 @@ export default function CustomersPage() {
       }
       await loadList();
     } catch (e) {
-      setToast(e instanceof Error ? e.message : 'Silinemedi');
+      setToast(e instanceof Error ? e.message : 'Silinemedi', true);
     } finally {
       setDeleteBusy(false);
     }
   }
 
   async function persistRewards(next: PointsRewardRule[], toastMsg?: string) {
+    if (rewardsBusy || rewardsError)
+      throw new Error('Ödül listesi henüz hazır değil.');
     setRewardsBusy(true);
     try {
       const ordered = next.map((r, i) => ({ ...r, sortOrder: i }));
@@ -862,12 +924,12 @@ export default function CustomersPage() {
         {
           method: 'PUT',
           body: JSON.stringify({ rules: ordered }),
-        }
+        },
       );
       setRewardRules(res.rules || ordered);
       if (toastMsg) setToast(toastMsg);
     } catch (e) {
-      setToast(e instanceof Error ? e.message : 'Kurallar kaydedilemedi');
+      setToast(e instanceof Error ? e.message : 'Kurallar kaydedilemedi', true);
       throw e;
     } finally {
       setRewardsBusy(false);
@@ -897,6 +959,7 @@ export default function CustomersPage() {
   }
 
   function closeRewardComposer() {
+    if (rewardsBusy) return;
     setComposerOpen(false);
     setEditingRewardId(null);
     setRewardDraft(emptyRewardDraft());
@@ -904,7 +967,10 @@ export default function CustomersPage() {
 
   function buildRuleFromDraft(): PointsRewardRule | null {
     const kind = rewardDraft.kind;
-    const pointsCost = Math.max(0, Math.round(Number(rewardDraft.pointsCost) || 0));
+    const pointsCost = Math.max(
+      0,
+      Math.round(Number(rewardDraft.pointsCost) || 0),
+    );
     if (pointsCost <= 0) {
       setToast('Puan maliyeti gerekli');
       return null;
@@ -1017,8 +1083,13 @@ export default function CustomersPage() {
         const prev = rewardRules.find((r) => r.id === editingRewardId);
         const next = rewardRules.map((r) =>
           r.id === editingRewardId
-            ? { ...built, id: editingRewardId, active: prev?.active !== false, sortOrder: r.sortOrder }
-            : r
+            ? {
+                ...built,
+                id: editingRewardId,
+                active: prev?.active !== false,
+                sortOrder: r.sortOrder,
+              }
+            : r,
         );
         await persistRewards(next, 'Ödül kuralı güncellendi');
       } else {
@@ -1032,7 +1103,7 @@ export default function CustomersPage() {
 
   async function toggleRewardActive(id: string) {
     const next = rewardRules.map((r) =>
-      r.id === id ? { ...r, active: !r.active } : r
+      r.id === id ? { ...r, active: !r.active } : r,
     );
     try {
       await persistRewards(next);
@@ -1042,14 +1113,17 @@ export default function CustomersPage() {
   }
 
   async function deleteReward(id: string) {
-    const ok = window.confirm('Bu ödül kuralı silinsin mi?');
-    if (!ok) return;
+    setRewardDeleteId(id);
+  }
+
+  async function confirmRewardDelete(id: string) {
     try {
       await persistRewards(
         rewardRules.filter((r) => r.id !== id),
-        'Ödül kuralı silindi'
+        'Ödül kuralı silindi',
       );
       if (editingRewardId === id) closeRewardComposer();
+      setRewardDeleteId(null);
     } catch {
       /* toast already set */
     }
@@ -1090,34 +1164,601 @@ export default function CustomersPage() {
   const discountPresets =
     discountType === 'percent' ? [5, 10, 15, 20] : [25, 50, 100];
 
+  const detailPanel = (
+    <aside
+      className={`admin-customers__detail${selectedId ? ' is-visible' : ''}`}
+    >
+      {selectedId && !detail && (
+        <button
+          type="button"
+          className="admin-customers__icon-close customer-loading-close"
+          aria-label="Müşteri kartını kapat"
+          disabled={busy}
+          onClick={closeDetail}
+        >
+          <X size={18} />
+        </button>
+      )}
+      <div className="admin-customers__detail-shell" ref={detailShellRef}>
+        {!selectedId ? (
+          <div className="admin-customers__detail-empty" ref={emptyHintRef}>
+            <div className="admin-customers__empty-hint admin-customers__empty-hint--unlock">
+              <div className="admin-customers__empty-visual" aria-hidden>
+                <span className="admin-customers__empty-icon">
+                  <Lock className="w-7 h-7" />
+                </span>
+              </div>
+
+              <div className="admin-customers__empty-copy">
+                <h3>Müşteri kartını açın</h3>
+                <p>
+                  Müşteri kartı için kişisel QR veya 6 haneli kod gerekli. Liste
+                  sadece özet gösterir.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : detailLoading && !detail ? (
+          <div className="admin-customers__loading">
+            <Spinner />
+          </div>
+        ) : detailError && !detail ? (
+          <div className="admin-customers__empty" role="alert">
+            <p>Müşteri kartı yüklenemedi.</p>
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedId)
+                  void openCustomer(selectedId, { skipAnim: true });
+              }}
+            >
+              Tekrar dene
+            </button>
+          </div>
+        ) : detail ? (
+          <div className="admin-customers__detail-body" ref={detailBodyRef}>
+            <div className="admin-customers__detail-inner">
+              <header className="admin-customers__detail-head">
+                <div className="admin-customers__detail-title">
+                  <span className="admin-customers__avatar is-lg" aria-hidden>
+                    {initials(detail.fullName)}
+                  </span>
+                  <div>
+                    <h2>{detail.fullName}</h2>
+                    <p>
+                      {[detail.phone, detail.email]
+                        .filter(Boolean)
+                        .join(' · ') || 'İletişim bilgisi yok'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="admin-customers__icon-close"
+                  aria-label="Müşteri kartını kapat"
+                  disabled={busy || deleteBusy}
+                  onClick={closeDetail}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </header>
+
+              {summary ? (
+                <div className="admin-customers__stats">
+                  {summary.map((s) => (
+                    <div
+                      key={s.key}
+                      ref={s.ref}
+                      className={`admin-customers__stat${s.warn ? ' is-warn' : ''}`}
+                      data-stat={s.key}
+                    >
+                      <s.icon className="w-4 h-4" />
+                      <span>{s.label}</span>
+                      <strong>{s.value}</strong>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="admin-customers__tabs-wrap">
+                <div className="admin-customers__tabs" role="tablist">
+                  <button
+                    type="button"
+                    role="tab"
+                    disabled={busy || detailLoading}
+                    aria-selected={detailTab === 'manage'}
+                    className={detailTab === 'manage' ? 'is-active' : ''}
+                    onClick={() => setDetailTab('manage')}
+                  >
+                    İşlemler
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    disabled={busy || detailLoading}
+                    aria-selected={detailTab === 'ledger'}
+                    className={detailTab === 'ledger' ? 'is-active' : ''}
+                    onClick={() => setDetailTab('ledger')}
+                  >
+                    Hareketler
+                    {ledgerTotal > 0 ? <em>{ledgerTotal}</em> : null}
+                  </button>
+                </div>
+              </div>
+
+              <div className="admin-customers__tab-body" key={detailTab}>
+                {detailTab === 'manage' ? (
+                  <fieldset
+                    className="admin-customers__manage"
+                    data-operation={operation || 'none'}
+                    disabled={busy || detailLoading}
+                  >
+                    {!operation ? (
+                      <div className="customer-actions">
+                        {[
+                          {
+                            id: 'points' as const,
+                            icon: Coins,
+                            title: 'Puan',
+                            value: detail.points + ' puan',
+                          },
+                          {
+                            id: 'discount' as const,
+                            icon: Percent,
+                            title: 'Özel indirim',
+                            value: detail.discount
+                              ? formatDiscount(detail.discount)
+                              : 'Tanımlı değil',
+                          },
+                          {
+                            id: 'debt' as const,
+                            icon: Wallet,
+                            title: 'Borç ekle',
+                            value: 'Hesaba işle',
+                          },
+                          {
+                            id: 'payment' as const,
+                            icon: Receipt,
+                            title: 'Ödeme al',
+                            value: formatMoney(detail.debtBalance),
+                          },
+                        ].map((action) => (
+                          <button
+                            key={action.id}
+                            type="button"
+                            onClick={() => setOperation(action.id)}
+                          >
+                            <action.icon size={23} strokeWidth={1.5} />
+                            <ArrowUpRight size={16} />
+                            <strong>{action.title}</strong>
+                            <span>{action.value}</span>
+                          </button>
+                        ))}
+                        <p>Yapmak istediğiniz işlemi seçin.</p>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="customer-action-back"
+                        onClick={() => setOperation(null)}
+                      >
+                        <ArrowLeft size={16} />
+                        Diğer işlemler
+                      </button>
+                    )}
+                    <section className="admin-customers__block">
+                      <div className="admin-customers__block-head">
+                        <h3>
+                          <Coins className="w-4 h-4" /> Puan
+                        </h3>
+                        <div className="admin-customers__quick admin-customers__quick--points">
+                          {[10, 50, 100].map((n) => (
+                            <button
+                              key={`p-${n}`}
+                              type="button"
+                              disabled={busy}
+                              onClick={() => {
+                                const base = Number(pointsDraft) || 0;
+                                setPointsDraft(String(Math.max(0, base + n)));
+                              }}
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              {n}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="admin-customers__inline">
+                        <input
+                          inputMode="numeric"
+                          value={pointsDraft}
+                          onChange={(e) =>
+                            setPointsDraft(sanitizeNumberInput(e.target.value))
+                          }
+                          aria-label="Puan"
+                        />
+                        <button
+                          type="button"
+                          className="admin-customers__quick-minus"
+                          disabled={busy || (Number(pointsDraft) || 0) <= 0}
+                          title="−10"
+                          aria-label="10 puan azalt"
+                          onClick={() => {
+                            const base = Number(pointsDraft) || 0;
+                            setPointsDraft(String(Math.max(0, base - 10)));
+                          }}
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                          10
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-customers__primary"
+                          disabled={busy}
+                          onClick={() =>
+                            void savePoints('set', Number(pointsDraft) || 0)
+                          }
+                        >
+                          Kaydet
+                        </button>
+                      </div>
+                    </section>
+
+                    <section className="admin-customers__block">
+                      <div className="admin-customers__block-head">
+                        <h3>
+                          <Percent className="w-4 h-4" /> Özel indirim
+                        </h3>
+                        <div
+                          className="admin-customers__discount-type"
+                          role="group"
+                        >
+                          <button
+                            type="button"
+                            className={
+                              discountType === 'percent' ? 'is-active' : ''
+                            }
+                            disabled={busy}
+                            onClick={() => setDiscountType('percent')}
+                          >
+                            %
+                          </button>
+                          <button
+                            type="button"
+                            className={
+                              discountType === 'amount' ? 'is-active' : ''
+                            }
+                            disabled={busy}
+                            onClick={() => setDiscountType('amount')}
+                          >
+                            ₺
+                          </button>
+                        </div>
+                      </div>
+                      <div className="admin-customers__quick">
+                        {discountPresets.map((n) => (
+                          <button
+                            key={`d-${discountType}-${n}`}
+                            type="button"
+                            disabled={busy}
+                            onClick={() => setDiscountDraft(String(n))}
+                          >
+                            {discountType === 'amount' ? `${n}₺` : `%${n}`}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setDiscountDraft('0')}
+                        >
+                          Kaldır
+                        </button>
+                      </div>
+                      <div className="admin-customers__inline">
+                        <input
+                          inputMode="decimal"
+                          placeholder={discountType === 'amount' ? '₺' : '%'}
+                          value={discountDraft}
+                          onChange={(e) =>
+                            setDiscountDraft(
+                              sanitizeNumberInput(e.target.value, {
+                                allowDecimal: discountType === 'amount',
+                              }),
+                            )
+                          }
+                          aria-label="İndirim değeri"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Not"
+                          value={discountNote}
+                          onChange={(e) => setDiscountNote(e.target.value)}
+                          aria-label="İndirim notu"
+                        />
+                        <button
+                          type="button"
+                          className="admin-customers__primary"
+                          disabled={busy}
+                          onClick={() => void saveDiscount()}
+                        >
+                          Uygula
+                        </button>
+                      </div>
+                    </section>
+
+                    <section className="admin-customers__block">
+                      <div className="admin-customers__block-head">
+                        <h3>
+                          <Wallet className="w-4 h-4" /> Hesap / borç
+                        </h3>
+                        <p className="admin-customers__balance">
+                          Bakiye{' '}
+                          <strong
+                            className={detail.debtBalance > 0 ? 'is-debt' : ''}
+                          >
+                            {formatMoney(detail.debtBalance)}
+                          </strong>
+                        </p>
+                      </div>
+                      <div className="admin-customers__forms">
+                        <div>
+                          <span>Borç ekle</span>
+                          <div className="admin-customers__inline">
+                            <input
+                              inputMode="decimal"
+                              placeholder="Tutar"
+                              aria-label="Borç tutarı"
+                              value={debtAmount}
+                              onChange={(e) =>
+                                setDebtAmount(
+                                  sanitizeNumberInput(e.target.value, {
+                                    allowDecimal: true,
+                                  }),
+                                )
+                              }
+                            />
+                            <input
+                              type="text"
+                              placeholder="Not"
+                              aria-label="Borç notu"
+                              value={debtNote}
+                              onChange={(e) => setDebtNote(e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              className="admin-customers__warn"
+                              disabled={busy || !(Number(debtAmount) > 0)}
+                              onClick={() => void addDebt()}
+                            >
+                              Ekle
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <span>Ödeme / kapat</span>
+                          <div className="admin-customers__inline">
+                            <input
+                              inputMode="decimal"
+                              placeholder="Tutar"
+                              aria-label="Ödeme tutarı"
+                              value={payAmount}
+                              onChange={(e) =>
+                                setPayAmount(
+                                  sanitizeNumberInput(e.target.value, {
+                                    allowDecimal: true,
+                                  }),
+                                )
+                              }
+                            />
+                            <input
+                              type="text"
+                              placeholder="Not"
+                              aria-label="Ödeme notu"
+                              value={payNote}
+                              onChange={(e) => setPayNote(e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              className="admin-customers__ok"
+                              disabled={
+                                busy ||
+                                detail.debtBalance <= 0 ||
+                                !(Number(payAmount) > 0)
+                              }
+                              onClick={() => void addPayment()}
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              Öde
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                  </fieldset>
+                ) : (
+                  <div className="admin-customers__ledger-wrap">
+                    {ledger.length === 0 ? (
+                      <div className="admin-customers__ledger-empty">
+                        <Receipt className="w-7 h-7" />
+                        <p>Henüz hareket yok</p>
+                      </div>
+                    ) : (
+                      <>
+                        <ul
+                          className="admin-customers__ledger"
+                          ref={ledgerListRef}
+                        >
+                          {ledger.map((e, i) => (
+                            <li
+                              key={e.id}
+                              className={`is-${e.kind}${
+                                i === 0 && ledgerPage === 1 ? ' is-latest' : ''
+                              }`}
+                            >
+                              <div className="admin-customers__ledger-main">
+                                <div>
+                                  <strong>{ledgerKindLabel(e.kind)}</strong>
+                                  <small>{formatDate(e.createdAt)}</small>
+                                  {e.note ? (
+                                    <span className="admin-customers__ledger-note">
+                                      {e.note}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <em>
+                                  {e.kind === 'points'
+                                    ? `${e.amount > 0 ? '+' : ''}${e.amount} p`
+                                    : e.kind === 'discount'
+                                      ? e.amount <= 0
+                                        ? 'Kaldırıldı'
+                                        : String(e.amount)
+                                      : `${e.kind === 'payment' ? '−' : '+'}${formatMoney(e.amount)}`}
+                                </em>
+                              </div>
+                              {i === 0 && ledgerPage === 1 ? (
+                                <button
+                                  ref={undoBtnRef}
+                                  type="button"
+                                  className="admin-customers__ledger-undo"
+                                  disabled={busy}
+                                  onClick={() => void undoLast()}
+                                >
+                                  <Undo2 className="w-3.5 h-3.5" />
+                                  Geri al
+                                </button>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ul>
+                        {ledgerTotal > ledgerPageSize ? (
+                          <div className="admin-customers__pager admin-customers__pager--ledger">
+                            <span>
+                              {(ledgerPage - 1) * ledgerPageSize + 1}–
+                              {Math.min(
+                                ledgerPage * ledgerPageSize,
+                                ledgerTotal,
+                              )}{' '}
+                              / {ledgerTotal}
+                            </span>
+                            <div className="admin-customers__pager-btns">
+                              <button
+                                type="button"
+                                disabled={ledgerPage <= 1 || busy}
+                                aria-label="Önceki hareket sayfası"
+                                onClick={() => {
+                                  if (selectedId == null) return;
+                                  void openCustomer(selectedId, {
+                                    keepTab: true,
+                                    skipAnim: true,
+                                    ledgerPage: ledgerPage - 1,
+                                  });
+                                }}
+                              >
+                                <ChevronLeft className="w-4 h-4" />
+                              </button>
+                              <em>
+                                {ledgerPage} / {ledgerPageCount}
+                              </em>
+                              <button
+                                type="button"
+                                disabled={ledgerPage >= ledgerPageCount || busy}
+                                aria-label="Sonraki hareket sayfası"
+                                onClick={() => {
+                                  if (selectedId == null) return;
+                                  void openCustomer(selectedId, {
+                                    keepTab: true,
+                                    skipAnim: true,
+                                    ledgerPage: ledgerPage + 1,
+                                  });
+                                }}
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="admin-customers__loading">
+            <Spinner />
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+
   return (
     <div className="admin-customers">
       <PageHeader
         title="Müşteriler"
-        actions={<>
-          <button type="button" className="admin-customers__header-action"
-            onClick={() => { setUnlockMode('scan'); setUnlockOpen(true); }}>
-            <Camera size={17} /> QR okut
-          </button>
-          <button type="button" className="admin-customers__header-action is-primary"
-            onClick={() => { setUnlockMode('code'); setUnlockOpen(true); }}>
-            <Hash size={17} /> Kod ile aç
-          </button>
-        </>}
+        subtitle={
+          loading
+            ? 'Müşteri kartları, puanlar ve hesap hareketleri.'
+            : total + ' müşteri · ' + debtorCount + ' borçlu'
+        }
+        actions={
+          <>
+            <button
+              type="button"
+              className="admin-customers__header-action"
+              disabled={busy || deleteBusy}
+              onClick={() => {
+                setUnlockMode('scan');
+                setUnlockOpen(true);
+              }}
+            >
+              <Camera size={17} /> QR okut
+            </button>
+            <button
+              type="button"
+              className="admin-customers__header-action is-primary"
+              disabled={busy || deleteBusy}
+              onClick={() => {
+                setUnlockMode('code');
+                setUnlockOpen(true);
+              }}
+            >
+              <Hash size={17} /> Kod ile aç
+            </button>
+          </>
+        }
       />
-      <p className="admin-customers__intro">Müşteri kartları, puanlar ve hesap hareketleri.</p>
-      <div className="admin-customers__workspace" role="group" aria-label="Müşteri yönetimi">
-        <button type="button" aria-pressed={workspace === 'customers'} onClick={() => setWorkspace('customers')}><UserRound size={16} /> Müşteri listesi</button>
-        <button type="button" aria-pressed={workspace === 'rewards'} onClick={() => setWorkspace('rewards')}><Gift size={16} /> Puan ödülleri</button>
+
+      <div
+        className="admin-customers__workspace"
+        role="group"
+        aria-label="Müşteri yönetimi"
+      >
+        <button
+          type="button"
+          disabled={busy || deleteBusy}
+          aria-pressed={workspace === 'customers'}
+          onClick={() => setWorkspace('customers')}
+        >
+          <UserRound size={16} /> Müşteri listesi
+        </button>
+        <button
+          type="button"
+          disabled={busy || deleteBusy}
+          aria-pressed={workspace === 'rewards'}
+          onClick={() => setWorkspace('rewards')}
+        >
+          <Gift size={16} /> Puan ödülleri
+        </button>
       </div>
 
-      {toast ? (
-        <div className="admin-customers__toast" role="status">
-          {toast}
-        </div>
-      ) : null}
+      <AdminToast notice={notice} onClose={() => setNotice(null)} />
 
-      <div hidden={workspace !== 'customers'} className={`admin-customers__layout${selectedId ? ' is-open' : ''}`}>
+      <div
+        hidden={workspace !== 'customers'}
+        className={`admin-customers__layout${selectedId ? ' is-open' : ''}`}
+      >
         <section className="admin-customers__list-panel">
           <div className="admin-customers__toolbar">
             <label className="admin-customers__search">
@@ -1125,14 +1766,20 @@ export default function CustomersPage() {
               <input
                 type="search"
                 aria-label="Müşteri ara"
+                disabled={busy || deleteBusy}
                 value={searchDraft}
                 onChange={(e) => setSearchDraft(e.target.value)}
                 placeholder="Ad, e-posta veya telefon ara…"
               />
             </label>
-            <div className="admin-customers__filters" role="group" aria-label="Müşteri filtresi">
+            <div
+              className="admin-customers__filters"
+              role="group"
+              aria-label="Müşteri filtresi"
+            >
               <button
                 type="button"
+                disabled={busy || deleteBusy}
                 aria-pressed={filter === 'all'}
                 className={filter === 'all' ? 'is-active' : ''}
                 onClick={() => {
@@ -1144,6 +1791,7 @@ export default function CustomersPage() {
               </button>
               <button
                 type="button"
+                disabled={busy || deleteBusy}
                 aria-pressed={filter === 'debtors'}
                 className={filter === 'debtors' ? 'is-active' : ''}
                 onClick={() => {
@@ -1161,6 +1809,14 @@ export default function CustomersPage() {
             <div className="admin-customers__loading">
               <Spinner />
             </div>
+          ) : listError ? (
+            <div className="admin-customers__empty" role="alert">
+              <UserRound size={28} />
+              <p>Müşteriler yüklenemedi.</p>
+              <button onClick={() => setListRevision((v) => v + 1)}>
+                Tekrar dene
+              </button>
+            </div>
           ) : empty ? (
             <div className="admin-customers__empty">
               <UserRound className="w-8 h-8" />
@@ -1170,43 +1826,49 @@ export default function CustomersPage() {
             <>
               <ul className="admin-customers__list">
                 {items.map((c, i) => (
-                  <li key={c.id} style={{ animationDelay: `${Math.min(i, 14) * 28}ms` }}>
+                  <li
+                    key={c.id}
+                    style={{ animationDelay: `${Math.min(i, 14) * 28}ms` }}
+                  >
                     <div
                       className={`admin-customers__row${selectedId === c.id ? ' is-active' : ''}`}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => requestOpenCustomer(c.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          requestOpenCustomer(c.id);
-                        }
-                      }}
                     >
-                      <span className="admin-customers__avatar" aria-hidden>
-                        {initials(c.fullName)}
-                      </span>
-                      <span className="admin-customers__meta">
-                        <strong>{c.fullName}</strong>
-                        <small>
-                          {[c.phone, c.email].filter(Boolean).join(' · ') || 'İletişim yok'}
-                        </small>
-                      </span>
-                      <span className="admin-customers__badges">
-                        {c.discount ? (
-                          <span className="admin-customers__chip is-discount">
-                            {formatDiscount(c.discount)}
-                          </span>
-                        ) : null}
-                        {c.debtBalance > 0 ? (
-                          <span className="admin-customers__chip is-debt">
-                            {formatMoney(c.debtBalance)}
-                          </span>
-                        ) : null}
-                        <span className="admin-customers__chip is-points">{c.points} p</span>
-                      </span>
                       <button
                         type="button"
+                        className="customer-row-open"
+                        disabled={busy}
+                        aria-label={c.fullName + ' müşteri kartını aç'}
+                        onClick={() => requestOpenCustomer(c.id)}
+                      >
+                        <span className="admin-customers__avatar" aria-hidden>
+                          {initials(c.fullName)}
+                        </span>
+                        <span className="admin-customers__meta">
+                          <strong>{c.fullName}</strong>
+                          <small>
+                            {[c.phone, c.email].filter(Boolean).join(' · ') ||
+                              'İletişim yok'}
+                          </small>
+                        </span>
+                        <span className="admin-customers__badges">
+                          {c.discount ? (
+                            <span className="admin-customers__chip is-discount">
+                              {formatDiscount(c.discount)}
+                            </span>
+                          ) : null}
+                          {c.debtBalance > 0 ? (
+                            <span className="admin-customers__chip is-debt">
+                              {formatMoney(c.debtBalance)}
+                            </span>
+                          ) : null}
+                          <span className="admin-customers__chip is-points">
+                            {c.points} p
+                          </span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy || deleteBusy}
                         className="admin-customers__row-delete"
                         aria-label={`${c.fullName} sil`}
                         title="Sil"
@@ -1228,7 +1890,7 @@ export default function CustomersPage() {
                   <div className="admin-customers__pager-btns">
                     <button
                       type="button"
-                      disabled={page <= 1 || loading}
+                      disabled={page <= 1 || loading || busy}
                       aria-label="Önceki sayfa"
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                     >
@@ -1239,7 +1901,7 @@ export default function CustomersPage() {
                     </em>
                     <button
                       type="button"
-                      disabled={page >= pageCount || loading}
+                      disabled={page >= pageCount || loading || busy}
                       aria-label="Sonraki sayfa"
                       onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
                     >
@@ -1252,474 +1914,48 @@ export default function CustomersPage() {
           )}
         </section>
 
-        <aside className={`admin-customers__detail${selectedId ? ' is-visible' : ''}`}>
-          <div className="admin-customers__detail-shell" ref={detailShellRef}>
-            {!selectedId ? (
-              <div className="admin-customers__detail-empty" ref={emptyHintRef}>
-                <div className="admin-customers__empty-hint admin-customers__empty-hint--unlock">
-                  <div className="admin-customers__empty-visual" aria-hidden>
-                    <span className="admin-customers__empty-icon">
-                      <Lock className="w-7 h-7" />
-                    </span>
-                  </div>
-
-                  <div className="admin-customers__empty-copy">
-                    <h3>Müşteri kartını açın</h3>
-                    <p>
-                      Müşteri kartı için kişisel QR veya 6 haneli kod gerekli. Liste
-                      sadece özet gösterir.
-                    </p>
-                  </div>
-
-                  <div className="admin-customers__unlock-actions">
-                    <button
-                      type="button"
-                      className="admin-customers__unlock-btn"
-                      onClick={() => {
-                        setUnlockMode('scan');
-                        setUnlockOpen(true);
-                      }}
-                    >
-                      <Camera className="w-4 h-4" />
-                      QR okut
-                    </button>
-                    <button
-                      type="button"
-                      className="admin-customers__unlock-btn is-soft"
-                      onClick={() => {
-                        setUnlockMode('code');
-                        setUnlockOpen(true);
-                      }}
-                    >
-                      <Hash className="w-4 h-4" />
-                      Kod yaz
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : detailLoading && !detail ? (
-              <div className="admin-customers__loading">
-                <Spinner />
-              </div>
-            ) : detail ? (
-              <div className="admin-customers__detail-body" ref={detailBodyRef}>
-                <div className="admin-customers__detail-inner">
-                  <header className="admin-customers__detail-head">
-                    <div className="admin-customers__detail-title">
-                      <span className="admin-customers__avatar is-lg" aria-hidden>
-                        {initials(detail.fullName)}
-                      </span>
-                      <div>
-                        <h2>{detail.fullName}</h2>
-                        <p>
-                          {[detail.phone, detail.email].filter(Boolean).join(' · ') ||
-                            'İletişim bilgisi yok'}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="admin-customers__icon-close"
-                      aria-label="Kapat"
-                      onClick={() => {
-                        setSelectedId(null);
-                        setDetail(null);
-                        setLedger([]);
-                        setLedgerPage(1);
-                        setLedgerTotal(0);
-                      }}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </header>
-
-                  {summary ? (
-                    <div className="admin-customers__stats">
-                      {summary.map((s) => (
-                        <div
-                          key={s.key}
-                          ref={s.ref}
-                          className={`admin-customers__stat${s.warn ? ' is-warn' : ''}`}
-                          data-stat={s.key}
-                        >
-                          <s.icon className="w-4 h-4" />
-                          <span>{s.label}</span>
-                          <strong>{s.value}</strong>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  <div className="admin-customers__tabs-wrap">
-                    <div className="admin-customers__tabs" role="tablist">
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={detailTab === 'manage'}
-                        className={detailTab === 'manage' ? 'is-active' : ''}
-                        onClick={() => setDetailTab('manage')}
-                      >
-                        İşlemler
-                      </button>
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={detailTab === 'ledger'}
-                        className={detailTab === 'ledger' ? 'is-active' : ''}
-                        onClick={() => setDetailTab('ledger')}
-                      >
-                        Hareketler
-                        {ledgerTotal > 0 ? <em>{ledgerTotal}</em> : null}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="admin-customers__tab-body" key={detailTab}>
-                    {detailTab === 'manage' ? (
-                      <div className="admin-customers__manage">
-                        <section className="admin-customers__block">
-                          <div className="admin-customers__block-head">
-                            <h3>
-                              <Coins className="w-4 h-4" /> Puan
-                            </h3>
-                            <div className="admin-customers__quick admin-customers__quick--points">
-                              {[10, 50, 100].map((n) => (
-                                <button
-                                  key={`p-${n}`}
-                                  type="button"
-                                  disabled={busy}
-                                  onClick={() => {
-                                    const base = Number(pointsDraft) || detail.points || 0;
-                                    setPointsDraft(String(Math.max(0, base + n)));
-                                  }}
-                                >
-                                  <Plus className="w-3.5 h-3.5" />
-                                  {n}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="admin-customers__inline">
-                            <input
-                              inputMode="numeric"
-                              value={pointsDraft}
-                              onChange={(e) =>
-                                setPointsDraft(sanitizeNumberInput(e.target.value))
-                              }
-                              aria-label="Puan"
-                            />
-                            <button
-                              type="button"
-                              className="admin-customers__quick-minus"
-                              disabled={busy || (Number(pointsDraft) || detail.points) <= 0}
-                              title="−10"
-                              aria-label="10 puan azalt"
-                              onClick={() => {
-                                const base = Number(pointsDraft) || detail.points || 0;
-                                setPointsDraft(String(Math.max(0, base - 10)));
-                              }}
-                            >
-                              <Minus className="w-3.5 h-3.5" />
-                              10
-                            </button>
-                            <button
-                              type="button"
-                              className="admin-customers__primary"
-                              disabled={busy}
-                              onClick={() =>
-                                void savePoints('set', Number(pointsDraft) || 0)
-                              }
-                            >
-                              Kaydet
-                            </button>
-                          </div>
-                        </section>
-
-                        <section className="admin-customers__block">
-                          <div className="admin-customers__block-head">
-                            <h3>
-                              <Percent className="w-4 h-4" /> Özel indirim
-                            </h3>
-                            <div className="admin-customers__discount-type" role="group">
-                              <button
-                                type="button"
-                                className={discountType === 'percent' ? 'is-active' : ''}
-                                disabled={busy}
-                                onClick={() => setDiscountType('percent')}
-                              >
-                                %
-                              </button>
-                              <button
-                                type="button"
-                                className={discountType === 'amount' ? 'is-active' : ''}
-                                disabled={busy}
-                                onClick={() => setDiscountType('amount')}
-                              >
-                                ₺
-                              </button>
-                            </div>
-                          </div>
-                          <div className="admin-customers__quick">
-                            {discountPresets.map((n) => (
-                              <button
-                                key={`d-${discountType}-${n}`}
-                                type="button"
-                                disabled={busy}
-                                onClick={() => setDiscountDraft(String(n))}
-                              >
-                                {discountType === 'amount' ? `${n}₺` : `%${n}`}
-                              </button>
-                            ))}
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => setDiscountDraft('0')}
-                            >
-                              Kaldır
-                            </button>
-                          </div>
-                          <div className="admin-customers__inline">
-                            <input
-                              inputMode="decimal"
-                              placeholder={discountType === 'amount' ? '₺' : '%'}
-                              value={discountDraft}
-                              onChange={(e) =>
-                                setDiscountDraft(
-                                  sanitizeNumberInput(e.target.value, {
-                                    allowDecimal: discountType === 'amount',
-                                  })
-                                )
-                              }
-                              aria-label="İndirim değeri"
-                            />
-                            <input
-                              type="text"
-                              placeholder="Not"
-                              value={discountNote}
-                              onChange={(e) => setDiscountNote(e.target.value)}
-                              aria-label="İndirim notu"
-                            />
-                            <button
-                              type="button"
-                              className="admin-customers__primary"
-                              disabled={busy}
-                              onClick={() => void saveDiscount()}
-                            >
-                              Uygula
-                            </button>
-                          </div>
-                        </section>
-
-                        <section className="admin-customers__block">
-                          <div className="admin-customers__block-head">
-                            <h3>
-                              <Wallet className="w-4 h-4" /> Hesap / borç
-                            </h3>
-                            <p className="admin-customers__balance">
-                              Bakiye{' '}
-                              <strong className={detail.debtBalance > 0 ? 'is-debt' : ''}>
-                                {formatMoney(detail.debtBalance)}
-                              </strong>
-                            </p>
-                          </div>
-                          <div className="admin-customers__forms">
-                            <div>
-                              <span>Borç ekle</span>
-                              <div className="admin-customers__inline">
-                                <input
-                                  inputMode="decimal"
-                                  placeholder="Tutar"
-                                  value={debtAmount}
-                                  onChange={(e) =>
-                                    setDebtAmount(
-                                      sanitizeNumberInput(e.target.value, {
-                                        allowDecimal: true,
-                                      })
-                                    )
-                                  }
-                                />
-                                <input
-                                  type="text"
-                                  placeholder="Not"
-                                  value={debtNote}
-                                  onChange={(e) => setDebtNote(e.target.value)}
-                                />
-                                <button
-                                  type="button"
-                                  className="admin-customers__warn"
-                                  disabled={busy || !(Number(debtAmount) > 0)}
-                                  onClick={() => void addDebt()}
-                                >
-                                  Ekle
-                                </button>
-                              </div>
-                            </div>
-                            <div>
-                              <span>Ödeme / kapat</span>
-                              <div className="admin-customers__inline">
-                                <input
-                                  inputMode="decimal"
-                                  placeholder="Tutar"
-                                  value={payAmount}
-                                  onChange={(e) =>
-                                    setPayAmount(
-                                      sanitizeNumberInput(e.target.value, {
-                                        allowDecimal: true,
-                                      })
-                                    )
-                                  }
-                                />
-                                <input
-                                  type="text"
-                                  placeholder="Not"
-                                  value={payNote}
-                                  onChange={(e) => setPayNote(e.target.value)}
-                                />
-                                <button
-                                  type="button"
-                                  className="admin-customers__ok"
-                                  disabled={
-                                    busy ||
-                                    detail.debtBalance <= 0 ||
-                                    !(Number(payAmount) > 0)
-                                  }
-                                  onClick={() => void addPayment()}
-                                >
-                                  <Check className="w-3.5 h-3.5" />
-                                  Öde
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </section>
-                      </div>
-                    ) : (
-                      <div className="admin-customers__ledger-wrap">
-                        {ledger.length === 0 ? (
-                          <div className="admin-customers__ledger-empty">
-                            <Receipt className="w-7 h-7" />
-                            <p>Henüz hareket yok</p>
-                          </div>
-                        ) : (
-                          <>
-                            <ul className="admin-customers__ledger" ref={ledgerListRef}>
-                              {ledger.map((e, i) => (
-                                <li
-                                  key={e.id}
-                                  className={`is-${e.kind}${
-                                    i === 0 && ledgerPage === 1 ? ' is-latest' : ''
-                                  }`}
-                                >
-                                  <div className="admin-customers__ledger-main">
-                                    <div>
-                                      <strong>{ledgerKindLabel(e.kind)}</strong>
-                                      <small>{formatDate(e.createdAt)}</small>
-                                      {e.note ? (
-                                        <span className="admin-customers__ledger-note">
-                                          {e.note}
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                    <em>
-                                      {e.kind === 'points'
-                                        ? `${e.amount > 0 ? '+' : ''}${e.amount} p`
-                                        : e.kind === 'discount'
-                                          ? e.amount <= 0
-                                            ? 'Kaldırıldı'
-                                            : String(e.amount)
-                                          : `${e.kind === 'payment' ? '−' : '+'}${formatMoney(e.amount)}`}
-                                    </em>
-                                  </div>
-                                  {i === 0 && ledgerPage === 1 ? (
-                                    <button
-                                      ref={undoBtnRef}
-                                      type="button"
-                                      className="admin-customers__ledger-undo"
-                                      disabled={busy}
-                                      onClick={() => void undoLast()}
-                                    >
-                                      <Undo2 className="w-3.5 h-3.5" />
-                                      Geri al
-                                    </button>
-                                  ) : null}
-                                </li>
-                              ))}
-                            </ul>
-                            {ledgerTotal > ledgerPageSize ? (
-                              <div className="admin-customers__pager admin-customers__pager--ledger">
-                                <span>
-                                  {(ledgerPage - 1) * ledgerPageSize + 1}–
-                                  {Math.min(ledgerPage * ledgerPageSize, ledgerTotal)} /{' '}
-                                  {ledgerTotal}
-                                </span>
-                                <div className="admin-customers__pager-btns">
-                                  <button
-                                    type="button"
-                                    disabled={ledgerPage <= 1 || busy}
-                                    aria-label="Önceki hareket sayfası"
-                                    onClick={() => {
-                                      if (selectedId == null) return;
-                                      void openCustomer(selectedId, {
-                                        keepTab: true,
-                                        skipAnim: true,
-                                        ledgerPage: ledgerPage - 1,
-                                      });
-                                    }}
-                                  >
-                                    <ChevronLeft className="w-4 h-4" />
-                                  </button>
-                                  <em>
-                                    {ledgerPage} / {ledgerPageCount}
-                                  </em>
-                                  <button
-                                    type="button"
-                                    disabled={ledgerPage >= ledgerPageCount || busy}
-                                    aria-label="Sonraki hareket sayfası"
-                                    onClick={() => {
-                                      if (selectedId == null) return;
-                                      void openCustomer(selectedId, {
-                                        keepTab: true,
-                                        skipAnim: true,
-                                        ledgerPage: ledgerPage + 1,
-                                      });
-                                    }}
-                                  >
-                                    <ChevronRight className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </div>
-                            ) : null}
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="admin-customers__loading">
-                <Spinner />
-              </div>
-            )}
-          </div>
-        </aside>
+        {!compact && detailPanel}
+        {compact &&
+          selectedId &&
+          !deleteTarget &&
+          workspace === 'customers' && (
+            <AdminOverlay
+              label="Müşteri kartı"
+              busy={busy}
+              onClose={closeDetail}
+              className="customer-profile-overlay"
+            >
+              <section className="relative customer-profile-sheet">
+                {detailPanel}
+              </section>
+            </AdminOverlay>
+          )}
       </div>
 
-      <section hidden={workspace !== 'rewards'} className="admin-customers__rewards">
+      <section
+        hidden={workspace !== 'rewards'}
+        className="admin-customers__rewards"
+      >
+        {rewardsError && (
+          <div className="customer-load-error" role="alert">
+            <p>Ödüller yüklenemedi. Mevcut kurallarınız değiştirilmedi.</p>
+            <button onClick={() => setRewardRevision((v) => v + 1)}>
+              Tekrar dene
+            </button>
+          </div>
+        )}
         <header className="admin-customers__rewards-head">
           <div>
             <h2>
               <Gift className="w-4 h-4" />
               Puan ödülleri
             </h2>
-            <p>
-              Müşterilerin puanlarıyla kullanabileceği ödülleri düzenleyin.
-            </p>
+            <p>Müşterilerin puanlarıyla kullanabileceği ödülleri düzenleyin.</p>
           </div>
           <button
             type="button"
             className="admin-customers__rewards-add"
-            disabled={rewardsBusy || rewardsLoading}
+            disabled={rewardsBusy || rewardsLoading || rewardsError}
             onClick={() => openRewardComposer('custom')}
           >
             <Plus className="w-4 h-4" />
@@ -1734,238 +1970,269 @@ export default function CustomersPage() {
         ) : (
           <>
             {composerOpen ? (
-              <div className="admin-customers__reward-composer">
-                <div className="admin-customers__reward-composer-top">
-                  <strong>{editingRewardId ? 'Kuralı düzenle' : 'Yeni kural'}</strong>
-                  <button
-                    type="button"
-                    className="admin-customers__icon-close"
-                    aria-label="Kapat"
-                    onClick={closeRewardComposer}
+              <AdminOverlay
+                label={
+                  editingRewardId ? 'Ödül kuralını düzenle' : 'Yeni ödül kuralı'
+                }
+                busy={rewardsBusy}
+                onClose={closeRewardComposer}
+                className="customer-reward-overlay"
+              >
+                <section className="relative admin-customers__reward-composer">
+                  <div className="admin-customers__reward-composer-top">
+                    <strong>
+                      {editingRewardId ? 'Kuralı düzenle' : 'Yeni kural'}
+                    </strong>
+                    <button
+                      type="button"
+                      className="admin-customers__icon-close"
+                      aria-label="Kapat"
+                      disabled={rewardsBusy || rewardsError}
+                      onClick={closeRewardComposer}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="admin-customers__reward-kinds" role="tablist">
+                    {REWARD_KINDS.map((k) => {
+                      const Icon = k.icon;
+                      return (
+                        <button
+                          key={k.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={rewardDraft.kind === k.id}
+                          className={
+                            rewardDraft.kind === k.id ? 'is-active' : ''
+                          }
+                          disabled={Boolean(editingRewardId) || rewardsBusy}
+                          onClick={() =>
+                            setRewardDraft((d) => ({
+                              ...emptyRewardDraft(k.id),
+                              pointsCost: d.pointsCost,
+                              description: d.description,
+                            }))
+                          }
+                        >
+                          <Icon className="w-3.5 h-3.5" />
+                          <span>{k.label}</span>
+                          <small>{k.hint}</small>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <fieldset
+                    disabled={rewardsBusy || rewardsError}
+                    className="admin-customers__reward-fields"
                   >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                    {rewardDraft.kind === 'custom' ? (
+                      <>
+                        <label>
+                          <span>Başlık</span>
+                          <input
+                            type="text"
+                            placeholder="Örn. Bedava çay"
+                            value={rewardDraft.title}
+                            onChange={(e) =>
+                              setRewardDraft((d) => ({
+                                ...d,
+                                title: e.target.value,
+                              }))
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>Açıklama</span>
+                          <input
+                            type="text"
+                            placeholder="Kısa not (opsiyonel)"
+                            value={rewardDraft.description}
+                            onChange={(e) =>
+                              setRewardDraft((d) => ({
+                                ...d,
+                                description: e.target.value,
+                              }))
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>Puan maliyeti</span>
+                          <input
+                            inputMode="numeric"
+                            placeholder="100"
+                            value={rewardDraft.pointsCost}
+                            onChange={(e) =>
+                              setRewardDraft((d) => ({
+                                ...d,
+                                pointsCost: sanitizeNumberInput(e.target.value),
+                              }))
+                            }
+                          />
+                        </label>
+                      </>
+                    ) : null}
 
-                <div className="admin-customers__reward-kinds" role="tablist">
-                  {REWARD_KINDS.map((k) => {
-                    const Icon = k.icon;
-                    return (
-                      <button
-                        key={k.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={rewardDraft.kind === k.id}
-                        className={rewardDraft.kind === k.id ? 'is-active' : ''}
-                        disabled={Boolean(editingRewardId)}
-                        onClick={() =>
-                          setRewardDraft((d) => ({ ...emptyRewardDraft(k.id), pointsCost: d.pointsCost, description: d.description }))
-                        }
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                        <span>{k.label}</span>
-                        <small>{k.hint}</small>
-                      </button>
-                    );
-                  })}
-                </div>
+                    {rewardDraft.kind === 'product' ? (
+                      <>
+                        <div className="customer-reward-field">
+                          <span>Ürün</span>
+                          <SearchableSelect
+                            options={rewardProducts}
+                            value={rewardDraft.productId}
+                            placeholder="Ürün seçin…"
+                            onChange={(id) =>
+                              setRewardDraft((d) => ({ ...d, productId: id }))
+                            }
+                          />
+                        </div>
+                        <label>
+                          <span>Not</span>
+                          <input
+                            type="text"
+                            placeholder="Opsiyonel"
+                            value={rewardDraft.description}
+                            onChange={(e) =>
+                              setRewardDraft((d) => ({
+                                ...d,
+                                description: e.target.value,
+                              }))
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>Puan maliyeti</span>
+                          <input
+                            inputMode="numeric"
+                            placeholder="100"
+                            value={rewardDraft.pointsCost}
+                            onChange={(e) =>
+                              setRewardDraft((d) => ({
+                                ...d,
+                                pointsCost: sanitizeNumberInput(e.target.value),
+                              }))
+                            }
+                          />
+                        </label>
+                      </>
+                    ) : null}
 
-                <div className="admin-customers__reward-fields">
-                  {rewardDraft.kind === 'custom' ? (
-                    <>
-                      <label>
-                        <span>Başlık</span>
-                        <input
-                          type="text"
-                          placeholder="Örn. Bedava çay"
-                          value={rewardDraft.title}
-                          onChange={(e) =>
-                            setRewardDraft((d) => ({ ...d, title: e.target.value }))
-                          }
-                        />
-                      </label>
-                      <label>
-                        <span>Açıklama</span>
-                        <input
-                          type="text"
-                          placeholder="Kısa not (opsiyonel)"
-                          value={rewardDraft.description}
-                          onChange={(e) =>
-                            setRewardDraft((d) => ({ ...d, description: e.target.value }))
-                          }
-                        />
-                      </label>
-                      <label>
-                        <span>Puan maliyeti</span>
-                        <input
-                          inputMode="numeric"
-                          placeholder="100"
-                          value={rewardDraft.pointsCost}
-                          onChange={(e) =>
-                            setRewardDraft((d) => ({
-                              ...d,
-                              pointsCost: sanitizeNumberInput(e.target.value),
-                            }))
-                          }
-                        />
-                      </label>
-                    </>
-                  ) : null}
+                    {rewardDraft.kind === 'group' ? (
+                      <>
+                        <div className="customer-reward-field">
+                          <span>Grup</span>
+                          <SearchableSelect
+                            options={rewardGroups}
+                            value={rewardDraft.groupId}
+                            placeholder="Grup seçin…"
+                            onChange={(id) =>
+                              setRewardDraft((d) => ({ ...d, groupId: id }))
+                            }
+                          />
+                        </div>
+                        <label>
+                          <span>% İndirim</span>
+                          <input
+                            inputMode="decimal"
+                            placeholder="10"
+                            value={rewardDraft.discountPercent}
+                            onChange={(e) =>
+                              setRewardDraft((d) => ({
+                                ...d,
+                                discountPercent: sanitizeNumberInput(
+                                  e.target.value,
+                                  {
+                                    allowDecimal: true,
+                                  },
+                                ),
+                              }))
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>Puan maliyeti</span>
+                          <input
+                            inputMode="numeric"
+                            placeholder="500"
+                            value={rewardDraft.pointsCost}
+                            onChange={(e) =>
+                              setRewardDraft((d) => ({
+                                ...d,
+                                pointsCost: sanitizeNumberInput(e.target.value),
+                              }))
+                            }
+                          />
+                        </label>
+                      </>
+                    ) : null}
 
-                  {rewardDraft.kind === 'product' ? (
-                    <>
-                      <label>
-                        <span>Ürün</span>
-                        <SearchableSelect
-                          options={rewardProducts}
-                          value={rewardDraft.productId}
-                          placeholder="Ürün seçin…"
-                          onChange={(id) =>
-                            setRewardDraft((d) => ({ ...d, productId: id }))
-                          }
-                        />
-                      </label>
-                      <label>
-                        <span>Not</span>
-                        <input
-                          type="text"
-                          placeholder="Opsiyonel"
-                          value={rewardDraft.description}
-                          onChange={(e) =>
-                            setRewardDraft((d) => ({ ...d, description: e.target.value }))
-                          }
-                        />
-                      </label>
-                      <label>
-                        <span>Puan maliyeti</span>
-                        <input
-                          inputMode="numeric"
-                          placeholder="100"
-                          value={rewardDraft.pointsCost}
-                          onChange={(e) =>
-                            setRewardDraft((d) => ({
-                              ...d,
-                              pointsCost: sanitizeNumberInput(e.target.value),
-                            }))
-                          }
-                        />
-                      </label>
-                    </>
-                  ) : null}
+                    {rewardDraft.kind === 'wallet' ? (
+                      <>
+                        <label>
+                          <span>İndirim tutarı (₺)</span>
+                          <input
+                            inputMode="decimal"
+                            placeholder="1"
+                            value={rewardDraft.amountValue}
+                            onChange={(e) =>
+                              setRewardDraft((d) => ({
+                                ...d,
+                                amountValue: sanitizeNumberInput(
+                                  e.target.value,
+                                  {
+                                    allowDecimal: true,
+                                  },
+                                ),
+                              }))
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>Not</span>
+                          <input
+                            type="text"
+                            placeholder="Opsiyonel"
+                            value={rewardDraft.description}
+                            onChange={(e) =>
+                              setRewardDraft((d) => ({
+                                ...d,
+                                description: e.target.value,
+                              }))
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>Puan maliyeti</span>
+                          <input
+                            inputMode="numeric"
+                            placeholder="100"
+                            value={rewardDraft.pointsCost}
+                            onChange={(e) =>
+                              setRewardDraft((d) => ({
+                                ...d,
+                                pointsCost: sanitizeNumberInput(e.target.value),
+                              }))
+                            }
+                          />
+                        </label>
+                      </>
+                    ) : null}
+                  </fieldset>
 
-                  {rewardDraft.kind === 'group' ? (
-                    <>
-                      <label>
-                        <span>Grup</span>
-                        <SearchableSelect
-                          options={rewardGroups}
-                          value={rewardDraft.groupId}
-                          placeholder="Grup seçin…"
-                          onChange={(id) =>
-                            setRewardDraft((d) => ({ ...d, groupId: id }))
-                          }
-                        />
-                      </label>
-                      <label>
-                        <span>% İndirim</span>
-                        <input
-                          inputMode="decimal"
-                          placeholder="10"
-                          value={rewardDraft.discountPercent}
-                          onChange={(e) =>
-                            setRewardDraft((d) => ({
-                              ...d,
-                              discountPercent: sanitizeNumberInput(e.target.value, {
-                                allowDecimal: true,
-                              }),
-                            }))
-                          }
-                        />
-                      </label>
-                      <label>
-                        <span>Puan maliyeti</span>
-                        <input
-                          inputMode="numeric"
-                          placeholder="500"
-                          value={rewardDraft.pointsCost}
-                          onChange={(e) =>
-                            setRewardDraft((d) => ({
-                              ...d,
-                              pointsCost: sanitizeNumberInput(e.target.value),
-                            }))
-                          }
-                        />
-                      </label>
-                    </>
-                  ) : null}
-
-                  {rewardDraft.kind === 'wallet' ? (
-                    <>
-                      <label>
-                        <span>İndirim tutarı (₺)</span>
-                        <input
-                          inputMode="decimal"
-                          placeholder="1"
-                          value={rewardDraft.amountValue}
-                          onChange={(e) =>
-                            setRewardDraft((d) => ({
-                              ...d,
-                              amountValue: sanitizeNumberInput(e.target.value, {
-                                allowDecimal: true,
-                              }),
-                            }))
-                          }
-                        />
-                      </label>
-                      <label>
-                        <span>Not</span>
-                        <input
-                          type="text"
-                          placeholder="Opsiyonel"
-                          value={rewardDraft.description}
-                          onChange={(e) =>
-                            setRewardDraft((d) => ({ ...d, description: e.target.value }))
-                          }
-                        />
-                      </label>
-                      <label>
-                        <span>Puan maliyeti</span>
-                        <input
-                          inputMode="numeric"
-                          placeholder="100"
-                          value={rewardDraft.pointsCost}
-                          onChange={(e) =>
-                            setRewardDraft((d) => ({
-                              ...d,
-                              pointsCost: sanitizeNumberInput(e.target.value),
-                            }))
-                          }
-                        />
-                      </label>
-                    </>
-                  ) : null}
-                </div>
-
-                <div className="admin-customers__reward-composer-actions">
-                  <button
-                    type="button"
-                    className="admin-customers__ghost"
-                    disabled={rewardsBusy}
-                    onClick={closeRewardComposer}
-                  >
-                    İptal
-                  </button>
-                  <button
-                    type="button"
-                    className="admin-customers__primary"
-                    disabled={rewardsBusy}
-                    onClick={() => void saveRewardDraft()}
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    {editingRewardId ? 'Kaydet' : 'Ekle'}
-                  </button>
-                </div>
-              </div>
+                  <div className="admin-customers__reward-composer-actions">
+                    <button
+                      type="button"
+                      className="admin-customers__primary"
+                      disabled={rewardsBusy || rewardsError}
+                      onClick={() => void saveRewardDraft()}
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      {editingRewardId ? 'Kaydet' : 'Ekle'}
+                    </button>
+                  </div>
+                </section>
+              </AdminOverlay>
             ) : null}
 
             {rewardRules.length === 0 && !composerOpen ? (
@@ -1975,6 +2242,7 @@ export default function CustomersPage() {
                 <button
                   type="button"
                   className="admin-customers__primary"
+                  disabled={rewardsBusy || rewardsError}
                   onClick={() => openRewardComposer('product')}
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -2003,15 +2271,14 @@ export default function CustomersPage() {
                       </div>
                       <strong>{copy.headline}</strong>
                       <p>{copy.detail}</p>
-                      {rule.description && rule.kind === 'custom' ? (
-                        <small>{rule.description}</small>
-                      ) : null}
                       <div className="admin-customers__reward-card-actions">
                         <button
                           type="button"
-                          aria-label={rule.active ? 'Pasifleştir' : 'Aktifleştir'}
+                          aria-label={
+                            rule.active ? 'Pasifleştir' : 'Aktifleştir'
+                          }
                           title={rule.active ? 'Pasifleştir' : 'Aktifleştir'}
-                          disabled={rewardsBusy}
+                          disabled={rewardsBusy || rewardsError}
                           onClick={() => void toggleRewardActive(rule.id)}
                         >
                           <Power className="w-3.5 h-3.5" />
@@ -2020,7 +2287,7 @@ export default function CustomersPage() {
                           type="button"
                           aria-label="Düzenle"
                           title="Düzenle"
-                          disabled={rewardsBusy}
+                          disabled={rewardsBusy || rewardsError}
                           onClick={() => startEditReward(rule)}
                         >
                           <Pencil className="w-3.5 h-3.5" />
@@ -2030,7 +2297,7 @@ export default function CustomersPage() {
                           className="is-danger"
                           aria-label="Sil"
                           title="Sil"
-                          disabled={rewardsBusy}
+                          disabled={rewardsBusy || rewardsError}
                           onClick={() => void deleteReward(rule.id)}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -2046,94 +2313,112 @@ export default function CustomersPage() {
       </section>
 
       {deleteTarget ? (
-        <div
-          ref={deleteBackdropRef}
-          className="admin-customers__modal-backdrop"
-          role="presentation"
-          onClick={() => {
-            if (!deleteBusy) {
-              setDeleteTarget(null);
-              setDeletePassword('');
-            }
+        <AdminOverlay
+          label="Müşteriyi sil"
+          busy={deleteBusy}
+          onClose={() => {
+            setDeleteTarget(null);
+            setDeletePassword('');
           }}
+          className="customer-delete-overlay"
         >
-          <div
-            ref={deleteCardRef}
-            className="admin-customers__modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="customers-delete-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="admin-customers__modal-close"
-              aria-label="Kapat"
-              disabled={deleteBusy}
-              onClick={() => {
-                setDeleteTarget(null);
-                setDeletePassword('');
-              }}
+          <div ref={deleteBackdropRef} className="customer-delete-stage">
+            <div
+              ref={deleteCardRef}
+              className="admin-customers__modal"
+
+              aria-labelledby="customers-delete-title"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="admin-customers__modal-icon" aria-hidden>
-              <TriangleAlert className="w-6 h-6" />
-            </div>
-
-            <h3 id="customers-delete-title">Müşteriyi sil</h3>
-            <p className="admin-customers__modal-copy">
-              <strong>{deleteTarget.fullName}</strong> hesabı kalıcı olarak silinecek.
-            </p>
-            <div className="admin-customers__modal-warn">
-              Bu işlem geri alınamaz. Puan, indirim ve borç hareketleri de silinir.
-            </div>
-
-            <label className="admin-customers__modal-field">
-              <span>
-                <Lock className="w-3.5 h-3.5" />
-                Yönetici şifresi
-              </span>
-              <input
-                type="password"
-                autoFocus
-                autoComplete="current-password"
-                placeholder="Şifrenizi girin"
-                value={deletePassword}
-                onChange={(e) => setDeletePassword(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') void confirmDelete();
-                }}
-              />
-            </label>
-
-            <div className="admin-customers__modal-actions">
               <button
                 type="button"
-                className="admin-customers__ghost"
+                className="admin-customers__modal-close"
+                aria-label="Kapat"
                 disabled={deleteBusy}
                 onClick={() => {
                   setDeleteTarget(null);
                   setDeletePassword('');
                 }}
               >
-                Vazgeç
+                <X className="w-4 h-4" />
               </button>
-              <button
-                type="button"
-                className="admin-customers__danger"
-                disabled={deleteBusy || !deletePassword.trim()}
-                onClick={() => void confirmDelete()}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                {deleteBusy ? 'Siliniyor…' : 'Kalıcı sil'}
-              </button>
+
+              <div className="admin-customers__modal-icon" aria-hidden>
+                <TriangleAlert className="w-6 h-6" />
+              </div>
+
+              <h3 id="customers-delete-title">Müşteriyi sil</h3>
+              <p className="admin-customers__modal-copy">
+                <strong>{deleteTarget.fullName}</strong> hesabı kalıcı olarak
+                silinecek.
+              </p>
+              <div className="admin-customers__modal-warn">
+                Bu işlem geri alınamaz. Puan, indirim ve borç hareketleri de
+                silinir.
+              </div>
+
+              <label className="admin-customers__modal-field">
+                <span>
+                  <Lock className="w-3.5 h-3.5" />
+                  Yönetici şifresi
+                </span>
+                <input
+                  type="password"
+                  autoFocus
+                  autoComplete="current-password"
+                  placeholder="Şifrenizi girin"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void confirmDelete();
+                  }}
+                />
+              </label>
+
+              <div className="admin-customers__modal-actions">
+                <button
+                  type="button"
+                  className="admin-customers__danger"
+                  disabled={deleteBusy || !deletePassword.trim()}
+                  onClick={() => void confirmDelete()}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {deleteBusy ? 'Siliniyor…' : 'Kalıcı sil'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </AdminOverlay>
       ) : null}
 
+      {rewardDeleteId && (
+        <AdminOverlay
+          label="Ödülü sil"
+          busy={rewardsBusy}
+          onClose={() => setRewardDeleteId(null)}
+        >
+          <section className="relative customer-reward-delete">
+            <button
+              className="admin-customers__icon-close"
+              aria-label="Silme penceresini kapat"
+              disabled={rewardsBusy || rewardsError}
+              onClick={() => setRewardDeleteId(null)}
+            >
+              <X size={20} />
+            </button>
+            <Gift size={28} />
+            <h2>Bu ödül kaldırılsın mı?</h2>
+            <p>{rewardRules.find((r) => r.id === rewardDeleteId)?.title}</p>
+            <button
+              className="admin-customers__danger"
+              disabled={rewardsBusy || rewardsError}
+              onClick={() => void confirmRewardDelete(rewardDeleteId)}
+            >
+              {rewardsBusy ? 'Siliniyor…' : 'Ödülü sil'}
+            </button>
+          </section>
+        </AdminOverlay>
+      )}
       <CustomerUnlockModal
         open={unlockOpen}
         initialMode={unlockMode}
