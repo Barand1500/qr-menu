@@ -554,3 +554,9 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 
 - Asistanın siyah açılmasının nedeni eski admin-ai.css içindeki sabit koyu renklerdi; Codex'in yarım kalan TSX güncellemesiyle uyumsuzdu. CSS baştan yazıldı: panelin --admin-* temasını (açık/koyu) kullanır; boş durumda tek dokunuşluk "Güncel özeti getir", üç kayıt şablonu kartı ve sayfa kısayolları; sohbet balonları, hata/ilerleme durumları, örnekler paneli. Mobilde alttan açılan tam genişlik sheet, küçük pencere düğmesi yalnızca masaüstünde; 16px yazı alanı, güvenli alt boşluk, hareket azaltma desteği. Dönen yükleme simgeleri animate-spin ile verildi.
 - Kontrol: TypeScript ve Vite üretim derlemesi geçti. Tarayıcıda/telefonda görsel kontrol YAPILMADI; gerçek asistan API'siyle akış denenmedi. Backend değişmedi.
+
+## 2026-11-18 — Bakım modu
+
+- Admin kenar çubuğundaki bakım düğmesi artık alert yerine ortak AdminToast gösterir ("Bakım modu açıldı/kapandı"; hata kırmızı toast), işlem sürerken simge nabız atar. Kenar çubuğu alt düğmelerinin eksik stilleri index.css'e eklendi.
+- Müşteri bakım ekranı (MaintenanceGate + maintenance.css) yenilendi: animasyonlu zil, kısa metin, tek kartta iki adım (garsona söyle / oyna), Garson Koşusu aynen korundu. Bakım sürerken 30 sn'de bir sessiz kontrol yapılır, menü açılınca kendiliğinden gelir; "Menü açıldı mı?" düğmesi sayfayı yükleniyor ekranına çevirmeden kontrol eder, mobilde altta sabittir. Hareket azaltma desteklenir.
+- Kontrol: TypeScript ve Vite derlemesi geçti. Tarayıcı/telefonda görsel kontrol, gerçek bakım modu açma-kapama ve otomatik kontrolün canlı denemesi YAPILMADI. Backend değişmedi.

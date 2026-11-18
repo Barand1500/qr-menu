@@ -18,6 +18,7 @@ import { useAddons } from '@/hooks/useAddons';
 import AdminNotificationBell from '@/components/AdminNotificationBell';
 import ThemeToggleButton from '@/components/admin/ThemeToggleButton';
 import AdminTour, { AdminTourHelpButton } from '@/components/admin/AdminTour';
+import AdminToast, { type AdminToastNotice } from '@/components/admin/AdminToast';
 import AdminAIChat, { AdminAIButton } from '@/components/admin/AdminAIChat';
 import type { TourOpenGroup } from '@/lib/adminTourSteps';
 import { adminPreviewMenuUrl } from '@/lib/tableContext';
@@ -137,6 +138,7 @@ export default function AdminLayout() {
   const [aiOpen, setAiOpen] = useState(false);
   const [maintenanceOn, setMaintenanceOn] = useState(false);
   const [maintenanceBusy, setMaintenanceBusy] = useState(false);
+  const [notice, setNotice] = useState<AdminToastNotice>(null);
   const navRef = useRef<HTMLElement>(null);
   const navIndicatorRef = useRef<HTMLDivElement>(null);
 
@@ -268,9 +270,16 @@ export default function AdminLayout() {
         method: 'PUT',
         body: JSON.stringify({ enabled: next }),
       });
-      setMaintenanceOn(Boolean(res.enabled));
+      const on = Boolean(res.enabled);
+      setMaintenanceOn(on);
+      setNotice({
+        error: false,
+        text: on
+          ? 'Bakım modu açıldı. Müşteriler menü yerine bakım ekranını görüyor.'
+          : 'Bakım modu kapandı. Menü yeniden herkese açık.',
+      });
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Bakım modu güncellenemedi');
+      setNotice({ error: true, text: err instanceof Error ? err.message : 'Bakım modu güncellenemedi' });
     } finally {
       setMaintenanceBusy(false);
     }
@@ -364,7 +373,7 @@ export default function AdminLayout() {
             data-tour="maintenance"
             onClick={() => void toggleMaintenance()}
           >
-            <Construction className="w-[18px] h-[18px]" strokeWidth={1.75} />
+            <Construction className={`w-[18px] h-[18px]${maintenanceBusy ? " animate-pulse" : ""}`} strokeWidth={1.75} />
           </button>
           {SHOW_EXTENSIONS_ENTRY && <NavLink
             to={adminPath('extensions')}
@@ -521,6 +530,7 @@ export default function AdminLayout() {
         onOpenGroup={handleOpenTourGroup}
         onNeedMobileNav={() => setMobileOpen(true)}
       />
+      <AdminToast notice={notice} onClose={() => setNotice(null)} />
       <AdminAIChat open={aiOpen} onClose={() => setAiOpen(false)} />
     </div>
   );
