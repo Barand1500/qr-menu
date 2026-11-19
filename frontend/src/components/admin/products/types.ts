@@ -54,6 +54,9 @@ export interface Group {
   parentId?: number | null;
   parentName?: string | null;
   isSubGroup?: boolean;
+  imageUrl?: string | null;
+  /** Gruba doğrudan bağlı ürün sayısı */
+  productCount?: number;
 }
 
 /** Toplu fiyat değişikliği geçmişindeki bir kayıt (en yeni en üstte). */

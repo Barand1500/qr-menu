@@ -54,6 +54,7 @@ import type {
   PriceChange,
 } from '@/components/admin/products/types';
 import PriceHistoryDialog from '@/components/admin/products/PriceHistoryDialog';
+import GroupTreePicker from '@/components/admin/products/GroupTreePicker';
 import {
   defaultPrefCatalog,
   fetchPrefCatalog,
@@ -179,7 +180,6 @@ export default function ProductsPage() {
     [historyOpen, setHistoryOpen] = useState(false),
     [historyError, setHistoryError] = useState(''),
     [history, setHistory] = useState<PriceChange[]>([]);
-  const [categorySearch, setCategorySearch] = useState('');
   const [priceTransitions, setPriceTransitions] = useState<
     Record<number, PriceTransition>
   >({});
@@ -828,12 +828,6 @@ export default function ProductsPage() {
     parentName: g.parentName,
   }));
   const selectedGroup = groups.find((g) => String(g.id) === query.group);
-  const groupQuery = categorySearch.toLocaleLowerCase('tr').trim();
-  const visibleGroups = groups.filter(
-    (g) =>
-      !groupQuery ||
-      `${g.name} ${g.parentName || ''}`.toLocaleLowerCase('tr').includes(groupQuery),
-  );
   if (metaError)
     return (
       <div className="ag-empty" role="alert">
@@ -903,12 +897,17 @@ export default function ProductsPage() {
                 aria-expanded={categoryOpen}
                 onClick={() => {
                   setStatusOpen(false);
-                  setCategorySearch('');
                   setCategoryOpen((v) => !v);
                 }}
               >
                 <FolderOpen size={17} />
-                <span>{selectedGroup?.name || 'Tüm gruplar'}</span>
+                <span>
+                  {selectedGroup
+                    ? selectedGroup.parentName
+                      ? `${selectedGroup.parentName} › ${selectedGroup.name}`
+                      : selectedGroup.name
+                    : 'Tüm gruplar'}
+                </span>
                 <small>{refreshing ? '…' : `${total} ürün`}</small>
                 <ChevronDown size={15} className={categoryOpen ? 'is-open' : ''} />
               </button>
@@ -929,45 +928,14 @@ export default function ProductsPage() {
                       <X size={16} />
                     </button>
                   </header>
-                  {groups.length > 8 && (
-                    <label className="ap-group-search">
-                      <Search size={16} />
-                      <input
-                        aria-label="Grup bul"
-                        placeholder="Grup ara"
-                        value={categorySearch}
-                        onChange={(e) => setCategorySearch(e.target.value)}
-                      />
-                    </label>
-                  )}
-                  <div className="ap-pills">
-                    {!groupQuery && (
-                      <button
-                        aria-pressed={!query.group}
-                        onClick={() => {
-                          filter({ group: '' });
-                          setCategoryOpen(false);
-                        }}
-                      >
-                        Tüm ürünler
-                      </button>
-                    )}
-                    {visibleGroups.map((g) => (
-                      <button
-                        key={g.id}
-                        aria-pressed={query.group === String(g.id)}
-                        className={g.isSubGroup ? 'is-sub' : undefined}
-                        onClick={() => {
-                          filter({ group: String(g.id) });
-                          setCategoryOpen(false);
-                        }}
-                      >
-                        {g.isSubGroup && <small>{g.parentName}</small>}
-                        <span>{g.name}</span>
-                      </button>
-                    ))}
-                    {!visibleGroups.length && <p>Bu aramaya uyan grup yok.</p>}
-                  </div>
+                  <GroupTreePicker
+                    groups={groups}
+                    selectedId={query.group}
+                    onSelect={(id) => {
+                      filter({ group: id });
+                      setCategoryOpen(false);
+                    }}
+                  />
                 </div>
               )}
             </div>
