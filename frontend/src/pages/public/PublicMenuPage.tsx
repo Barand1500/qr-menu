@@ -14,11 +14,12 @@ import PopularSearchProducts, {
 import { useDemoData } from '@/contexts/DemoDataContext';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import MenuCustomerAuthModal from '@/components/public/MenuCustomerAuthModal';
+import { avatarHue } from '@/lib/customerAvatar';
+import CustomerFilterBar from '@/components/public/CustomerFilterBar';
 import MenuGamesOverlay from '@/components/public/games/MenuGamesOverlay';
 import type { MenuGameId } from '@/lib/menuGames';
 import ServiceCallNotice from '@/components/public/ServiceCallNotice';
 import { isPublicGamesOn, type PublicMenuGames } from '@/lib/menuGamesConfig';
-import '@/menu-customer.css';
 import {
   DEMO_MENU_BANNERS,
   DEMO_POPULAR_PRODUCTS,
@@ -263,7 +264,6 @@ function PublicMenuPageInner({
   const {
     customer,
     filterEnabled,
-    setFilterEnabled,
     refresh: refreshCustomer,
   } = useCustomerAuth();
   const sessionId = getSessionId();
@@ -553,35 +553,18 @@ function PublicMenuPageInner({
     filteredGroupProducts.length > 0 || filteredGroupChildren.length > 0;
 
   const profileCopy = customerProfileUi(lang);
-  const profileFirstName = customer
-    ? customer.fullName.split(' ')[0] || customer.fullName
-    : '';
   const profileBanner =
-    profileEnabled && customer && filterEnabled ? (
-      <div className="public-profile-banner" role="status">
-        <p className="public-profile-banner__text">
-          {profileCopy.helloFiltered(profileFirstName)}
-        </p>
-        <div className="public-profile-banner__actions">
-          <button type="button" className="is-off" onClick={() => setFilterEnabled(false)}>
-            {profileCopy.closeFilter}
-          </button>
-          <button type="button" className="is-edit" onClick={() => setCustomerAuthOpen(true)}>
-            {profileCopy.profile}
-          </button>
-        </div>
-      </div>
-    ) : profileEnabled && customer && !filterEnabled ? (
-      <div className="public-profile-banner" role="status">
-        <p className="public-profile-banner__text">
-          {profileCopy.helloFilterOff(profileFirstName)}
-        </p>
-        <div className="public-profile-banner__actions">
-          <button type="button" className="is-edit" onClick={() => setFilterEnabled(true)}>
-            {profileCopy.openFilter}
-          </button>
-        </div>
-      </div>
+    profileEnabled && customer ? (
+      <CustomerFilterBar
+        lang={lang}
+        activeCount={
+          (customer.allergenTags || []).length +
+          (customer.dietTags || []).length +
+          (customer.dislikedFoods || []).length +
+          (customer.drinksAlcohol === false ? 1 : 0)
+        }
+        onOpenAccount={() => setCustomerAuthOpen(true)}
+      />
     ) : null;
 
   const allergyBanner = profileBanner ? (
@@ -707,7 +690,13 @@ function PublicMenuPageInner({
       title={customer ? profileCopy.profile : profileCopy.loginRegister}
       onClick={() => setCustomerAuthOpen(true)}
     >
-      <UserRound className="w-5 h-5" />
+      {customer ? (
+        <span className="ca-avatar ca-avatar--sm" style={{ ['--h' as string]: avatarHue(customer.id) }}>
+          {(customer.fullName.trim().charAt(0) || '?').toLocaleUpperCase('tr')}
+        </span>
+      ) : (
+        <UserRound className="w-5 h-5" />
+      )}
     </button>
   ) : null;
 

@@ -1,21 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check,
   Eye,
   EyeOff,
   Gift,
   Heart,
+  IdCard,
   LogOut,
+  QrCode,
   RefreshCw,
   Search,
-  Sparkles,
+  SlidersHorizontal,
+  Star,
   ThumbsDown,
+  Wallet,
   X,
-  ArrowLeft,
-  ChevronDown,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import {
   ALLERGEN_CATALOG,
   DIET_CATALOG,
@@ -31,17 +34,11 @@ import {
   type CustomerPrivacyFlags,
 } from '@/lib/customerQrPreview';
 import { issueCustomerQrChallenge } from '@/lib/customerUnlock';
+import { avatarHue } from '@/lib/customerAvatar';
+import './customer-account.css';
 
-type ProfilePane = 'home' | 'perks';
-type ProfileStep = 1 | 2 | 3 | 4;
+type Tab = 'code' | 'prefs' | 'info' | 'perks';
 type AlcoholPref = 'yes' | 'no' | 'unset';
-
-const PROFILE_STEPS: { id: ProfileStep; label: string }[] = [
-  { id: 1, label: 'Kimlik' },
-  { id: 2, label: 'QR' },
-  { id: 3, label: 'Tercihler' },
-  { id: 4, label: 'Özet' },
-];
 
 export type CustomerAccountProps = {
   open: boolean;
@@ -55,98 +52,121 @@ export type CustomerAccountProps = {
 };
 
 /** TR cep: 5XX XXX XX XX (10 hane) */
-function formatPhoneInput(raw: string) {
+function formatPhone(raw: string) {
   let d = raw.replace(/\D/g, '');
   if (d.startsWith('90') && d.length > 10) d = d.slice(2);
   if (d.startsWith('0')) d = d.slice(1);
   d = d.slice(0, 10);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return `${d.slice(0, 3)} ${d.slice(3)}`;
-  if (d.length <= 8) return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
-  return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6, 8)} ${d.slice(8)}`;
+  const parts = [d.slice(0, 3), d.slice(3, 6), d.slice(6, 8), d.slice(8)];
+  return parts.filter(Boolean).join(' ');
 }
 
-function formatShortList(items: string[], limit = 3) {
-  if (items.length === 0) return '—';
-  if (items.length <= limit) return items.join(', ');
-  const shown = items.slice(0, limit).join(', ');
-  return `${shown} +${items.length - limit} yemek daha`;
+const sameSet = (a: string[], b: string[]) =>
+  a.length === b.length && [...a].sort().join('|') === [...b].sort().join('|');
+
+/** Açılan pencerenin altındaki sayfanın açık/koyu olduğunu, ilk opak arka plandan anlar. */
+function detectDark(el: HTMLElement | null) {
+  for (let node = el?.parentElement; node; node = node.parentElement) {
+    const m = getComputedStyle(node).backgroundColor.match(/[\d.]+/g);
+    if (!m) continue;
+    const [r, g, b] = m.map(Number);
+    const a = m.length > 3 ? m[3] : 1;
+    if (Number(a) < 0.6) continue;
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5;
+  }
+  return false;
 }
 
-function ChipEditor({
+function Switch({
+  on,
+  onChange,
+  label,
+}: {
+  on: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      className={`ca-switch${on ? ' is-on' : ''}`}
+      onClick={() => onChange(!on)}
+    >
+      <i />
+    </button>
+  );
+}
+
+function TasteEditor({
+  tone,
   label,
   hint,
+  placeholder,
   values,
   onChange,
-  placeholder,
-  tone = 'like',
 }: {
+  tone: 'like' | 'dislike';
   label: string;
-  hint?: string;
+  hint: string;
+  placeholder: string;
   values: string[];
   onChange: (next: string[]) => void;
-  placeholder: string;
-  tone?: 'like' | 'dislike';
 }) {
   const [draft, setDraft] = useState('');
   function add() {
     const v = draft.trim();
-    if (!v) return;
-    if (
-      values.some(
-        (x) => x.toLocaleLowerCase('tr-TR') === v.toLocaleLowerCase('tr-TR'),
-      )
-    ) {
-      setDraft('');
-      return;
-    }
-    onChange([...values, v].slice(0, 40));
     setDraft('');
+    if (!v) return;
+    if (values.some((x) => x.toLocaleLowerCase('tr-TR') === v.toLocaleLowerCase('tr-TR'))) return;
+    onChange([...values, v].slice(0, 40));
   }
+  const Icon = tone === 'like' ? Heart : ThumbsDown;
   return (
-    <section className={`mc-auth__block mc-auth__block--${tone}`}>
-      <div className="mc-auth__block-head">
-        {tone === 'like' ? (
-          <Heart className="w-4 h-4" />
-        ) : (
-          <ThumbsDown className="w-4 h-4" />
-        )}
+    <div className={`ca-taste ca-taste--${tone}`}>
+      <div className="ca-taste__head">
+        <Icon size={16} aria-hidden />
         <div>
-          <h3>{label}</h3>
-          {hint ? <p>{hint}</p> : null}
+          <strong>{label}</strong>
+          <small>{hint}</small>
         </div>
       </div>
-      <div className="mc-auth__chips">
-        {values.map((v) => (
-          <button
-            key={v}
-            type="button"
-            className={`mc-auth__chip is-on tone-${tone}`}
-            onClick={() => onChange(values.filter((x) => x !== v))}
-          >
-            {v}
-            <X className="w-3 h-3" />
-          </button>
-        ))}
-      </div>
-      <div className="mc-auth__chip-add">
+      {values.length ? (
+        <div className="ca-chips">
+          {values.map((v) => (
+            <button
+              key={v}
+              type="button"
+              className="ca-chip is-on"
+              aria-label={`${v} — kaldır`}
+              onClick={() => onChange(values.filter((x) => x !== v))}
+            >
+              {v}
+              <X size={12} aria-hidden />
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <div className="ca-add">
         <input
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
           placeholder={placeholder}
+          enterKeyHint="done"
+          onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
-              e.stopPropagation();
               add();
             }
           }}
         />
-        <button type="button" onClick={add}>
+        <button type="button" onClick={add} disabled={!draft.trim()}>
           Ekle
         </button>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -157,179 +177,163 @@ export default function MenuCustomerProfileModal({
   restaurantName,
   lang = 'tr',
 }: CustomerAccountProps) {
-  const {
-    customer,
-    logout,
-    updateProfile,
-    refresh,
-    restaurantPoints,
-    filterEnabled,
-    setFilterEnabled,
-  } = useCustomerAuth();
+  const { customer, logout, updateProfile, refresh, restaurantPoints, filterEnabled, setFilterEnabled } =
+    useCustomerAuth();
+  const wide = useMediaQuery('(min-width: 900px)');
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [dark, setDark] = useState(false);
 
+  const [tab, setTab] = useState<Tab>('prefs');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [savedFlash, setSavedFlash] = useState(false);
+  const [saved, setSaved] = useState(false);
 
+  const [name, setName] = useState('');
+  const [alcohol, setAlcohol] = useState<AlcoholPref>('unset');
   const [allergens, setAllergens] = useState<string[]>([]);
   const [diets, setDiets] = useState<string[]>([]);
   const [liked, setLiked] = useState<string[]>([]);
   const [disliked, setDisliked] = useState<string[]>([]);
-  const [alcohol, setAlcohol] = useState<AlcoholPref>('unset');
-  const [profileName, setProfileName] = useState('');
-  const [profilePane, setProfilePane] = useState<ProfilePane>('home');
-  const [profileStep, setProfileStep] = useState<ProfileStep>(1);
   const [privacy, setPrivacy] = useState<CustomerPrivacyFlags>({
     showName: true,
     showPhone: true,
     showEmail: true,
   });
-  const [qrPayload, setQrPayload] = useState('');
-  const [qrCode, setQrCode] = useState('');
-  const [qrExpiresAt, setQrExpiresAt] = useState(0);
-  const [qrNow, setQrNow] = useState(() => Date.now());
+
+  const [qr, setQr] = useState({ payload: '', code: '', expiresAt: 0 });
   const [qrBusy, setQrBusy] = useState(false);
-  const [perksOpen, setPerksOpen] = useState({
-    points: true,
-    discounts: false,
-    debt: false,
-  });
+  const [now, setNow] = useState(() => Date.now());
   const [pointsQuery, setPointsQuery] = useState('');
 
+  const ui = customerProfileUi(lang || 'tr');
   const points = restaurantPoints(restaurantId);
-  const firstName =
-    (customer?.fullName || profileName || '').trim().split(/\s+/)[0] ||
-    'Misafir';
-  const pointsEntries = useMemo(() => {
-    const map = customer?.pointsByRestaurant || {};
-    return Object.entries(map)
-      .map(([id, pts]) => ({
-        id,
-        points: Number(pts) || 0,
-        label:
-          restaurantId && String(restaurantId) === id && restaurantName
-            ? restaurantName
-            : `Restoran #${id}`,
-        isCurrent: restaurantId != null && String(restaurantId) === id,
-      }))
-      .sort(
-        (a, b) =>
-          Number(b.isCurrent) - Number(a.isCurrent) || b.points - a.points,
-      );
-  }, [customer?.pointsByRestaurant, restaurantId, restaurantName]);
-
-  const filteredPointsEntries = useMemo(() => {
-    const q = pointsQuery.trim().toLocaleLowerCase('tr-TR');
-    if (!q) return pointsEntries;
-    return pointsEntries.filter(
-      (row) =>
-        row.label.toLocaleLowerCase('tr-TR').includes(q) ||
-        String(row.points).includes(q) ||
-        row.id.includes(q),
-    );
-  }, [pointsEntries, pointsQuery]);
 
   async function rotateQr() {
     setQrBusy(true);
     try {
-      const challenge = await issueCustomerQrChallenge();
-      setQrPayload(challenge.qrPayload);
-      setQrCode(challenge.code);
-      setQrExpiresAt(challenge.expiresAt);
+      const c = await issueCustomerQrChallenge();
+      setQr({ payload: c.qrPayload, code: c.code, expiresAt: c.expiresAt });
     } catch {
-      setQrPayload('');
-      setQrCode('');
-      setQrExpiresAt(0);
-      setError('Kişisel kod üretilemedi — tekrar dene');
+      setQr({ payload: '', code: '', expiresAt: 0 });
+      setError('Kişisel kod üretilemedi — yenile’ye bas');
     } finally {
       setQrBusy(false);
     }
   }
 
-  function patchPrivacy(patch: Partial<CustomerPrivacyFlags>) {
-    if (!customer) return;
-    setPrivacy((prev) => {
-      const next = { ...prev, ...patch };
-      writeCustomerPrivacy(customer.id, next);
-      return next;
-    });
-  }
-
-  useEffect(() => {
-    if (!open) return;
-    setError('');
-    setSavedFlash(false);
-    setProfilePane('home');
-    setProfileStep(1);
-  }, [open, customer?.id]);
-
+  // Açılışta: formu müşteriden doldur, kodu üret, puanı tazele.
   useEffect(() => {
     if (!open || !customer) return;
-    setProfileName(customer.fullName);
+    setError('');
+    setSaved(false);
+    setTab(wide ? 'prefs' : 'code');
+    setName(customer.fullName);
     setAllergens(customer.allergenTags || []);
     setDiets(customer.dietTags || []);
     setLiked(customer.likedFoods || []);
     setDisliked(customer.dislikedFoods || []);
-    setAlcohol(
-      customer.drinksAlcohol === true
-        ? 'yes'
-        : customer.drinksAlcohol === false
-          ? 'no'
-          : 'unset',
-    );
+    setAlcohol(customer.drinksAlcohol === true ? 'yes' : customer.drinksAlcohol === false ? 'no' : 'unset');
     setPrivacy(readCustomerPrivacy(customer.id));
+    setDark(detectDark(rootRef.current));
     void rotateQr();
+    if (restaurantId) void refresh(restaurantId).catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, customer?.id]);
 
+  // Kod süresi dolunca kendiliğinden yenile; sayaç için 500 ms.
   useEffect(() => {
     if (!open || !customer) return;
-    const tick = window.setInterval(() => {
-      const now = Date.now();
-      setQrNow(now);
-      if (now >= qrExpiresAt && !qrBusy) void rotateQr();
+    const t = window.setInterval(() => {
+      const n = Date.now();
+      setNow(n);
+      if (qr.expiresAt && n >= qr.expiresAt && !qrBusy) void rotateQr();
     }, 500);
-    return () => window.clearInterval(tick);
-  }, [open, customer?.id, qrExpiresAt, qrBusy]);
-
-  useEffect(() => {
-    if (!open || !customer?.id || !restaurantId) return;
-    void refresh(restaurantId).catch(() => undefined);
-  }, [open, customer?.id, restaurantId, refresh]);
+    return () => window.clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, customer?.id, qr.expiresAt, qrBusy]);
 
   useEffect(() => {
     if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        if (profilePane === 'perks') setProfilePane('home');
-        else onClose();
-      }
-    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose, profilePane]);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [open, onClose]);
 
-  const ui = customerProfileUi(lang || 'tr');
+  // Geniş ekranda kod her zaman solda; "Kodum" sekmesi yalnızca telefon içindir.
+  useEffect(() => {
+    if (wide && tab === 'code') setTab('prefs');
+  }, [wide, tab]);
 
-  const title = ui.myProfile;
+  const perRestaurant = useMemo(() => {
+    const map = customer?.pointsByRestaurant || {};
+    const q = pointsQuery.trim().toLocaleLowerCase('tr-TR');
+    return Object.entries(map)
+      .map(([id, pts]) => ({
+        id,
+        points: Number(pts) || 0,
+        current: restaurantId != null && String(restaurantId) === id,
+        label: restaurantId != null && String(restaurantId) === id && restaurantName ? restaurantName : `Restoran #${id}`,
+      }))
+      .filter((r) => !r.current)
+      .filter((r) => !q || r.label.toLocaleLowerCase('tr-TR').includes(q))
+      .sort((a, b) => b.points - a.points);
+  }, [customer?.pointsByRestaurant, restaurantId, restaurantName, pointsQuery]);
+  const otherCount = Object.keys(customer?.pointsByRestaurant || {}).filter(
+    (id) => String(restaurantId) !== id,
+  ).length;
 
-  if (!open) return null;
+  if (!open || !customer) return null;
 
-  async function saveProfile(e: React.FormEvent) {
-    e.preventDefault();
+  const firstName = customer.fullName.trim().split(/\s+/)[0] || 'Misafir';
+  const hue = avatarHue(customer.id);
+  const dirty =
+    name.trim() !== customer.fullName ||
+    alcohol !== (customer.drinksAlcohol === true ? 'yes' : customer.drinksAlcohol === false ? 'no' : 'unset') ||
+    !sameSet(allergens, customer.allergenTags || []) ||
+    !sameSet(diets, customer.dietTags || []) ||
+    !sameSet(liked, customer.likedFoods || []) ||
+    !sameSet(disliked, customer.dislikedFoods || []);
+  const activeCount =
+    allergens.length + diets.length + disliked.length + (alcohol === 'no' ? 1 : 0);
+  const secondsLeft = Math.max(0, Math.ceil((qr.expiresAt - now) / 1000));
+  const ratio = Math.max(0, Math.min(1, (qr.expiresAt - now) / CUSTOMER_QR_TTL_MS));
+
+  function patchPrivacy(patch: Partial<CustomerPrivacyFlags>) {
+    setPrivacy((prev) => {
+      const next = { ...prev, ...patch };
+      writeCustomerPrivacy(customer!.id, next);
+      return next;
+    });
+  }
+
+  function toggleIn(list: string[], set: (v: string[]) => void, id: string) {
+    set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
+  }
+
+  async function save() {
+    if (!name.trim()) {
+      setError('Ad soyad boş olamaz');
+      setTab('info');
+      return;
+    }
     setBusy(true);
     setError('');
     try {
       await updateProfile({
-        fullName: profileName.trim(),
+        fullName: name.trim(),
         allergenTags: allergens,
         dietTags: diets,
         likedFoods: liked,
         dislikedFoods: disliked,
-        drinksAlcohol:
-          alcohol === 'yes' ? true : alcohol === 'no' ? false : null,
+        drinksAlcohol: alcohol === 'yes' ? true : alcohol === 'no' ? false : null,
       });
-      setSavedFlash(true);
-      window.setTimeout(() => setSavedFlash(false), 1600);
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 1800);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kaydedilemedi');
     } finally {
@@ -337,592 +341,319 @@ export default function MenuCustomerProfileModal({
     }
   }
 
+  const tabs: { id: Tab; label: string; icon: typeof QrCode }[] = [
+    { id: 'code', label: 'Kodum', icon: QrCode },
+    { id: 'prefs', label: 'Tercihler', icon: SlidersHorizontal },
+    { id: 'info', label: 'Bilgilerim', icon: IdCard },
+    { id: 'perks', label: 'Avantajlar', icon: Gift },
+  ];
+
+  const visibility = (key: keyof CustomerPrivacyFlags, label: string) => (
+    <button
+      type="button"
+      className={`ca-eye${privacy[key] ? ' is-on' : ''}`}
+      aria-pressed={privacy[key]}
+      aria-label={`${label}: ${privacy[key] ? 'restoran görür' : 'gizli'}`}
+      onClick={() => patchPrivacy({ [key]: !privacy[key] })}
+    >
+      {privacy[key] ? <Eye size={16} aria-hidden /> : <EyeOff size={16} aria-hidden />}
+      <span>{privacy[key] ? 'Görünür' : 'Gizli'}</span>
+    </button>
+  );
+
   return (
     <div
-      className="mc-auth mc-auth--profile"
+      ref={rootRef}
+      className="ca"
+      data-theme={dark ? 'dark' : 'light'}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="mc-auth-title"
+      aria-label={ui.myProfile}
     >
-      <button
-        type="button"
-        className="mc-auth__scrim"
-        aria-label={ui.close}
-        onClick={onClose}
-      />
-      <div className="mc-auth__panel">
-        <header className="mc-auth__head">
-          <div className="mc-auth__head-icon">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="mc-auth__eyebrow">
-              {profilePane === 'perks' ? 'Avantajlar' : `Merhaba ${firstName}`}
-            </p>
-            <h2 id="mc-auth-title">
-              {profilePane === 'perks' ? 'Size özel' : title}
-            </h2>
-            <p>
-              {profilePane === 'perks'
-                ? 'Puan, indirim ve borç özeti'
-                : restaurantName || 'Tercihlerin tüm restoranlarda geçerli'}
-            </p>
-          </div>
-          {profilePane === 'perks' ? (
-            <button
-              type="button"
-              className="mc-auth__close"
-              onClick={() => setProfilePane('home')}
-              aria-label="Geri"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="mc-auth__close"
-              onClick={onClose}
-              aria-label={ui.close}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
-        </header>
+      <button type="button" className="ca__scrim" aria-label={ui.close} onClick={onClose} />
+      <div className="ca__panel" data-tab={tab}>
+        <span className="ca__grab" aria-hidden />
 
-        <div className="mc-auth__body">
-          {error ? <div className="mc-auth__error">{error}</div> : null}
-          {savedFlash ? (
-            <div className="mc-auth__ok">
-              <Check className="w-4 h-4" />
-              Profil kaydedildi
+        {/* Sol/üst: kimlik kartı + kişisel kod */}
+        <aside className="ca__aside">
+          <div className="ca-id">
+            <span className="ca-avatar" style={{ ['--h' as string]: hue }} aria-hidden>
+              {firstName.charAt(0).toLocaleUpperCase('tr')}
+            </span>
+            <div>
+              <p>Merhaba</p>
+              <h2>{customer.fullName}</h2>
+              {restaurantName ? <small>{restaurantName}</small> : null}
             </div>
-          ) : null}
+          </div>
 
-          {profilePane === 'perks' ? (
-            <div className="mc-perks">
-              <section
-                className={`mc-perks__acc${perksOpen.points ? ' is-open' : ''}`}
-              >
-                <button
-                  type="button"
-                  className="mc-perks__acc-head"
-                  aria-expanded={perksOpen.points}
-                  onClick={() =>
-                    setPerksOpen((prev) => ({ ...prev, points: !prev.points }))
-                  }
-                >
-                  <div>
-                    <h3>Puanlar</h3>
-                    <p>Tüm restoranlardaki puanların</p>
-                  </div>
-                  <em>{pointsEntries.length}</em>
-                  <ChevronDown
-                    className="mc-perks__chevron"
-                    strokeWidth={2.4}
-                  />
-                </button>
-                {perksOpen.points ? (
-                  <div className="mc-perks__acc-body">
-                    <label className="mc-perks__search">
-                      <Search className="w-4 h-4" />
-                      <input
-                        value={pointsQuery}
-                        onChange={(e) => setPointsQuery(e.target.value)}
-                        placeholder="Restoran ara…"
-                      />
-                    </label>
-                    {filteredPointsEntries.length === 0 ? (
-                      <p className="mc-perks__empty">
-                        {pointsEntries.length === 0
-                          ? 'Henüz puan yok.'
-                          : 'Sonuç bulunamadı.'}
-                      </p>
-                    ) : (
-                      <ul className="mc-perks__list">
-                        {filteredPointsEntries.map((row) => (
-                          <li key={row.id}>
-                            <div>
-                              <strong>{row.label}</strong>
-                              {row.isCurrent ? <em>Şu an</em> : null}
-                            </div>
-                            <b>{row.points}</b>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                ) : null}
-              </section>
-
-              <section
-                className={`mc-perks__acc${perksOpen.discounts ? ' is-open' : ''}`}
-              >
-                <button
-                  type="button"
-                  className="mc-perks__acc-head"
-                  aria-expanded={perksOpen.discounts}
-                  onClick={() =>
-                    setPerksOpen((prev) => ({
-                      ...prev,
-                      discounts: !prev.discounts,
-                    }))
-                  }
-                >
-                  <div>
-                    <h3>Özel indirimler</h3>
-                    <p>Sana tanımlanan indirimler</p>
-                  </div>
-                  <ChevronDown
-                    className="mc-perks__chevron"
-                    strokeWidth={2.4}
-                  />
-                </button>
-                {perksOpen.discounts ? (
-                  <div className="mc-perks__acc-body">
-                    <p className="mc-perks__empty">
-                      Şimdilik özel indirim yok.
-                    </p>
-                  </div>
-                ) : null}
-              </section>
-
-              <section
-                className={`mc-perks__acc${perksOpen.debt ? ' is-open' : ''}`}
-              >
-                <button
-                  type="button"
-                  className="mc-perks__acc-head"
-                  aria-expanded={perksOpen.debt}
-                  onClick={() =>
-                    setPerksOpen((prev) => ({ ...prev, debt: !prev.debt }))
-                  }
-                >
-                  <div>
-                    <h3>Borç / bakiye</h3>
-                    <p>Restoran hesapları</p>
-                  </div>
-                  <ChevronDown
-                    className="mc-perks__chevron"
-                    strokeWidth={2.4}
-                  />
-                </button>
-                {perksOpen.debt ? (
-                  <div className="mc-perks__acc-body">
-                    <p className="mc-perks__empty">Görüntülenecek borç yok.</p>
-                  </div>
-                ) : null}
-              </section>
+          <div className="ca-ticket">
+            <div className="ca-ticket__qr">
+              {qr.payload ? (
+                <QRCodeSVG value={qr.payload} size={192} level="M" bgColor="#ffffff" fgColor="#0f172a" />
+              ) : (
+                <span className="ca-ticket__empty">{qrBusy ? 'Üretiliyor…' : 'Kod yok'}</span>
+              )}
             </div>
-          ) : (
-            <form
-              className="mc-auth__form mc-auth__form--profile"
-              onSubmit={(e) => void saveProfile(e)}
-            >
-              <button
-                type="button"
-                className="mc-wiz__perks-cta"
-                onClick={() => setProfilePane('perks')}
-              >
-                <span className="mc-wiz__perks-cta-glow" aria-hidden />
-                <Gift className="mc-wiz__perks-cta-icon" />
-                <span className="mc-wiz__perks-cta-text">
-                  <strong>Size özel indirimler</strong>
-                  <small>Puan, indirim ve borç</small>
-                </span>
-                {points > 0 ? <em>{points} puan</em> : <em>Bak</em>}
+            <div className="ca-ticket__cut" aria-hidden />
+            <div className="ca-ticket__code" aria-live="polite">
+              <small>Garsona söyle veya okut</small>
+              <strong>{qr.code ? formatCustomerCodeDisplay(qr.code) : '--- ---'}</strong>
+            </div>
+            <div className="ca-ticket__foot">
+              <span className="ca-timer" style={{ ['--p' as string]: ratio }} aria-hidden>
+                <b>{secondsLeft}</b>
+              </span>
+              <span className="ca-ticket__hint">sn sonra yenilenir</span>
+              <button type="button" disabled={qrBusy} onClick={() => void rotateQr()}>
+                <RefreshCw size={14} aria-hidden className={qrBusy ? 'is-spin' : ''} />
+                Yenile
               </button>
+            </div>
+          </div>
 
-              <nav className="mc-wiz__steps" aria-label="Profil adımları">
-                {PROFILE_STEPS.map((step) => (
-                  <button
-                    key={step.id}
-                    type="button"
-                    className={`mc-wiz__step${profileStep === step.id ? ' is-active' : ''}`}
-                    onClick={() => setProfileStep(step.id)}
-                    aria-current={profileStep === step.id ? 'step' : undefined}
-                  >
-                    <span className="mc-wiz__num">
-                      {String(step.id).padStart(2, '0')}
-                    </span>
-                    <span className="mc-wiz__label">{step.label}</span>
-                  </button>
-                ))}
-              </nav>
+          <button type="button" className="ca-points" onClick={() => setTab('perks')}>
+            <Star size={18} aria-hidden />
+            <span>
+              <strong>{points} puan</strong>
+              <small>{restaurantName || 'Bu restoranda'}</small>
+            </span>
+            <em>Avantajlar</em>
+          </button>
 
-              <div className="mc-wiz__card">
-                {profileStep === 1 ? (
-                  <section className="mc-wiz__panel">
-                    <header className="mc-wiz__panel-head">
-                      <div>
-                        <h3>İletişim</h3>
-                        <p>Restoranların görebileceği bilgileri seç</p>
-                      </div>
-                    </header>
+          <button
+            type="button"
+            className="ca-logout"
+            onClick={() => {
+              logout();
+              onClose();
+            }}
+          >
+            <LogOut size={16} aria-hidden />
+            {ui.logout}
+          </button>
+        </aside>
 
-                    <div className="mc-auth__field">
-                      <div className="mc-profile__field-row">
-                        <label htmlFor="mc-pname">{ui.fullName}</label>
-                        <button
-                          type="button"
-                          className={`mc-profile__vis${privacy.showName ? ' is-on' : ''}`}
-                          onClick={() =>
-                            patchPrivacy({ showName: !privacy.showName })
-                          }
-                          title={
-                            privacy.showName ? 'Restoranlar görür' : 'Gizli'
-                          }
-                          aria-label={
-                            privacy.showName
-                              ? 'Ad Soyad görünür'
-                              : 'Ad Soyad gizli'
-                          }
-                        >
-                          {privacy.showName ? (
-                            <Eye className="w-4 h-4" />
-                          ) : (
-                            <EyeOff className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
-                      <input
-                        id="mc-pname"
-                        value={profileName}
-                        onChange={(e) => setProfileName(e.target.value)}
-                        required
-                      />
-                    </div>
+        <section className="ca__main">
+          <header className="ca__top">
+            <span className="ca-avatar ca-avatar--sm" style={{ ['--h' as string]: hue }} aria-hidden>
+              {firstName.charAt(0).toLocaleUpperCase('tr')}
+            </span>
+            <strong>{customer.fullName}</strong>
+            <button type="button" className="ca-x" onClick={onClose} aria-label={ui.close}>
+              <X size={20} aria-hidden />
+            </button>
+          </header>
 
-                    <div className="mc-auth__field">
-                      <div className="mc-profile__field-row">
-                        <label>Telefon</label>
-                        <button
-                          type="button"
-                          className={`mc-profile__vis${privacy.showPhone ? ' is-on' : ''}`}
-                          onClick={() =>
-                            patchPrivacy({ showPhone: !privacy.showPhone })
-                          }
-                          title={
-                            privacy.showPhone ? 'Restoranlar görür' : 'Gizli'
-                          }
-                          aria-label={
-                            privacy.showPhone
-                              ? 'Telefon görünür'
-                              : 'Telefon gizli'
-                          }
-                        >
-                          {privacy.showPhone ? (
-                            <Eye className="w-4 h-4" />
-                          ) : (
-                            <EyeOff className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
-                      <input
-                        value={
-                          customer?.phone
-                            ? formatPhoneInput(customer.phone)
-                            : '—'
-                        }
-                        readOnly
-                      />
-                    </div>
+          <nav className="ca-tabs" aria-label="Hesap bölümleri">
+            {tabs.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                data-tab={id}
+                className={`ca-tab${tab === id ? ' is-active' : ''}`}
+                aria-current={tab === id ? 'page' : undefined}
+                onClick={() => setTab(id)}
+              >
+                <Icon size={17} aria-hidden />
+                <span>{label}</span>
+                {id === 'prefs' && activeCount > 0 ? <em>{activeCount}</em> : null}
+              </button>
+            ))}
+            <button type="button" className="ca-x ca-x--desk" onClick={onClose} aria-label={ui.close}>
+              <X size={20} aria-hidden />
+            </button>
+          </nav>
 
-                    <div className="mc-auth__field">
-                      <div className="mc-profile__field-row">
-                        <label>
-                          E-posta <small>(opsiyonel)</small>
-                        </label>
-                        <button
-                          type="button"
-                          className={`mc-profile__vis${privacy.showEmail ? ' is-on' : ''}`}
-                          onClick={() =>
-                            patchPrivacy({ showEmail: !privacy.showEmail })
-                          }
-                          title={
-                            privacy.showEmail ? 'Restoranlar görür' : 'Gizli'
-                          }
-                          aria-label={
-                            privacy.showEmail
-                              ? 'E-posta görünür'
-                              : 'E-posta gizli'
-                          }
-                        >
-                          {privacy.showEmail ? (
-                            <Eye className="w-4 h-4" />
-                          ) : (
-                            <EyeOff className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
-                      <input value={customer?.email || '—'} readOnly />
-                    </div>
-                  </section>
-                ) : null}
+          <div className="ca__scroll">
+            {tab === 'prefs' ? (
+              <div className="ca-sec" key="prefs">
+                <div className={`ca-master${filterEnabled ? ' is-on' : ''}`}>
+                  <span className="ca-master__icon" aria-hidden>
+                    <SlidersHorizontal size={20} />
+                  </span>
+                  <div>
+                    <strong>Menüyü bana göre filtrele</strong>
+                    <small>{ui.personalFilterHint}</small>
+                  </div>
+                  <Switch on={filterEnabled} onChange={setFilterEnabled} label="Kişisel filtre" />
+                </div>
 
-                {profileStep === 2 ? (
-                  <section className="mc-wiz__panel mc-wiz__panel--qr">
-                    <div className="mc-profile__qr-card">
-                      <div className="mc-profile__qr-frame">
-                        {qrPayload ? (
-                          <QRCodeSVG
-                            value={qrPayload}
-                            size={168}
-                            level="M"
-                            includeMargin={false}
-                            bgColor="#ffffff"
-                            fgColor="#0f172a"
-                          />
-                        ) : (
-                          <span className="mc-profile__qr-loading">
-                            {qrBusy ? 'Üretiliyor…' : 'Kod yok'}
-                          </span>
-                        )}
-                      </div>
-                      <p className="mc-profile__qr-caption">Kişisel kodun</p>
-                      <p className="mc-profile__qr-hint">
-                        Garson QR okutabilir veya aşağıdaki 6 haneyi yazabilir
-                      </p>
-                      <div className="mc-profile__pin" aria-live="polite">
-                        <span className="mc-profile__pin-label">Kod</span>
-                        <strong className="mc-profile__pin-value">
-                          {qrCode
-                            ? formatCustomerCodeDisplay(qrCode)
-                            : '--- ---'}
-                        </strong>
-                      </div>
-                      <div className="mc-profile__qr-meta">
-                        <span>
-                          {Math.max(0, Math.ceil((qrExpiresAt - qrNow) / 1000))}{' '}
-                          sn
-                        </span>
-                        <button
-                          type="button"
-                          className="mc-profile__qr-refresh"
-                          disabled={qrBusy}
-                          onClick={() => void rotateQr()}
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" />
-                          Yenile
-                        </button>
-                      </div>
-                      <div
-                        className="mc-profile__qr-bar"
-                        style={{
-                          width: `${Math.max(
-                            0,
-                            Math.min(
-                              100,
-                              ((qrExpiresAt - qrNow) / CUSTOMER_QR_TTL_MS) *
-                                100,
-                            ),
-                          )}%`,
-                        }}
-                      />
-                    </div>
-                  </section>
-                ) : null}
-
-                {profileStep === 3 ? (
-                  <section className="mc-wiz__panel">
-                    <header className="mc-wiz__panel-head mc-wiz__panel-head--row">
-                      <div>
-                        <h3>Kişiselleştirme filtreleri</h3>
-                        <p>{ui.personalFilterHint}</p>
-                      </div>
+                <fieldset className="ca-group">
+                  <legend>{ui.alcohol}</legend>
+                  <div className="ca-seg">
+                    {(
+                      [
+                        ['yes', ui.alcoholYes],
+                        ['no', ui.alcoholNo],
+                      ] as const
+                    ).map(([v, label]) => (
                       <button
+                        key={v}
                         type="button"
-                        role="switch"
-                        aria-checked={filterEnabled}
-                        className={`mc-auth__switch-ui${filterEnabled ? ' is-on' : ''}`}
-                        onClick={() => setFilterEnabled(!filterEnabled)}
+                        aria-pressed={alcohol === v}
+                        className={alcohol === v ? 'is-active' : ''}
+                        onClick={() => setAlcohol(alcohol === v ? 'unset' : v)}
                       >
-                        <i />
+                        {label}
                       </button>
-                    </header>
+                    ))}
+                  </div>
+                </fieldset>
 
-                    <div className="mc-wiz__group">
-                      <p className="mc-wiz__group-label">{ui.alcohol}</p>
-                      <div className="mc-auth__alcohol">
-                        <button
-                          type="button"
-                          className={alcohol === 'yes' ? 'is-active' : ''}
-                          onClick={() => setAlcohol('yes')}
-                        >
-                          {ui.alcoholYes}
-                        </button>
-                        <button
-                          type="button"
-                          className={alcohol === 'no' ? 'is-active is-no' : ''}
-                          onClick={() => setAlcohol('no')}
-                        >
-                          {ui.alcoholNo}
-                        </button>
-                      </div>
-                    </div>
+                <fieldset className="ca-group">
+                  <legend>{ui.allergies}</legend>
+                  <div className="ca-chips">
+                    {ALLERGEN_CATALOG.map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        aria-pressed={allergens.includes(a.id)}
+                        className={`ca-chip${allergens.includes(a.id) ? ' is-on is-warn' : ''}`}
+                        onClick={() => toggleIn(allergens, setAllergens, a.id)}
+                      >
+                        {allergenLabel(a.id, lang)}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
 
-                    <div className="mc-wiz__group">
-                      <p className="mc-wiz__group-label">{ui.allergies}</p>
-                      <div className="mc-auth__chips">
-                        {ALLERGEN_CATALOG.map((a) => {
-                          const on = allergens.includes(a.id);
-                          return (
-                            <button
-                              key={a.id}
-                              type="button"
-                              className={`mc-auth__chip${on ? ' is-on' : ''}`}
-                              onClick={() =>
-                                setAllergens((prev) =>
-                                  on
-                                    ? prev.filter((x) => x !== a.id)
-                                    : [...prev, a.id],
-                                )
-                              }
-                            >
-                              {allergenLabel(a.id, lang)}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
+                <fieldset className="ca-group">
+                  <legend>{ui.diet}</legend>
+                  <div className="ca-chips">
+                    {DIET_CATALOG.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        aria-pressed={diets.includes(d.id)}
+                        className={`ca-chip${diets.includes(d.id) ? ' is-on' : ''}`}
+                        onClick={() => toggleIn(diets, setDiets, d.id)}
+                      >
+                        {dietLabel(d.id, lang)}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
 
-                    <div className="mc-wiz__group">
-                      <p className="mc-wiz__group-label">{ui.diet}</p>
-                      <div className="mc-auth__chips">
-                        {DIET_CATALOG.map((d) => {
-                          const on = diets.includes(d.id);
-                          return (
-                            <button
-                              key={d.id}
-                              type="button"
-                              className={`mc-auth__chip${on ? ' is-on' : ''}`}
-                              onClick={() =>
-                                setDiets((prev) =>
-                                  on
-                                    ? prev.filter((x) => x !== d.id)
-                                    : [...prev, d.id],
-                                )
-                              }
-                            >
-                              {dietLabel(d.id, lang)}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
+                <div className="ca-tastes">
+                  <TasteEditor
+                    tone="like"
+                    label={ui.likedFoods}
+                    hint={ui.likedHint}
+                    placeholder={ui.likedPlaceholder}
+                    values={liked}
+                    onChange={setLiked}
+                  />
+                  <TasteEditor
+                    tone="dislike"
+                    label={ui.dislikedFoods}
+                    hint={ui.dislikedHint}
+                    placeholder={ui.dislikedPlaceholder}
+                    values={disliked}
+                    onChange={setDisliked}
+                  />
+                </div>
+              </div>
+            ) : null}
 
-                    <div className="mc-profile__tastes">
-                      <ChipEditor
-                        label={ui.likedFoods}
-                        hint={ui.likedHint}
-                        values={liked}
-                        onChange={setLiked}
-                        placeholder={ui.likedPlaceholder}
-                        tone="like"
-                      />
-                      <ChipEditor
-                        label={ui.dislikedFoods}
-                        hint={ui.dislikedHint}
-                        values={disliked}
-                        onChange={setDisliked}
-                        placeholder={ui.dislikedPlaceholder}
-                        tone="dislike"
-                      />
-                    </div>
-                  </section>
-                ) : null}
+            {tab === 'info' ? (
+              <div className="ca-sec" key="info">
+                <p className="ca-lead">Restoranlar yalnızca “Görünür” bıraktığın bilgileri görür.</p>
+                <div className="ca-row">
+                  <div className="ca-row__head">
+                    <label htmlFor="ca-name">{ui.fullName}</label>
+                    {visibility('showName', ui.fullName)}
+                  </div>
+                  <input id="ca-name" value={name} autoComplete="name" onChange={(e) => setName(e.target.value)} />
+                </div>
+                <div className="ca-row">
+                  <div className="ca-row__head">
+                    <span>Telefon</span>
+                    {visibility('showPhone', 'Telefon')}
+                  </div>
+                  <p className="ca-static">{customer.phone ? formatPhone(customer.phone) : '—'}</p>
+                </div>
+                <div className="ca-row">
+                  <div className="ca-row__head">
+                    <span>
+                      E-posta <small>(opsiyonel)</small>
+                    </span>
+                    {visibility('showEmail', 'E-posta')}
+                  </div>
+                  <p className="ca-static">{customer.email || '—'}</p>
+                </div>
+              </div>
+            ) : null}
 
-                {profileStep === 4 ? (
-                  <section className="mc-wiz__panel">
-                    <header className="mc-wiz__panel-head">
-                      <div>
-                        <h3>Özet</h3>
-                        <p>Bilgilerini kontrol et, sonra kaydet</p>
-                      </div>
-                    </header>
+            {tab === 'perks' ? (
+              <div className="ca-sec" key="perks">
+                <div className="ca-hero-points">
+                  <Star size={22} aria-hidden />
+                  <div>
+                    <small>{restaurantName || 'Bu restoran'}</small>
+                    <strong>{points}</strong>
+                    <span>puanın var</span>
+                  </div>
+                </div>
 
-                    <ul className="mc-wiz__summary">
-                      <li>
-                        <span>Ad</span>
-                        <strong>{profileName || '—'}</strong>
-                      </li>
-                      <li>
-                        <span>Telefon</span>
-                        <strong>
-                          {customer?.phone
-                            ? formatPhoneInput(customer.phone)
-                            : '—'}
-                        </strong>
-                      </li>
-                      <li>
-                        <span>Alkol</span>
-                        <strong>
-                          {alcohol === 'yes'
-                            ? ui.alcoholYes
-                            : alcohol === 'no'
-                              ? ui.alcoholNo
-                              : 'Belirtilmedi'}
-                        </strong>
-                      </li>
-                      <li>
-                        <span>Alerji</span>
-                        <strong>
-                          {allergens.length
-                            ? allergens
-                                .map((id) => allergenLabel(id, lang))
-                                .join(', ')
-                            : 'Yok'}
-                        </strong>
-                      </li>
-                      <li>
-                        <span>Diyet</span>
-                        <strong>
-                          {diets.length
-                            ? diets.map((id) => dietLabel(id, lang)).join(', ')
-                            : 'Yok'}
-                        </strong>
-                      </li>
-                      <li>
-                        <span>Sevdiklerim</span>
-                        <strong>{formatShortList(liked)}</strong>
-                      </li>
-                      <li>
-                        <span>Sevmediklerim</span>
-                        <strong>{formatShortList(disliked)}</strong>
-                      </li>
-                      <li>
-                        <span>Menü filtresi</span>
-                        <strong>{filterEnabled ? 'Açık' : 'Kapalı'}</strong>
-                      </li>
+                <div className="ca-pair">
+                  <div>
+                    <Gift size={18} aria-hidden />
+                    <strong>Özel indirim</strong>
+                    <small>Şimdilik yok</small>
+                  </div>
+                  <div>
+                    <Wallet size={18} aria-hidden />
+                    <strong>Borç / bakiye</strong>
+                    <small>Borcun yok</small>
+                  </div>
+                </div>
+
+                {otherCount > 0 ? (
+                  <div className="ca-group">
+                    <p className="ca-legend">Diğer restoranlardaki puanların</p>
+                    {otherCount > 5 ? (
+                      <label className="ca-search">
+                        <Search size={16} aria-hidden />
+                        <input
+                          value={pointsQuery}
+                          onChange={(e) => setPointsQuery(e.target.value)}
+                          placeholder="Restoran ara…"
+                        />
+                      </label>
+                    ) : null}
+                    <ul className="ca-list">
+                      {perRestaurant.map((r) => (
+                        <li key={r.id}>
+                          <span>{r.label}</span>
+                          <b>{r.points}</b>
+                        </li>
+                      ))}
+                      {!perRestaurant.length ? <li className="is-empty">Sonuç yok</li> : null}
                     </ul>
-                  </section>
+                  </div>
                 ) : null}
               </div>
+            ) : null}
 
-              <div className="mc-wiz__footer">
-                {profileStep === 4 ? (
-                  <button
-                    type="submit"
-                    className="mc-wiz__save"
-                    disabled={busy}
-                  >
-                    {busy ? ui.saving : ui.save}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="mc-auth__ghost"
-                  onClick={() => {
-                    logout();
-                    onClose();
-                  }}
-                >
-                  <LogOut className="w-4 h-4" />
-                  {ui.logout}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
+          </div>
+
+          {/* Değişiklik varsa belirir: tek dokunuşla kaydet */}
+          <div className={`ca-save${dirty || saved || error ? ' is-show' : ''}`} role="status">
+            {error ? (
+              <p className="ca-save__msg is-err">{error}</p>
+            ) : saved ? (
+              <p className="ca-save__msg is-ok">
+                <Check size={16} aria-hidden /> Kaydedildi
+              </p>
+            ) : (
+              <p className="ca-save__msg">Kaydedilmemiş değişiklikler var</p>
+            )}
+            <button type="button" disabled={busy || !dirty} onClick={() => void save()}>
+              {busy ? ui.saving : ui.save}
+            </button>
+          </div>
+        </section>
       </div>
     </div>
   );

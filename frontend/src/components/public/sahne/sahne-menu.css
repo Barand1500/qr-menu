@@ -795,8 +795,7 @@
 .sahne .public-stories__label {
   color: var(--sh-text);
 }
-.sahne .public-allergy-banner,
-.sahne .public-profile-banner {
+.sahne .public-allergy-banner {
   margin: 0;
   border: 1px solid #34d39947;
   border-radius: 18px;

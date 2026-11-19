@@ -367,28 +367,14 @@
   }
 }
 
-.sofra-public-shell :is(.menu-games, .mc-auth) {
+.sofra-public-shell .menu-games {
   align-items: flex-end;
   padding-bottom: 0;
 }
-.sofra-public-shell .mc-auth:not(.mc-auth--profile) {
-  align-items: flex-end;
-  padding-bottom: 0;
-}
-.sofra-public-shell :is(.menu-games__panel, .mc-auth__panel) {
+.sofra-public-shell .menu-games__panel {
   margin-bottom: 0;
   border-radius: 25px 25px 0 0;
   animation: sofra-sheet-enter 0.24s ease both;
-}
-.sofra-public-shell .mc-auth:not(.mc-auth--profile) .mc-auth__panel {
-  border-radius: 25px 25px 0 0;
-  animation-name: sofra-sheet-enter;
-}
-.sofra-public-shell .mc-auth--profile .mc-auth__panel {
-  width: min(100%, 720px);
-  height: auto;
-  max-height: 92svh;
-  background: #18130f;
 }
 .sofra-public-shell .menu-games__panel {
   background: #18130f;
@@ -434,7 +420,6 @@
   .sofra-sheet *,
   .sofra-public-shell .siparis-cart-sheet *,
   .sofra-public-shell .menu-games__panel,
-  .sofra-public-shell .mc-auth__panel,
   .sofra-prefs {
     animation: none !important;
     transition: none !important;

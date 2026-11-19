@@ -109,7 +109,7 @@
 }
 
 /* Banner yanlışlıkla grid çocuğu olursa tam genişlik (main+rail) */
-.siparis-home > .public-profile-banner,
+.siparis-home > .cf-bar,
 .siparis-home > .public-allergy-banner {
   grid-column: 1 / -1;
 }
