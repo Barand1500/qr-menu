@@ -37,9 +37,13 @@ import {
   type BulkOptionsAction,
   type BulkPriceParams,
   type BulkPriceRounding,
-  type BulkPriceSnapshot,
-  type BulkSnapshotItem,
 } from '../lib/bulk-price.js';
+import {
+  PRICE_HISTORY_LIMIT,
+  buildSample,
+  describeBulkChange,
+  describeRestore,
+} from '../lib/price-history.js';
 import {
   parseStockQtyInput,
   parseStockResetPatch,
@@ -218,18 +222,25 @@ router.post('/move-to-group', async (req, res) => {
   res.json({ moved: toMove.length, skipped: ids.length - toMove.length });
 });
 
-router.get('/bulk-price/status', async (req, res) => {
+// Fiyat değişikliği geçmişi: en yeni en üstte (kim, ne zaman, ne yaptı, ilk birkaç ürün)
+router.get('/price-changes', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const row = await prisma.setting.findUnique({
-    where: {
-      restaurantId_key: { restaurantId: restaurantId!, key: BULK_PRICE_SNAPSHOT_KEY },
-    },
+  await importLegacyPriceSnapshot(restaurantId!);
+  const rows = await prisma.priceChange.findMany({
+    where: { restaurantId: restaurantId! },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: PRICE_HISTORY_LIMIT,
   });
-  const snapshot = parseBulkSnapshot(row?.value);
   res.json({
-    hasSnapshot: Boolean(snapshot),
-    appliedAt: snapshot?.appliedAt ?? null,
-    count: snapshot?.items.length ?? 0,
+    changes: rows.map((c) => ({
+      id: c.id,
+      kind: c.kind,
+      summary: c.summary,
+      userName: c.userName,
+      createdAt: c.createdAt.toISOString(),
+      itemCount: c.itemCount,
+      sample: c.sample,
+    })),
   });
 });
 
@@ -298,7 +309,7 @@ router.post('/bulk-price/apply', async (req, res) => {
     return res.status(400).json({ message: 'Güncellenecek ürün bulunamadı' });
   }
 
-  const snapshotItems: BulkSnapshotItem[] = [];
+  const historyItems: HistoryItemInput[] = [];
   const updates: { id: number; price: number; previousPrice: number; optionGroups?: unknown }[] = [];
   const skipped: { id: number; name: string; reason: string }[] = [];
 
@@ -314,25 +325,29 @@ router.post('/bulk-price/apply', async (req, res) => {
       continue;
     }
 
-    snapshotItems.push({
-      productId: p.id,
-      price: oldPrice,
-      optionGroups: normalizeOptionGroups(p.optionGroups),
-    });
-
     const next: { id: number; price: number; previousPrice: number; optionGroups?: unknown } = {
       id: p.id,
       price: base.next,
       previousPrice: oldPrice,
     };
+    let oldOptionGroups: unknown = null;
 
     if (params.optionsAction === 'base_and_options') {
       const opt = transformOptionGroups(p.optionGroups, params);
       next.optionGroups = opt.groups;
+      oldOptionGroups = normalizeOptionGroups(p.optionGroups);
     }
 
     if (Math.abs(base.next - oldPrice) > 0.001 || next.optionGroups) {
       updates.push(next);
+      historyItems.push({
+        productId: p.id,
+        productName: getProductField(p.i18n, 'tr', 'name'),
+        oldPrice,
+        newPrice: base.next,
+        oldOptionGroups,
+        symbol: p.currency?.symbol ?? '₺',
+      });
     }
   }
 
@@ -344,19 +359,28 @@ router.post('/bulk-price/apply', async (req, res) => {
   }
 
   const appliedAt = new Date().toISOString();
-  const snapshot: BulkPriceSnapshot = { appliedAt, params, items: snapshotItems };
+  const symbols = new Set(products.map((p) => p.currency?.symbol ?? '₺'));
+  const scopeKind = body.scope === 'category' ? 'category' : body.scope === 'selected' ? 'selected' : 'all';
+  const summary = describeBulkChange(
+    params,
+    {
+      kind: scopeKind,
+      groupName: products[0] ? getGroupName(products[0].group.i18n) : undefined,
+      count: products.length,
+    },
+    symbols.size === 1 ? [...symbols][0] : null,
+  );
+  const actor = await actorName(req);
 
   await prisma.$transaction(async (tx) => {
-    await tx.setting.upsert({
-      where: {
-        restaurantId_key: { restaurantId: restaurantId!, key: BULK_PRICE_SNAPSHOT_KEY },
-      },
-      update: { value: JSON.stringify(snapshot) },
-      create: {
-        restaurantId: restaurantId!,
-        key: BULK_PRICE_SNAPSHOT_KEY,
-        value: JSON.stringify(snapshot),
-      },
+    await recordPriceChange(tx, {
+      restaurantId: restaurantId!,
+      userId: req.user?.userId ?? null,
+      userName: actor,
+      kind: 'bulk',
+      summary,
+      createdAt: new Date(appliedAt),
+      items: historyItems,
     });
 
     for (const u of updates) {
@@ -386,52 +410,78 @@ router.post('/bulk-price/apply', async (req, res) => {
   });
 });
 
-router.post('/bulk-price/restore', async (req, res) => {
+// Bir fiyat değişikliğini geri al: o işlemde değişen ürünler, işlemden önceki fiyatlarına (ve seçeneklerine) döner.
+// Geri alma da geçmişe yeni bir kayıt olarak eklenir, böylece o da geri alınabilir.
+router.post('/price-changes/:id/restore', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const row = await prisma.setting.findUnique({
-    where: {
-      restaurantId_key: { restaurantId: restaurantId!, key: BULK_PRICE_SNAPSHOT_KEY },
-    },
+  const id = Number(req.params.id);
+  const change = await prisma.priceChange.findFirst({
+    where: { id, restaurantId: restaurantId! },
+    include: { items: true },
   });
-  const snapshot = parseBulkSnapshot(row?.value);
-  if (!snapshot) {
-    return res.status(400).json({ message: 'Geri alınacak toplu fiyat kaydı yok' });
-  }
+  if (!change) return res.status(404).json({ message: 'Fiyat kaydı bulunamadı' });
 
-  const orderIds: number[] = [];
-  const updates: { id: number; price: number }[] = [];
+  const products = await prisma.product.findMany({
+    where: { id: { in: change.items.map((i) => i.productId) }, restaurantId: restaurantId! },
+    include: { currency: true },
+  });
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const restoreItems: HistoryItemInput[] = [];
+  const updates: { id: number; price: number; previousPrice: number }[] = [];
 
-  await prisma.$transaction(async (tx) => {
-    for (const item of snapshot.items) {
-      const product = await tx.product.findFirst({
-        where: { id: item.productId, restaurantId: restaurantId! },
-        select: { id: true },
-      });
-      if (!product) continue;
+  const actor = await actorName(req);
+  const created = await prisma.$transaction(async (tx) => {
+    for (const item of change.items) {
+      const product = byId.get(item.productId);
+      if (!product) continue; // ürün silinmiş
+      const current = Number(product.price);
+      const target = Number(item.oldPrice);
+      const optionsToRestore = item.oldOptionGroups != null;
+      if (Math.abs(current - target) < 0.001 && !optionsToRestore) continue;
       await tx.product.update({
         where: { id: product.id },
         data: {
-          price: item.price,
-          optionGroups: item.optionGroups,
+          price: target,
           previousPrice: null,
           previousPriceAt: null,
+          ...(optionsToRestore ? { optionGroups: normalizeOptionGroups(item.oldOptionGroups) } : {}),
         },
       });
-      orderIds.push(product.id);
-      updates.push({ id: product.id, price: item.price });
+      restoreItems.push({
+        productId: product.id,
+        productName: item.productName,
+        oldPrice: current,
+        newPrice: target,
+        oldOptionGroups: optionsToRestore ? normalizeOptionGroups(product.optionGroups) : null,
+        symbol: product.currency?.symbol ?? '₺',
+      });
+      updates.push({ id: product.id, price: target, previousPrice: current });
     }
-
-    await tx.setting.deleteMany({
-      where: { restaurantId: restaurantId!, key: BULK_PRICE_SNAPSHOT_KEY },
+    if (!restoreItems.length) return null;
+    return recordPriceChange(tx, {
+      restaurantId: restaurantId!,
+      userId: req.user?.userId ?? null,
+      userName: actor,
+      kind: 'restore',
+      summary: describeRestore(change.summary),
+      createdAt: new Date(),
+      items: restoreItems,
     });
   });
+  if (!created) {
+    return res.status(400).json({ message: 'Bu değişiklikteki ürünlerin fiyatı zaten o hâlde.' });
+  }
+  res.json({ ok: true, restored: updates.length, changeId: created.id, updates });
+});
 
-  res.json({
-    ok: true,
-    restoredAt: snapshot.appliedAt,
-    orderIds,
-    updates,
+// Kaydı geçmişten sil (ürün fiyatları değişmez; o değişikliğe artık dönülemez)
+router.delete('/price-changes/:id', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const result = await prisma.priceChange.deleteMany({
+    where: { id: Number(req.params.id), restaurantId: restaurantId! },
   });
+  if (!result.count) return res.status(404).json({ message: 'Fiyat kaydı bulunamadı' });
+  res.json({ ok: true });
 });
 
 router.get('/:id', async (req, res) => {
@@ -987,6 +1037,118 @@ async function mapProduct(
     optionGroups: normalizeOptionGroups(product.optionGroups),
     optionSummary: optionGroupsSummary(product.optionGroups),
   };
+}
+
+type HistoryItemInput = {
+  productId: number;
+  productName: string;
+  oldPrice: number;
+  newPrice: number | null;
+  /** Seçenek fiyatları da değiştiyse işlemden önceki hâli; yoksa null. */
+  oldOptionGroups: unknown;
+  symbol: string;
+};
+
+async function actorName(req: { user?: { userId: number } }): Promise<string> {
+  if (!req.user) return 'Bilinmiyor';
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.userId },
+    select: { fullName: true, email: true },
+  });
+  return (user?.fullName || user?.email || 'Bilinmiyor').slice(0, 150);
+}
+
+type PriceChangeTx = Pick<typeof prisma, 'priceChange' | 'priceChangeItem'>;
+
+async function recordPriceChange(
+  tx: PriceChangeTx,
+  input: {
+    restaurantId: number;
+    userId: number | null;
+    userName: string;
+    kind: 'bulk' | 'restore';
+    summary: string;
+    createdAt: Date;
+    items: HistoryItemInput[];
+  },
+) {
+  const change = await tx.priceChange.create({
+    data: {
+      restaurantId: input.restaurantId,
+      userId: input.userId,
+      userName: input.userName,
+      kind: input.kind,
+      summary: input.summary,
+      itemCount: input.items.length,
+      sample: buildSample(
+        input.items.map((i) => ({
+          name: i.productName,
+          oldPrice: i.oldPrice,
+          newPrice: i.newPrice,
+          symbol: i.symbol,
+        })),
+      ),
+      createdAt: input.createdAt,
+    },
+  });
+  await tx.priceChangeItem.createMany({
+    data: input.items.map((i) => ({
+      changeId: change.id,
+      productId: i.productId,
+      productName: i.productName.slice(0, 200),
+      oldPrice: i.oldPrice,
+      newPrice: i.newPrice,
+      ...(i.oldOptionGroups != null ? { oldOptionGroups: i.oldOptionGroups as never } : {}),
+    })),
+  });
+  return change;
+}
+
+/**
+ * Eski sistemde yalnızca son toplu değişiklik tek bir ayar olarak saklanıyordu. İlk listelemede o kayıt
+ * geçmişe ("Bilinmiyor" kullanıcıyla) aktarılır ve eski ayar silinir.
+ */
+async function importLegacyPriceSnapshot(restaurantId: number) {
+  const row = await prisma.setting.findUnique({
+    where: { restaurantId_key: { restaurantId, key: BULK_PRICE_SNAPSHOT_KEY } },
+  });
+  if (!row) return;
+  const snapshot = parseBulkSnapshot(row.value);
+  if (!snapshot) {
+    await prisma.setting.deleteMany({ where: { restaurantId, key: BULK_PRICE_SNAPSHOT_KEY } });
+    return;
+  }
+  const products = await prisma.product.findMany({
+    where: { restaurantId, id: { in: snapshot.items.map((i) => i.productId) } },
+    include: { currency: true },
+  });
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const items: HistoryItemInput[] = snapshot.items.map((i) => {
+    const product = byId.get(i.productId);
+    return {
+      productId: i.productId,
+      productName: product ? getProductField(product.i18n, 'tr', 'name') : 'Silinmiş ürün',
+      oldPrice: i.price,
+      newPrice: snapshot.params ? transformUnitPrice(i.price, snapshot.params).next : null,
+      oldOptionGroups: i.optionGroups.length ? i.optionGroups : null,
+      symbol: product?.currency?.symbol ?? '₺',
+    };
+  });
+  const symbols = new Set(items.map((i) => i.symbol));
+  await prisma.$transaction(async (tx) => {
+    await recordPriceChange(tx, {
+      restaurantId,
+      userId: null,
+      userName: 'Bilinmiyor',
+      kind: 'bulk',
+      summary: snapshot.params
+        ? describeBulkChange(snapshot.params, { kind: 'unknown' }, symbols.size === 1 ? [...symbols][0] : null)
+        : 'Toplu fiyat değişikliği',
+      createdAt: new Date(snapshot.appliedAt),
+      items,
+    });
+    await tx.setting.deleteMany({ where: { restaurantId, key: BULK_PRICE_SNAPSHOT_KEY } });
+  });
 }
 
 function parseBulkParams(body: Record<string, unknown>): BulkPriceParams | null {

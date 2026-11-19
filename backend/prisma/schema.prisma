@@ -48,6 +48,7 @@ model Restaurant {
   campaigns      Campaign[]
   tableSessions  TableFloorSession[]
   customerLedger MenuCustomerLedger[]
+  priceChanges   PriceChange[]
 
   @@map("restoranlar")
 }
@@ -448,4 +449,42 @@ model MenuCustomerLedger {
   @@index([restaurantId, customerId, createdAt])
   @@index([restaurantId, kind])
   @@map("menu_musteri_hesap")
+}
+
+/// Toplu fiyat değişikliği geçmişi (her işlem ayrı kayıt; geri alma da kayıt olur)
+model PriceChange {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int      @map("restoran_id")
+  userId       Int?     @map("kullanici_id")
+  userName     String   @map("kullanici_ad") @db.VarChar(150)
+  /// bulk | restore
+  kind         String   @db.VarChar(20)
+  /// Kısa açıklama: "%10 zam · Burgerler grubu"
+  summary      String   @map("ozet") @db.VarChar(255)
+  itemCount    Int      @map("urun_sayisi")
+  /// İlk birkaç ürün: [{ name, oldPrice, newPrice, symbol }]
+  sample       Json     @default("[]") @map("ornek")
+  createdAt    DateTime @default(now()) @map("olusturma")
+
+  restaurant Restaurant       @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items      PriceChangeItem[]
+
+  @@index([restaurantId, createdAt])
+  @@map("fiyat_degisiklikleri")
+}
+
+model PriceChangeItem {
+  id              Int      @id @default(autoincrement())
+  changeId        Int      @map("degisiklik_id")
+  productId       Int      @map("urun_id")
+  productName     String   @map("urun_ad") @db.VarChar(200)
+  oldPrice        Decimal  @map("eski_fiyat") @db.Decimal(10, 2)
+  newPrice        Decimal? @map("yeni_fiyat") @db.Decimal(10, 2)
+  /// Seçenek fiyatları da değiştiyse işlemden önceki hâli (null = seçeneklere dokunulmadı)
+  oldOptionGroups Json?    @map("eski_secenekler")
+
+  change PriceChange @relation(fields: [changeId], references: [id], onDelete: Cascade)
+
+  @@index([changeId])
+  @@map("fiyat_degisiklik_urunleri")
 }

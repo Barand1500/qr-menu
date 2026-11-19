@@ -55,3 +55,16 @@ export interface Group {
   parentName?: string | null;
   isSubGroup?: boolean;
 }
+
+/** Toplu fiyat değişikliği geçmişindeki bir kayıt (en yeni en üstte). */
+export interface PriceChange {
+  id: number;
+  /** bulk: toplu zam/indirim, restore: bir değişikliğin geri alınması */
+  kind: 'bulk' | 'restore';
+  /** "%10 zam · Burgerler grubu" */
+  summary: string;
+  userName: string;
+  createdAt: string;
+  itemCount: number;
+  sample: { name: string; oldPrice: number; newPrice: number | null; symbol: string }[];
+}

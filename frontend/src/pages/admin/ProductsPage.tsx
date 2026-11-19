@@ -13,6 +13,7 @@ import {
   Eye,
   EyeOff,
   FolderOpen,
+  History,
   Layers3,
   MoreHorizontal,
   Package,
@@ -50,7 +51,9 @@ import type {
   Product,
   Group,
   Currency,
+  PriceChange,
 } from '@/components/admin/products/types';
+import PriceHistoryDialog from '@/components/admin/products/PriceHistoryDialog';
 import {
   defaultPrefCatalog,
   fetchPrefCatalog,
@@ -64,11 +67,6 @@ type Query = {
   group: string;
   status: 'all' | 'active' | 'passive';
   page: number;
-};
-type Snapshot = {
-  hasSnapshot: boolean;
-  count: number;
-  appliedAt: string | null;
 };
 const PAGE_SIZE = 15;
 const message = (e: unknown) =>
@@ -178,11 +176,9 @@ export default function ProductsPage() {
   const [bulkOpen, setBulkOpen] = useState(false),
     [restoreOpen, setRestoreOpen] = useState(false),
     [restoreError, setRestoreError] = useState(''),
-    [snapshot, setSnapshot] = useState<Snapshot>({
-      hasSnapshot: false,
-      count: 0,
-      appliedAt: null,
-    });
+    [historyOpen, setHistoryOpen] = useState(false),
+    [historyError, setHistoryError] = useState(''),
+    [history, setHistory] = useState<PriceChange[]>([]);
   const [categorySearch, setCategorySearch] = useState('');
   const [priceTransitions, setPriceTransitions] = useState<
     Record<number, PriceTransition>
@@ -195,11 +191,12 @@ export default function ProductsPage() {
       pendingRef.current.forEach((file) => URL.revokeObjectURL(file.url)),
     [],
   );
-  const refreshSnapshot = useCallback(async () => {
+  const refreshHistory = useCallback(async () => {
     try {
-      setSnapshot(await api<Snapshot>('/api/admin/products/bulk-price/status'));
+      const res = await api<{ changes: PriceChange[] }>('/api/admin/products/price-changes');
+      setHistory(res.changes);
     } catch {
-      /* snapshot tools stay unavailable until a successful response */
+      /* fiyat geçmişi araçları, başarılı bir yanıta kadar görünmez */
     }
   }, []);
   useEffect(() => {
@@ -238,11 +235,11 @@ export default function ProductsPage() {
         if (!cancelled) setMetaError(message(e));
       }
     })();
-    void refreshSnapshot();
+    void refreshHistory();
     return () => {
       cancelled = true;
     };
-  }, [metaRetry, refreshSnapshot]);
+  }, [metaRetry, refreshHistory]);
   const load = useCallback(
     async (signal?: AbortSignal) => {
       const id = ++request.current;
@@ -762,7 +759,7 @@ export default function ProductsPage() {
         }),
       );
       await load();
-      await refreshSnapshot();
+      await refreshHistory();
       setNotice({
         error: false,
         text: `${result.updates.length} ürünün fiyatı güncellendi.${result.skipped.length ? ` ${result.skipped.length} ürün atlandı.` : ''}`,
@@ -771,21 +768,42 @@ export default function ProductsPage() {
       end();
     }
   }
-  async function restorePrices() {
-    if (!snapshot.hasSnapshot || !begin()) return;
+  /** Bir fiyat değişikliğini geri alır (o işlemden önceki fiyatlara döner); geri alma da geçmişe eklenir. */
+  async function restoreChange(id: number) {
+    if (!begin()) return;
     setRestoreError('');
+    setHistoryError('');
     try {
       setPriceTransitions({});
-      await api('/api/admin/products/bulk-price/restore', { method: 'POST' });
+      const res = await api<{ restored: number }>(`/api/admin/products/price-changes/${id}/restore`, {
+        method: 'POST',
+      });
       setRestoreOpen(false);
+      setHistoryOpen(false);
       await load();
-      await refreshSnapshot();
+      await refreshHistory();
       setNotice({
         error: false,
-        text: 'Son toplu fiyat değişikliği geri alındı.',
+        text: `${res.restored} ürünün fiyatı geri alındı.`,
       });
     } catch (e) {
       setRestoreError(message(e));
+      setHistoryError(message(e));
+    } finally {
+      end();
+    }
+  }
+  async function deleteChange(id: number) {
+    if (!begin()) return;
+    setHistoryError('');
+    try {
+      await api(`/api/admin/products/price-changes/${id}`, { method: 'DELETE' });
+      const remaining = history.filter((c) => c.id !== id);
+      setHistory(remaining);
+      if (!remaining.length) setHistoryOpen(false);
+      setNotice({ error: false, text: 'Kayıt fiyat geçmişinden silindi.' });
+    } catch (e) {
+      setHistoryError(message(e));
     } finally {
       end();
     }
@@ -1129,7 +1147,7 @@ export default function ProductsPage() {
               <small>Önizle, kontrol et, birlikte uygula</small>
             </span>
           </button>
-          {snapshot.hasSnapshot && (
+          {history.length === 1 && (
             <button
               onClick={() => {
                 setToolsOpen(false);
@@ -1140,7 +1158,26 @@ export default function ProductsPage() {
               <RotateCcw size={19} />
               <span>
                 Son fiyat değişikliğini geri al
-                <small>{snapshot.count} ürün</small>
+                <small>
+                  {history[0].itemCount} ürün · {history[0].summary}
+                </small>
+              </span>
+            </button>
+          )}
+          {history.length > 1 && (
+            <button
+              onClick={() => {
+                setToolsOpen(false);
+                setHistoryError('');
+                setHistoryOpen(true);
+              }}
+            >
+              <History size={19} />
+              <span>
+                Fiyat geçmişi
+                <small>
+                  {history.length} değişiklik · son: {history[0].summary}
+                </small>
               </span>
             </button>
           )}
@@ -1286,14 +1323,13 @@ export default function ProductsPage() {
         </Button>
       </GroupsDialog>
       <GroupsDialog
-        open={restoreOpen}
+        open={restoreOpen && history.length > 0}
         title="Son fiyatlara dön"
         busy={busy}
         onClose={() => setRestoreOpen(false)}
       >
         <p className="ag-delete-copy">
-          Son toplu işlemde değişen {snapshot.count} ürünün eski fiyatı geri
-          yüklenecek.
+          Son toplu işlemde değişen {history[0]?.itemCount ?? 0} ürünün eski fiyatı geri yüklenecek.
         </p>
         {restoreError && (
           <p role="alert" className="ag-form-error">
@@ -1302,12 +1338,21 @@ export default function ProductsPage() {
         )}
         <Button
           className="w-full"
-          disabled={busy}
-          onClick={() => void restorePrices()}
+          disabled={busy || !history[0]}
+          onClick={() => history[0] && void restoreChange(history[0].id)}
         >
           {busy ? 'Geri alınıyor…' : 'Eski fiyatları geri yükle'}
         </Button>
       </GroupsDialog>
+      <PriceHistoryDialog
+        open={historyOpen && history.length > 0}
+        changes={history}
+        busy={busy}
+        error={historyError}
+        onClose={() => setHistoryOpen(false)}
+        onRestore={(id) => void restoreChange(id)}
+        onDelete={(id) => void deleteChange(id)}
+      />
     </section>
   );
 }
