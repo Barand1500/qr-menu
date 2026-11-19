@@ -615,34 +615,85 @@
   gap: 0.8rem;
 }
 .ca-taste {
-  display: grid;
-  gap: 0.6rem;
-  padding: 0.85rem;
-  background: var(--ca-card);
-  border: 1px solid var(--ca-line);
-  border-radius: 20px;
+  --t: #10b981;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1.1rem 1rem 1rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--t) 9%, var(--ca-card));
+  border: 1.5px solid color-mix(in srgb, var(--t) 38%, var(--ca-line));
+  border-radius: 22px;
+}
+.ca-taste--dislike {
+  --t: #f43f5e;
+}
+.ca-taste::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: var(--t);
 }
 .ca-taste__head {
   display: flex;
-  gap: 0.6rem;
+  align-items: flex-start;
+  gap: 0.65rem;
 }
 .ca-taste__head > svg {
   flex: none;
-  margin-top: 2px;
+  box-sizing: content-box;
+  padding: 8px;
+  color: var(--t);
+  background: color-mix(in srgb, var(--t) 18%, transparent);
+  border-radius: 12px;
 }
-.ca-taste--like .ca-taste__head > svg {
-  color: #10b981;
-}
-.ca-taste--dislike .ca-taste__head > svg {
-  color: var(--ca-bad);
+.ca-taste__head > div {
+  flex: 1;
+  min-width: 0;
 }
 .ca-taste__head strong,
 .ca-taste__head small {
   display: block;
 }
 .ca-taste__head small {
+  margin-top: 1px;
   color: var(--ca-mute);
-  font-size: 0.76rem;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+.ca-taste__n {
+  min-width: 26px;
+  padding: 2px 8px;
+  color: var(--t);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 800;
+  text-align: center;
+  background: color-mix(in srgb, var(--t) 16%, transparent);
+  border-radius: 999px;
+}
+.ca-taste .ca-chips {
+  flex: 1;
+  align-content: flex-start;
+}
+.ca-taste .ca-chip.is-on {
+  background: color-mix(in srgb, var(--t) 18%, var(--ca-card));
+  border-color: var(--t);
+}
+.ca-taste__empty {
+  flex: 1;
+  margin: 0;
+  padding: 0.7rem 0;
+  color: var(--ca-mute);
+  font-size: 0.82rem;
+  text-align: center;
+  border: 1.5px dashed color-mix(in srgb, var(--t) 35%, var(--ca-line));
+  border-radius: 14px;
+}
+.ca-taste .ca-add {
+  margin-top: auto;
 }
 .ca-add {
   display: flex;
@@ -961,7 +1012,7 @@
   }
   .ca-tastes {
     grid-template-columns: 1fr 1fr;
-    align-items: start;
+    align-items: stretch;
   }
   .ca-save {
     margin: 0 1.4rem;

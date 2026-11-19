@@ -132,6 +132,7 @@ function TasteEditor({
           <strong>{label}</strong>
           <small>{hint}</small>
         </div>
+        <em className="ca-taste__n">{values.length}</em>
       </div>
       {values.length ? (
         <div className="ca-chips">
@@ -148,7 +149,9 @@ function TasteEditor({
             </button>
           ))}
         </div>
-      ) : null}
+      ) : (
+        <p className="ca-taste__empty">{tone === 'like' ? 'Henüz eklemedin' : 'Henüz bir şey yok'}</p>
+      )}
       <div className="ca-add">
         <input
           value={draft}
@@ -609,11 +612,9 @@ export default function MenuCustomerProfileModal({
                   </div>
                 </div>
 
-                {otherCount > 0 ? (
-                  <div className="ca-group">
+                <div className="ca-group">
                     <p className="ca-legend">Diğer restoranlardaki puanların</p>
-                    {otherCount > 5 ? (
-                      <label className="ca-search">
+                    <label className="ca-search">
                         <Search size={16} aria-hidden />
                         <input
                           value={pointsQuery}
@@ -621,7 +622,6 @@ export default function MenuCustomerProfileModal({
                           placeholder="Restoran ara…"
                         />
                       </label>
-                    ) : null}
                     <ul className="ca-list">
                       {perRestaurant.map((r) => (
                         <li key={r.id}>
@@ -629,13 +629,11 @@ export default function MenuCustomerProfileModal({
                           <b>{r.points}</b>
                         </li>
                       ))}
-                      {!perRestaurant.length ? <li className="is-empty">Sonuç yok</li> : null}
+                      {!perRestaurant.length ? <li className="is-empty">{otherCount ? 'Sonuç yok' : 'Başka restoranda puanın yok'}</li> : null}
                     </ul>
                   </div>
-                ) : null}
               </div>
             ) : null}
-
           </div>
 
           {/* Değişiklik varsa belirir: tek dokunuşla kaydet */}
