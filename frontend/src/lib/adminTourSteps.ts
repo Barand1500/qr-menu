@@ -12,6 +12,8 @@ export type TourStep = {
   target?: string;
   path?: string;
   openGroup?: TourOpenGroup;
+  /** Varsa adım "yaptırmalı" olur: vurgulanan öğeye tıklanınca tur kendiliğinden ilerler. Metin ipucudur. */
+  task?: string;
   placement?: 'top' | 'bottom' | 'left' | 'right' | 'center';
 };
 
@@ -24,7 +26,7 @@ const TOUR_STEP_DEFS: TourStepDef[] = [
   {
     id: 'welcome',
     title: 'Panele hoş geldiniz',
-    body: 'Birlikte panelin her köşesini gezeceğiz. Menü kurulumundan masa yönetimine kadar adım adım göstereceğim. İstediğiniz an “Atla” veya X ile çıkabilirsiniz.',
+    body: 'Birlikte panelin her köşesini gezeceğiz. Menü kurulumundan masa yönetimine kadar adım adım göstereceğim. İstediğiniz an X veya Esc ile çıkabilirsiniz; bazı adımlarda vurgulanan yere dokunmanız yeterli.',
     tip: 'Tur yaklaşık 1–2 dakika sürer.',
     placement: 'center',
   },
@@ -51,6 +53,7 @@ const TOUR_STEP_DEFS: TourStepDef[] = [
     body: 'Menünün iskeleti burası. Burgerler, İçecekler, Kahvaltı gibi kategorileri oluşturur; sürükleyerek sıralar ve alt gruplar eklersiniz.',
     tip: 'Önce grupları kurun, sonra ürün eklemek çok daha kolay olur.',
     target: 'nav-groups',
+    task: 'Gruplar’a dokun, hemen açalım',
     pathSegments: ['groups'],
     placement: 'right',
   },
@@ -59,6 +62,7 @@ const TOUR_STEP_DEFS: TourStepDef[] = [
     title: 'Ürünler',
     body: 'Her yemeği buraya eklersiniz: isim, fiyat, fotoğraf, açıklama, alerjen ve diyet etiketleri. Gruplara bağlayarak menüde doğru yerde görünmesini sağlarsınız.',
     target: 'nav-products',
+    task: 'Ürünler’e dokun',
     pathSegments: ['products'],
     placement: 'right',
   },
@@ -178,6 +182,7 @@ const TOUR_STEP_DEFS: TourStepDef[] = [
     body: 'Dil, para birimi, logo, sosyal medya, müzik, garson çağır ve konum kilidi gibi her şey burada. Restoran kimliğinin merkezi.',
     tip: 'Konum kilidi ile menüyü sadece mekân civarında açtırabilirsiniz.',
     target: 'nav-settings',
+    task: 'Ayarlar’a dokun',
     pathSegments: ['settings'],
     openGroup: 'management',
     placement: 'right',
@@ -212,6 +217,7 @@ const TOUR_STEP_DEFS: TourStepDef[] = [
     title: 'Gündüz / gece',
     body: 'Panel temasını buradan değiştirirsiniz. Göz yormayan gece modu uzun nöbetlerde işe yarar.',
     target: 'header-theme',
+    task: 'Dokun ve temayı değiştir, sonra geri dön',
     pathSegments: [],
     placement: 'bottom',
   },

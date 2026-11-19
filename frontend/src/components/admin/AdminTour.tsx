@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CircleHelp, Lightbulb, X } from 'lucide-react';
+import { CircleHelp } from 'lucide-react';
+import { driver, type Driver } from 'driver.js';
+import 'driver.js/dist/driver.css';
 import { getAdminTourSteps, type TourOpenGroup, type TourStep } from '@/lib/adminTourSteps';
 import { adminPath } from '@/lib/adminPath';
 import '@/admin-tour.css';
-
-type Rect = { top: number; left: number; width: number; height: number };
 
 type Props = {
   open: boolean;
@@ -17,260 +16,153 @@ type Props = {
 
 function pathMatches(current: string, expected?: string) {
   if (!expected) return true;
-  if (current === expected) return true;
   const home = adminPath();
   if (expected === home) return current === home || current === `${home}/`;
   return current === expected || current.startsWith(`${expected}/`);
 }
 
-function readTargetRect(target?: string): Rect | null {
-  if (!target) return null;
-  const el = document.querySelector(`[data-tour="${target}"]`) as HTMLElement | null;
-  if (!el) return null;
-  const r = el.getBoundingClientRect();
-  if (r.width < 2 && r.height < 2) return null;
-  return { top: r.top, left: r.left, width: r.width, height: r.height };
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+const findTarget = (target?: string) =>
+  target ? (document.querySelector(`[data-tour="${target}"]`) as HTMLElement | null) : null;
+
+const SIDEBAR_TARGETS = /^(nav-|extensions|tour-help|maintenance|menu-preview)/;
+
+function describe(step: TourStep, index: number, total: number) {
+  const pct = Math.round(((index + 1) / total) * 100);
+  return `
+    <div class="adt-meta"><span>${index + 1} / ${total}</span><i><b style="width:${pct}%"></b></i></div>
+    <p class="adt-body">${step.body}</p>
+    ${step.tip ? `<p class="adt-tip">${step.tip}</p>` : ''}
+    ${step.task ? `<p class="adt-task"><span aria-hidden="true">👆</span>${step.task}</p>` : ''}`;
 }
 
-function cardStyle(rect: Rect | null, placement: TourStep['placement']) {
-  const gap = 14;
-  const cardW = Math.min(360, window.innerWidth - 24);
-  if (!rect || placement === 'center') {
-    return {
-      top: '50%',
-      left: '50%',
-      width: cardW,
-      transform: 'translate(-50%, -50%)',
-    } as const;
-  }
-
-  if (placement === 'right') {
-    const left = rect.left + rect.width + gap;
-    const maxW = Math.min(cardW, window.innerWidth - left - 12);
-    return {
-      top: Math.min(Math.max(12, rect.top + rect.height / 2), window.innerHeight - 12),
-      left,
-      width: Math.max(260, maxW),
-      transform: 'translateY(-50%)',
-    } as const;
-  }
-  if (placement === 'left') {
-    return {
-      top: Math.min(Math.max(12, rect.top + rect.height / 2), window.innerHeight - 12),
-      left: rect.left - gap,
-      width: cardW,
-      transform: 'translate(-100%, -50%)',
-    } as const;
-  }
-  if (placement === 'top') {
-    return {
-      top: rect.top - gap,
-      left: Math.min(
-        Math.max(12, rect.left + rect.width / 2 - cardW / 2),
-        window.innerWidth - cardW - 12
-      ),
-      width: cardW,
-      transform: 'translateY(-100%)',
-    } as const;
-  }
-  return {
-    top: rect.top + rect.height + gap,
-    left: Math.min(
-      Math.max(12, rect.left + rect.width / 2 - cardW / 2),
-      window.innerWidth - cardW - 12
-    ),
-    width: cardW,
-    transform: 'none',
-  } as const;
-}
-
-function sleep(ms: number) {
-  return new Promise<void>((r) => setTimeout(r, ms));
-}
-
+/**
+ * driver.js ile yönlendirmeli tanıtım turu. Adımlar `adminTourSteps.ts` içinde;
+ * `task` olan adımlarda kullanıcı vurgulanan öğeye dokununca tur kendiliğinden ilerler.
+ */
 export default function AdminTour({ open, onClose, onOpenGroup, onNeedMobileNav }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [index, setIndex] = useState(0);
-  const [rect, setRect] = useState<Rect | null>(null);
-  const [busy, setBusy] = useState(false);
-  const runId = useRef(0);
-  const steps = getAdminTourSteps();
-  const step = steps[index];
-  const total = steps.length;
-
-  const refreshRect = useCallback(() => {
-    setRect(readTargetRect(step?.target));
-  }, [step?.target]);
+  const pathRef = useRef(location.pathname);
+  pathRef.current = location.pathname;
+  const api = useRef({ navigate, onClose, onOpenGroup, onNeedMobileNav });
+  api.current = { navigate, onClose, onOpenGroup, onNeedMobileNav };
 
   useEffect(() => {
-    if (!open) {
-      setIndex(0);
-      setRect(null);
-      setBusy(false);
-      return;
-    }
-    setIndex(0);
-  }, [open]);
+    if (!open) return;
+    const steps = getAdminTourSteps();
+    const total = steps.length;
+    let token = 0;
+    let drv: Driver | null = null;
+    let offTask: (() => void) | null = null;
+    let ended = false;
 
-  // 1) Grupları aç + rotaya git
-  useEffect(() => {
-    if (!open || !step) return;
-    if (window.innerWidth < 1024) onNeedMobileNav();
-    if (step.openGroup) onOpenGroup(step.openGroup);
-    if (step.path && !pathMatches(location.pathname, step.path)) {
-      navigate(step.path);
-    }
-  }, [open, step, location.pathname, navigate, onOpenGroup, onNeedMobileNav]);
+    const finish = () => {
+      if (ended) return;
+      ended = true;
+      token++;
+      offTask?.();
+      document.body.classList.remove('adt-task-on');
+      drv?.destroy();
+      api.current.onClose();
+    };
 
-  // 2) Rota oturunca hedefi bekle ve vurgula
-  useEffect(() => {
-    if (!open || !step) return;
-    if (step.path && !pathMatches(location.pathname, step.path)) {
-      setBusy(true);
-      setRect(null);
-      return;
-    }
+    async function goTo(i: number) {
+      if (ended) return;
+      if (i >= total) return finish();
+      const my = ++token;
+      const step = steps[Math.max(0, i)];
+      const index = Math.max(0, i);
+      offTask?.();
+      offTask = null;
+      document.body.classList.remove('adt-task-on');
 
-    const id = ++runId.current;
-    let cancelled = false;
-    setBusy(true);
-
-    async function lockOnTarget() {
-      // menü grubunun DOM'a oturması için kısa nefes
-      if (step.openGroup) {
-        onOpenGroup(step.openGroup);
-        await sleep(120);
+      if (step.target && SIDEBAR_TARGETS.test(step.target) && window.innerWidth < 1024) {
+        api.current.onNeedMobileNav();
       }
-      await sleep(80);
-
-      for (let i = 0; i < 30; i++) {
-        if (cancelled || runId.current !== id) return;
-        if (step.openGroup) onOpenGroup(step.openGroup);
-        const next = readTargetRect(step.target);
-        if (next || !step.target) {
-          setRect(next);
-          if (next && step.target) {
-            document
-              .querySelector(`[data-tour="${step.target}"]`)
-              ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-            await sleep(160);
-            if (cancelled || runId.current !== id) return;
-            setRect(readTargetRect(step.target));
-          }
-          setBusy(false);
-          return;
-        }
+      if (step.openGroup) api.current.onOpenGroup(step.openGroup);
+      // Görevli adımlarda sayfaya kullanıcı gider; diğerlerinde tur götürür.
+      if (step.path && !step.task && !pathMatches(pathRef.current, step.path)) {
+        api.current.navigate(step.path);
+        for (let k = 0; k < 30 && !pathMatches(pathRef.current, step.path); k++) await sleep(100);
+      }
+      let el: HTMLElement | null = null;
+      for (let k = 0; k < 30 && step.target; k++) {
+        if (my !== token) return;
+        if (step.openGroup) api.current.onOpenGroup(step.openGroup);
+        el = findTarget(step.target);
+        if (el && el.getBoundingClientRect().width > 1) break;
+        el = null;
         await sleep(100);
       }
-      if (!cancelled && runId.current === id) {
-        setRect(null);
-        setBusy(false);
+      if (my !== token || ended) return;
+      el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      await sleep(el ? 120 : 0);
+      if (my !== token || ended) return;
+
+      const isLast = index === total - 1;
+      const goBack = () => void goTo(index - 1);
+      drv?.highlight({
+        element: el ?? undefined,
+        disableActiveInteraction: !step.task,
+        popover: {
+          title: step.title,
+          description: describe(step, index, total),
+          side: el ? (step.placement && step.placement !== 'center' ? step.placement : 'right') : undefined,
+          align: 'center',
+          showButtons: index === 0 ? ['next', 'close'] : ['previous', 'next', 'close'],
+          nextBtnText: isLast ? 'Bitir ✓' : index === 0 ? 'Başlayalım →' : 'İleri →',
+          prevBtnText: '← Geri',
+          popoverClass: `adt${el ? '' : ' adt--center'}${step.task ? ' adt--task' : ''}`,
+          onNextClick: () => (isLast ? finish() : void goTo(index + 1)),
+          onPrevClick: goBack,
+          onCloseClick: finish,
+        },
+      });
+
+      if (step.task && el) {
+        document.body.classList.add('adt-task-on');
+        const onClick = () => {
+          offTask?.();
+          offTask = null;
+          window.setTimeout(() => {
+            if (my === token) void goTo(index + 1);
+          }, 420);
+        };
+        el.addEventListener('click', onClick, { once: true, capture: true });
+        offTask = () => el?.removeEventListener('click', onClick, { capture: true });
       }
     }
 
-    void lockOnTarget();
+    drv = driver({
+      animate: true,
+      smoothScroll: false,
+      allowClose: false,
+      overlayColor: '#020617',
+      overlayOpacity: 0.74,
+      stagePadding: 8,
+      stageRadius: 16,
+      popoverOffset: 16,
+      showProgress: false,
+    });
+
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && finish();
+    window.addEventListener('keydown', onKey);
+    void goTo(0);
+
     return () => {
-      cancelled = true;
-    };
-  }, [open, step, location.pathname, onOpenGroup, index]);
-
-  useLayoutEffect(() => {
-    if (!open || busy) return;
-    refreshRect();
-    const onResize = () => refreshRect();
-    window.addEventListener('resize', onResize);
-    window.addEventListener('scroll', onResize, true);
-    return () => {
-      window.removeEventListener('resize', onResize);
-      window.removeEventListener('scroll', onResize, true);
-    };
-  }, [open, refreshRect, index, busy, location.pathname]);
-
-  if (!open || !step) return null;
-
-  const pad = 8;
-  const spot = rect
-    ? {
-        top: Math.max(8, rect.top - pad),
-        left: Math.max(8, rect.left - pad),
-        width: rect.width + pad * 2,
-        height: rect.height + pad * 2,
+      window.removeEventListener('keydown', onKey);
+      if (!ended) {
+        ended = true;
+        token++;
+        offTask?.();
+        document.body.classList.remove('adt-task-on');
+        drv?.destroy();
       }
-    : null;
+    };
+  }, [open]);
 
-  const placement = step.placement || (step.target ? 'right' : 'center');
-  const style = cardStyle(rect, placement);
-  const isLast = index >= total - 1;
-
-  return createPortal(
-    <div className="admin-tour" role="dialog" aria-modal="true" aria-label="İnteraktif tanıtım">
-      <button type="button" className="admin-tour__scrim" aria-label="Kapat" onClick={onClose} />
-
-      {spot ? (
-        <div
-          className="admin-tour__spot"
-          style={{
-            top: spot.top,
-            left: spot.left,
-            width: spot.width,
-            height: spot.height,
-          }}
-        />
-      ) : (
-        <div className="admin-tour__dim" />
-      )}
-
-      <div className={`admin-tour__card${busy ? ' is-busy' : ''}`} style={style}>
-        <div className="admin-tour__card-top">
-          <span className="admin-tour__step">
-            {index + 1} / {total}
-          </span>
-          <button type="button" className="admin-tour__x" onClick={onClose} aria-label="Turdan çık">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <h3>{step.title}</h3>
-        <p>{step.body}</p>
-        {step.tip ? (
-          <p className="admin-tour__tip">
-            <Lightbulb className="w-3.5 h-3.5 shrink-0" />
-            <span>{step.tip}</span>
-          </p>
-        ) : null}
-        {busy ? <p className="admin-tour__loading">Sayfa açılıyor…</p> : null}
-        <div className="admin-tour__actions">
-          <button type="button" className="admin-tour__skip" onClick={onClose}>
-            Atla
-          </button>
-          <div className="admin-tour__nav">
-            {index > 0 ? (
-              <button
-                type="button"
-                className="admin-tour__prev"
-                disabled={busy}
-                onClick={() => setIndex((i) => Math.max(0, i - 1))}
-              >
-                Geri
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="admin-tour__next"
-              disabled={busy}
-              onClick={() => {
-                if (isLast) onClose();
-                else setIndex((i) => i + 1);
-              }}
-            >
-              {isLast ? 'Bitir' : 'İleri'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
+  return null;
 }
 
 export function AdminTourHelpButton({ onClick }: { onClick: () => void }) {
