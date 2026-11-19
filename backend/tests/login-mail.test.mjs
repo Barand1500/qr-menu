@@ -40,7 +40,7 @@ assert.equal(test.options[0].requireTLS, true);
 assert.equal(test.options[0].port, 587);
 assert.deepEqual(test.messages[0].to, { address: 'admin@example.test', name: '' });
 assert.ok(test.messages[0].text.includes('123456'));
-assert.ok(test.messages[0].html.includes('123456'));
+assert.ok([...'123456'].every((d) => test.messages[0].html.includes('>' + d + '</td>')));
 assert.equal(test.closed, 1);
 process.env.LOGIN_SMTP_PORT = '465';
 await sendLoginCode('admin@example.test', '234567');

@@ -47,6 +47,8 @@ export async function sendLoginCode(email: string, code: string) {
     socketTimeout: 15000,
     disableFileAccess: true,
     disableUrlAccess: true,
+    // Yalnızca sertifika adı uyuşmuyorsa, bilinçli olarak .env ile açılır.
+    ...(process.env.LOGIN_SMTP_TLS_INSECURE === '1' ? { tls: { rejectUnauthorized: false } } : {}),
   });
   try {
     await transport.sendMail({

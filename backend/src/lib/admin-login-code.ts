@@ -125,7 +125,10 @@ export async function requestAdminLoginCode(email: string) {
   }
   try {
     await sendLoginCode(email, code);
-  } catch {
+  } catch (error) {
+    // Şifre/kod yazdırılmaz; yalnızca SMTP hata türü ve sunucu yanıtı.
+    const e = error as { code?: string; responseCode?: number; message?: string };
+    console.error('[login-mail] gönderilemedi:', e.code, e.responseCode, e.message);
     // Invalidate an undelivered code, preserving the rate limit reservation.
     await prisma.setting.updateMany({
       where: { restaurantId: user.restaurantId, key, value },
