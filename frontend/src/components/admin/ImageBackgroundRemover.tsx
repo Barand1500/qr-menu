@@ -1,12 +1,15 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Eraser, Sparkles, Undo2, X } from 'lucide-react';
+import { Check, Eraser, Sparkles, Terminal, Undo2, X } from 'lucide-react';
 import AdminOverlay from '@/components/admin/AdminOverlay';
 import {
   computeRemoval,
+  createRainPlan,
   detectBackground,
+  drawRain,
   exportPng,
   loadImageData,
   renderErase,
+  renderFinal,
   type Background,
 } from '@/lib/removeBackground';
 import './background-remover.css';
@@ -14,9 +17,7 @@ import './background-remover.css';
 type Phase = 'ask' | 'erasing' | 'done';
 type Surface = 'checker' | 'light' | 'dark';
 
-const GLOW: [number, number, number] = [96, 165, 250];
-const ERASE_MS = 1700;
-const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const ERASE_MS = 2600;
 
 function strength(tolerance: number) {
   return tolerance < 10 ? 'Düşük' : tolerance < 22 ? 'Orta' : 'Yüksek';
@@ -80,6 +81,8 @@ export default function ImageBackgroundRemover({
     };
   }, [file]);
 
+  const plan = useMemo(() => createRainPlan(size.w), [size.w]);
+
   const removal = useMemo(() => {
     const base = baseRef.current;
     if (loadState !== 'ready' || !base || !bg || bg.alreadyTransparent) return null;
@@ -87,14 +90,20 @@ export default function ImageBackgroundRemover({
     // baseRef içeriği loadState ile birlikte değişir
   }, [loadState, bg, deferredTolerance, includeInner]);
 
-  function draw(progress: number) {
+  function draw(progress: number, tick = 0) {
     const canvas = canvasRef.current;
     const base = baseRef.current;
     const out = outRef.current;
     if (!canvas || !base || !out) return;
-    if (removal) renderErase(base, removal, progress, GLOW, out);
-    else out.data.set(base.data);
-    canvas.getContext('2d')?.putImageData(out, 0, 0);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    if (!removal || progress <= 0) out.data.set(base.data);
+    else if (progress >= 1) renderFinal(base, removal, out);
+    else renderErase(base, removal, plan, progress, tick, out);
+    ctx.putImageData(out, 0, 0);
+    if (removal && progress > 0 && progress < 1) {
+      drawRain(ctx, removal, plan, progress, tick, base.width, base.height);
+    }
   }
 
   // Sahneyi güncel tut: bekleme ve bitmiş durumda
@@ -104,7 +113,7 @@ export default function ImageBackgroundRemover({
   });
 
   function startErase() {
-    if (!removal || removal.maxDepth === 0) {
+    if (!removal || removal.count === 0) {
       setError('Arka plan bulunamadı. Hassasiyeti artırmayı deneyin.');
       return;
     }
@@ -112,9 +121,10 @@ export default function ImageBackgroundRemover({
     setPhase('erasing');
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const start = performance.now();
+    let n = 0;
     const tick = (now: number) => {
       const t = reduce ? 1 : Math.min(1, (now - start) / ERASE_MS);
-      draw(easeInOut(t));
+      draw(t, n++);
       if (t < 1) frame.current = requestAnimationFrame(tick);
       else setPhase('done');
     };
@@ -158,7 +168,7 @@ export default function ImageBackgroundRemover({
 
         <div className="bgr__body">
           <div
-            className={`bgr__stage is-${surface}${phase === 'done' ? ' is-done' : ''}`}
+            className={`bgr__stage is-${surface}${phase === 'done' ? ' is-done' : ''}${phase === 'erasing' ? ' is-erasing' : ''}`}
           >
             {loadState === 'loading' && <span className="bgr__state">Görsel hazırlanıyor…</span>}
             {loadState === 'error' && (
@@ -173,8 +183,8 @@ export default function ImageBackgroundRemover({
               role="img"
             />
             {phase === 'erasing' && (
-              <span className="bgr__chip">
-                <Eraser size={14} /> Siliniyor…
+              <span className="bgr__chip is-run">
+                <Terminal size={14} /> Arka plan çözülüyor…
               </span>
             )}
             {phase === 'done' && (

@@ -2,8 +2,9 @@
  * Tarayıcıda çalışan, düz renkli arka planlar için arka plan silici. Görsel dışarı gönderilmez.
  *
  * Yöntem: kenarlardaki baskın rengi arka plan sayar; bu renge yeterince yakın piksellere kenarlardan içeri
- * doğru yayılarak (BFS) ulaşılır. Her piksel kaçıncı adımda silindiğini (depth) saklar; silinme animasyonu
- * bu sırayı kullanır. Kapalı bölgeler (ör. harf içleri) isteğe bağlı olarak ayrıca silinir.
+ * doğru yayılarak (BFS) ulaşılır. Kapalı bölgeler (ör. harf içleri) isteğe bağlı olarak ayrıca silinir.
+ * Silinme animasyonu "Matrix yağmuru"dur: sütunlar rastgele gecikmelerle yukarıdan aşağı akar, geçtikleri
+ * yerdeki arka plan yeşil koda dönüşüp çözülür.
  */
 
 export type RemoveOptions = {
@@ -22,9 +23,10 @@ export type Background = {
 export type Removal = {
   /** Silme sonrası her pikselin nihai alfa değeri (kenar yumuşatma dahil). */
   alpha: Uint8ClampedArray;
-  /** 0 = silinmedi; >0 = silinme sırası. */
-  depth: Uint16Array;
-  maxDepth: number;
+  /** 1 = bu piksel arka plandır ve silinir. */
+  removed: Uint8Array;
+  /** Silinecek piksel sayısı. */
+  count: number;
   /** Silinen piksel oranı (0–1). */
   removedRatio: number;
 };
@@ -120,13 +122,13 @@ export function computeRemoval(
     if (d <= tol) removable[p] = 1;
   }
 
-  const depth = new Uint16Array(n);
+  const removed = new Uint8Array(n);
   const queue = new Int32Array(n);
   let head = 0;
   let tail = 0;
   const seed = (p: number) => {
-    if (removable[p] && depth[p] === 0) {
-      depth[p] = 1;
+    if (removable[p] && !removed[p]) {
+      removed[p] = 1;
       queue[tail++] = p;
     }
   };
@@ -138,88 +140,176 @@ export function computeRemoval(
     seed(y * w);
     seed(y * w + w - 1);
   }
-  let maxDepth = tail > 0 ? 1 : 0;
   while (head < tail) {
     const p = queue[head++];
-    const d = depth[p] + 1;
     const x = p % w;
-    const neighbors = [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, p >= w ? p - w : -1, p < n - w ? p + w : -1];
-    for (const q of neighbors) {
-      if (q >= 0 && removable[q] && depth[q] === 0) {
-        depth[q] = Math.min(65535, d);
-        if (depth[q] > maxDepth) maxDepth = depth[q];
-        queue[tail++] = q;
-      }
-    }
+    if (x > 0) seed(p - 1);
+    if (x < w - 1) seed(p + 1);
+    if (p >= w) seed(p - w);
+    if (p < n - w) seed(p + w);
   }
-
-  if (options.includeInner && maxDepth > 0) {
-    // Kenara bağlı olmayan benzer bölgeler animasyonun ortalarında topluca silinir
-    const innerDepth = Math.max(1, Math.round(maxDepth * 0.55));
-    for (let p = 0; p < n; p++) if (removable[p] && depth[p] === 0) depth[p] = innerDepth;
+  if (options.includeInner && tail > 0) {
+    // Kenara bağlı olmayan benzer bölgeler (harf içleri vb.)
+    for (let p = 0; p < n; p++) if (removable[p]) removed[p] = 1;
   }
 
   // Nihai alfa: silinenler 0; sınırdaki piksellerde renk uzaklığına göre yumuşak geçiş
   const alpha = new Uint8ClampedArray(n);
-  let removed = 0;
+  let count = 0;
   for (let p = 0; p < n; p++) {
-    if (depth[p] > 0) {
-      removed++;
-      continue;
-    }
-    alpha[p] = data[p * 4 + 3];
+    if (removed[p]) count++;
+    else alpha[p] = data[p * 4 + 3];
   }
   const soft = tol * 0.8 + 8;
   for (let p = 0; p < n; p++) {
-    if (depth[p] > 0) continue;
+    if (removed[p]) continue;
     const x = p % w;
     const edge =
-      (x > 0 && depth[p - 1] > 0) ||
-      (x < w - 1 && depth[p + 1] > 0) ||
-      (p >= w && depth[p - w] > 0) ||
-      (p < n - w && depth[p + w] > 0);
+      (x > 0 && removed[p - 1]) ||
+      (x < w - 1 && removed[p + 1]) ||
+      (p >= w && removed[p - w]) ||
+      (p < n - w && removed[p + w]);
     if (!edge) continue;
     const t = Math.min(1, Math.max(0, (dist[p] - tol) / soft));
     alpha[p] = Math.round(alpha[p] * (0.25 + 0.75 * t));
   }
-  return { alpha, depth, maxDepth, removedRatio: removed / n };
+  return { alpha, removed, count, removedRatio: count / n };
+}
+
+/* ───────────── Matrix yağmuru animasyonu ───────────── */
+
+export type RainPlan = {
+  /** Yağmur sütununun genişliği (piksel). */
+  cell: number;
+  cols: number;
+  /** Her sütunun başlama gecikmesi (0–maxDelay, ilerlemenin kesri). */
+  delay: Float32Array;
+  /** Hız eğrisi: <1 ağır başlar hızlanır, >1 hızlı başlar yavaşlar. */
+  gamma: Float32Array;
+  maxDelay: number;
+};
+
+const RAIN_GREEN: [number, number, number] = [0, 255, 102];
+const GLYPHS = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜ0123456789:.=*+-<>';
+
+/** Hızlı, tekrarlanabilir sözde rastgele sayı (0–1). */
+function hash(a: number, b: number, c = 0) {
+  let h = (a * 374761393 + b * 668265263 + c * 2147483647) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/** Görselin genişliğine göre sütunlar ve rastgele gecikmeler. */
+export function createRainPlan(width: number, seed = 7): RainPlan {
+  const cell = Math.max(8, Math.round(width / 44));
+  const cols = Math.ceil(width / cell);
+  const maxDelay = 0.42;
+  const delay = new Float32Array(cols);
+  const gamma = new Float32Array(cols);
+  for (let c = 0; c < cols; c++) {
+    delay[c] = hash(c, seed, 1) * maxDelay;
+    gamma[c] = 0.8 + hash(c, seed, 2) * 0.55;
+  }
+  return { cell, cols, delay, gamma, maxDelay };
+}
+
+function columnHead(plan: RainPlan, c: number, progress: number, height: number, trail: number) {
+  const q = Math.min(1, Math.max(0, (progress - plan.delay[c]) / (1 - plan.maxDelay)));
+  return Math.pow(q, plan.gamma[c]) * (height + trail);
 }
 
 /**
- * Silme animasyonunun bir karesi. progress 0 → özgün görsel, 1 → arka plan tamamen silinmiş.
- * Silinen alanın önünde parlayan ince bir "silgi" kuşağı bırakır.
+ * Animasyonun bir karesinin piksel katmanı. progress 0 → özgün, 1'e yaklaştıkça sütunlar yağarak arka planı siler.
+ * Yağmurun önündeki arka plan yeşile boyanıp titreşerek çözülür.
  */
 export function renderErase(
   base: ImageData,
   removal: Removal,
+  plan: RainPlan,
   progress: number,
-  glow: [number, number, number],
+  frame: number,
   out: ImageData,
 ) {
-  const { data } = base;
+  const { width: w, height: h, data } = base;
   const o = out.data;
   o.set(data);
-  const n = removal.depth.length;
-  if (removal.maxDepth === 0) return;
-  const done = progress >= 1;
-  const band = Math.max(6, removal.maxDepth * 0.05);
-  const thr = progress * (removal.maxDepth + band);
-  for (let p = 0, i = 0; p < n; p++, i += 4) {
-    const d = removal.depth[p];
-    if (d > 0) {
-      if (done || d <= thr - band) {
+  if (removal.count === 0) return;
+  const trail = Math.max(24, h * 0.2);
+  const heads = new Float32Array(plan.cols);
+  for (let c = 0; c < plan.cols; c++) heads[c] = columnHead(plan, c, progress, h, trail);
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      const p = row + x;
+      if (!removal.removed[p]) continue;
+      const dy = heads[Math.min(plan.cols - 1, (x / plan.cell) | 0)] - y; // >0: yağmur bu satırı geçti
+      if (dy <= 0) continue;
+      const i = p * 4;
+      if (dy >= trail) {
         o[i + 3] = 0;
-      } else if (d <= thr) {
-        const f = (thr - d) / band; // 0 = kuşağın önü, 1 = silinmiş
-        const a = 1 - f;
-        o[i] = data[i] + (glow[0] - data[i]) * 0.65 * a;
-        o[i + 1] = data[i + 1] + (glow[1] - data[i + 1]) * 0.65 * a;
-        o[i + 2] = data[i + 2] + (glow[2] - data[i + 2]) * 0.65 * a;
-        o[i + 3] = data[i + 3] * a;
+        continue;
       }
-    } else if (done) {
-      o[i + 3] = removal.alpha[p];
+      const pos = dy / trail; // 0 = yağmurun ucu, 1 = tamamen silinmiş
+      const flicker = 0.78 + 0.22 * hash(x, y, frame >> 1);
+      const glow = (1 - pos) * (1 - pos);
+      const mix = Math.min(1, 0.9 * glow + 0.15);
+      o[i] = data[i] + (RAIN_GREEN[0] - data[i]) * mix;
+      o[i + 1] = data[i + 1] + (RAIN_GREEN[1] - data[i + 1]) * mix;
+      o[i + 2] = data[i + 2] + (RAIN_GREEN[2] - data[i + 2]) * mix;
+      o[i + 3] = data[i + 3] * (1 - pos) * flicker;
     }
+  }
+}
+
+/** Yağmurun glifleri (katakana/rakam): yalnızca silinmekte olan arka planın üstüne çizilir. */
+export function drawRain(
+  ctx: CanvasRenderingContext2D,
+  removal: Removal,
+  plan: RainPlan,
+  progress: number,
+  frame: number,
+  width: number,
+  height: number,
+) {
+  if (removal.count === 0) return;
+  const trail = Math.max(24, height * 0.2);
+  const size = Math.round(plan.cell * 1.05);
+  const step = size * 1.15;
+  const count = Math.min(14, Math.ceil(trail / step));
+  ctx.save();
+  ctx.font = `${size}px ui-monospace, "Cascadia Mono", Consolas, monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (let c = 0; c < plan.cols; c++) {
+    const head = columnHead(plan, c, progress, height, trail);
+    if (head <= 0 || head >= height + trail) continue;
+    const cx = Math.min(width - 1, Math.round(c * plan.cell + plan.cell / 2));
+    for (let k = 0; k < count; k++) {
+      const y = head - k * step;
+      if (y < 0 || y >= height) continue;
+      if (!removal.removed[(y | 0) * width + cx]) continue;
+      const glyph = GLYPHS[Math.floor(hash(c, k, (frame >> 2) + (k === 0 ? frame : 0)) * GLYPHS.length)];
+      const fade = 1 - k / count;
+      if (k === 0) {
+        ctx.shadowColor = 'rgba(0,255,102,0.9)';
+        ctx.shadowBlur = size * 0.9;
+        ctx.fillStyle = '#e8fff0';
+      } else {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = `rgba(0,255,102,${(0.12 + fade * 0.75).toFixed(2)})`;
+      }
+      ctx.fillText(glyph, cx, y);
+    }
+  }
+  ctx.restore();
+}
+
+/** Tamamlanmış sonuç: silinenler şeffaf, kenarlar yumuşak. */
+export function renderFinal(base: ImageData, removal: Removal, out: ImageData) {
+  out.data.set(base.data);
+  const o = out.data;
+  for (let p = 0, i = 3; p < removal.alpha.length; p++, i += 4) {
+    o[i] = removal.removed[p] ? 0 : removal.alpha[p];
   }
 }
 
@@ -230,7 +320,7 @@ export async function exportPng(
   fileName: string,
 ): Promise<File> {
   const out = new ImageData(base.width, base.height);
-  renderErase(base, removal, 1, [0, 0, 0], out);
+  renderFinal(base, removal, out);
   let scale = 1;
   for (let attempt = 0; attempt < 4; attempt++) {
     const canvas = document.createElement('canvas');
