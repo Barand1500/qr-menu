@@ -344,3 +344,67 @@ export async function exportPng(
   }
   throw new Error('Görsel çok büyük. Daha küçük bir dosya deneyin.');
 }
+
+/* ───────────── Toplu / otomatik kullanım ───────────── */
+
+export const DEFAULT_REMOVE_OPTIONS: RemoveOptions = { tolerance: 14, includeInner: false };
+
+/** Arka planı silinebilecek biçimler (SVG/GIF gibi diğerleri olduğu gibi kullanılır). */
+export function isEligibleImage(file: File): boolean {
+  return /^image\/(png|jpe?g|webp)$/.test(file.type);
+}
+
+/** Kenar piksellerinin arka plan rengine yakın olanlarının oranı (0–1): arka plan gerçekten düz mü? */
+export function borderUniformity(image: ImageData, bg: Background, tolerancePercent = 8): number {
+  const { width: w, height: h, data } = image;
+  const limit = tolerancePercent * 2.55;
+  let near = 0;
+  let total = 0;
+  const check = (x: number, y: number) => {
+    const i = (y * w + x) * 4;
+    total++;
+    if (data[i + 3] < 16) return;
+    const dr = data[i] - bg.color[0];
+    const dg = data[i + 1] - bg.color[1];
+    const db = data[i + 2] - bg.color[2];
+    if ((Math.sqrt(dr * dr + dg * dg + db * db) / 441.67) * 255 <= limit) near++;
+  };
+  const stepX = Math.max(1, Math.floor(w / 400));
+  const stepY = Math.max(1, Math.floor(h / 400));
+  for (let x = 0; x < w; x += stepX) {
+    check(x, 0);
+    check(x, h - 1);
+  }
+  for (let y = 0; y < h; y += stepY) {
+    check(0, y);
+    check(w - 1, y);
+  }
+  return total ? near / total : 0;
+}
+
+function pngName(file: File) {
+  return `${file.name.replace(/\.[^.]+$/, '') || 'gorsel'}-seffaf.png`;
+}
+
+/** Verilen ayarla arka planı siler; zaten şeffafsa veya silinecek bir şey yoksa dosyaya dokunmaz. */
+export async function processFile(file: File, options: RemoveOptions): Promise<File> {
+  const { image } = await loadImageData(file);
+  const bg = detectBackground(image);
+  if (bg.alreadyTransparent) return file;
+  const removal = computeRemoval(image, bg, options);
+  if (removal.count === 0) return file;
+  return exportPng(image, removal, pngName(file));
+}
+
+/**
+ * Otomatik mod: yalnızca arka planı belli ki tek renk olan görselleri siler (stüdyo/beyaz fon, logo vb.).
+ * Fotoğraf, gradyan veya karmaşık zeminlerde null döner; dosya olduğu gibi kullanılır.
+ */
+export async function autoRemoveBackground(file: File): Promise<File | null> {
+  const { image } = await loadImageData(file);
+  const bg = detectBackground(image);
+  if (bg.alreadyTransparent || borderUniformity(image, bg) < 0.94) return null;
+  const removal = computeRemoval(image, bg, DEFAULT_REMOVE_OPTIONS);
+  if (removal.removedRatio < 0.06 || removal.removedRatio > 0.97) return null;
+  return exportPng(image, removal, pngName(file));
+}

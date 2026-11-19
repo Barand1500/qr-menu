@@ -37,6 +37,7 @@ import AdminNotificationBell from '@/components/AdminNotificationBell';
 import ThemeToggleButton from '@/components/admin/ThemeToggleButton';
 import AdminTour, { AdminTourHelpButton } from '@/components/admin/AdminTour';
 import AdminToast, { type AdminToastNotice } from '@/components/admin/AdminToast';
+import { ImageBackgroundProvider } from '@/components/admin/ImageBackgroundProvider';
 import AdminAIChat, { AdminAIButton } from '@/components/admin/AdminAIChat';
 import type { TourOpenGroup } from '@/lib/adminTourSteps';
 import { adminPreviewMenuUrl } from '@/lib/tableContext';
@@ -490,6 +491,7 @@ export default function AdminLayout() {
   );
 
   return (
+    <ImageBackgroundProvider>
     <div className="h-dvh flex overflow-hidden" style={{ background: 'var(--admin-bg)' }}>
       {mobileOpen && (
         <div
@@ -630,5 +632,6 @@ export default function AdminLayout() {
       <AdminToast notice={notice} onClose={() => setNotice(null)} />
       <AdminAIChat open={aiOpen} onClose={() => setAiOpen(false)} />
     </div>
+    </ImageBackgroundProvider>
   );
 }

@@ -30,6 +30,7 @@ import { adminPath } from '@/lib/adminPath';
 import { getActiveLanguages, type AdminLanguage } from '@/lib/languages';
 import { Button, PageHeading, Spinner } from '@/components/ui';
 import { AdminListPager } from '@/components/AdminListPager';
+import { useImageBackground } from '@/components/admin/ImageBackgroundProvider';
 import ProductModal, { type ProductFormState } from '@/components/ProductModal';
 import ProductStockModal from '@/components/ProductStockModal';
 import BulkPriceModal, {
@@ -112,6 +113,7 @@ function useFilterPanel(
 }
 
 export default function ProductsPage() {
+  const { prepare: prepareImages } = useImageBackground();
   const [params, setParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]),
     [groups, setGroups] = useState<Group[]>([]),
@@ -486,8 +488,10 @@ export default function ProductsPage() {
       body,
     });
   }
-  async function quickUpload(product: Product, files: File[]) {
-    if (!files.length || !begin()) return;
+  async function quickUpload(product: Product, chosen: File[]) {
+    if (!chosen.length) return;
+    const files = await prepareImages(chosen, { subject: 'Ürün görseli' });
+    if (!files || !begin()) return;
     setImageBusyId(product.id);
     try {
       merge(await upload(product.id, files));
@@ -506,8 +510,14 @@ export default function ProductsPage() {
     product: Product,
     action: 'order' | 'remove' | 'replace',
     value: string[] | string,
-    file?: File,
+    chosen?: File,
   ) {
+    let file = chosen;
+    if (action === 'replace' && chosen) {
+      const prepared = await prepareImages([chosen], { subject: 'Ürün görseli' });
+      if (!prepared) return false;
+      file = prepared[0];
+    }
     if (!begin()) return false;
     setImageBusyId(product.id);
     try {
@@ -551,10 +561,12 @@ export default function ProductsPage() {
       end();
     }
   }
-  function addFiles(files: FileList | null) {
+  async function addFiles(files: FileList | null) {
     if (!files?.length) return;
+    const prepared = await prepareImages(Array.from(files), { subject: 'Ürün görseli' });
+    if (!prepared) return;
     try {
-      const next = Array.from(files);
+      const next = prepared;
       validateFiles([...pending.map((p) => p.file), ...next]);
       setPending((prev) => [
         ...prev,

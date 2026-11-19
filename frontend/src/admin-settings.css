@@ -1385,3 +1385,61 @@
     animation: none;
   }
 }
+
+/* Görsel arka planı: tek seçimli kutular */
+.ast-radio-list {
+  display: grid;
+  gap: 8px;
+}
+.ast-radio-list > button {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 14px 12px 46px;
+  color: var(--admin-text);
+  text-align: start;
+  background: var(--admin-card);
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 16px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ast-radio-list > button:hover:not(:disabled) {
+  border-color: var(--admin-accent);
+}
+.ast-radio-list > button::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin-top: -9px;
+  border: 2px solid var(--admin-text-subtle);
+  border-radius: 50%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ast-radio-list > button[aria-checked='true'] {
+  background: var(--admin-accent-soft);
+  border-color: var(--admin-accent);
+}
+.ast-radio-list > button[aria-checked='true']::before {
+  border-color: var(--admin-accent);
+  box-shadow: inset 0 0 0 3px var(--admin-card), inset 0 0 0 9px var(--admin-accent);
+}
+.ast-radio-list > button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ast-radio-list strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ast-radio-list small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--admin-text-muted);
+}

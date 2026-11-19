@@ -16,6 +16,7 @@ import {
   themeIdToAddon,
 } from '../addons/index.js';
 import { parseSocialLinks, serializeSocialLinks, type SocialLinkConfig } from '../lib/social.js';
+import { IMAGE_BACKGROUND_MODE_KEY, parseImageBackgroundMode } from '../lib/image-background.js';
 import {
   MENU_SERVICE_ITEMS_KEY,
   MENU_TABLE_SERVICE_KEY,
@@ -264,6 +265,27 @@ router.post('/logo', upload.single('logo'), async (req, res) => {
     data: { logoUrl },
   });
   res.json(restaurant);
+});
+
+// Ürün/grup görseli yüklerken arka plan silme: ask | auto | never (kayıt yoksa null = henüz seçilmedi)
+router.get('/image-background', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const row = await prisma.setting.findUnique({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: IMAGE_BACKGROUND_MODE_KEY } },
+  });
+  res.json({ mode: parseImageBackgroundMode(row?.value) });
+});
+
+router.put('/image-background', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const mode = parseImageBackgroundMode((req.body as { mode?: unknown })?.mode);
+  if (!mode) return res.status(400).json({ message: 'Geçersiz seçim' });
+  await prisma.setting.upsert({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: IMAGE_BACKGROUND_MODE_KEY } },
+    update: { value: mode },
+    create: { restaurantId: restaurantId!, key: IMAGE_BACKGROUND_MODE_KEY, value: mode },
+  });
+  res.json({ mode });
 });
 
 router.put('/integration', async (req, res) => {

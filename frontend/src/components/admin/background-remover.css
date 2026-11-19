@@ -315,6 +315,7 @@
   background: var(--admin-card);
 }
 .bgr__btn {
+  white-space: nowrap;
   display: inline-flex;
   flex: 1;
   align-items: center;
@@ -413,4 +414,76 @@
 }
 [aria-checked='true'] > .bgr__sw > span {
   transform: translateX(16px);
+}
+
+/* İlk seçim: "Bundan sonra" kutusu */
+.bgr__remember {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px 0 0;
+  border: 0;
+  border-top: 1px solid var(--admin-card-border);
+}
+.bgr__remember legend {
+  padding: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+.bgr__remember > div {
+  display: grid;
+  gap: 6px;
+}
+.bgr__remember button {
+  display: grid;
+  gap: 2px;
+  min-height: 52px;
+  padding: 9px 12px 9px 40px;
+  position: relative;
+  color: var(--admin-text);
+  text-align: start;
+  background: transparent;
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 14px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.bgr__remember button::before {
+  content: '';
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  border: 2px solid var(--admin-text-subtle);
+  border-radius: 50%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.bgr__remember button[aria-checked='true'] {
+  background: var(--admin-accent-soft);
+  border-color: var(--admin-accent);
+}
+.bgr__remember button[aria-checked='true']::before {
+  border-color: var(--admin-accent);
+  box-shadow: inset 0 0 0 3px var(--admin-card), inset 0 0 0 8px var(--admin-accent);
+}
+.bgr__remember b {
+  font-size: 13px;
+  font-weight: 650;
+}
+.bgr__remember small {
+  font-size: 11px;
+  color: var(--admin-text-muted);
+}
+.bgr__remember > p,
+.bgr__hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--admin-text-muted);
+}
+.bgr__hint {
+  padding-top: 4px;
+  text-align: center;
 }

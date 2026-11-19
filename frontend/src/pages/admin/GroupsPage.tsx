@@ -42,6 +42,7 @@ import { AdminListPager } from '@/components/AdminListPager';
 import GroupModal, { type GroupFormState } from '@/components/GroupModal';
 import GroupProductsModal from '@/components/GroupProductsModal';
 import GroupAssignDialog from '@/components/admin/groups/GroupAssignDialog';
+import { useImageBackground } from '@/components/admin/ImageBackgroundProvider';
 import GroupListRow from '@/components/admin/groups/GroupListRow';
 import GroupsDialog from '@/components/admin/groups/GroupsDialog';
 import GroupFilters from '@/components/admin/groups/GroupFilters';
@@ -61,6 +62,7 @@ type Kind = 'all' | 'main' | 'sub';
 type Notice = { error: boolean; text: string } | null;
 
 export default function GroupsPage() {
+  const { prepare: prepareImages } = useImageBackground();
   const [groups, setGroups] = useState<Group[]>([]);
   const [languages, setLanguages] = useState<AdminLanguage[]>([]);
   const [loading, setLoading] = useState(true),
@@ -305,10 +307,11 @@ export default function GroupsPage() {
       body,
     });
   }
-  async function quickImage(group: Group, file: File) {
-    if (!begin()) return;
+  async function quickImage(group: Group, chosen: File) {
+    const prepared = await prepareImages([chosen], { subject: 'Grup görseli' });
+    if (!prepared || !begin()) return;
     try {
-      const updated = await upload(group.id, file);
+      const updated = await upload(group.id, prepared[0]);
       setGroups((list) =>
         list.map((g) =>
           g.id === group.id ? { ...g, imageUrl: updated.imageUrl } : g,
@@ -729,7 +732,12 @@ export default function GroupsPage() {
         }}
         onSave={() => void saveForm()}
         onFormChange={setForm}
-        onImageChange={setImageFile}
+        onImageChange={(file) => {
+          if (!file) return setImageFile(null);
+          void prepareImages([file], { subject: 'Grup görseli' }).then((out) => {
+            if (out) setImageFile(out[0]);
+          });
+        }}
       />
       <GroupProductsModal
         open={Boolean(productsGroup)}

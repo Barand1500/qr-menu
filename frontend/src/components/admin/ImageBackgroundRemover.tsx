@@ -6,44 +6,66 @@ import {
   createRainPlan,
   detectBackground,
   drawRain,
-  exportPng,
   loadImageData,
   renderErase,
   renderFinal,
   type Background,
+  type RemoveOptions,
 } from '@/lib/removeBackground';
 import './background-remover.css';
+
+export type ImageBackgroundMode = 'ask' | 'auto' | 'never';
+export type BackgroundDecision = {
+  /** true: arka plan silinsin; false: olduğu gibi kullanılsın. */
+  remove: boolean;
+  options: RemoveOptions;
+  /** İlk seçimde "bundan sonra" kutusunda seçilen davranış (yalnızca remember açıkken). */
+  remember: ImageBackgroundMode | null;
+};
 
 type Phase = 'ask' | 'erasing' | 'done';
 type Surface = 'checker' | 'light' | 'dark';
 
 const ERASE_MS = 2600;
 
+const REMEMBER_OPTIONS: { id: ImageBackgroundMode; label: string; hint: string }[] = [
+  { id: 'ask', label: 'Her seferinde sor', hint: 'Görsel yüklerken bu soru çıkar.' },
+  { id: 'auto', label: 'Düzse otomatik sil', hint: 'Arka planı tek renk olanlar sorulmadan silinir.' },
+  { id: 'never', label: 'Hiç sorma', hint: 'Görseller olduğu gibi yüklenir.' },
+];
+
 function strength(tolerance: number) {
   return tolerance < 10 ? 'Düşük' : tolerance < 22 ? 'Orta' : 'Yüksek';
 }
 
 /**
- * Yüklenen görselin düz arka planını silip şeffaf yapma penceresi. Görsel tarayıcıda işlenir, dışarı gönderilmez.
- * Logo ekranında kullanılır; ürün ve grup görselleri için de aynen kullanılabilir.
+ * Yüklenen görsel(ler)in düz arka planını silip şeffaf yapma penceresi. Görseller tarayıcıda işlenir, dışarı
+ * gönderilmez. Birden çok görselde önizleme ilkinin üzerindedir; verilen karar ve ayarlar hepsine uygulanır.
+ * İşlemi `onFinish` yapar; bitene kadar pencere ilerlemeyi gösterir.
  */
 export default function ImageBackgroundRemover({
-  file,
+  files,
   subject = 'Logo',
-  onApply,
-  onKeep,
+  remember = false,
+  settingsHint = false,
+  onFinish,
   onCancel,
 }: {
-  file: File;
+  files: File[];
   /** Cümlelerde geçen ad: "Logo", "Ürün görseli" … */
   subject?: string;
-  /** Şeffaf PNG hazır; yükleme için dosyayı verir. */
-  onApply: (processed: File) => void;
-  /** Olduğu gibi kullan. */
-  onKeep: () => void;
-  /** Vazgeç: hiçbir şey değişmez. */
+  /** İlk seçim: "Bundan sonra" kutusunu göster ve seçimi karara ekle. */
+  remember?: boolean;
+  /** "Her seferinde sor" modunda: davranışı Ayarlar'dan değiştirebileceğini hatırlat. */
+  settingsHint?: boolean;
+  onFinish: (
+    decision: BackgroundDecision,
+    progress: (done: number, total: number) => void,
+  ) => Promise<void>;
   onCancel: () => void;
 }) {
+  const file = files[0];
+  const many = files.length > 1;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const baseRef = useRef<ImageData | null>(null);
   const outRef = useRef<ImageData | null>(null);
@@ -55,11 +77,12 @@ export default function ImageBackgroundRemover({
   const [tolerance, setTolerance] = useState(14);
   const [includeInner, setIncludeInner] = useState(false);
   const [surface, setSurface] = useState<Surface>('checker');
-  const [exporting, setExporting] = useState(false);
+  const [rememberMode, setRememberMode] = useState<ImageBackgroundMode>('ask');
+  const [working, setWorking] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState('');
   const deferredTolerance = useDeferredValue(tolerance);
 
-  // Görseli çöz
+  // Önizleme görselini çöz
   useEffect(() => {
     let off = false;
     setLoadState('loading');
@@ -131,34 +154,39 @@ export default function ImageBackgroundRemover({
     frame.current = requestAnimationFrame(tick);
   }
 
-  async function apply() {
-    const base = baseRef.current;
-    if (!base || !removal || exporting) return;
-    setExporting(true);
+  async function finish(remove: boolean) {
+    if (working) return;
     setError('');
+    setWorking({ done: 0, total: files.length });
     try {
-      const name = file.name.replace(/\.[^.]+$/, '') || 'logo';
-      onApply(await exportPng(base, removal, `${name}-seffaf.png`));
+      await onFinish(
+        { remove, options: { tolerance, includeInner }, remember: remember ? rememberMode : null },
+        (done, total) => setWorking({ done, total }),
+      );
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Görsel hazırlanamadı.');
-      setExporting(false);
+      setError(e instanceof Error ? e.message : 'Görseller hazırlanamadı.');
+      setWorking(null);
     }
   }
 
   const noBackground = loadState === 'ready' && bg?.alreadyTransparent;
-  const busy = phase === 'erasing' || exporting;
+  const busy = phase === 'erasing' || working !== null;
   const percent = removal ? Math.round(removal.removedRatio * 100) : 0;
+  const progressText = working && working.total > 1 ? ` ${working.done}/${working.total}` : '';
+  const removeLabel = many ? 'Hepsini şeffaf yap' : 'Şeffaf kullan';
 
   return (
     <AdminOverlay label={`${subject} arka planı`} busy={busy} onClose={onCancel} className="bgr-overlay">
       <section className="relative bgr">
         <header className="bgr__head">
           <div>
-            <h2>{subject} şeffaf olsun mu?</h2>
+            <h2>{many ? `${files.length} görsel şeffaf olsun mu?` : `${subject} şeffaf olsun mu?`}</h2>
             <p>
               {noBackground
                 ? 'Bu görselin arka planı zaten şeffaf.'
-                : 'Düz renkli arka planı silelim, sadece çizim kalsın.'}
+                : many
+                  ? 'Önizleme ilk görsel; seçtiğiniz ayar hepsine uygulanır.'
+                  : 'Düz renkli arka planı silelim, sadece çizim kalsın.'}
             </p>
           </div>
           <button type="button" className="bgr__x" aria-label="Vazgeç" disabled={busy} onClick={onCancel}>
@@ -252,6 +280,33 @@ export default function ImageBackgroundRemover({
             </div>
           )}
 
+          {remember && (
+            <fieldset className="bgr__remember" disabled={busy}>
+              <legend>Bundan sonra ürün ve grup görsellerinde</legend>
+              <div role="radiogroup" aria-label="Bundan sonraki davranış">
+                {REMEMBER_OPTIONS.map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={rememberMode === o.id}
+                    onClick={() => setRememberMode(o.id)}
+                  >
+                    <b>{o.label}</b>
+                    <small>{o.hint}</small>
+                  </button>
+                ))}
+              </div>
+              <p>Bu seçim işletmeniz için kaydedilir; Ayarlar &rsaquo; İşletme&apos;den değiştirebilirsiniz.</p>
+            </fieldset>
+          )}
+          {settingsHint && !remember && (
+            <p className="bgr__hint">
+              Bu soruyu istemezseniz Ayarlar &rsaquo; İşletme &rsaquo; Görseller&apos;den otomatik yapabilir veya
+              kapatabilirsiniz.
+            </p>
+          )}
+
           {error && (
             <p role="alert" className="bgr__error">
               {error}
@@ -265,15 +320,15 @@ export default function ImageBackgroundRemover({
               <button type="button" className="bgr__btn" disabled={busy} onClick={() => setPhase('ask')}>
                 <Undo2 size={17} /> Özgün hâli
               </button>
-              <button type="button" className="bgr__btn is-primary" disabled={busy} onClick={() => void apply()}>
+              <button type="button" className="bgr__btn is-primary" disabled={busy} onClick={() => void finish(true)}>
                 <Check size={18} />
-                {exporting ? 'Hazırlanıyor…' : `${subject} şeffaf kullan`}
+                {working ? `Hazırlanıyor…${progressText}` : removeLabel}
               </button>
             </>
           ) : (
             <>
-              <button type="button" className="bgr__btn" disabled={busy} onClick={onKeep}>
-                Olduğu gibi kullan
+              <button type="button" className="bgr__btn" disabled={busy} onClick={() => void finish(false)}>
+                {working ? `Yükleniyor…${progressText}` : 'Olduğu gibi kullan'}
               </button>
               {!noBackground && (
                 <button

@@ -28,7 +28,8 @@ import { api, imageUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageHeader, Spinner } from '@/components/ui';
 import AdminOverlay from '@/components/admin/AdminOverlay';
-import ImageBackgroundRemover from '@/components/admin/ImageBackgroundRemover';
+import { useImageBackground } from '@/components/admin/ImageBackgroundProvider';
+import type { ImageBackgroundMode } from '@/components/admin/ImageBackgroundRemover';
 import AdminToast, {
   type AdminToastNotice,
 } from '@/components/admin/AdminToast';
@@ -217,8 +218,6 @@ export default function SettingsPage() {
   const [integrationEnabled, setIntegrationEnabled] = useState(false),
     [openaiApiKey, setOpenaiApiKey] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null),
-    // Seçilen logo, arka plan silme penceresinde karar verilene kadar burada bekler
-    [logoCandidate, setLogoCandidate] = useState<File | null>(null),
     [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [socialLinks, setSocialLinks] = useState<SocialLinkConfig[]>(
     mergeSocialConfigs([]),
@@ -259,6 +258,16 @@ export default function SettingsPage() {
     uploadingIcon ||
     translating !== null;
   const toast = (text: string, error = false) => setNotice({ text, error });
+  const { mode: imageMode, prepare: prepareImages, setMode: setImageMode } = useImageBackground();
+  async function chooseImageMode(next: ImageBackgroundMode) {
+    if (next === imageMode) return;
+    try {
+      await setImageMode(next);
+      toast('Görsel ayarı kaydedildi.');
+    } catch (err) {
+      toast(errorMessage(err), true);
+    }
+  }
   const mark = (section: SectionId) =>
     setDirty((list) => (list.includes(section) ? list : [...list, section]));
   const { platforms: platformSocial, customs: customSocial } =
@@ -851,6 +860,39 @@ export default function SettingsPage() {
                   </div>
                 </Section>
                 <Section
+                  title="Görseller"
+                  description="Ürün ve grup görseli yüklerken arka planın nasıl ele alınacağını seçin."
+                >
+                  <div className="ast-radio-list" role="radiogroup" aria-label="Görsel arka planı">
+                    {(
+                      [
+                        ['ask', 'Her seferinde sor', 'Görsel yüklerken arka planı silmek isteyip istemediğiniz sorulur.'],
+                        ['auto', 'Düzse otomatik sil', 'Arka planı tek renk olan görseller sorulmadan şeffaf yapılır; fotoğraf gibi karmaşık görsellere dokunulmaz.'],
+                        ['never', 'Hiç sorma', 'Görseller olduğu gibi yüklenir.'],
+                      ] as const
+                    ).map(([value, label, hint]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        role="radio"
+                        aria-checked={imageMode === value}
+                        disabled={imageMode === undefined}
+                        onClick={() => void chooseImageMode(value)}
+                      >
+                        <span>
+                          <strong>{label}</strong>
+                          <small>{hint}</small>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="ast-hint">
+                    {imageMode === null
+                      ? 'Henüz seçmediniz: ilk ürün veya grup görselinde sorulur. Seçiminiz tüm işletme için geçerli olur ve hemen kaydedilir.'
+                      : 'Seçiminiz tüm işletme için geçerlidir ve hemen kaydedilir. Logo yüklerken her zaman sorulur.'}
+                  </p>
+                </Section>
+                <Section
                   title="Hakkımızda"
                   description="Mekânınızı en iyi siz anlatırsınız."
                 >
@@ -1362,12 +1404,12 @@ export default function SettingsPage() {
               toast('Bir görsel dosyası seçin.', true);
               return;
             }
-            // PNG/JPEG/WebP için önce arka planı silme önerilir; SVG ve GIF olduğu gibi kullanılır
-            if (/^image\/(png|jpe?g|webp)$/.test(file.type)) setLogoCandidate(file);
-            else {
-              setLogoFile(file);
+            // Logo her zaman sorulur (PNG/JPEG/WebP); SVG ve GIF olduğu gibi kullanılır
+            void prepareImages([file], { subject: 'Logo', forceAsk: true }).then((out) => {
+              if (!out) return;
+              setLogoFile(out[0]);
               mark('business');
-            }
+            });
           }
         }}
       />
@@ -1415,23 +1457,6 @@ export default function SettingsPage() {
             ))}
           </section>
         </AdminOverlay>
-      )}
-      {logoCandidate && (
-        <ImageBackgroundRemover
-          file={logoCandidate}
-          subject="Logo"
-          onApply={(processed) => {
-            setLogoFile(processed);
-            setLogoCandidate(null);
-            mark('business');
-          }}
-          onKeep={() => {
-            setLogoFile(logoCandidate);
-            setLogoCandidate(null);
-            mark('business');
-          }}
-          onCancel={() => setLogoCandidate(null)}
-        />
       )}
       {picker && (
         <AdminOverlay
