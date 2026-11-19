@@ -628,6 +628,7 @@ export default function AdminLayout() {
         onClose={() => setTourOpen(false)}
         onOpenGroup={handleOpenTourGroup}
         onNeedMobileNav={() => setMobileOpen(true)}
+        onNotice={(text, error) => setNotice({ error: Boolean(error), text })}
       />
       <AdminToast notice={notice} onClose={() => setNotice(null)} />
       <AdminAIChat open={aiOpen} onClose={() => setAiOpen(false)} />

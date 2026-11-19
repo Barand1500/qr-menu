@@ -651,3 +651,8 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Amaç: eski elle yazılmış turu, akıcı animasyonlu ve etkileşimli bir tura çevirmek.
 - Değişiklikler: `driver.js` eklendi; `AdminTour.tsx` yeniden yazıldı (aynı props), `admin-tour.css` baştan (ilerleme çubuğu, açılış animasyonu, açık/koyu tema). Yeni `task` alanı: Gruplar, Ürünler, Ayarlar ve tema düğmesi adımlarında vurgulanan öğeye dokununca tur kendiliğinden ilerler; diğer adımlarda İleri/Geri sayfaya götürür. Esc/X ile çıkış.
 - Doğrulama: tsc + vite build temiz; Chrome fixture ile (gerçek AdminLayout olmadan) 1280/390 px: adım ilerleme, görev adımında tıklayınca ilerleme, geri, Esc ile kapanma. Gerçek admin paneli, mobil çekmece menüsü ve gerçek telefon denenmedi.
+
+## 2026-11-19 — Tanıtım turu yaptırarak öğreten hâle getirildi
+- Amaç: turu uygulamalı yapmak; sekmelerle zaten görünen başlangıç/rapor/yönetim sayfalarının pasif anlatımını kaldırmak.
+- Değişiklikler: tur 12 adım: karşılama → grup ekle → ürün ekle → ürünü gruba ata → çalışan ekle → menüyü gör → bitiş. Düğme adımlarında driver.js vurgusu, modal pencerelerde (üstte kaldıkları için) pencerenin içine yerleşen mor yönlendirme kartı; `fetch` izlenerek başarılı kayıtla adım kendiliğinden ilerler. Tur bitince veya çıkılınca tur sırasında oluşan ürün/çalışan/grup silinir (silinemezse toast uyarır). Backend: yeni `DELETE /api/admin/users/:id` (kendini silemez, bağlı kayıt varsa 409).
+- Doğrulama: frontend tsc/build, backend tsc temiz; Chrome fixture (gerçek <dialog> ile) 1280/390 px: sayfaya gitme, modalda kart, kayıtla ilerleme, çıkışta DELETE ve bildirim. Gerçek panelde ürün/çalışan formları, mobil çekmece ve gerçek DB ile silme denenmedi.

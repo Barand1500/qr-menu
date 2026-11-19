@@ -148,4 +148,22 @@ router.patch('/:id/toggle', async (req, res) => {
   res.json(user);
 });
 
+router.delete('/:id', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ message: 'Geçersiz kullanıcı' });
+  const me = (req as unknown as { user?: { id?: number; userId?: number } }).user;
+  if (me && (me.id === id || me.userId === id)) {
+    return res.status(400).json({ message: 'Kendi hesabınızı silemezsiniz' });
+  }
+  const existing = await prisma.user.findFirst({ where: { id, restaurantId: restaurantId! } });
+  if (!existing) return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
+  try {
+    await prisma.user.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch {
+    res.status(409).json({ message: 'Bu kullanıcıya bağlı kayıtlar var; silinemedi' });
+  }
+});
+
 export default router;

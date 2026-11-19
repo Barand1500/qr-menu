@@ -1,261 +1,170 @@
 import { adminPath } from '@/lib/adminPath';
-import { SHOW_LEGACY_THEME_SETTINGS, SHOW_EXTENSIONS_ENTRY } from '@/lib/adminThemeSettings';
 
 export type TourOpenGroup = 'startup' | 'reports' | 'management';
+
+/** Tur sırasında oluşturulan kayıtlar; tur bitince silinir. */
+export type TourCreated = { group?: number; product?: number; user?: number };
+
+export type TourCtx = {
+  created: TourCreated;
+  /** Önceki adımda bulunan pencere; yeni bir pencere beklenirken eskisini atlamak için. */
+  prev: Element | null;
+};
+
+export type TourWait =
+  /** Vurgulanan öğeye tıklanınca ilerler. */
+  | { click: true }
+  /** "METOD /yol" başarılı bir istek görülünce ilerler (örn. 'POST /api/admin/groups'). */
+  | { api: string };
 
 export type TourStep = {
   id: string;
   title: string;
   body: string;
-  tip?: string;
-  /** data-tour attribute value */
-  target?: string;
   path?: string;
   openGroup?: TourOpenGroup;
-  /** Varsa adım "yaptırmalı" olur: vurgulanan öğeye tıklanınca tur kendiliğinden ilerler. Metin ipucudur. */
+  /** Vurgulanacak öğe (data-tour değeri). */
+  target?: string;
+  /** target yerine kullanılır: sayfada öğeyi kendisi bulur. */
+  find?: (ctx: TourCtx) => HTMLElement | null;
+  /**
+   * spot: sayfada karartma + vurgu (driver.js).
+   * coach: açık pencerenin içinde küçük yönlendirme kartı (modal üstte olduğu için karartma kullanılamaz).
+   */
+  mode?: 'spot' | 'coach';
+  /** Kısa eylem çağrısı (mor şerit). */
   task?: string;
+  wait?: TourWait;
+  /** coach modunda pencere içinde nabız atacak düğmenin yazısı. */
+  glow?: RegExp;
   placement?: 'top' | 'bottom' | 'left' | 'right' | 'center';
 };
 
-type TourStepDef = Omit<TourStep, 'path'> & {
-  /** Segments after admin base; empty/omit for panel home */
-  pathSegments?: string[];
+const byText = (selector: string, re: RegExp, root: ParentNode = document) =>
+  (Array.from(root.querySelectorAll<HTMLElement>(selector)).find(
+    (el) => re.test((el.textContent || '').trim()) && el.getBoundingClientRect().width > 1,
+  ) ?? null);
+
+/** Açık (ve varsa "yeni") modal pencere. */
+const openDialog = (ctx: TourCtx, selector = 'dialog[open], [role="dialog"]') => {
+  const list = Array.from(document.querySelectorAll<HTMLElement>(selector));
+  return list.reverse().find((el) => el !== ctx.prev) ?? null;
 };
 
-const TOUR_STEP_DEFS: TourStepDef[] = [
-  {
-    id: 'welcome',
-    title: 'Panele hoş geldiniz',
-    body: 'Birlikte panelin her köşesini gezeceğiz. Menü kurulumundan masa yönetimine kadar adım adım göstereceğim. İstediğiniz an X veya Esc ile çıkabilirsiniz; bazı adımlarda vurgulanan yere dokunmanız yeterli.',
-    tip: 'Tur yaklaşık 1–2 dakika sürer.',
-    placement: 'center',
-  },
-  {
-    id: 'menu-preview',
-    title: 'Menüyü Gör',
-    body: 'Müşterinin telefonunda gördüğü canlı menüyü buradan açarsınız. Ürün veya tema değiştirdikten sonra buraya basıp sonucu hemen kontrol edin.',
-    tip: 'Yeni sekmede açılır; panel kapanmaz.',
-    target: 'menu-preview',
-    pathSegments: [],
-    placement: 'right',
-  },
-  {
-    id: 'nav-ozet',
-    title: 'Özet paneli',
-    body: 'Günün nabzı burada: popüler ürünler, görüntülenmeler ve hızlı istatistikler. Sabah açıp “bugün ne oluyor?” diye bakmak için ideal yer.',
-    target: 'nav-ozet',
-    pathSegments: [],
-    placement: 'right',
-  },
-  {
-    id: 'nav-groups',
-    title: 'Gruplar',
-    body: 'Menünün iskeleti burası. Burgerler, İçecekler, Kahvaltı gibi kategorileri oluşturur; sürükleyerek sıralar ve alt gruplar eklersiniz.',
-    tip: 'Önce grupları kurun, sonra ürün eklemek çok daha kolay olur.',
-    target: 'nav-groups',
-    task: 'Gruplar’a dokun, hemen açalım',
-    pathSegments: ['groups'],
-    placement: 'right',
-  },
-  {
-    id: 'nav-products',
-    title: 'Ürünler',
-    body: 'Her yemeği buraya eklersiniz: isim, fiyat, fotoğraf, açıklama, alerjen ve diyet etiketleri. Gruplara bağlayarak menüde doğru yerde görünmesini sağlarsınız.',
-    target: 'nav-products',
-    task: 'Ürünler’e dokun',
-    pathSegments: ['products'],
-    placement: 'right',
-  },
-  {
-    id: 'nav-showcase',
-    title: 'Vitrin görselleri',
-    body: 'Menünün üstündeki dikkat çekici banner ve hikâye görsellerini buradan yönetirsiniz. Kampanya veya öne çıkan ürün için kullanın.',
-    target: 'nav-showcase',
-    pathSegments: ['showcase'],
-    placement: 'right',
-  },
-  {
-    id: 'nav-barcode',
-    title: 'Barkod yazdır',
-    body: 'Her masa için QR kod üretirsiniz. Renk seçer, yazdırır ve masaya koyarsınız. Misafir kamerayla okutunca menü o masaya bağlanır.',
-    tip: 'Salon / teras gibi masa gruplarını da buradan tanımlarsınız.',
-    target: 'nav-barcode',
-    pathSegments: ['barcode'],
-    placement: 'right',
-  },
-  {
-    id: 'nav-startup',
-    title: 'Başlangıç ayarları',
-    body: SHOW_LEGACY_THEME_SETTINGS
-      ? 'Karşılama ekranı ve menü teması bu menünün altındadır.'
-      : 'Oyun Ekranı ile oyunları, Tema Ayarları ile Sofra tasarımındaki yazıları ve fotoğrafları yönetebilirsiniz.',
-    target: 'nav-startup',
-    pathSegments: [],
-    openGroup: 'startup',
-    placement: 'right',
-  },
-  {
-    id: 'nav-welcome-theme',
-    title: 'Karşılama ekranı',
-    body: 'QR okutulunca ilk açılan ekran. Dil seçimi, karşılama metni ve tema buradan ayarlanır. Markanızın “merhaba”sı burada.',
-    target: 'nav-welcome-theme',
-    pathSegments: ['startup', 'welcome'],
-    openGroup: 'startup',
-    placement: 'right',
-  },
-  {
-    id: 'nav-menu-theme',
-    title: 'Menü ekranı',
-    body: 'Asıl menü görünümü: sade, canlı, lüks ve diğer temalar. Restoran tarzınıza uyanı seçip önizleyebilirsiniz.',
-    tip: 'Bazı temalar Eklentiler’den açılır.',
-    target: 'nav-menu-theme',
-    pathSegments: ['startup', 'menu'],
-    openGroup: 'startup',
-    placement: 'right',
-  },
-  {
-    id: 'nav-sofra-theme',
-    title: 'Tema Ayarları',
-    body: 'Sofra önizlemesindeki yazıya veya fotoğrafa tıklayarak düzenleyin. Telefon ve masaüstünü kontrol edin; Kaydet dediğinizde müşterilere yayınlanır.',
-    target: 'nav-sofra-theme',
-    pathSegments: ['startup', 'theme'],
-    openGroup: 'startup',
-    placement: 'right',
-  },
-  {
-    id: 'nav-reports',
-    title: 'Raporlar',
-    body: 'İşletmenin kulağı burada. İstatistikler ve müşteri kutuları bu grubun altında — tek tek geziyoruz.',
-    target: 'nav-reports',
-    pathSegments: [],
-    openGroup: 'reports',
-    placement: 'right',
-  },
-  {
-    id: 'nav-stats',
-    title: 'İstatistikler',
-    body: 'Hangi ürün / grup ne kadar bakılmış, trend nasıl — grafikler ve sayılar burada. Menüyü neyin tuttuğunu anlarsınız.',
-    target: 'nav-stats',
-    pathSegments: ['stats'],
-    openGroup: 'reports',
-    placement: 'right',
-  },
-  {
-    id: 'nav-suggestions',
-    title: 'Öneri kutusu',
-    body: 'Misafirlerin “şunu da ekleseniz” dediği mesajlar buraya düşer. Yeni ürün fikirleri için altın değerinde.',
-    target: 'nav-suggestions',
-    pathSegments: ['suggestions'],
-    openGroup: 'reports',
-    placement: 'right',
-  },
-  {
-    id: 'nav-complaints',
-    title: 'Şikayet kutusu',
-    body: 'Olumsuz geri bildirimleri kaçırmadan okur ve takip edersiniz. Hızlı yanıt için günde bir kez bakmak iyi olur.',
-    target: 'nav-complaints',
-    pathSegments: ['complaints'],
-    openGroup: 'reports',
-    placement: 'right',
-  },
-  {
-    id: 'nav-management',
-    title: 'Yönetim',
-    body: 'Panel kullanıcıları ve tüm sistem ayarları bu grubun altında. Konum kilidi de dahil birçok ayar Ayarlar’dadır.',
-    target: 'nav-management',
-    pathSegments: [],
-    openGroup: 'management',
-    placement: 'right',
-  },
-  {
-    id: 'nav-users',
-    title: 'Kullanıcılar',
-    body: 'Panele giren personeli buradan ekler veya yetkilerini yönetirsiniz. Garson / yönetici ayrımı için kullanın.',
-    target: 'nav-users',
-    pathSegments: ['users'],
-    openGroup: 'management',
-    placement: 'right',
-  },
-  {
-    id: 'nav-settings',
-    title: 'Ayarlar',
-    body: 'Dil, para birimi, logo, sosyal medya, müzik, garson çağır ve konum kilidi gibi her şey burada. Restoran kimliğinin merkezi.',
-    tip: 'Konum kilidi ile menüyü sadece mekân civarında açtırabilirsiniz.',
-    target: 'nav-settings',
-    task: 'Ayarlar’a dokun',
-    pathSegments: ['settings'],
-    openGroup: 'management',
-    placement: 'right',
-  },
-  {
-    id: 'extensions',
-    title: 'Eklentiler',
-    body: 'Ek temalar, dil paketi ve premium özellikler yapboz ikonundan açılır. Kod ile satın aldığınız eklentileri buradan aktifleştirirsiniz.',
-    target: 'extensions',
-    pathSegments: ['extensions'],
-    placement: 'top',
-  },
-  {
-    id: 'tour-help',
-    title: 'Yardım her zaman burada',
-    body: 'Bu soru işaretine her an tıklayıp turu yeniden başlatabilirsiniz. Yeni personel için de ideal.',
-    target: 'tour-help',
-    pathSegments: [],
-    placement: 'top',
-  },
-  {
-    id: 'maintenance',
-    title: 'Bakım modu',
-    body: 'Menüyü geçici olarak kapatmak istediğinizde bu düğmeye basın. Misafirler menü yerine kısa bir bakım ekranı ve “Garson Koşusu” oyununu görür; siz işinizi bitirince tekrar kapatırsınız.',
-    tip: 'Yenileme, tema değişimi veya acil durumlarda kullanın. Açıkken turuncu yanar.',
-    target: 'maintenance',
-    pathSegments: [],
-    placement: 'top',
-  },
-  {
-    id: 'header-theme',
-    title: 'Gündüz / gece',
-    body: 'Panel temasını buradan değiştirirsiniz. Göz yormayan gece modu uzun nöbetlerde işe yarar.',
-    target: 'header-theme',
-    task: 'Dokun ve temayı değiştir, sonra geri dön',
-    pathSegments: [],
-    placement: 'bottom',
-  },
-  {
-    id: 'header-floor',
-    title: 'Masa görünümü',
-    body: 'Canlı salon haritası: dolu / boş masalar, süre, sipariş ekleme, rezervasyon, masa taşıma ve birleştirme burada.',
-    tip: 'Servis sırasında en çok kullanacağınız ekranlardan biri.',
-    target: 'header-floor',
-    pathSegments: [],
-    placement: 'bottom',
-  },
-  {
-    id: 'header-bell',
-    title: 'Bildirimler',
-    body: 'Garson çağrıları ve önemli uyarılar zilde birikir. Kırmızı nokta görürseniz bakmayı unutmayın.',
-    target: 'header-bell',
-    pathSegments: [],
-    placement: 'bottom',
-  },
-  {
-    id: 'done',
-    title: 'Hazırsınız!',
-    body: 'Sıradaki pratik yol: Gruplar → Ürünler → Barkod yazdır → Menüyü Gör. Takılırsanız soru işaretine tekrar tıklamanız yeterli.',
-    tip: 'İyi satışlar.',
-    placement: 'center',
-  },
-];
-
 export function getAdminTourSteps(): TourStep[] {
-  return TOUR_STEP_DEFS.filter((step) =>
-    (SHOW_LEGACY_THEME_SETTINGS || !['nav-welcome-theme', 'nav-menu-theme'].includes(step.id)) &&
-    (SHOW_EXTENSIONS_ENTRY || step.id !== 'extensions')
-  ).map(({ pathSegments, ...rest }) => {
-    if (pathSegments === undefined) return rest;
-    return { ...rest, path: adminPath(...pathSegments) };
-  });
-}
+  return [
+    {
+      id: 'welcome',
+      title: 'Birlikte deneyelim',
+      body: 'Şimdi menüye gerçekten bir grup, bir ürün ve bir çalışan ekleyeceğiz; ürünü gruba da atayacağız. Bitirince denemelerin hepsi kendiliğinden silinir.',
+      placement: 'center',
+    },
 
-/** @deprecated Prefer getAdminTourSteps() — kept for callers that need a static name */
-export const ADMIN_TOUR_STEPS: TourStep[] = getAdminTourSteps();
+    // ── Grup ekle
+    {
+      id: 'group-add',
+      title: 'Önce bir grup',
+      body: 'Gruplar menünün başlıklarıdır: Burgerler, İçecekler…',
+      path: adminPath('groups'),
+      find: () => byText('.ag-head button', /grup ekle/i),
+      task: 'Grup ekle’ye dokun',
+      wait: { click: true },
+      placement: 'bottom',
+    },
+    {
+      id: 'group-form',
+      title: 'Adını yaz',
+      body: 'Örneğin “Deneme Grubu” yaz ve kaydet.',
+      mode: 'coach',
+      find: (ctx) => openDialog(ctx, 'dialog[open]'),
+      wait: { api: 'POST /api/admin/groups' },
+    },
+
+    // ── Ürün ekle
+    {
+      id: 'product-add',
+      title: 'Şimdi bir ürün',
+      body: 'Ürünler fotoğraf, fiyat ve açıklamayla menüde görünür.',
+      path: adminPath('products'),
+      find: () => byText('.ap-head__actions button', /ürün ekle/i),
+      task: 'Ürün ekle’ye dokun',
+      wait: { click: true },
+      placement: 'bottom',
+    },
+    {
+      id: 'product-form',
+      title: 'Ad ve fiyat yeter',
+      body: 'Ürüne bir ad ve fiyat ver, herhangi bir grup seç ve kaydet.',
+      mode: 'coach',
+      find: (ctx) => openDialog(ctx, '[role="dialog"]'),
+      wait: { api: 'POST /api/admin/products' },
+    },
+
+    // ── Ürünü gruba ata
+    {
+      id: 'group-more',
+      title: 'Ürünü gruba atayalım',
+      body: 'Açtığın grubun işlemlerine gir.',
+      path: adminPath('groups'),
+      find: (ctx) =>
+        document.querySelector<HTMLElement>(`.ag-row[data-group-id="${ctx.created.group}"] .ag-more`) ??
+        document.querySelector<HTMLElement>('.ag-row .ag-more'),
+      task: 'Üç noktaya dokun',
+      wait: { click: true },
+      placement: 'left',
+    },
+    {
+      id: 'group-assign-menu',
+      title: 'Ürün ata',
+      body: 'Mevcut ürünleri gruba toplu eklemek için bunu seç.',
+      mode: 'coach',
+      find: (ctx) => openDialog(ctx, 'dialog[open]'),
+      glow: /ürün ata/i,
+      wait: { click: true },
+    },
+    {
+      id: 'group-assign',
+      title: 'Ürünü seç',
+      body: 'Yalnızca az önce eklediğin ürünü işaretle ve gruba ekle.',
+      mode: 'coach',
+      find: (ctx) => openDialog(ctx, 'dialog[open]'),
+      wait: { api: 'POST /api/admin/products/move-to-group' },
+    },
+
+    // ── Çalışan ekle
+    {
+      id: 'user-add',
+      title: 'Çalışan ekleyelim',
+      body: 'Her çalışan kendi hesabıyla girer; yetkisini siz belirlersiniz.',
+      path: adminPath('users'),
+      find: () => byText('button', /kullanıcı ekle/i),
+      task: 'Kullanıcı ekle’ye dokun',
+      wait: { click: true },
+      placement: 'bottom',
+    },
+    {
+      id: 'user-form',
+      title: 'Bilgilerini yaz',
+      body: 'Ad, e-posta ve şifre gir (örn. deneme@ornek.com), rolü seç ve kaydet.',
+      mode: 'coach',
+      find: (ctx) => openDialog(ctx, '[role="dialog"]'),
+      wait: { api: 'POST /api/admin/users' },
+    },
+
+    // ── Bitiş
+    {
+      id: 'menu-preview',
+      title: 'Sonucu gör',
+      body: 'Müşterinin telefonunda gördüğü menü burada. Yeni grup ve ürününü orada bulabilirsin.',
+      path: adminPath(),
+      target: 'menu-preview',
+      placement: 'right',
+    },
+    {
+      id: 'done',
+      title: 'Hazırsın!',
+      body: 'Bitir’e basınca tur sırasında eklediğin grup, ürün ve çalışan silinir; menün eskisi gibi kalır.',
+      placement: 'center',
+    },
+  ];
+}

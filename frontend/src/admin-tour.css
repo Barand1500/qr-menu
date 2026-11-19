@@ -195,7 +195,85 @@
   }
 }
 
+/* Pencere içi yönlendirme kartı (modalın içinde, karartmasız) */
+.adt-coach {
+  position: relative;
+  z-index: 5;
+  display: grid;
+  flex: none;
+  gap: 4px;
+  margin: 10px 10px 6px;
+  padding: 0.75rem 0.9rem 0.65rem;
+  color: #fff;
+  text-align: start;
+  background: linear-gradient(120deg, #2563eb, #7c3aed);
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(37, 99, 235, 0.4);
+  animation: adt-coach-in 0.4s cubic-bezier(0.2, 0.9, 0.25, 1.2);
+}
+@keyframes adt-coach-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+  }
+}
+.adt-coach__top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 750;
+  opacity: 0.9;
+}
+.adt-coach__top i {
+  flex: 1;
+  height: 4px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 4px;
+}
+.adt-coach__top b {
+  display: block;
+  height: 100%;
+  background: #fff;
+  border-radius: 4px;
+}
+.adt-coach strong {
+  font-size: 1rem;
+}
+.adt-coach p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  opacity: 0.95;
+}
+.adt-coach__act {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 4px;
+}
+.adt-coach__act button {
+  min-height: 34px;
+  padding: 0 0.8rem;
+  color: #fff;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.18);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.adt-glow {
+  position: relative;
+  animation: adt-pulse 1.4s ease-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .adt-coach,
+  .adt-glow {
+    animation: none;
+  }
   .driver-popover.adt,
   .adt-meta b,
   .adt-task span,
