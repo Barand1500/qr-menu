@@ -666,3 +666,7 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - İletişim penceresi (`ContactModal.tsx`): ofis sekmeleri (Merkez/Mağaza/Yazılım/AR-GE), tek dokunuşla Ara/WhatsApp/E-posta, haritada aç; telefonda alttan sayfa, masaüstünde ortada. Eski modal LoginPage'den kaldırıldı.
 - Sunucuda "Kod gönderilemedi": nedeni kodla doğrulanamadı (SMTP sunucusuna erişilmedi). Teşhis için `backend/scripts/smtp-check.mjs` (`npm run smtp:check [alıcı]`), admin-login-code artık gerçek SMTP hata kodunu loglar, sertifika adı uyuşmazlığı için isteğe bağlı `LOGIN_SMTP_TLS_INSECURE=1`. Mail testi, yeni HTML şablonuna göre güncellendi.
 - Doğrulama: backend login testleri geçti, frontend tsc/build temiz, Chrome 1280/390/320 px. Gerçek SMTP denenmedi.
+
+## 2026-11-19 — Yapay zeka yazı çubuğu düzeltildi
+- Sorun: "Örnekler" düğmesinin yazısı gönder düğmesinin altına taşıyordu. Düğme artık yalnızca simge (aria-label/title ile "Örnekler"); stil `admin-ai.css` içindeki mevcut simge-düğmesi kuralına uyuyor.
+- Doğrulama: tsc + vite build temiz; yazı çubuğu işaretlemesi dist CSS ile 480/360 px ekran görüntüsüyle kontrol edildi. Gerçek panelde açılan sohbet penceresi ayrıca denenmedi.
