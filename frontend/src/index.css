@@ -487,23 +487,6 @@ body {
 }
 
 /* Login glassmorphism */
-.login-scene {
-  min-height: 100vh;
-  background: linear-gradient(160deg, #1e1b4b 0%, #312e81 25%, #7c3aed 45%, #f97316 75%, #fb923c 100%);
-  position: relative;
-  overflow: hidden;
-}
-
-.login-scene::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(251, 146, 60, 0.4) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(124, 58, 237, 0.3) 0%, transparent 50%);
-  pointer-events: none;
-}
-
 .login-glass {
   background: rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(20px);
