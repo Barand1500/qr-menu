@@ -40,7 +40,22 @@ type CustomerAuthContextValue = {
   logout: () => void;
   refresh: (restaurantId?: number | null) => Promise<void>;
   updateProfile: (body: Record<string, unknown>) => Promise<void>;
+  /** Telefon/e-posta değişikliği: yeni değere doğrulama kodu gönderir. */
+  requestContactChange: (field: ContactField, value: string, restaurantId: number) => Promise<ContactRequestResult>;
+  /** Kodu doğrular ve değişikliği uygular. */
+  verifyContactChange: (field: ContactField, value: string, challengeId: string, code: string, restaurantId: number) => Promise<void>;
   restaurantPoints: (restaurantId?: number | null) => number;
+};
+
+export type ContactField = 'phone' | 'email';
+export type ContactRequestResult = {
+  challengeId: string;
+  /** Kodun gittiği kanal: sms veya email */
+  channel: 'sms' | 'email';
+  /** Maskeli hedef, ör. "5•• ••• •• 67" */
+  maskedTo: string;
+  retryAfter: number;
+  expiresIn: number;
 };
 
 const CustomerAuthContext = createContext<CustomerAuthContextValue | null>(null);
@@ -187,6 +202,26 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     syncPrefsFromCustomer(res.customer);
   }, []);
 
+  const requestContactChange = useCallback(
+    (field: ContactField, value: string, restaurantId: number) =>
+      customerApi<ContactRequestResult>('/api/customer/auth/contact/request', {
+        method: 'POST',
+        body: JSON.stringify({ field, value, restaurantId }),
+      }),
+    [],
+  );
+
+  const verifyContactChange = useCallback(
+    async (field: ContactField, value: string, challengeId: string, code: string, restaurantId: number) => {
+      const res = await customerApi<{ customer: MenuCustomer }>('/api/customer/auth/contact/verify', {
+        method: 'POST',
+        body: JSON.stringify({ field, value, challengeId, code, restaurantId }),
+      });
+      setCustomer(res.customer);
+    },
+    [],
+  );
+
   const restaurantPoints = useCallback(
     (restaurantId?: number | null) => {
       if (!customer || !restaurantId) return 0;
@@ -206,6 +241,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       logout,
       refresh,
       updateProfile,
+      requestContactChange,
+      verifyContactChange,
       restaurantPoints,
     }),
     [
@@ -218,6 +255,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       logout,
       refresh,
       updateProfile,
+      requestContactChange,
+      verifyContactChange,
       restaurantPoints,
     ]
   );

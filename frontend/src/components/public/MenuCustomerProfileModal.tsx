@@ -35,6 +35,7 @@ import {
 } from '@/lib/customerQrPreview';
 import { issueCustomerQrChallenge } from '@/lib/customerUnlock';
 import { avatarHue } from '@/lib/customerAvatar';
+import { ContactRow, NameRow } from './CustomerContactRow';
 import './customer-account.css';
 
 type Tab = 'code' | 'prefs' | 'info' | 'perks';
@@ -50,16 +51,6 @@ export type CustomerAccountProps = {
   photos?: string[];
   lang?: string;
 };
-
-/** TR cep: 5XX XXX XX XX (10 hane) */
-function formatPhone(raw: string) {
-  let d = raw.replace(/\D/g, '');
-  if (d.startsWith('90') && d.length > 10) d = d.slice(2);
-  if (d.startsWith('0')) d = d.slice(1);
-  d = d.slice(0, 10);
-  const parts = [d.slice(0, 3), d.slice(3, 6), d.slice(6, 8), d.slice(8)];
-  return parts.filter(Boolean).join(' ');
-}
 
 const sameSet = (a: string[], b: string[]) =>
   a.length === b.length && [...a].sort().join('|') === [...b].sort().join('|');
@@ -191,7 +182,6 @@ export default function MenuCustomerProfileModal({
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
 
-  const [name, setName] = useState('');
   const [alcohol, setAlcohol] = useState<AlcoholPref>('unset');
   const [allergens, setAllergens] = useState<string[]>([]);
   const [diets, setDiets] = useState<string[]>([]);
@@ -230,7 +220,6 @@ export default function MenuCustomerProfileModal({
     setError('');
     setSaved(false);
     setTab(wide ? 'prefs' : 'code');
-    setName(customer.fullName);
     setAllergens(customer.allergenTags || []);
     setDiets(customer.dietTags || []);
     setLiked(customer.likedFoods || []);
@@ -295,7 +284,6 @@ export default function MenuCustomerProfileModal({
   const firstName = customer.fullName.trim().split(/\s+/)[0] || 'Misafir';
   const hue = avatarHue(customer.id);
   const dirty =
-    name.trim() !== customer.fullName ||
     alcohol !== (customer.drinksAlcohol === true ? 'yes' : customer.drinksAlcohol === false ? 'no' : 'unset') ||
     !sameSet(allergens, customer.allergenTags || []) ||
     !sameSet(diets, customer.dietTags || []) ||
@@ -319,16 +307,10 @@ export default function MenuCustomerProfileModal({
   }
 
   async function save() {
-    if (!name.trim()) {
-      setError('Ad soyad boş olamaz');
-      setTab('info');
-      return;
-    }
     setBusy(true);
     setError('');
     try {
       await updateProfile({
-        fullName: name.trim(),
         allergenTags: allergens,
         dietTags: diets,
         likedFoods: liked,
@@ -562,29 +544,26 @@ export default function MenuCustomerProfileModal({
             {tab === 'info' ? (
               <div className="ca-sec" key="info">
                 <p className="ca-lead">Restoranlar yalnızca “Görünür” bıraktığın bilgileri görür.</p>
-                <div className="ca-row">
-                  <div className="ca-row__head">
-                    <label htmlFor="ca-name">{ui.fullName}</label>
-                    {visibility('showName', ui.fullName)}
-                  </div>
-                  <input id="ca-name" value={name} autoComplete="name" onChange={(e) => setName(e.target.value)} />
-                </div>
-                <div className="ca-row">
-                  <div className="ca-row__head">
-                    <span>Telefon</span>
-                    {visibility('showPhone', 'Telefon')}
-                  </div>
-                  <p className="ca-static">{customer.phone ? formatPhone(customer.phone) : '—'}</p>
-                </div>
-                <div className="ca-row">
-                  <div className="ca-row__head">
-                    <span>
+                <NameRow label={ui.fullName} visibility={visibility('showName', ui.fullName)} />
+                <ContactRow
+                  field="phone"
+                  label="Telefon"
+                  current={customer.phone}
+                  restaurantId={restaurantId}
+                  visibility={visibility('showPhone', 'Telefon')}
+                />
+                <ContactRow
+                  field="email"
+                  label={
+                    <>
                       E-posta <small>(opsiyonel)</small>
-                    </span>
-                    {visibility('showEmail', 'E-posta')}
-                  </div>
-                  <p className="ca-static">{customer.email || '—'}</p>
-                </div>
+                    </>
+                  }
+                  current={customer.email}
+                  restaurantId={restaurantId}
+                  visibility={visibility('showEmail', 'E-posta')}
+                />
+                <p className="ca-lead ca-lead--small">Telefon veya e-posta değişince yeni değere bir doğrulama kodu gönderilir. İsim değişikliği kod istemez.</p>
               </div>
             ) : null}
 

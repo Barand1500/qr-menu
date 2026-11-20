@@ -1053,3 +1053,113 @@
     transition: none;
   }
 }
+
+/* ───────── Bilgilerim: satır içi düzenleme ───────── */
+.ca-val {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ca-val .ca-static {
+  min-width: 0;
+}
+.ca-edit,
+.ca-mini {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 14px;
+  color: var(--ca-accent);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: var(--ca-soft);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.ca-edit:disabled,
+.ca-mini:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ca-mini {
+  color: var(--ca-accent-ink);
+  background: var(--ca-accent);
+}
+.ca-mini--ghost {
+  color: var(--ca-text);
+  background: transparent;
+  border: 1.5px solid var(--ca-line);
+}
+.ca-row.is-editing {
+  border-color: var(--ca-accent);
+  box-shadow: 0 0 0 3px var(--ca-soft);
+}
+.ca-edit-box {
+  display: grid;
+  gap: 10px;
+  animation: ca-in 0.28s ease;
+}
+.ca-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.ca-edit-info {
+  margin: 0;
+  color: var(--ca-mute);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.ca-edit-info b {
+  color: var(--ca-text);
+}
+.ca-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ca-name input {
+  flex: 1;
+}
+.ca-otp {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+.ca-otp input {
+  height: 50px;
+  padding: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-align: center;
+  border-radius: 12px;
+}
+.ca-ok,
+.ca-bad {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.ca-ok {
+  color: var(--ca-accent);
+  animation: ca-in 0.28s ease;
+}
+.ca-bad {
+  color: var(--ca-bad);
+}
+.ca-lead--small {
+  font-size: 0.78rem;
+}
+.is-spin {
+  animation: ca-spin 0.8s linear infinite;
+}

@@ -13,6 +13,7 @@ import {
   signCustomerToken,
 } from '../lib/customer-auth.js';
 import { issueCustomerQrChallenge } from '../lib/customer-qr-challenge.js';
+import { ContactError, UNAVAILABLE, requestContactChange, verifyContactChange } from '../lib/customer-contact.js';
 import customerEmailRouter from './customer-email.js';
 import {
   allowCustomerEmailRequest,
@@ -207,6 +208,50 @@ router.put('/profile', customerAuthRequired, async (req, res) => {
   });
 
   res.json({ customer: customerPublic(row) });
+});
+
+/** Telefon / e-posta değişikliği: yeni değere doğrulama kodu gönderir (SMS veya e-posta, işletmenin ayarına göre). */
+router.post('/contact/request', customerAuthRequired, async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  if (!allowCustomerEmailRequest(`contact-ip:${req.ip || 'unknown'}`, 40))
+    return res.status(429).json({ message: 'Çok fazla deneme yapıldı. Daha sonra tekrar deneyin.' });
+  const field = req.body?.field === 'phone' ? 'phone' : req.body?.field === 'email' ? 'email' : null;
+  const restaurantId = Number(req.body?.restaurantId);
+  if (!field || !Number.isInteger(restaurantId) || restaurantId <= 0)
+    return res.status(400).json({ message: 'Geçersiz istek' });
+  try {
+    res.json(await requestContactChange({ customerId: req.customer!.customerId, restaurantId, field, value: req.body?.value }));
+  } catch (e) {
+    if (e instanceof ContactError) {
+      if (e.retryAfter) res.setHeader('Retry-After', String(e.retryAfter));
+      return res.status(e.status).json({ message: e.message });
+    }
+    res.status(503).json({ message: UNAVAILABLE });
+  }
+});
+
+router.post('/contact/verify', customerAuthRequired, async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  if (!allowCustomerEmailRequest(`contact-verify-ip:${req.ip || 'unknown'}`, 80))
+    return res.status(429).json({ message: 'Çok fazla deneme yapıldı. Daha sonra tekrar deneyin.' });
+  const field = req.body?.field === 'phone' ? 'phone' : req.body?.field === 'email' ? 'email' : null;
+  const restaurantId = Number(req.body?.restaurantId);
+  if (!field || !Number.isInteger(restaurantId) || restaurantId <= 0)
+    return res.status(400).json({ message: 'Geçersiz istek' });
+  try {
+    const row = await verifyContactChange({
+      customerId: req.customer!.customerId,
+      restaurantId,
+      field,
+      value: req.body?.value,
+      challengeId: req.body?.challengeId,
+      code: req.body?.code,
+    });
+    res.json({ customer: customerPublic(row) });
+  } catch (e) {
+    if (e instanceof ContactError) return res.status(e.status).json({ message: e.message });
+    res.status(503).json({ message: UNAVAILABLE });
+  }
 });
 
 router.post('/qr-challenge', customerAuthRequired, async (req, res) => {
