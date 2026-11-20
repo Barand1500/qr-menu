@@ -638,19 +638,3 @@
 }
 
 /* Sepet — Garson çağır (şampanya / gold) */
-.public-menu-page[data-theme-menu='luxury'] .siparis-cart-sheet__waiter {
-  background: linear-gradient(135deg, #e8d5a3, #c9a962 55%, #a8873f);
-  color: #0c0b0a;
-  box-shadow: 0 10px 24px rgba(201, 169, 98, 0.35);
-}
-
-.public-menu-page[data-theme-menu='luxury'] .siparis-cart-sheet__waiter.is-done {
-  background: #8b6f32;
-  color: #f3eee4;
-  box-shadow: none;
-}
-
-.public-menu-page[data-theme-menu='luxury'] .siparis-cart-sheet__waiter.is-error {
-  background: #7a3b32;
-  color: #fff;
-}

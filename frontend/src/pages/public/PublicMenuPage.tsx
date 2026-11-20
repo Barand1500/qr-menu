@@ -32,6 +32,7 @@ import TableSessionCodeGate from '@/components/public/TableSessionCodeGate';
 import type { GeoCoords } from '@/lib/geoLock';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { useMenuImageEntries, usePublicImageFit } from '@/hooks/useImageFit';
+import { setMenuBrand } from '@/lib/menuBrand';
 import { useMenuColorMode } from '@/hooks/useMenuColorMode';
 import { usePublicRtl } from '@/hooks/usePublicRtl';
 import {
@@ -288,6 +289,10 @@ function PublicMenuPageInner({
     const grup = searchParams.get('grup') || sessionStorage.getItem('menu_grup');
     if (masa) checkInTable(slug, masa, grup, coords ?? undefined);
   }, [slug, searchParams, coords]);
+
+  useEffect(() => {
+    if (menu?.restaurant) setMenuBrand(slug, { name: menu.sofra?.brandName || menu.restaurant.name, logoUrl: menu.restaurant.logoUrl });
+  }, [slug, menu?.restaurant, menu?.sofra?.brandName]);
 
   useEffect(() => {
     if (!menu?.restaurant?.id || !customer) return;

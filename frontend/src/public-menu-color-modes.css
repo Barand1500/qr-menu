@@ -438,43 +438,6 @@
 }
 
 /* Sepet — tüm temalar gece modu */
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__panel {
-  background: #1c1614;
-  color: #f3ebe4;
-}
-
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__eyebrow,
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__empty,
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__line-price,
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__note,
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__totals span,
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__hint {
-  color: #b9a79c;
-}
-
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__head h2,
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__name,
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__totals strong,
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__close {
-  color: #f8f1ea;
-}
-
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__close,
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__qty,
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__totals > div,
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__thumb {
-  background: #2a201c;
-}
-
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__note textarea {
-  background: #14100e;
-  color: #f3ebe4;
-  border-color: rgba(243, 235, 228, 0.14);
-}
-
-.public-menu-page[data-color-mode='night'] .siparis-cart-sheet__note textarea::placeholder {
-  color: #8a766c;
-}
 
 /* —— Canlı —— */
 .public-menu-page[data-theme-menu='alive'][data-color-mode='night'] {
@@ -1341,8 +1304,6 @@
   color: var(--menu-text);
 }
 
-
-
 .public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-cats__icon--star {
   background: rgba(248, 113, 113, 0.12);
   color: #f87171;
@@ -1350,36 +1311,6 @@
 
 .public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-card__media{
   background: #241814;
-}
-
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-cart-sheet__panel {
-  background: #241814;
-  color: #f8efe8;
-}
-
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-cart-sheet__close,
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-cart-sheet__qty,
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-cart-sheet__totals > div {
-  background: #2a1c18;
-}
-
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-cart-sheet__qty button,
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-cart-sheet__note textarea {
-  background: #1a1210;
-  color: var(--menu-text);
-  border-color: rgba(248, 113, 113, 0.2);
-}
-
-
-
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-cart-sheet__allergy {
-  background: rgba(245, 158, 11, 0.12);
-  border-color: rgba(245, 158, 11, 0.35);
-  color: #fcd34d;
-}
-
-.public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .siparis-cart-sheet__allergy-icon {
-  color: #fbbf24;
 }
 
 .public-menu-page[data-theme-menu='siparis'][data-color-mode='night'] .public-tablet-tabs.public-tablet-tabs--always {
@@ -1410,30 +1341,6 @@
   background: #1a1210;
   border-color: rgba(248, 113, 113, 0.35);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /* —— Lüks + Sipariş: Hakkımızda gece —— */
 .public-menu-page[data-theme-menu='luxury'] .about-page,

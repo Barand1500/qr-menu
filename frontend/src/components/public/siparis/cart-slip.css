@@ -1,0 +1,386 @@
+/* Sepet: sipariş fişi gibi kâğıt kart. Tüm menü temalarında aynı görünür; temaya özel kural gerektirmez. */
+.cs {
+  --cs-paper: #fbf8f1;
+  --cs-ink: #1c1917;
+  --cs-mute: #78716c;
+  --cs-line: rgba(28, 25, 23, 0.16);
+  --cs-accent: #b45309;
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  visibility: hidden;
+  pointer-events: none;
+}
+.cs.is-open {
+  visibility: visible;
+  pointer-events: auto;
+}
+.cs__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 8, 6, 0.6);
+  border: 0;
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+.cs.is-open .cs__backdrop {
+  opacity: 1;
+}
+.cs__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: min(92dvh, 860px);
+  color: var(--cs-ink);
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.016) 0 1px, transparent 1px 3px), var(--cs-paper);
+  border-radius: 0;
+  box-shadow: 0 -20px 50px rgba(0, 0, 0, 0.4);
+  transform: translateY(105%);
+  transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.25, 1);
+  /* üst kenar: koparılmış fiş */
+  -webkit-mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% / 16px 100%;
+  mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% / 16px 100%;
+  padding-top: 8px;
+  outline: 0;
+}
+.cs.is-open .cs__panel {
+  transform: none;
+}
+.cs__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 12px;
+}
+.cs__eyebrow {
+  margin: 0 0 4px;
+  color: var(--cs-mute);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.cs__head h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.cs__badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  color: var(--cs-paper);
+  font-size: 13px;
+  font-weight: 750;
+  background: var(--cs-ink);
+  border-radius: 999px;
+}
+.cs__close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--cs-ink);
+  background: transparent;
+  border: 1.5px solid var(--cs-line);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.cs__body {
+  flex: 1;
+  min-height: 0;
+  padding: 0 20px 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.cs__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 2px dashed var(--cs-line);
+}
+.cs__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 2px dashed var(--cs-line);
+  animation: cs-row 0.4s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms + 120ms);
+}
+@keyframes cs-row {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
+.cs__thumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  background: rgba(28, 25, 23, 0.06);
+  border-radius: 14px;
+}
+.cs__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cs__meta {
+  flex: 1;
+  min-width: 0;
+}
+.cs__name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.cs__price {
+  margin: 3px 0 0;
+  color: var(--cs-mute);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.cs__qty {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(28, 25, 23, 0.07);
+  border-radius: 999px;
+}
+.cs__qty button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--cs-ink);
+  background: var(--cs-paper);
+  border: 0;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+.cs__qty button:active {
+  transform: scale(0.88);
+}
+.cs__qty span {
+  min-width: 26px;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+}
+.cs__empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 36px 12px 28px;
+  color: var(--cs-mute);
+  text-align: center;
+  border-top: 2px dashed var(--cs-line);
+}
+.cs__empty span {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  color: var(--cs-ink);
+  background: rgba(28, 25, 23, 0.06);
+  border-radius: 20px;
+}
+.cs__empty p {
+  margin: 0;
+  max-width: 18rem;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.cs__allergy {
+  display: flex;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  color: #92400e;
+  font-size: 12.5px;
+  line-height: 1.45;
+  background: rgba(245, 158, 11, 0.16);
+  border-radius: 12px;
+}
+.cs__allergy svg {
+  flex: none;
+  margin-top: 2px;
+}
+.cs__note {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 8px;
+}
+.cs__note span {
+  color: var(--cs-mute);
+  font-size: 12px;
+  font-weight: 700;
+}
+.cs__note textarea {
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 12px;
+  color: var(--cs-ink);
+  font: inherit;
+  font-size: 16px;
+  resize: none;
+  background: rgba(28, 25, 23, 0.05);
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  outline: 0;
+}
+.cs__note textarea:focus {
+  background: #fff;
+  border-color: var(--cs-ink);
+}
+
+/* alt kısım: fiş toplamı + onay */
+.cs__foot {
+  padding: 12px 20px calc(18px + env(safe-area-inset-bottom, 0px));
+  border-top: 2px dashed var(--cs-line);
+}
+.cs__totals {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.cs__totals > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cs__totals span {
+  color: var(--cs-mute);
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.cs__totals strong {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.cs__kcal b {
+  font-size: 13px;
+  font-weight: 650;
+}
+.cs__confirm {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 58px;
+  color: var(--cs-paper);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  background: var(--cs-ink);
+  border: 0;
+  border-radius: 18px;
+  box-shadow: 0 14px 26px -12px rgba(28, 25, 23, 0.7);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.15s, opacity 0.2s;
+}
+.cs__confirm::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.22) 50%, transparent 70%);
+  transform: translateX(-120%);
+  animation: cs-shine 3.4s ease-in-out 1s infinite;
+}
+@keyframes cs-shine {
+  60%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+.cs__confirm:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.cs__confirm:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.cs__confirm:disabled::after {
+  animation: none;
+}
+.cs__hint {
+  margin: 10px 0 0;
+  color: var(--cs-mute);
+  font-size: 12px;
+  text-align: center;
+}
+.cs button:focus-visible,
+.cs textarea:focus-visible {
+  outline: 2px solid var(--cs-accent);
+  outline-offset: 2px;
+}
+
+/* geniş ekran: sağdan açılan fiş */
+@media (min-width: 900px) {
+  .cs {
+    align-items: stretch;
+    justify-content: flex-end;
+  }
+  .cs__panel {
+    width: 460px;
+    max-height: none;
+    padding-top: 0;
+    box-shadow: -24px 0 60px rgba(0, 0, 0, 0.4);
+    transform: translateX(105%);
+    -webkit-mask: none;
+    mask: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.4);
+  }
+  .cs.is-open .cs__panel {
+    transform: none;
+  }
+  .cs__head {
+    padding-top: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cs__panel,
+  .cs__backdrop {
+    transition: none;
+  }
+  .cs__row,
+  .cs__confirm::after {
+    animation: none;
+  }
+}

@@ -332,39 +332,7 @@
   box-shadow: none;
   color: #ff6b2c;
 }
-.sofra-public-shell .siparis-cart-sheet {
-  align-items: flex-end;
-}
-.sofra-public-shell .siparis-cart-sheet__panel {
-  width: min(100%, 600px);
-  max-height: 90svh;
-  border-radius: 25px 25px 0 0;
-  background: #18130f;
-  padding: 26px 26px max(26px, env(safe-area-inset-bottom));
-  transform: translateY(100%);
-  opacity: 0;
-  transition:
-    transform 0.24s ease,
-    opacity 0.24s;
-  overscroll-behavior: contain;
-  outline: none;
-}
-.sofra-public-shell .siparis-cart-sheet.is-open .siparis-cart-sheet__panel {
-  transform: translateY(0);
-  opacity: 1;
-}
-.sofra-public-shell .siparis-cart-sheet__backdrop {
-  opacity: 0;
-  transition: opacity 0.24s;
-}
-.sofra-public-shell .siparis-cart-sheet.is-open .siparis-cart-sheet__backdrop {
-  opacity: 1;
-}
 @starting-style {
-  .sofra-public-shell .siparis-cart-sheet.is-open .siparis-cart-sheet__panel {
-    transform: translateY(100%);
-    opacity: 0;
-  }
 }
 
 .sofra-public-shell .menu-games {
@@ -397,19 +365,9 @@
     opacity: 1;
   }
 }
-.sofra-public-shell .siparis-cart-sheet__qty button {
-  background: #f6eee41f;
-  color: var(--sh-text);
-  box-shadow: none;
-}
-.sofra-public-shell .siparis-cart-sheet__badge,
 .sofra-public-shell .siparis-header-cart__badge{
   background: var(--sh-accent);
   color: var(--sh-on-accent);
-}
-.sofra-public-shell .siparis-cart-sheet__allergy {
-  background: #ffb44a14;
-  color: var(--sh-text);
 }
 @media (max-width: 767px) {
   .sofra-sheet-panel {
@@ -418,7 +376,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .sofra-sheet *,
-  .sofra-public-shell .siparis-cart-sheet *,
   .sofra-public-shell .menu-games__panel,
   .sofra-prefs {
     animation: none !important;

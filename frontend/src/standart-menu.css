@@ -786,51 +786,6 @@
 }
 
 /* Sepet / seçenekler — koyu tema üstünde her zaman okunaklı */
-.public-menu-page[data-theme-menu='standart'] .siparis-cart-sheet__panel {
-  --menu-text: #1a1a1a;
-  --menu-text-muted: #5c5c5c;
-  --menu-card: #ffffff;
-  background: #ffffff;
-  color: #1a1a1a;
-}
-
-.public-menu-page[data-theme-menu='standart'] .siparis-cart-sheet__head h2,
-.public-menu-page[data-theme-menu='standart'] .siparis-cart-sheet__name,
-.public-menu-page[data-theme-menu='standart'] .siparis-cart-sheet__qty span,
-.public-menu-page[data-theme-menu='standart'] .siparis-cart-sheet__qty button,
-.public-menu-page[data-theme-menu='standart'] .siparis-cart-sheet__close {
-  color: #1a1a1a;
-}
-
-.public-menu-page[data-theme-menu='standart'] .siparis-cart-sheet__eyebrow,
-.public-menu-page[data-theme-menu='standart'] .siparis-cart-sheet__line-price,
-.public-menu-page[data-theme-menu='standart'] .siparis-cart-sheet__note,
-.public-menu-page[data-theme-menu='standart'] .siparis-cart-sheet__empty {
-  color: #5c5c5c;
-}
-
-.public-menu-page[data-theme-menu='standart'] .siparis-cart-sheet__qty {
-  background: #f0f0f0;
-}
-
-.public-menu-page[data-theme-menu='standart'] .siparis-cart-sheet__qty button {
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
-}
-
-.public-menu-page[data-theme-menu='standart'] .siparis-cart-sheet__totals span {
-  color: #5c5c5c;
-}
-
-.public-menu-page[data-theme-menu='standart'] .siparis-cart-sheet__totals strong {
-  color: #1a1a1a;
-}
-
-.public-menu-page[data-theme-menu='standart'] .siparis-cart-sheet__note textarea {
-  color: #1a1a1a;
-  background: #f7f7f7;
-  border-color: #e5e5e5;
-}
 
 .public-menu-page[data-theme-menu='standart'] .sade-opts {
   --menu-text: #1a2e24;

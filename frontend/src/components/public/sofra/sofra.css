@@ -210,21 +210,9 @@ span[data-sofra-editable] {
   border-color: var(--sh-accent);
   color: var(--sh-accent-2);
 }
-.sofra-public-shell .siparis-cart-sheet__waiter {
-  background: var(--sh-accent);
-  color: var(--sh-on-accent);
-  box-shadow: none;
-  border-radius: 999px;
-}
 .sofra-public-shell .siparis-toast {
   background: var(--sh-text);
   color: var(--sh-bg);
-}
-
-.sofra-public-shell .siparis-cart-sheet__qty button,
-.sofra-public-shell .siparis-cart-sheet__close {
-  min-width: 44px;
-  min-height: 44px;
 }
 .sofra-secondary-content {
   padding: 30px 24px 130px;
