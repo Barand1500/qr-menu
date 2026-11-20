@@ -14,6 +14,8 @@ export type ReceiptData = {
   note?: string;
   orderNo: number | null;
   at: Date;
+  /** Aynı sipariş zaten iletilmişti */
+  duplicate?: boolean;
 };
 
 /** Kağıdın yazıcıdan kademeli (satır satır) çıkışı: ms cinsinden toplam süre. Sunucu yanıtından sonra başlar. */
@@ -24,6 +26,7 @@ const COPY = {
     processing: 'Siparişin alınıyor',
     printing: 'Fişin yazdırılıyor',
     complete: 'Sipariş iletildi',
+    duplicate: 'Siparişin zaten iletilmişti',
     error: 'Sipariş gönderilemedi',
     total: 'Toplam',
     order: 'Sipariş no',
@@ -41,6 +44,7 @@ const COPY = {
     processing: 'Placing your order',
     printing: 'Printing your receipt',
     complete: 'Order sent',
+    duplicate: 'Your order was already sent',
     error: 'Could not send order',
     total: 'Total',
     order: 'Order',
@@ -165,7 +169,7 @@ export default function ReceiptPrinter({
               <span className={`rp__icon rp__icon--${stage}`} aria-hidden="true">
                 {stage === 'complete' ? <Check size={14} strokeWidth={3} /> : stage === 'error' ? <AlertCircle size={15} /> : <Loader2 size={15} className="rp__spin" />}
               </span>
-              <span>{stage === 'error' ? errorMessage || t.error : t[stage]}</span>
+              <span>{stage === 'error' ? errorMessage || t.error : stage === 'complete' && data.duplicate ? t.duplicate : t[stage]}</span>
             </div>
           </div>
           <span className="rp__slot" aria-hidden="true" />

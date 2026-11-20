@@ -21,6 +21,8 @@ export type ProductHistoryItem = {
   lastPrice: number;
   lastChangeAt: string;
   deltaPct: number;
+  /** Mini grafik değerleri (ilk fiyat + her değişiklik sonrası) */
+  spark: number[];
   exists: boolean;
 };
 
@@ -156,3 +158,35 @@ export function formatWhen(iso: string, now = new Date()): string {
   if (diff === 1) return `Dün ${time}`;
   return `${date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}, ${time}`;
 }
+
+/** Grafiğin x ekseni: gerçek zaman ya da değişiklikler eşit aralıkla "sırayla". */
+export type ChartMode = 'time' | 'steps';
+
+/** Değişiklikler birkaç güne sıkışmışsa zaman ekseni tek bir dikey çizgiye döner; o zaman "sırayla" daha okunur. */
+export function defaultChartMode(points: SeriesPoint[]): ChartMode {
+  if (points.length < 2) return 'steps';
+  const times = points.map((p) => new Date(p.at).getTime());
+  const span = Math.max(...times) - Math.min(...times);
+  return span < 5 * 86_400_000 ? 'steps' : 'time';
+}
+
+export type StepDatum = ChartDatum & { label: string };
+
+/** "Sırayla" modu: başlangıç + her değişiklik eşit aralıkta; x = sıra numarası. */
+export function buildStepData(points: SeriesPoint[]): StepDatum[] {
+  if (!points.length) return [];
+  const out: StepDatum[] = [{ t: 0, price: points[0].oldPrice, label: 'Başlangıç' }];
+  points.forEach((p, i) => out.push({ t: i + 1, price: p.newPrice, point: p, up: p.newPrice >= p.oldPrice, label: formatShortDate(new Date(p.at).getTime()) }));
+  return out;
+}
+
+export type Overview = {
+  totals: { products: number; changes: number; avgDeltaPct: number };
+  index: { t: string; value: number }[];
+  activity: { day: string; changes: number }[];
+  movers: {
+    up: { productId: number; name: string; deltaPct: number; lastPrice: number; symbol: string }[];
+    down: { productId: number; name: string; deltaPct: number; lastPrice: number; symbol: string }[];
+  };
+  recent: { changeId: number; productId: number; name: string; at: string; kind: string; userName: string; oldPrice: number; newPrice: number }[];
+};

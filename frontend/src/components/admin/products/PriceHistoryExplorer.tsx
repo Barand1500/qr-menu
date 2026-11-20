@@ -6,6 +6,9 @@ import {
   RANGES,
   SORT_LABELS,
   buildChartData,
+  buildStepData,
+  defaultChartMode,
+  type ChartMode,
   formatDelta,
   formatShortDate,
   formatWhen,
@@ -16,6 +19,7 @@ import {
   type RangeId,
 } from '@/lib/priceHistory';
 import PriceChart from './PriceChart';
+import PriceSpark from './PriceSpark';
 import './price-history.css';
 
 const PAGE = 30;
@@ -41,7 +45,7 @@ function Delta({ pct }: { pct: number }) {
 }
 
 /** Ürün listesi: arama, sıralama ve "daha fazla" ile sayfalanır; binlerce ürün olsa da ekranı doldurmaz. */
-function ProductList({
+export function ProductList({
   selectedId,
   onSelect,
   compact,
@@ -116,6 +120,7 @@ function ProductList({
                   {it.changes} değişiklik · {formatWhen(it.lastChangeAt)}
                 </small>
               </span>
+              <PriceSpark values={it.spark ?? []} />
               <span className="phx-items__side">
                 <b>{formatMoney(it.currentPrice ?? it.lastPrice, { symbol: it.symbol })}</b>
                 <Delta pct={it.deltaPct} />
@@ -151,17 +156,22 @@ function Stat({ label, value, hint, tone }: { label: string; value: string; hint
 }
 
 /** Bir ürünün fiyat seyri: özet kartları, aralık seçimi, grafik ve değişiklik kayıtları. */
-function ProductDetail({ productId, compact, onBack }: { productId: number; compact: boolean; onBack?: () => void }) {
+export function ProductDetail({ productId, compact, onBack }: { productId: number; compact: boolean; onBack?: () => void }) {
   const [data, setData] = useState<ProductHistory | null>(null);
   const [error, setError] = useState(false);
   const [range, setRange] = useState<RangeId>('all');
+  const [mode, setMode] = useState<ChartMode>('time');
 
   useEffect(() => {
     let alive = true;
     setData(null);
     setError(false);
     api<ProductHistory>(`/api/admin/products/${productId}/price-history`)
-      .then((r) => alive && setData(r))
+      .then((r) => {
+        if (!alive) return;
+        setData(r);
+        setMode(defaultChartMode(r.points));
+      })
       .catch(() => alive && setError(true));
     return () => {
       alive = false;
@@ -169,7 +179,10 @@ function ProductDetail({ productId, compact, onBack }: { productId: number; comp
   }, [productId]);
 
   const stats = useMemo(() => (data ? priceStats(data.points, data.product.currentPrice) : null), [data]);
-  const chart = useMemo(() => (data ? buildChartData(data.points, range, data.product.createdAt) : []), [data, range]);
+  const chart = useMemo(() => {
+    if (!data) return [];
+    return mode === 'steps' ? buildStepData(data.points) : buildChartData(data.points, range, data.product.createdAt);
+  }, [data, range, mode]);
   const log = useMemo(() => (data ? [...data.points].reverse() : []), [data]);
 
   if (error) return <p className="phx-note">Fiyat geçmişi yüklenemedi.</p>;
@@ -209,17 +222,27 @@ function ProductDetail({ productId, compact, onBack }: { productId: number; comp
       </div>
 
       <div className="phx-chartbox">
-        <div className="phx-ranges" role="group" aria-label="Zaman aralığı">
-          {RANGES.map((r) => (
-            <button key={r.id} type="button" aria-pressed={range === r.id} onClick={() => setRange(r.id)}>
-              {r.label}
+        <div className="phx-ranges" role="group" aria-label="Grafik ayarı">
+          <span className="phx-modes" role="radiogroup" aria-label="Eksen">
+            <button type="button" role="radio" aria-checked={mode === 'time'} onClick={() => setMode('time')}>
+              Zaman
             </button>
-          ))}
+            <button type="button" role="radio" aria-checked={mode === 'steps'} onClick={() => setMode('steps')}>
+              Sırayla
+            </button>
+          </span>
+          {mode === 'time'
+            ? RANGES.map((r) => (
+                <button key={r.id} type="button" aria-pressed={range === r.id} onClick={() => setRange(r.id)}>
+                  {r.label}
+                </button>
+              ))
+            : null}
           <span className="phx-legend">
             <i className="is-up" /> Artış <i className="is-down" /> Düşüş
           </span>
         </div>
-        <PriceChart data={chart} symbol={sym} height={compact ? 220 : 340} currentPrice={product.exists ? product.currentPrice : null} />
+        <PriceChart data={chart} symbol={sym} height={compact ? 220 : 340} currentPrice={product.exists ? product.currentPrice : null} mode={mode} />
       </div>
 
       <h4 className="phx-sub">Tüm değişiklikler</h4>
@@ -249,75 +272,37 @@ function ProductDetail({ productId, compact, onBack }: { productId: number; comp
   );
 }
 
-/**
- * Ürün bazlı fiyat geçmişi gezgini.
- * - page: solda ürün listesi, sağda ayrıntı; telefonda önce liste, seçince ayrıntı (geri düğmesiyle).
- * - side: modalın yanındaki panel; üstte kısa ürün listesi, altta grafik.
- */
-export default function PriceHistoryExplorer({
-  variant,
-  onOpenFull,
-}: {
-  variant: 'page' | 'side';
-  /** side: "Tüm ürünleri gör" düğmesi */
-  onOpenFull?: () => void;
-}) {
+/** Fiyat geçmişi modalının yan paneli: önce en son değişen ürünün grafiği; geri okuyla ürün listesine dönülür. */
+export default function PriceHistoryExplorer({ onOpenFull }: { onOpenFull?: () => void }) {
   const [selected, setSelected] = useState<number | null>(null);
-  const [mobileDetail, setMobileDetail] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
   const picked = useRef(false);
-  const compact = variant === 'side';
-
-  const select = (it: ProductHistoryItem) => {
-    setSelected(it.productId);
-    setMobileDetail(true);
-  };
-
-  if (compact) {
-    return (
-      <div className="phx phx--side">
-        {selected == null || !mobileDetail ? (
-          <ProductList
-            compact
-            selectedId={selected}
-            onSelect={select}
-            onLoaded={(first) => {
-              // Panel açılır açılmaz en son değişen ürünün grafiği görünsün (yalnızca ilk yüklemede).
-              if (picked.current || !first) return;
-              picked.current = true;
-              setSelected(first.productId);
-              setMobileDetail(true);
-            }}
-          />
-        ) : null}
-        {selected != null && mobileDetail ? <ProductDetail productId={selected} compact onBack={() => setMobileDetail(false)} /> : null}
-        {onOpenFull ? (
-          <button type="button" className="phx-full" onClick={onOpenFull}>
-            Tüm ürünlerin geçmişi <ArrowUpRight size={15} aria-hidden />
-          </button>
-        ) : null}
-      </div>
-    );
-  }
 
   return (
-    <div className={`phx phx--page${mobileDetail ? ' is-detail' : ''}`}>
-      <aside className="phx-pane phx-pane--list">
+    <div className="phx phx--side">
+      {selected == null || !showDetail ? (
         <ProductList
-          compact={false}
+          compact
           selectedId={selected}
-          onSelect={select}
+          onSelect={(it) => {
+            setSelected(it.productId);
+            setShowDetail(true);
+          }}
           onLoaded={(first) => {
-            if (window.matchMedia('(min-width: 900px)').matches) setSelected((s) => s ?? first?.productId ?? null);
+            // Panel açılır açılmaz en son değişen ürünün grafiği görünsün (yalnızca ilk yüklemede).
+            if (picked.current || !first) return;
+            picked.current = true;
+            setSelected(first.productId);
+            setShowDetail(true);
           }}
         />
-      </aside>
-      <section className="phx-pane phx-pane--detail">
-        {selected != null ? (
-          <ProductDetail productId={selected} compact={false} onBack={() => setMobileDetail(false)} />
-        ) : (
-          <p className="phx-note">Soldan bir ürün seçin; fiyatının zaman içindeki seyrini burada görün.</p>
-        )}
-      </section>
+      ) : null}
+      {selected != null && showDetail ? <ProductDetail productId={selected} compact onBack={() => setShowDetail(false)} /> : null}
+      {onOpenFull ? (
+        <button type="button" className="phx-full" onClick={onOpenFull}>
+          Tüm ürünlerin geçmişi <ArrowUpRight size={15} aria-hidden />
+        </button>
+      ) : null}
     </div>
   );
 }

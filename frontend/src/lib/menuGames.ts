@@ -27,9 +27,12 @@ export function notifyWaiterCalled(details: {
   tableNumber?: string;
   lang?: string;
   duplicate?: boolean;
+  /** true: oyun olayı gider, "çağrı alındı" kartı gösterilmez (sipariş fişi kendi onayını verir). */
+  silent?: boolean;
 } = {}) {
   try {
     window.dispatchEvent(new CustomEvent(MENU_WAITER_CALLED_EVENT));
+    if (details.silent) return;
     notifyServiceCallConfirmed({
       kind: details.type || 'waiter',
       requestId: details.requestId,

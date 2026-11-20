@@ -217,7 +217,7 @@ export default function PriceHistoryDialog({
       )}
       </div>
       <aside className="aph-pane aph-pane--chart" aria-label="Ürün fiyat grafiği" aria-hidden={!chartOpen}>
-        {chartMounted ? <PriceHistoryExplorer variant="side" onOpenFull={openFull} /> : null}
+        {chartMounted ? <PriceHistoryExplorer onOpenFull={openFull} /> : null}
       </aside>
       </div>
     </GroupsDialog>

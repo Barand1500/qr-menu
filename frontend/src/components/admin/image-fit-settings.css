@@ -1,34 +1,50 @@
-/* Ayarlar > Resim kırpma */
+/* Ayarlar > Resim kırpma: masaüstünde yan yana (önizleme yapışkan), telefonda önizleme üstte yapışık */
 .ifs {
   display: grid;
-  gap: 1rem;
-  padding-bottom: 5rem;
-}
-.ifs-fields {
-  display: grid;
-  gap: 1rem;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  transition: opacity 0.2s;
-}
-.ifs-fields:disabled {
-  opacity: 0.5;
+  gap: 16px;
+  align-items: start;
 }
 .ifs-note {
   margin: 0.8rem 0 0;
   color: var(--admin-text-muted);
   font-size: 0.85rem;
-  line-height: 1.45;
 }
 
-/* anahtar */
+/* ───────── önizleme ───────── */
+.ifs-preview {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  background: var(--admin-card);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 20px;
+  box-shadow: 0 8px 24px -16px #0006;
+}
+.ifs-preview__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ifs-preview h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+}
+.ifs-preview p {
+  margin: 2px 0 0;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
 .ifs-switch {
   position: relative;
   flex: none;
-  width: 54px;
-  height: 32px;
+  width: 50px;
+  height: 30px;
   padding: 0;
   background: var(--admin-card-border);
   border: 0;
@@ -40,45 +56,36 @@
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   background: #fff;
   border-radius: 50%;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 4px #0004;
   transition: transform 0.22s cubic-bezier(0.3, 1.4, 0.5, 1);
 }
 .ifs-switch.is-on {
   background: var(--admin-accent);
 }
 .ifs-switch.is-on i {
-  transform: translateX(22px);
+  transform: translateX(20px);
 }
-
-/* önizleme */
-.ifs-preview {
+.ifs-stage {
   display: grid;
-  grid-template-columns: 1fr 1.7fr 0.9fr;
-  align-items: end;
-  gap: 14px;
-}
-.ifs-figure {
-  min-width: 0;
-  margin: 0;
-}
-.ifs-figure figcaption {
-  margin-top: 7px;
-  color: var(--admin-text-muted);
-  font-size: 0.76rem;
-  font-weight: 600;
-  text-align: center;
+  place-items: center;
+  min-height: 150px;
+  padding: 12px;
+  background:
+    repeating-conic-gradient(var(--admin-input-bg) 0% 25%, transparent 0% 50%) 50% / 16px 16px, var(--admin-card);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 14px;
 }
 .ifs-frame {
   position: relative;
-  width: 100%;
+  max-width: 100%;
   overflow: hidden;
   background: var(--admin-input-bg);
-  border: 1px solid var(--admin-card-border);
-  border-radius: 16px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px -8px #0007;
   isolation: isolate;
 }
 .ifs-frame img {
@@ -99,35 +106,32 @@
 }
 .ifs-samples {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 1rem;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
-.ifs-samples > span {
-  margin-right: 4px;
-  color: var(--admin-text-muted);
-  font-size: 0.8rem;
-  font-weight: 600;
+.ifs-samples::-webkit-scrollbar {
+  display: none;
 }
 .ifs-samples button {
   display: grid;
+  flex: none;
   place-items: center;
-  min-width: 52px;
-  height: 44px;
+  min-width: 44px;
+  height: 40px;
   padding: 0 12px;
   overflow: hidden;
   color: var(--admin-text);
   font: inherit;
-  font-size: 0.8rem;
+  font-size: 12px;
   font-weight: 650;
   background: var(--admin-card);
   border: 1.5px solid var(--admin-card-border);
-  border-radius: 12px;
+  border-radius: 10px;
   cursor: pointer;
 }
 .ifs-samples button:has(img) {
-  width: 52px;
+  width: 44px;
   padding: 0;
 }
 .ifs-samples img {
@@ -137,25 +141,96 @@
 }
 .ifs-samples button[aria-pressed='true'] {
   border-color: var(--admin-accent);
-  box-shadow: 0 0 0 3px var(--admin-accent-soft);
+  box-shadow: 0 0 0 2px var(--admin-accent-soft);
 }
 
-/* yerleşim kartları */
+/* ───────── denetimler ───────── */
+.ifs-controls {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.ifs-fields {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  transition: opacity 0.2s;
+}
+.ifs-fields:disabled {
+  opacity: 0.45;
+}
+.ifs-block {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  background: var(--admin-card);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 18px;
+}
+.ifs-block h3 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 750;
+}
+.ifs-block p {
+  margin: 2px 0 0;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.ifs-block--split {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+.ifs-seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 4px;
+  background: var(--admin-input-bg);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 13px;
+}
+.ifs-seg button {
+  min-height: 38px;
+  padding: 0 8px;
+  overflow: hidden;
+  color: var(--admin-text-muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.ifs-seg button[aria-checked='true'] {
+  color: var(--admin-accent-text);
+  background: var(--admin-card);
+  box-shadow: 0 1px 4px #0002;
+}
 .ifs-modes {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
 }
 .ifs-modes button {
-  display: grid;
-  gap: 4px;
-  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
   color: var(--admin-text);
   font: inherit;
   text-align: start;
   background: var(--admin-card);
   border: 1.5px solid var(--admin-card-border);
-  border-radius: 18px;
+  border-radius: 14px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -164,87 +239,65 @@
   border-color: var(--admin-accent);
 }
 .ifs-modes strong {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.95rem;
+  gap: 5px;
+  font-size: 13.5px;
 }
 .ifs-modes small {
+  display: block;
+  margin-top: 1px;
   color: var(--admin-text-muted);
-  font-size: 0.78rem;
-  line-height: 1.4;
+  font-size: 11.5px;
+  line-height: 1.3;
 }
 .ifs-mode-art {
   display: grid;
+  flex: none;
   place-items: center;
-  height: 64px;
-  margin-bottom: 4px;
+  width: 42px;
+  height: 42px;
   background: var(--admin-input-bg);
   border: 1px dashed var(--admin-card-border);
-  border-radius: 12px;
+  border-radius: 10px;
 }
 .ifs-mode-art i {
   display: block;
   background: linear-gradient(135deg, #7c3aed, #f97316);
-  border-radius: 6px;
+  border-radius: 4px;
 }
 .ifs-mode-art--cover i {
   width: 100%;
   height: 100%;
-  border-radius: 11px;
+  border-radius: 9px;
 }
 .ifs-mode-art--contain i {
-  width: 70%;
-  height: 56%;
-}
-
-.ifs-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 1.1rem;
-  padding-top: 1.1rem;
-  border-top: 1px solid var(--admin-card-border);
-}
-.ifs-row--stack {
-  align-items: stretch;
-  flex-direction: column;
-}
-.ifs-row h3 {
-  margin: 0;
-  font-size: 0.92rem;
-}
-.ifs-row p {
-  margin: 3px 0 0;
-  color: var(--admin-text-muted);
-  font-size: 0.8rem;
-  line-height: 1.4;
+  width: 72%;
+  height: 52%;
 }
 .ifs-focus {
   display: grid;
-  flex: none;
-  grid-template-columns: repeat(3, 40px);
-  gap: 5px;
-  padding: 6px;
+  grid-template-columns: repeat(3, 34px);
+  gap: 4px;
+  padding: 5px;
   background: var(--admin-input-bg);
   border: 1px solid var(--admin-card-border);
-  border-radius: 14px;
+  border-radius: 12px;
 }
 .ifs-focus button {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   background: var(--admin-card);
   border: 1px solid var(--admin-card-border);
-  border-radius: 10px;
+  border-radius: 9px;
   cursor: pointer;
 }
 .ifs-focus i {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   background: var(--admin-text-muted);
   border-radius: 50%;
   opacity: 0.5;
@@ -256,27 +309,25 @@
 .ifs-focus button[aria-checked='true'] i {
   background: var(--admin-btn-primary-text, #fff);
   opacity: 1;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
 }
-
 .ifs-chips,
 .ifs-targets {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 .ifs-chips button,
 .ifs-targets button {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 42px;
-  padding: 0 1rem;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 13px;
   color: var(--admin-text);
   font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 12.5px;
+  font-weight: 650;
   background: var(--admin-card);
   border: 1.5px solid var(--admin-card-border);
   border-radius: 999px;
@@ -290,34 +341,31 @@
 .ifs-targets button > span {
   display: grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   color: var(--admin-btn-primary-text, #fff);
   border: 1.5px solid var(--admin-card-border);
-  border-radius: 6px;
+  border-radius: 5px;
 }
 .ifs-targets button[aria-pressed='true'] > span {
   background: var(--admin-accent);
   border-color: var(--admin-accent);
 }
-.ifs-targets {
-  margin-top: 1rem;
-}
 .ifs-color {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 42px;
-  padding: 0 12px 0 6px;
-  font-size: 0.8rem;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px 0 4px;
+  font-size: 12px;
   font-weight: 650;
   background: var(--admin-card);
   border: 1.5px solid var(--admin-card-border);
   border-radius: 999px;
 }
 .ifs-color input {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   background: none;
   border: 0;
@@ -326,7 +374,13 @@
 .ifs-range {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+}
+.ifs-range > span {
+  flex: none;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+  font-weight: 650;
 }
 .ifs-range input {
   flex: 1;
@@ -334,72 +388,52 @@
   accent-color: var(--admin-accent);
 }
 .ifs-range output {
-  min-width: 46px;
-  font-size: 0.85rem;
+  min-width: 40px;
+  font-size: 12.5px;
   font-weight: 700;
   text-align: end;
 }
-.ifs-scope {
-  display: grid;
-  gap: 8px;
-}
-.ifs-scope button {
-  display: grid;
-  gap: 2px;
-  padding: 12px 14px;
-  color: var(--admin-text);
-  font: inherit;
-  text-align: start;
-  background: var(--admin-card);
-  border: 1.5px solid var(--admin-card-border);
-  border-radius: 16px;
-  cursor: pointer;
-}
-.ifs-scope button[aria-checked='true'] {
-  background: var(--admin-accent-soft);
-  border-color: var(--admin-accent);
-}
-.ifs-scope small {
-  color: var(--admin-text-muted);
-  font-size: 0.78rem;
+.ifs-help {
+  margin: 0 !important;
 }
 
-/* kaydet çubuğu */
+/* kaydet çubuğu: içeriğin altında yapışık, hiçbir şeyin üstüne binmez */
 .ifs-bar {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 30;
-  display: flex;
+  position: sticky;
+  bottom: 12px;
+  z-index: 6;
+  display: none;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 12px 10px 16px;
   background: var(--admin-card);
-  border-top: 1px solid var(--admin-card-border);
-  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.12);
-  transform: translateY(110%);
-  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px -10px #0005;
 }
 .ifs-bar.is-show {
-  transform: none;
+  display: flex;
+  animation: ifs-up 0.25s ease both;
+}
+@keyframes ifs-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 }
 .ifs-bar p {
-  display: flex;
   flex: 1;
-  align-items: center;
-  gap: 7px;
   margin: 0;
   color: var(--admin-text-muted);
-  font-size: 0.82rem;
+  font-size: 12.5px;
 }
 .ifs-bar button {
-  min-height: 44px;
-  padding: 0 1.1rem;
+  min-height: 42px;
+  padding: 0 1rem;
   font: inherit;
-  font-size: 0.88rem;
+  font-size: 13.5px;
   font-weight: 700;
-  border-radius: 14px;
+  border-radius: 12px;
   cursor: pointer;
 }
 .ifs-bar__ghost {
@@ -418,29 +452,49 @@
 .ifs-bar button:disabled {
   opacity: 0.55;
 }
-@media (min-width: 1024px) {
-  .ifs-bar {
-    position: sticky;
-    bottom: 12px;
-    margin-top: -3.5rem;
-    border: 1px solid var(--admin-card-border);
-    border-radius: 18px;
+
+/* ───────── geniş ekran: iki sütun ───────── */
+@media (min-width: 1000px) {
+  .ifs {
+    grid-template-columns: 380px minmax(0, 1fr);
+    gap: 20px;
+  }
+  .ifs-preview {
+    top: 8px;
+    padding: 18px;
+  }
+  .ifs-stage {
+    min-height: 280px;
   }
 }
-
-@media (max-width: 560px) {
+/* ───────── telefon: önizleme küçülür, üstte kalır ───────── */
+@media (max-width: 999px) {
   .ifs-preview {
-    grid-template-columns: 1fr 1.5fr;
+    top: -1px;
+    padding: 10px 12px;
+    gap: 8px;
+    border-radius: 0 0 18px 18px;
   }
-  .ifs-figure:nth-child(3) {
+  .ifs-preview p {
     display: none;
   }
+  .ifs-stage {
+    min-height: 0;
+    padding: 8px;
+  }
+  .ifs-bar {
+    bottom: 76px;
+  }
+}
+@media (max-width: 520px) {
   .ifs-modes {
     grid-template-columns: 1fr;
   }
-  .ifs-row {
-    align-items: flex-start;
-    flex-direction: column;
+  .ifs-block--split {
+    grid-template-columns: 1fr;
+  }
+  .ifs-focus {
+    justify-self: start;
   }
   .ifs-bar p {
     display: none;
@@ -448,17 +502,15 @@
   .ifs-bar button {
     flex: 1;
   }
+  .ifs-range {
+    flex-wrap: wrap;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .ifs-switch i,
   .ifs-bar,
   .ifs-frame img {
+    animation: none;
     transition: none;
   }
-}
-
-.ifs-hero .ast-card-head {
-  flex-wrap: nowrap;
-  align-items: flex-start;
-  gap: 1rem;
 }

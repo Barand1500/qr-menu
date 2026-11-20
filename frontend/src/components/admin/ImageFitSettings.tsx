@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Crop, Maximize2, RotateCcw, Scan } from 'lucide-react';
+import { Check, Crop, RotateCcw, Scan } from 'lucide-react';
 import { api, imageUrl } from '@/lib/api';
 import {
   DEFAULT_IMAGE_FIT,
@@ -31,18 +31,18 @@ const FOCUS: { id: FitFocus; label: string }[] = [
 ];
 
 const FILLS: { id: FitFill; label: string }[] = [
-  { id: 'theme', label: 'Tema rengi' },
+  { id: 'theme', label: 'Tema' },
   { id: 'blur', label: 'Bulanık' },
   { id: 'white', label: 'Beyaz' },
   { id: 'black', label: 'Siyah' },
-  { id: 'color', label: 'Özel renk' },
+  { id: 'color', label: 'Renk' },
 ];
 
 const FRAMES = [
-  { id: 'square', label: 'Ürün kartı', ratio: '1 / 1' },
-  { id: 'wide', label: 'Vitrin', ratio: '16 / 9' },
-  { id: 'tall', label: 'Ürün detayı', ratio: '4 / 5' },
-];
+  { id: 'square', label: 'Ürün kartı', ratio: '1 / 1', n: 1 },
+  { id: 'wide', label: 'Vitrin', ratio: '16 / 9', n: 16 / 9 },
+  { id: 'tall', label: 'Ürün detayı', ratio: '4 / 5', n: 0.8 },
+] as const;
 
 const TARGETS: { id: FitKind; label: string }[] = [
   { id: 'products', label: 'Ürünler' },
@@ -52,18 +52,28 @@ const TARGETS: { id: FitKind; label: string }[] = [
 
 const comparable = (c: ImageFitConfig) => JSON.stringify({ ...c, appliesFrom: 0 });
 
-function Frame({ cfg, src, ratio, label }: { cfg: ImageFitConfig; src: string; ratio: string; label: string }) {
+/** Bir çerçeve: yüksekliği sabit, genişliği orana göre; resim içinde ayara göre durur. */
+function Frame({ cfg, src, ratio, n, height }: { cfg: ImageFitConfig; src: string; ratio: string; n: number; height: number }) {
   const live = cfg.enabled;
   const shown: ImageFitConfig = live ? cfg : { ...DEFAULT_IMAGE_FIT, mode: 'cover' };
   const blur = live && shown.mode === 'contain' && shown.fill === 'blur';
   return (
-    <figure className="ifs-figure">
-      <div className={`ifs-frame${blur ? ' is-blur' : ''}`} style={{ aspectRatio: ratio }}>
-        {blur ? <span className="ifs-blur" style={{ backgroundImage: `url("${src}")` }} /> : null}
-        <img src={src} alt="" draggable={false} style={fitStyle(shown, blur)} />
-      </div>
-      <figcaption>{label}</figcaption>
-    </figure>
+    <div className={`ifs-frame${blur ? ' is-blur' : ''}`} style={{ aspectRatio: ratio, width: `min(100%, ${Math.round(height * n)}px)` }}>
+      {blur ? <span className="ifs-blur" style={{ backgroundImage: `url("${src}")` }} /> : null}
+      <img src={src} alt="" draggable={false} style={fitStyle(shown, blur)} />
+    </div>
+  );
+}
+
+function Seg<T extends string>({ value, options, onChange, label }: { value: T; options: { id: T; label: string }[]; onChange: (v: T) => void; label: string }) {
+  return (
+    <div className="ifs-seg" role="radiogroup" aria-label={label}>
+      {options.map((o) => (
+        <button key={o.id} type="button" role="radio" aria-checked={value === o.id} onClick={() => onChange(o.id)}>
+          {o.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -74,6 +84,7 @@ export default function ImageFitSettings({ onToast }: { onToast: (text: string, 
   const [saving, setSaving] = useState(false);
   const [own, setOwn] = useState<string[]>([]);
   const [sample, setSample] = useState(SAMPLE);
+  const [frameId, setFrameId] = useState<(typeof FRAMES)[number]['id']>('square');
 
   useEffect(() => {
     let alive = true;
@@ -101,6 +112,7 @@ export default function ImageFitSettings({ onToast }: { onToast: (text: string, 
   const dirty = useMemo(() => (saved ? comparable(saved) !== comparable(cfg) : false), [saved, cfg]);
   const set = (patch: Partial<ImageFitConfig>) => setCfg((c) => ({ ...c, ...patch }));
   const contain = cfg.mode === 'contain';
+  const frame = FRAMES.find((f) => f.id === frameId) ?? FRAMES[0];
 
   async function save() {
     setSaving(true);
@@ -123,12 +135,12 @@ export default function ImageFitSettings({ onToast }: { onToast: (text: string, 
 
   return (
     <div className="ifs">
-      {/* Açma/kapama + canlı önizleme */}
-      <section className="ast-card ifs-hero">
-        <header className="ast-card-head">
+      {/* Canlı önizleme: masaüstünde solda yapışkan, telefonda üstte */}
+      <aside className="ifs-preview" aria-label="Canlı önizleme">
+        <div className="ifs-preview__top">
           <div>
-            <h2>Resimler nasıl görünsün?</h2>
-            <p>Ürün, grup ve vitrin görselleri menünüzde ve panelde bu ayara göre gösterilir. Menünün tasarımı değişmez.</p>
+            <h2>Canlı önizleme</h2>
+            <p>{cfg.enabled ? 'Seçimlerin burada anında görünür.' : 'Kapalı: tema kendi görünümünü kullanıyor.'}</p>
           </div>
           <button
             type="button"
@@ -140,173 +152,128 @@ export default function ImageFitSettings({ onToast }: { onToast: (text: string, 
           >
             <i />
           </button>
-        </header>
-        <div className="ast-card-body">
-          <div className="ifs-preview">
-            {FRAMES.map((f) => (
-              <Frame key={f.id} cfg={cfg} src={sample} ratio={f.ratio} label={f.label} />
-            ))}
-          </div>
-          <div className="ifs-samples" role="group" aria-label="Önizleme resmi">
-            <span>Önizleme resmi</span>
-            <button type="button" aria-pressed={sample === SAMPLE} onClick={() => setSample(SAMPLE)}>
-              Örnek
-            </button>
-            {own.map((u, i) => (
-              <button key={u} type="button" aria-pressed={sample === u} aria-label={`Ürün resmi ${i + 1}`} onClick={() => setSample(u)}>
-                <img src={u} alt="" data-no-fit />
-              </button>
-            ))}
-          </div>
-          {!cfg.enabled ? (
-            <p className="ifs-note">Şu an kapalı: görseller temanın kendi görünümüyle gösteriliyor. Açınca aşağıdaki seçimler uygulanır.</p>
-          ) : null}
         </div>
-      </section>
 
-      <fieldset className="ifs-fields" disabled={!cfg.enabled || saving}>
-        <section className="ast-card">
-          <header className="ast-card-head">
-            <div>
-              <h2>Yerleşim</h2>
-              <p>Resim, kutusuna kırpılarak mı doldursun, yoksa bütünüyle mi sığsın?</p>
-            </div>
-          </header>
-          <div className="ast-card-body">
+        <Seg label="Önizleme alanı" value={frameId} onChange={setFrameId} options={FRAMES.map((f) => ({ id: f.id, label: f.label }))} />
+
+        <div className="ifs-stage">
+          <Frame cfg={cfg} src={sample} ratio={frame.ratio} n={frame.n} height={230} />
+        </div>
+
+        <div className="ifs-samples" role="group" aria-label="Önizleme resmi">
+          <button type="button" aria-pressed={sample === SAMPLE} onClick={() => setSample(SAMPLE)}>
+            Örnek
+          </button>
+          {own.map((u, i) => (
+            <button key={u} type="button" aria-pressed={sample === u} aria-label={`Ürün resmi ${i + 1}`} onClick={() => setSample(u)}>
+              <img src={u} alt="" data-no-fit />
+            </button>
+          ))}
+        </div>
+      </aside>
+
+      <div className="ifs-controls">
+        <fieldset className="ifs-fields" disabled={!cfg.enabled || saving}>
+          <section className="ifs-block">
+            <h3>Yerleşim</h3>
             <div className="ifs-modes" role="radiogroup" aria-label="Yerleşim">
               {(
                 [
-                  ['cover', Crop, 'Kırp', 'Kutuyu tamamen doldurur; taşan kenarlar kesilir.'],
-                  ['contain', Scan, 'Sığdır', 'Resmin tamamı görünür; boş kalan yer doldurulur.'],
+                  ['cover', Crop, 'Kırp', 'Kutuyu doldurur, taşan kısım kesilir'],
+                  ['contain', Scan, 'Sığdır', 'Resmin tamamı görünür'],
                 ] as const
               ).map(([id, Icon, title, hint]) => (
                 <button key={id} type="button" role="radio" aria-checked={cfg.mode === id} onClick={() => set({ mode: id })}>
                   <span className={`ifs-mode-art ifs-mode-art--${id}`} aria-hidden>
                     <i />
                   </span>
-                  <strong>
-                    <Icon size={16} /> {title}
-                  </strong>
-                  <small>{hint}</small>
+                  <span>
+                    <strong>
+                      <Icon size={15} aria-hidden /> {title}
+                    </strong>
+                    <small>{hint}</small>
+                  </span>
                 </button>
               ))}
             </div>
+          </section>
 
-            <div className="ifs-row">
-              <div>
-                <h3>Odak noktası</h3>
-                <p>{contain ? 'Resim kutusundan küçük kaldığında nereye yaslansın?' : 'Kesilirken hangi bölge korunsun?'}</p>
-              </div>
-              <div className="ifs-focus" role="radiogroup" aria-label="Odak noktası">
-                {FOCUS.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={cfg.focus === f.id}
-                    aria-label={f.label}
-                    title={f.label}
-                    onClick={() => set({ focus: f.id })}
-                  >
-                    <i />
+          <section className="ifs-block ifs-block--split">
+            <div>
+              <h3>Odak noktası</h3>
+              <p>{contain ? 'Küçük kalırsa nereye yaslansın?' : 'Kesilirken hangi bölge korunsun?'}</p>
+            </div>
+            <div className="ifs-focus" role="radiogroup" aria-label="Odak noktası">
+              {FOCUS.map((f) => (
+                <button key={f.id} type="button" role="radio" aria-checked={cfg.focus === f.id} aria-label={f.label} title={f.label} onClick={() => set({ focus: f.id })}>
+                  <i />
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {contain ? (
+            <section className="ifs-block">
+              <h3>Boş kalan alan</h3>
+              <div className="ifs-chips" role="radiogroup" aria-label="Boş alan dolgusu">
+                {FILLS.map((f) => (
+                  <button key={f.id} type="button" role="radio" aria-checked={cfg.fill === f.id} onClick={() => set({ fill: f.id })}>
+                    {f.label}
                   </button>
                 ))}
-              </div>
-            </div>
-
-            {contain ? (
-              <>
-                <div className="ifs-row ifs-row--stack">
-                  <div>
-                    <h3>Boş kalan alan</h3>
-                    <p>Resim kutuyu doldurmadığında arkada ne görünsün?</p>
-                  </div>
-                  <div className="ifs-chips" role="radiogroup" aria-label="Boş alan dolgusu">
-                    {FILLS.map((f) => (
-                      <button key={f.id} type="button" role="radio" aria-checked={cfg.fill === f.id} onClick={() => set({ fill: f.id })}>
-                        {f.label}
-                      </button>
-                    ))}
-                    {cfg.fill === 'color' ? (
-                      <label className="ifs-color">
-                        <input type="color" value={cfg.color} aria-label="Dolgu rengi" onChange={(e) => set({ color: e.target.value })} />
-                        <span>{cfg.color.toUpperCase()}</span>
-                      </label>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="ifs-row ifs-row--stack">
-                  <div>
-                    <h3>Kenar boşluğu</h3>
-                    <p>Resmin etrafında nefes alanı bırakır.</p>
-                  </div>
-                  <label className="ifs-range">
-                    <input
-                      type="range"
-                      min={0}
-                      max={16}
-                      step={2}
-                      value={cfg.padding}
-                      aria-label="Kenar boşluğu"
-                      onChange={(e) => set({ padding: Number(e.target.value) })}
-                    />
-                    <output>{cfg.padding ? `%${cfg.padding}` : 'Yok'}</output>
+                {cfg.fill === 'color' ? (
+                  <label className="ifs-color">
+                    <input type="color" value={cfg.color} aria-label="Dolgu rengi" onChange={(e) => set({ color: e.target.value })} />
+                    <span>{cfg.color.toUpperCase()}</span>
                   </label>
-                </div>
-              </>
-            ) : null}
-          </div>
-        </section>
+                ) : null}
+              </div>
+              <label className="ifs-range">
+                <span>Kenar boşluğu</span>
+                <input type="range" min={0} max={16} step={2} value={cfg.padding} aria-label="Kenar boşluğu" onChange={(e) => set({ padding: Number(e.target.value) })} />
+                <output>{cfg.padding ? `%${cfg.padding}` : 'Yok'}</output>
+              </label>
+            </section>
+          ) : null}
 
-        <section className="ast-card">
-          <header className="ast-card-head">
-            <div>
-              <h2>Neye uygulansın?</h2>
-              <p>Hangi resimlerin bu ayarla gösterileceğini seçin.</p>
-            </div>
-          </header>
-          <div className="ast-card-body">
-            <div className="ifs-scope" role="radiogroup" aria-label="Kapsam">
-              <button type="button" role="radio" aria-checked={cfg.scope === 'all'} onClick={() => set({ scope: 'all' })}>
-                <strong>Mevcut resimler dahil hepsi</strong>
-                <small>Daha önce yüklenenler de bu ayarla görünür.</small>
-              </button>
-              <button type="button" role="radio" aria-checked={cfg.scope === 'new'} onClick={() => set({ scope: 'new' })}>
-                <strong>Yalnızca bundan sonra yüklenenler</strong>
-                <small>
-                  {cfg.scope === 'new' && saved.scope === 'new' && saved.appliesFrom
-                    ? `${new Date(saved.appliesFrom).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })} tarihinden sonra yüklenenler.`
-                    : 'Eski resimler temanın görünümünde kalır.'}
-                </small>
-              </button>
-            </div>
+          <section className="ifs-block">
+            <h3>Hangi resimlere?</h3>
+            <Seg
+              label="Kapsam"
+              value={cfg.scope}
+              onChange={(v) => set({ scope: v })}
+              options={[
+                { id: 'all', label: 'Mevcutlar dahil hepsi' },
+                { id: 'new', label: 'Yalnızca yeni yüklenenler' },
+              ]}
+            />
+            <p className="ifs-help">
+              {cfg.scope === 'new'
+                ? saved.scope === 'new' && saved.appliesFrom
+                  ? `${new Date(saved.appliesFrom).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })} tarihinden sonra yüklenenler. Eskiler temanın görünümünde kalır.`
+                  : 'Kaydettiğin andan sonra yüklenen resimler. Eskiler temanın görünümünde kalır.'
+                : 'Daha önce yüklenen resimler de bu ayarla görünür.'}
+            </p>
             <div className="ifs-targets" role="group" aria-label="Uygulanacak alanlar">
               {TARGETS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  aria-pressed={cfg.targets[t.id]}
-                  onClick={() => set({ targets: { ...cfg.targets, [t.id]: !cfg.targets[t.id] } })}
-                >
-                  <span aria-hidden>{cfg.targets[t.id] ? <Check size={14} /> : null}</span>
+                <button key={t.id} type="button" aria-pressed={cfg.targets[t.id]} onClick={() => set({ targets: { ...cfg.targets, [t.id]: !cfg.targets[t.id] } })}>
+                  <span aria-hidden>{cfg.targets[t.id] ? <Check size={13} /> : null}</span>
                   {t.label}
                 </button>
               ))}
             </div>
-          </div>
-        </section>
-      </fieldset>
+          </section>
+        </fieldset>
 
-      <div className={`ifs-bar${dirty ? ' is-show' : ''}`} role="status">
-        <p>
-          <Maximize2 size={16} aria-hidden /> Kaydedilmemiş değişiklikler var
-        </p>
-        <button type="button" className="ifs-bar__ghost" disabled={saving} onClick={() => setCfg(saved)}>
-          <RotateCcw size={15} aria-hidden /> Vazgeç
-        </button>
-        <button type="button" className="ifs-bar__save" disabled={saving} onClick={() => void save()}>
-          {saving ? 'Kaydediliyor…' : 'Kaydet'}
-        </button>
+        <div className={`ifs-bar${dirty ? ' is-show' : ''}`} role="status">
+          <p>Kaydedilmemiş değişiklik var</p>
+          <button type="button" className="ifs-bar__ghost" disabled={saving} onClick={() => setCfg(saved)}>
+            <RotateCcw size={15} aria-hidden /> Vazgeç
+          </button>
+          <button type="button" className="ifs-bar__save" disabled={saving} onClick={() => void save()}>
+            {saving ? 'Kaydediliyor…' : 'Kaydet'}
+          </button>
+        </div>
       </div>
     </div>
   );

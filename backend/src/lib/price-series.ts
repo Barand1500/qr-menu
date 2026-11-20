@@ -54,6 +54,8 @@ export type ProductHistorySummary = {
   lastChangeAt: string;
   /** İlk fiyata göre toplam değişim, % */
   deltaPct: number;
+  /** Mini grafik için: ilk fiyat ve her değişiklik sonrası fiyat (en fazla 16) */
+  spark: number[];
 };
 
 export function summarizeProducts(rows: HistoryRow[], currentById: Map<number, number>): ProductHistorySummary[] {
@@ -77,6 +79,7 @@ export function summarizeProducts(rows: HistoryRow[], currentById: Map<number, n
       lastPrice: last,
       lastChangeAt: series[series.length - 1].at,
       deltaPct: first > 0 ? Math.round(((last - first) / first) * 1000) / 10 : 0,
+      spark: [first, ...series.map((p) => p.newPrice)].slice(-16),
     });
   }
   return out;
@@ -95,4 +98,66 @@ export function sortSummaries(list: ProductHistorySummary[], sort: HistorySort):
     name: (a, b) => a.name.localeCompare(b.name, 'tr'),
   };
   return copy.sort(by[sort]);
+}
+
+export type MenuIndexPoint = { t: string; value: number };
+
+/**
+ * Menü fiyat endeksi: fiyatı değişen ürünlerin ilk fiyatına göre ortalama seviyesi (başlangıç 100).
+ * Her gün için gün sonu değeri verilir; böylece uzun geçmişte de grafik hafif kalır.
+ */
+export function buildMenuIndex(rows: HistoryRow[], currentById: Map<number, number>): MenuIndexPoint[] {
+  const byProduct = new Map<number, HistoryRow[]>();
+  for (const r of rows) {
+    const list = byProduct.get(r.productId);
+    if (list) list.push(r);
+    else byProduct.set(r.productId, [r]);
+  }
+  type Ev = { at: number; productId: number; price: number };
+  const first = new Map<number, number>();
+  const events: Ev[] = [];
+  for (const [productId, list] of byProduct) {
+    const series = buildSeries(list, currentById.get(productId) ?? null);
+    if (series[0].oldPrice <= 0) continue;
+    first.set(productId, series[0].oldPrice);
+    for (const p of series) events.push({ at: new Date(p.at).getTime(), productId, price: p.newPrice });
+  }
+  events.sort((a, b) => a.at - b.at);
+  if (!events.length) return [];
+  const now = new Map<number, number>(first);
+  const day = (t: number) => new Date(t).toISOString().slice(0, 10);
+  const out: MenuIndexPoint[] = [{ t: new Date(events[0].at - 86_400_000).toISOString(), value: 100 }];
+  const value = () => {
+    let sum = 0;
+    for (const [id, base] of first) sum += (now.get(id) ?? base) / base;
+    return Math.round((sum / first.size) * 1000) / 10;
+  };
+  for (let i = 0; i < events.length; i++) {
+    const e = events[i];
+    now.set(e.productId, e.price);
+    const last = i === events.length - 1 || day(events[i + 1].at) !== day(e.at);
+    if (last) out.push({ t: new Date(e.at).toISOString(), value: value() });
+  }
+  return out;
+}
+
+export type ActivityDay = { day: string; changes: number };
+
+/** Son N günde (bugün dahil) kaç ayrı fiyat işlemi yapıldı. */
+export function buildActivity(rows: HistoryRow[], days = 14, now = new Date()): ActivityDay[] {
+  const seen = new Set<string>();
+  const counts = new Map<string, number>();
+  for (const r of rows) {
+    const k = `${r.changeId}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    const d = r.at.toISOString().slice(0, 10);
+    counts.set(d, (counts.get(d) ?? 0) + 1);
+  }
+  const out: ActivityDay[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 86_400_000).toISOString().slice(0, 10);
+    out.push({ day: d, changes: counts.get(d) ?? 0 });
+  }
+  return out;
 }

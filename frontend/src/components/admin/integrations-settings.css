@@ -46,21 +46,9 @@
   border-radius: 26px;
   transition: border-color 0.25s, box-shadow 0.25s;
 }
-.ig-card::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto;
-  height: 4px;
-  background: linear-gradient(90deg, #7c3aed, #ec4899, #f97316);
-  opacity: 0.25;
-  transition: opacity 0.3s;
-}
 .ig-card.is-on {
   border-color: color-mix(in srgb, var(--admin-accent) 45%, var(--admin-card-border));
   box-shadow: 0 18px 44px -22px color-mix(in srgb, var(--admin-accent) 55%, transparent);
-}
-.ig-card.is-on::before {
-  opacity: 1;
 }
 .ig-card__head {
   display: flex;
@@ -715,4 +703,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* örnek (placeholder) görünen alanlarda etiket baştan küçük durur: iç içe binmez */
+.ig-field[data-float] > span {
+  color: var(--admin-accent-text);
+  transform: translateY(-12px) scale(0.78);
 }

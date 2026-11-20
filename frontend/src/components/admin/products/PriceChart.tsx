@@ -1,7 +1,7 @@
 import { useId, useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatMoney } from '@/lib/api';
-import { KIND_LABEL, formatShortDate, type ChartDatum } from '@/lib/priceHistory';
+import { KIND_LABEL, formatShortDate, type ChartDatum, type ChartMode, type StepDatum } from '@/lib/priceHistory';
 
 const UP = '#f97316';
 const DOWN = '#10b981';
@@ -26,7 +26,7 @@ function TipBody({ active, payload, symbol }: { active?: boolean; payload?: { pa
   const delta = p && p.oldPrice > 0 ? ((p.newPrice - p.oldPrice) / p.oldPrice) * 100 : 0;
   return (
     <div className="phc-tip">
-      <small>{new Date(d.t).toLocaleString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</small>
+      <small>{new Date(p ? p.at : d.t).toLocaleString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</small>
       {p ? (
         <>
           <strong>
@@ -53,11 +53,14 @@ export default function PriceChart({
   symbol,
   height = 260,
   currentPrice,
+  mode = 'time',
 }: {
-  data: ChartDatum[];
+  data: ChartDatum[] | StepDatum[];
   symbol: string;
   height?: number;
   currentPrice?: number | null;
+  /** time: gerçek zaman ekseni · steps: değişiklikler eşit aralıkla */
+  mode?: ChartMode;
 }) {
   const gid = useId().replace(/:/g, '');
   const [lo, hi] = useMemo(() => {
@@ -69,6 +72,13 @@ export default function PriceChart({
     return [Math.max(0, Math.floor(min - pad)), Math.ceil(max + pad)];
   }, [data, currentPrice]);
   if (data.length < 2) return <p className="phc-empty">Bu aralıkta gösterilecek değişiklik yok.</p>;
+  const steps = mode === 'steps';
+  const stepData = data as StepDatum[];
+  const stepTicks = (() => {
+    if (!steps) return undefined;
+    const every = Math.max(1, Math.ceil(stepData.length / 7));
+    return stepData.map((d) => d.t).filter((_t, i, a) => i % every === 0 || i === a.length - 1);
+  })();
   const multiYear = new Date(data[0].t).getFullYear() !== new Date(data[data.length - 1].t).getFullYear();
 
   return (
@@ -85,9 +95,10 @@ export default function PriceChart({
           <XAxis
             dataKey="t"
             type="number"
-            scale="time"
+            scale={steps ? 'linear' : 'time'}
             domain={['dataMin', 'dataMax']}
-            tickFormatter={(t: number) => formatShortDate(t, multiYear)}
+            ticks={stepTicks}
+            tickFormatter={(t: number) => (steps ? stepData.find((d) => d.t === t)?.label ?? '' : formatShortDate(t, multiYear))}
             tickLine={false}
             axisLine={false}
             minTickGap={42}

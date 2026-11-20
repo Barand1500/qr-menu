@@ -109,13 +109,13 @@ export default function SiparisCartSheet({ lang }: { lang: string }) {
       }
 
       notifyTableRequestCreated({ id: res.id, type: res.type, tableNumber: res.tableNumber, groupSlug: res.groupSlug, note: res.note, orderJson: res.orderJson, createdAt: res.createdAt });
-      notifyWaiterCalled({ type: res.type, requestId: res.id, tableNumber: res.tableNumber, duplicate: res.duplicate, lang });
+      notifyWaiterCalled({ type: res.type, requestId: res.id, tableNumber: res.tableNumber, duplicate: res.duplicate, lang, silent: true });
 
       await new Promise((r) => window.setTimeout(r, Math.max(0, MIN_PROCESSING_MS - (Date.now() - startedAt))));
       // Tüm temalar aynı sepeti kullanır: sipariş iletildi, sepet boşalır; fiş artık kendi verisini taşır.
       clear();
       setSheetOpen(false);
-      setCeremony({ open: true, stage: 'printing', data: { ...data, orderNo: res.id, at: new Date(res.createdAt || Date.now()) } });
+      setCeremony({ open: true, stage: 'printing', data: { ...data, orderNo: res.id, at: new Date(res.createdAt || Date.now()), duplicate: Boolean(res.duplicate) } });
       // Satır satır çıkışa eşlik eden hafif titreşim (destekleyen telefonlarda).
       try {
         navigator.vibrate?.([14, 70, 14, 70, 14, 70, 14, 70, 14]);

@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import {
   HISTORY_SORTS,
+  buildActivity,
+  buildMenuIndex,
   buildSeries,
   sortSummaries,
   summarizeProducts,
@@ -252,17 +254,10 @@ router.get('/price-changes', async (req, res) => {
   });
 });
 
-// Ürün bazlı fiyat geçmişi: geçmişi olan ürünlerin özeti (arama, sıralama, sayfalama)
-router.get('/price-history/products', async (req, res) => {
-  const restaurantId = await getRestaurantId(req);
-  const q = String(req.query.q || '').trim().toLocaleLowerCase('tr');
-  const sort = (HISTORY_SORTS as readonly string[]).includes(String(req.query.sort))
-    ? (String(req.query.sort) as HistorySort)
-    : 'recent';
-  const limit = Math.min(60, Math.max(1, Number(req.query.limit) || 30));
-  const offset = Math.max(0, Number(req.query.offset) || 0);
+/** Bir işletmenin tüm fiyat geçmişi kalemleri (ürün bazlı özet ve grafikler bunlardan üretilir). */
+async function loadHistoryRows(restaurantId: number): Promise<HistoryRow[]> {
   const items = await prisma.priceChangeItem.findMany({
-    where: { change: { restaurantId: restaurantId! } },
+    where: { change: { restaurantId } },
     select: {
       productId: true,
       productName: true,
@@ -271,7 +266,7 @@ router.get('/price-history/products', async (req, res) => {
       change: { select: { id: true, createdAt: true, kind: true, summary: true, userName: true } },
     },
   });
-  const rows: HistoryRow[] = items.map((i) => ({
+  return items.map((i) => ({
     productId: i.productId,
     productName: i.productName,
     oldPrice: Number(i.oldPrice),
@@ -282,14 +277,18 @@ router.get('/price-history/products', async (req, res) => {
     summary: i.change.summary,
     userName: i.change.userName,
   }));
+}
+
+/** Özetleri ürün adı/görseli/güncel fiyatla zenginleştirir. */
+async function namedSummaries(restaurantId: number, rows: HistoryRow[]) {
   const ids = [...new Set(rows.map((r) => r.productId))];
   const products = await prisma.product.findMany({
-    where: { restaurantId: restaurantId!, id: { in: ids } },
+    where: { restaurantId, id: { in: ids } },
     include: { currency: true },
   });
   const byId = new Map(products.map((p) => [p.id, p]));
-  const summaries = summarizeProducts(rows, new Map(products.map((p) => [p.id, Number(p.price)])));
-  const named = summaries.map((s) => {
+  const current = new Map(products.map((p) => [p.id, Number(p.price)]));
+  const named = summarizeProducts(rows, current).map((s) => {
     const p = byId.get(s.productId);
     return {
       ...s,
@@ -300,9 +299,55 @@ router.get('/price-history/products', async (req, res) => {
       exists: Boolean(p),
     };
   });
+  return { named, current };
+}
+
+// Ürün bazlı fiyat geçmişi: geçmişi olan ürünlerin özeti (arama, sıralama, sayfalama)
+router.get('/price-history/products', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const q = String(req.query.q || '').trim().toLocaleLowerCase('tr');
+  const sort = (HISTORY_SORTS as readonly string[]).includes(String(req.query.sort))
+    ? (String(req.query.sort) as HistorySort)
+    : 'recent';
+  const limit = Math.min(60, Math.max(1, Number(req.query.limit) || 30));
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+  const { named } = await namedSummaries(restaurantId!, await loadHistoryRows(restaurantId!));
   const filtered = q ? named.filter((p) => p.name.toLocaleLowerCase('tr').includes(q)) : named;
   const sorted = sortSummaries(filtered, sort) as typeof filtered;
   res.json({ total: sorted.length, products: sorted.slice(offset, offset + limit) });
+});
+
+// Genel bakış: menü fiyat endeksi, en çok artan/düşen, son 14 günün hareketi, son hareketler
+router.get('/price-history/overview', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const rows = await loadHistoryRows(restaurantId!);
+  const { named, current } = await namedSummaries(restaurantId!, rows);
+  const changeIds = new Set(rows.map((r) => r.changeId));
+  const avg = named.length ? Math.round((named.reduce((n, p) => n + p.deltaPct, 0) / named.length) * 10) / 10 : 0;
+  const recent = [...rows]
+    .sort((a, b) => b.at.getTime() - a.at.getTime() || b.changeId - a.changeId)
+    .slice(0, 12)
+    .map((r) => ({
+      changeId: r.changeId,
+      productId: r.productId,
+      name: r.productName,
+      at: r.at.toISOString(),
+      kind: r.kind,
+      userName: r.userName,
+      oldPrice: r.oldPrice,
+      newPrice: r.newPrice ?? r.oldPrice,
+    }));
+  const pick = (list: typeof named) => list.slice(0, 3).map(({ productId, name, deltaPct, lastPrice, symbol }) => ({ productId, name, deltaPct, lastPrice, symbol }));
+  res.json({
+    totals: { products: named.length, changes: changeIds.size, avgDeltaPct: avg },
+    index: buildMenuIndex(rows, current),
+    activity: buildActivity(rows),
+    movers: {
+      up: pick(sortSummaries(named.filter((p) => p.deltaPct > 0), 'rise') as typeof named),
+      down: pick(sortSummaries(named.filter((p) => p.deltaPct < 0), 'fall') as typeof named),
+    },
+    recent,
+  });
 });
 
 router.get('/:id/price-history', async (req, res) => {

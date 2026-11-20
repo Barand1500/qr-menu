@@ -74,7 +74,7 @@ function Field({
   const [show, setShow] = useState(false);
   const secret = type === 'password';
   return (
-    <label className="ig-field">
+    <label className="ig-field" data-float={saved || (placeholder && placeholder.trim()) ? '' : undefined}>
       <input
         type={secret && !show ? 'password' : type === 'password' ? 'text' : type}
         value={value}
