@@ -1,4 +1,5 @@
 import { searchMenu } from '../lib/menuSearch.js';
+import { IMAGE_FIT_KEY, parseImageFit } from '../lib/image-fit.js';
 import { parseServiceRequest } from '../lib/table-service-request.js';
 import { Router, type Request } from 'express';
 import { prisma } from '../lib/prisma.js';
@@ -782,6 +783,16 @@ router.get('/:slug', async (req, res) => {
     stories,
     groups: mappedGroups,
   });
+});
+
+router.get('/:slug/image-fit', async (req, res) => {
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug: req.params.slug } });
+  if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
+  const row = await prisma.setting.findUnique({
+    where: { restaurantId_key: { restaurantId: restaurant.id, key: IMAGE_FIT_KEY } },
+  });
+  res.setHeader('Cache-Control', 'no-cache');
+  res.json(parseImageFit(row?.value));
 });
 
 router.get('/:slug/assistant-suggest', async (req, res) => {

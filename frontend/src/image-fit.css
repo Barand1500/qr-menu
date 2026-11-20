@@ -1,0 +1,14 @@
+/* Bulanık dolgu: "sığdır" modunda resmin kendisi arkada bulanık gösterilir. Yalnızca imageFit uygular. */
+.imgfit-blur {
+  overflow: hidden;
+  isolation: isolate;
+}
+.imgfit-blur::before {
+  content: '';
+  position: absolute;
+  inset: -14%;
+  z-index: 0;
+  background: var(--imgfit-src) center / cover no-repeat;
+  filter: blur(22px) saturate(1.25) brightness(0.88);
+  pointer-events: none;
+}

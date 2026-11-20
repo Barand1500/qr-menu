@@ -35,6 +35,7 @@ import { api } from '@/lib/api';
 import { useAddons } from '@/hooks/useAddons';
 import AdminNotificationBell from '@/components/AdminNotificationBell';
 import ThemeToggleButton from '@/components/admin/ThemeToggleButton';
+import { useAdminImageFit } from '@/hooks/useImageFit';
 import AdminTour, { AdminTourHelpButton } from '@/components/admin/AdminTour';
 import AdminToast, { type AdminToastNotice } from '@/components/admin/AdminToast';
 import { ImageBackgroundProvider } from '@/components/admin/ImageBackgroundProvider';
@@ -145,6 +146,7 @@ function NavItem({
 
 export default function AdminLayout() {
   const { user, logout } = useAuth();
+  useAdminImageFit();
   const { demoEnabled, toggleDemo } = useDemoData();
   const { isOwned } = useAddons();
   const navigate = useNavigate();

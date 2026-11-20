@@ -12,6 +12,7 @@
     "test:image-bg": "node tests/image-background.test.mjs",
     "test:price-history": "node tests/price-history.test.mjs",
     "smtp:check": "node scripts/smtp-check.mjs",
+    "test:image-fit": "node tests/image-fit.test.mjs",
     "test:login": "node tests/admin-login.test.mjs && node tests/login-mail.test.mjs",
     "test:customer": "node tests/customer-email.test.mjs && node tests/customer-mail.test.mjs",
     "start": "node dist/index.js",

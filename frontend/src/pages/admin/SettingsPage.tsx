@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
+  Crop,
   Globe,
   HandHelping,
   ImagePlus,
@@ -66,10 +67,11 @@ import {
   SUPPORT_PHONE_TEL,
   supportWhatsAppUrl,
 } from '@/lib/supportContact';
+import ImageFitSettings from '@/components/admin/ImageFitSettings';
 import '@/admin-settings.css';
 
 type SectionId =
-  'business' | 'menu' | 'localization' | 'social' | 'connections';
+  'business' | 'menu' | 'images' | 'localization' | 'social' | 'connections';
 interface Language {
   id: number;
   code: string;
@@ -112,6 +114,12 @@ const SECTIONS: {
     title: 'Menü deneyimi',
     description: 'Karşılama, servis ve konum',
     icon: HandHelping,
+  },
+  {
+    id: 'images',
+    title: 'Resim kırpma',
+    description: 'Görseller nasıl görünsün',
+    icon: Crop,
   },
   {
     id: 'localization',
@@ -816,6 +824,7 @@ export default function SettingsPage() {
             <ChevronDown size={18} />
           </button>
           <fieldset className="ast-workspace" disabled={busy} key={active}>
+            {active === 'images' && <ImageFitSettings onToast={toast} />}
             {active === 'business' && (
               <>
                 <Section

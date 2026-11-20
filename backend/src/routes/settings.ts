@@ -17,6 +17,7 @@ import {
 } from '../addons/index.js';
 import { parseSocialLinks, serializeSocialLinks, type SocialLinkConfig } from '../lib/social.js';
 import { IMAGE_BACKGROUND_MODE_KEY, parseImageBackgroundMode } from '../lib/image-background.js';
+import { IMAGE_FIT_KEY, nextImageFit, parseImageFit } from '../lib/image-fit.js';
 import {
   MENU_SERVICE_ITEMS_KEY,
   MENU_TABLE_SERVICE_KEY,
@@ -286,6 +287,28 @@ router.put('/image-background', async (req, res) => {
     create: { restaurantId: restaurantId!, key: IMAGE_BACKGROUND_MODE_KEY, value: mode },
   });
   res.json({ mode });
+});
+
+router.get('/image-fit', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const row = await prisma.setting.findUnique({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: IMAGE_FIT_KEY } },
+  });
+  res.json(parseImageFit(row?.value));
+});
+
+router.put('/image-fit', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const key = { restaurantId_key: { restaurantId: restaurantId!, key: IMAGE_FIT_KEY } };
+  const row = await prisma.setting.findUnique({ where: key });
+  const next = nextImageFit(req.body, parseImageFit(row?.value));
+  const value = JSON.stringify(next);
+  await prisma.setting.upsert({
+    where: key,
+    update: { value },
+    create: { restaurantId: restaurantId!, key: IMAGE_FIT_KEY, value },
+  });
+  res.json(next);
 });
 
 router.put('/integration', async (req, res) => {

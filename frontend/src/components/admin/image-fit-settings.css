@@ -1,0 +1,464 @@
+/* Ayarlar > Resim kırpma */
+.ifs {
+  display: grid;
+  gap: 1rem;
+  padding-bottom: 5rem;
+}
+.ifs-fields {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  transition: opacity 0.2s;
+}
+.ifs-fields:disabled {
+  opacity: 0.5;
+}
+.ifs-note {
+  margin: 0.8rem 0 0;
+  color: var(--admin-text-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+/* anahtar */
+.ifs-switch {
+  position: relative;
+  flex: none;
+  width: 54px;
+  height: 32px;
+  padding: 0;
+  background: var(--admin-card-border);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.ifs-switch i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  transition: transform 0.22s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.ifs-switch.is-on {
+  background: var(--admin-accent);
+}
+.ifs-switch.is-on i {
+  transform: translateX(22px);
+}
+
+/* önizleme */
+.ifs-preview {
+  display: grid;
+  grid-template-columns: 1fr 1.7fr 0.9fr;
+  align-items: end;
+  gap: 14px;
+}
+.ifs-figure {
+  min-width: 0;
+  margin: 0;
+}
+.ifs-figure figcaption {
+  margin-top: 7px;
+  color: var(--admin-text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-align: center;
+}
+.ifs-frame {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: var(--admin-input-bg);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 16px;
+  isolation: isolate;
+}
+.ifs-frame img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: object-position 0.25s, padding 0.2s;
+}
+.ifs-blur {
+  position: absolute;
+  inset: -14%;
+  z-index: 0;
+  background-position: center;
+  background-size: cover;
+  filter: blur(22px) saturate(1.25) brightness(0.88);
+}
+.ifs-samples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 1rem;
+}
+.ifs-samples > span {
+  margin-right: 4px;
+  color: var(--admin-text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.ifs-samples button {
+  display: grid;
+  place-items: center;
+  min-width: 52px;
+  height: 44px;
+  padding: 0 12px;
+  overflow: hidden;
+  color: var(--admin-text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 650;
+  background: var(--admin-card);
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.ifs-samples button:has(img) {
+  width: 52px;
+  padding: 0;
+}
+.ifs-samples img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ifs-samples button[aria-pressed='true'] {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px var(--admin-accent-soft);
+}
+
+/* yerleşim kartları */
+.ifs-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.ifs-modes button {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  color: var(--admin-text);
+  font: inherit;
+  text-align: start;
+  background: var(--admin-card);
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 18px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ifs-modes button[aria-checked='true'] {
+  background: var(--admin-accent-soft);
+  border-color: var(--admin-accent);
+}
+.ifs-modes strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+}
+.ifs-modes small {
+  color: var(--admin-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+.ifs-mode-art {
+  display: grid;
+  place-items: center;
+  height: 64px;
+  margin-bottom: 4px;
+  background: var(--admin-input-bg);
+  border: 1px dashed var(--admin-card-border);
+  border-radius: 12px;
+}
+.ifs-mode-art i {
+  display: block;
+  background: linear-gradient(135deg, #7c3aed, #f97316);
+  border-radius: 6px;
+}
+.ifs-mode-art--cover i {
+  width: 100%;
+  height: 100%;
+  border-radius: 11px;
+}
+.ifs-mode-art--contain i {
+  width: 70%;
+  height: 56%;
+}
+
+.ifs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.1rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--admin-card-border);
+}
+.ifs-row--stack {
+  align-items: stretch;
+  flex-direction: column;
+}
+.ifs-row h3 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+.ifs-row p {
+  margin: 3px 0 0;
+  color: var(--admin-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+.ifs-focus {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(3, 40px);
+  gap: 5px;
+  padding: 6px;
+  background: var(--admin-input-bg);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 14px;
+}
+.ifs-focus button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: var(--admin-card);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.ifs-focus i {
+  width: 8px;
+  height: 8px;
+  background: var(--admin-text-muted);
+  border-radius: 50%;
+  opacity: 0.5;
+}
+.ifs-focus button[aria-checked='true'] {
+  background: var(--admin-accent);
+  border-color: var(--admin-accent);
+}
+.ifs-focus button[aria-checked='true'] i {
+  background: var(--admin-btn-primary-text, #fff);
+  opacity: 1;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+}
+
+.ifs-chips,
+.ifs-targets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ifs-chips button,
+.ifs-targets button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 0 1rem;
+  color: var(--admin-text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--admin-card);
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.ifs-chips button[aria-checked='true'],
+.ifs-targets button[aria-pressed='true'] {
+  background: var(--admin-accent-soft);
+  border-color: var(--admin-accent);
+}
+.ifs-targets button > span {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: var(--admin-btn-primary-text, #fff);
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 6px;
+}
+.ifs-targets button[aria-pressed='true'] > span {
+  background: var(--admin-accent);
+  border-color: var(--admin-accent);
+}
+.ifs-targets {
+  margin-top: 1rem;
+}
+.ifs-color {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 12px 0 6px;
+  font-size: 0.8rem;
+  font-weight: 650;
+  background: var(--admin-card);
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 999px;
+}
+.ifs-color input {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ifs-range {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ifs-range input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--admin-accent);
+}
+.ifs-range output {
+  min-width: 46px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: end;
+}
+.ifs-scope {
+  display: grid;
+  gap: 8px;
+}
+.ifs-scope button {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  color: var(--admin-text);
+  font: inherit;
+  text-align: start;
+  background: var(--admin-card);
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 16px;
+  cursor: pointer;
+}
+.ifs-scope button[aria-checked='true'] {
+  background: var(--admin-accent-soft);
+  border-color: var(--admin-accent);
+}
+.ifs-scope small {
+  color: var(--admin-text-muted);
+  font-size: 0.78rem;
+}
+
+/* kaydet çubuğu */
+.ifs-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--admin-card);
+  border-top: 1px solid var(--admin-card-border);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.12);
+  transform: translateY(110%);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ifs-bar.is-show {
+  transform: none;
+}
+.ifs-bar p {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--admin-text-muted);
+  font-size: 0.82rem;
+}
+.ifs-bar button {
+  min-height: 44px;
+  padding: 0 1.1rem;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  border-radius: 14px;
+  cursor: pointer;
+}
+.ifs-bar__ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--admin-text);
+  background: transparent;
+  border: 1.5px solid var(--admin-card-border);
+}
+.ifs-bar__save {
+  color: var(--admin-btn-primary-text, #fff);
+  background: var(--admin-accent);
+  border: 0;
+}
+.ifs-bar button:disabled {
+  opacity: 0.55;
+}
+@media (min-width: 1024px) {
+  .ifs-bar {
+    position: sticky;
+    bottom: 12px;
+    margin-top: -3.5rem;
+    border: 1px solid var(--admin-card-border);
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 560px) {
+  .ifs-preview {
+    grid-template-columns: 1fr 1.5fr;
+  }
+  .ifs-figure:nth-child(3) {
+    display: none;
+  }
+  .ifs-modes {
+    grid-template-columns: 1fr;
+  }
+  .ifs-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .ifs-bar p {
+    display: none;
+  }
+  .ifs-bar button {
+    flex: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ifs-switch i,
+  .ifs-bar,
+  .ifs-frame img {
+    transition: none;
+  }
+}
+
+.ifs-hero .ast-card-head {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 1rem;
+}

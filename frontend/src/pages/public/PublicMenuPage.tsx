@@ -31,6 +31,7 @@ import MaintenanceGate from '@/components/public/MaintenanceGate';
 import TableSessionCodeGate from '@/components/public/TableSessionCodeGate';
 import type { GeoCoords } from '@/lib/geoLock';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
+import { useMenuImageEntries, usePublicImageFit } from '@/hooks/useImageFit';
 import { useMenuColorMode } from '@/hooks/useMenuColorMode';
 import { usePublicRtl } from '@/hooks/usePublicRtl';
 import {
@@ -223,6 +224,7 @@ function PublicMenuPageInner({
   const highlightProductId = searchParams.get('urun');
   const [lang, setLang] = useState(() => localStorage.getItem('menu_lang') || 'tr');
   const [menu, setMenu] = useState<MenuData | null>(null);
+  usePublicImageFit(slug, useMenuImageEntries(menu));
   const [products, setProducts] = useState<ProductData | null>(null);
   const [groupLoading, setGroupLoading] = useState(false);
   const [groupError, setGroupError] = useState<string | null>(null);

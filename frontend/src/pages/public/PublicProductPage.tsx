@@ -20,6 +20,7 @@ import ProductImageGallery, {
 import BrushPanel from '@/components/public/BrushPanel';
 import MenuMediaPlaceholder from '@/components/public/MenuMediaPlaceholder';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
+import { usePublicImageFit } from '@/hooks/useImageFit';
 import { usePublicRtl } from '@/hooks/usePublicRtl';
 import { menuGroupPath, menuHomePath, menuProductPath } from '@/lib/menuPaths';
 import TableServiceButtons from '@/components/public/TableServiceButtons';
@@ -37,7 +38,7 @@ import { SiparisCartProvider } from '@/hooks/useSiparisCart';
 import MaintenanceGate from '@/components/public/MaintenanceGate';
 import TableSessionCodeGate from '@/components/public/TableSessionCodeGate';
 import ServiceCallNotice from '@/components/public/ServiceCallNotice';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ProductOptionGroup } from '@/lib/productOptions';
 import '@/components/public/sofra/sofra.css';
 import '@/components/public/sofra/sofra-product.css';
@@ -108,6 +109,17 @@ function PublicProductPageInner() {
   const { demoEnabled } = useDemoData();
   const [lang] = useState(() => localStorage.getItem('menu_lang') || 'tr');
   const [product, setProduct] = useState<ProductDetail | null>(null);
+  usePublicImageFit(
+    slug ?? undefined,
+    useMemo(
+      () =>
+        [...(product?.images ?? []), ...(product?.imageUrl ? [product.imageUrl] : [])].map((url) => ({
+          url,
+          kind: 'products' as const,
+        })),
+      [product],
+    ),
+  );
   const [related, setRelated] = useState<RelatedProduct[]>([]);
   const [productError, setProductError] = useState(false);
   const [retry, setRetry] = useState(0);
