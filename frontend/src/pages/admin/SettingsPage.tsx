@@ -16,6 +16,7 @@ import {
   MapPinned,
   Phone,
   Plug,
+  PlugZap,
   Plus,
   Save,
   Search,
@@ -68,10 +69,11 @@ import {
   supportWhatsAppUrl,
 } from '@/lib/supportContact';
 import ImageFitSettings from '@/components/admin/ImageFitSettings';
+import IntegrationsSettings from '@/components/admin/IntegrationsSettings';
 import '@/admin-settings.css';
 
 type SectionId =
-  'business' | 'menu' | 'images' | 'localization' | 'social' | 'connections';
+  'business' | 'menu' | 'images' | 'integrations' | 'localization' | 'social' | 'connections';
 interface Language {
   id: number;
   code: string;
@@ -120,6 +122,12 @@ const SECTIONS: {
     title: 'Resim kırpma',
     description: 'Görseller nasıl görünsün',
     icon: Crop,
+  },
+  {
+    id: 'integrations',
+    title: 'Entegrasyonlar',
+    description: 'E-posta ve SMS bağlantıları',
+    icon: PlugZap,
   },
   {
     id: 'localization',
@@ -206,7 +214,7 @@ const errorMessage = (err: unknown) =>
   err instanceof Error ? err.message : 'İşlem tamamlanamadı.';
 
 export default function SettingsPage() {
-  const { refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { isOwned, isEnabled, setEnabled } = useAddons();
   const [searchParams, setSearchParams] = useSearchParams();
   const [active, setActive] = useState<SectionId>(() =>
@@ -825,6 +833,7 @@ export default function SettingsPage() {
           </button>
           <fieldset className="ast-workspace" disabled={busy} key={active}>
             {active === 'images' && <ImageFitSettings onToast={toast} />}
+            {active === 'integrations' && <IntegrationsSettings onToast={toast} adminEmail={user?.email} />}
             {active === 'business' && (
               <>
                 <Section

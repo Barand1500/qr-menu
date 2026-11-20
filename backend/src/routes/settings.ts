@@ -17,6 +17,22 @@ import {
 } from '../addons/index.js';
 import { parseSocialLinks, serializeSocialLinks, type SocialLinkConfig } from '../lib/social.js';
 import { IMAGE_BACKGROUND_MODE_KEY, parseImageBackgroundMode } from '../lib/image-background.js';
+import {
+  IntegrationError,
+  assertPublicHost,
+  loadSmtp,
+  loadSms,
+  mergeSmtp,
+  mergeSms,
+  saveSmtp,
+  saveSms,
+  smsComplete,
+  smsForClient,
+  smtpComplete,
+  smtpForClient,
+} from '../lib/integrations.js';
+import { explainSmtpError, sendSmtpTest, sendSms } from '../lib/integration-send.js';
+import { loginMailConfigured } from '../lib/login-mail.js';
 import { IMAGE_FIT_KEY, nextImageFit, parseImageFit } from '../lib/image-fit.js';
 import {
   MENU_SERVICE_ITEMS_KEY,
@@ -309,6 +325,97 @@ router.put('/image-fit', async (req, res) => {
     create: { restaurantId: restaurantId!, key: IMAGE_FIT_KEY, value },
   });
   res.json(next);
+});
+
+// ───────── Entegrasyonlar: e-posta (SMTP) ve SMS ─────────
+const integrationTests = new Map<number, number[]>();
+/** Deneme gönderimleri kötüye kullanılmasın: işletme başına 5 dakikada en fazla 8. */
+function allowIntegrationTest(restaurantId: number) {
+  const now = Date.now();
+  const recent = (integrationTests.get(restaurantId) ?? []).filter((t) => now - t < 5 * 60_000);
+  if (recent.length >= 8) return false;
+  recent.push(now);
+  integrationTests.set(restaurantId, recent);
+  return true;
+}
+
+router.get('/integrations', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const [smtp, sms] = await Promise.all([loadSmtp(restaurantId!), loadSms(restaurantId!)]);
+  res.json({
+    smtp: { ...smtpForClient(smtp), ready: smtpComplete(smtp) },
+    sms: { ...smsForClient(sms), ready: smsComplete(sms) },
+    systemMail: loginMailConfigured(),
+  });
+});
+
+router.put('/integrations/smtp', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const next = mergeSmtp(req.body, await loadSmtp(restaurantId!));
+  if (next.enabled && !smtpComplete(next)) {
+    return res.status(400).json({ message: 'Açmak için sunucu, kullanıcı, şifre ve gönderen e-posta alanlarını doldurun.' });
+  }
+  if (next.host) {
+    try {
+      await assertPublicHost(next.host);
+    } catch (e) {
+      return res.status(400).json({ message: e instanceof Error ? e.message : 'Sunucu adresi geçersiz.' });
+    }
+  }
+  await saveSmtp(restaurantId!, next);
+  res.json({ ...smtpForClient(next), ready: smtpComplete(next) });
+});
+
+router.put('/integrations/sms', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const next = mergeSms(req.body, await loadSms(restaurantId!));
+  if (next.enabled && !smsComplete(next)) {
+    return res.status(400).json({ message: 'Açmak için seçili sağlayıcının tüm alanlarını doldurun.' });
+  }
+  await saveSms(restaurantId!, next);
+  res.json({ ...smsForClient(next), ready: smsComplete(next) });
+});
+
+router.post('/integrations/smtp/test', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  if (!allowIntegrationTest(restaurantId!)) {
+    return res.status(429).json({ message: 'Çok fazla deneme yapıldı. Birkaç dakika sonra tekrar deneyin.' });
+  }
+  const to = String(req.body?.to || '').trim();
+  if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(to) || to.length > 190) {
+    return res.status(400).json({ message: 'Geçerli bir alıcı e-posta adresi yazın.' });
+  }
+  const saved = await loadSmtp(restaurantId!);
+  const cfg = req.body?.config ? mergeSmtp(req.body.config, saved) : saved;
+  const restaurant = await prisma.restaurant.findUnique({ where: { id: restaurantId! }, select: { name: true } });
+  try {
+    const result = await sendSmtpTest(cfg, to, restaurant?.name || '');
+    res.json({ ok: true, ms: result.ms });
+  } catch (error) {
+    res.status(400).json({
+      ok: false,
+      message: error instanceof IntegrationError ? error.message : explainSmtpError(error),
+    });
+  }
+});
+
+router.post('/integrations/sms/test', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  if (!allowIntegrationTest(restaurantId!)) {
+    return res.status(429).json({ message: 'Çok fazla deneme yapıldı. Birkaç dakika sonra tekrar deneyin.' });
+  }
+  const saved = await loadSms(restaurantId!);
+  const cfg = req.body?.config ? mergeSms(req.body.config, saved) : saved;
+  const restaurant = await prisma.restaurant.findUnique({ where: { id: restaurantId! }, select: { name: true } });
+  try {
+    const result = await sendSms(cfg, String(req.body?.to || ''), `${restaurant?.name || 'Menu QR'}: SMS bağlantınız çalışıyor.`);
+    res.json({ ok: true, ms: result.ms });
+  } catch (error) {
+    res.status(400).json({
+      ok: false,
+      message: error instanceof IntegrationError ? error.message : 'Gönderilemedi. Ayarları kontrol edip tekrar deneyin.',
+    });
+  }
 });
 
 router.put('/integration', async (req, res) => {

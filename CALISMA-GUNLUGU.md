@@ -686,3 +686,10 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 ## 2026-11-20 — Görünürlük adları: Göster / Gizle
 - Ürünler, Gruplar ve Vitrin görselleri sayfalarındaki görünürlük anahtarı ve filtreleri "Açık/Gizli/Yayında" yerine "Göster/Gizle" oldu (`VisibilityToggle` varsayılanları, ürün ve grup filtre seçenekleri, grup sayfası özet metni, vitrin kartındaki "Yayında" kaldırıldı).
 - Doğrulama: frontend tsc temiz. Ekran görüntüsüyle ayrıca bakılmadı.
+
+## 2026-11-20 — Ayarlar > Entegrasyonlar (e-posta SMTP + SMS)
+- Amaç: işletme, e-posta ve SMS bağlantısını panelden girsin, kaydetmeden de deneyebilsin.
+- Backend: `lib/integrations.ts` (ayar ayrıştırma, AES-256-GCM ile şifreli gizli alanlar, iç ağ adreslerine bağlanmayı engelleyen kontrol, telefon biçimi), `lib/integration-send.ts` (SMTP denemesi + Türkçe hata açıklamaları; SMS: Netgsm, Twilio, özel HTTPS adres), uç noktalar `GET/PUT /api/admin/settings/integrations[/smtp|/sms]` ve `POST …/smtp/test`, `POST …/sms/test` (işletme başına 5 dakikada 8 deneme sınırı). Şifreler istemciye hiç dönmez; boş bırakılan gizli alan eskisini korur. Şema değişikliği yok (Setting tablosu).
+- Giriş kodu e-postası artık önce işletmenin kendi SMTP ayarını (açık ve eksiksizse) dener, olmazsa sistem ortam ayarına döner. Müşteri doğrulama kodları ortak hesap olduğu için hâlâ sistem ayarını kullanır. SMS için henüz bir gönderim akışı yok; ayar ve deneme hazır.
+- Frontend: `IntegrationsSettings.tsx` + css, Ayarlar'da yeni "Entegrasyonlar" sekmesi: bağlantı hattı animasyonu, hazır SMTP ayarları (Gmail/Outlook/Yandex), şifreleme seçimi, sağlayıcı seçimi, adım adım deneme göstergesi ve son denemeler.
+- Doğrulama: backend tsc, yeni `test:integrations` ve mevcut giriş testleri geçti; frontend tsc/build temiz; Chrome fixture (sahte API) 1440/390, açık/koyu: açma, hazır ayar, deneme (hata+başarı), kaydet, SMS. Gerçek SMTP sunucusu ve gerçek SMS sağlayıcısıyla denenmedi (Netgsm/Twilio istekleri belgelere göre yazıldı, canlı hesapla doğrulanmadı).

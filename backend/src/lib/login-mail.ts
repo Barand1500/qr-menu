@@ -33,15 +33,27 @@ function loginMailHtml(code: string) {
 </div>`;
 }
 
-export async function sendLoginCode(email: string, code: string) {
-  if (!loginMailConfigured()) throw new Error('LOGIN_MAIL_UNAVAILABLE');
-  const port = Number(process.env.LOGIN_SMTP_PORT || 587);
+/** İşletmenin kendi SMTP ayarı (Ayarlar > Entegrasyonlar). Verilirse ortam değişkenleri yerine bu kullanılır. */
+export type LoginMailSmtp = {
+  host: string;
+  port: number;
+  encryption: 'starttls' | 'ssl' | 'none';
+  user: string;
+  password: string;
+  from: string;
+};
+
+export async function sendLoginCode(email: string, code: string, smtp?: LoginMailSmtp | null) {
+  if (!smtp && !loginMailConfigured()) throw new Error('LOGIN_MAIL_UNAVAILABLE');
+  const port = smtp ? smtp.port : Number(process.env.LOGIN_SMTP_PORT || 587);
+  const secure = smtp ? smtp.encryption === 'ssl' : port === 465;
   const transport = nodemailer.createTransport({
-    host: process.env.LOGIN_SMTP_HOST,
+    host: smtp ? smtp.host : process.env.LOGIN_SMTP_HOST,
     port,
-    secure: port === 465,
-    requireTLS: port !== 465,
-    auth: { user: process.env.LOGIN_SMTP_USER, pass: process.env.LOGIN_SMTP_PASSWORD },
+    secure,
+    requireTLS: smtp ? smtp.encryption === 'starttls' : port !== 465,
+    ...(smtp?.encryption === 'none' ? { ignoreTLS: true } : {}),
+    auth: smtp ? { user: smtp.user, pass: smtp.password } : { user: process.env.LOGIN_SMTP_USER, pass: process.env.LOGIN_SMTP_PASSWORD },
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000,
@@ -52,7 +64,7 @@ export async function sendLoginCode(email: string, code: string) {
   });
   try {
     await transport.sendMail({
-      from: process.env.LOGIN_MAIL_FROM,
+      from: smtp ? smtp.from : process.env.LOGIN_MAIL_FROM,
       to: { address: email, name: '' },
       subject: 'Menu QR giriş kodunuz',
       text: `Menu QR giriş kodunuz: ${code}\n\nBu kod 5 dakika geçerlidir ve bir kez kullanılabilir. Kodu kimseyle paylaşmayın. Bu isteği siz yapmadıysanız mesajı yok sayabilirsiniz.`,

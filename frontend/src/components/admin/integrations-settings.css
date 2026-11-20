@@ -1,0 +1,718 @@
+/* Ayarlar > Entegrasyonlar: e-posta ve SMS kanalları */
+.ig {
+  display: grid;
+  gap: 18px;
+  align-items: start;
+}
+@media (min-width: 1280px) {
+  .ig {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ig-lead {
+    grid-column: 1 / -1;
+  }
+}
+.ig-note {
+  color: var(--admin-text-muted);
+  font-size: 14px;
+}
+.ig-lead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 16px;
+  color: var(--admin-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--admin-card);
+  border: 1px dashed var(--admin-card-border);
+  border-radius: 16px;
+}
+.ig-lead svg {
+  flex: none;
+  color: var(--admin-accent);
+}
+
+/* kanal kartı */
+.ig-card {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  overflow: hidden;
+  background: var(--admin-card);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 26px;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+.ig-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, #7c3aed, #ec4899, #f97316);
+  opacity: 0.25;
+  transition: opacity 0.3s;
+}
+.ig-card.is-on {
+  border-color: color-mix(in srgb, var(--admin-accent) 45%, var(--admin-card-border));
+  box-shadow: 0 18px 44px -22px color-mix(in srgb, var(--admin-accent) 55%, transparent);
+}
+.ig-card.is-on::before {
+  opacity: 1;
+}
+.ig-card__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ig-card__head > div {
+  flex: 1;
+  min-width: 0;
+}
+.ig-card__head h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+.ig-card__head p {
+  margin: 2px 0 0;
+  color: var(--admin-text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.ig-card__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  color: #fff;
+  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  border-radius: 18px;
+  box-shadow: 0 10px 22px -10px #7c3aed;
+}
+.ig-switch {
+  position: relative;
+  flex: none;
+  width: 54px;
+  height: 32px;
+  padding: 0;
+  background: var(--admin-card-border);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.ig-switch i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px #0004;
+  transition: transform 0.22s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.ig-switch.is-on {
+  background: #10b981;
+}
+.ig-switch.is-on i {
+  transform: translateX(22px);
+}
+.ig-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: start;
+  margin: 0;
+  padding: 6px 12px;
+  color: var(--admin-text-muted);
+  font-size: 12.5px;
+  font-weight: 650;
+  background: var(--admin-input-bg);
+  border-radius: 999px;
+}
+.ig-status i {
+  width: 8px;
+  height: 8px;
+  background: currentColor;
+  border-radius: 50%;
+  opacity: 0.55;
+}
+.ig-status.is-ok {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.14);
+}
+.ig-status.is-ok i {
+  opacity: 1;
+  animation: ig-pulse 1.8s ease-out infinite;
+}
+.ig-status.is-idle {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.16);
+}
+[data-theme='dark'] .ig-status.is-ok {
+  color: #6ee7b7;
+}
+[data-theme='dark'] .ig-status.is-idle {
+  color: #fcd34d;
+}
+@keyframes ig-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 0 9px rgba(16, 185, 129, 0);
+  }
+}
+
+/* bağlantı hattı */
+.ig-wire {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--admin-input-bg);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 18px;
+}
+.ig-wire__node {
+  flex: none;
+  max-width: 38%;
+  padding: 6px 12px;
+  overflow: hidden;
+  color: var(--admin-text);
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--admin-card);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 999px;
+}
+.ig-wire svg {
+  flex: 1;
+  min-width: 40px;
+  height: 24px;
+}
+.ig-wire__line {
+  stroke: var(--admin-text-muted);
+  stroke-width: 2;
+  stroke-dasharray: 4 6;
+  stroke-linecap: round;
+  opacity: 0.55;
+  vector-effect: non-scaling-stroke;
+}
+.ig-wire.is-ok .ig-wire__line {
+  stroke: #10b981;
+  stroke-dasharray: none;
+  opacity: 1;
+}
+.ig-wire.is-busy .ig-wire__line {
+  stroke: var(--admin-accent);
+  opacity: 1;
+  animation: ig-dash 0.5s linear infinite;
+}
+.ig-wire.is-bad .ig-wire__line {
+  stroke: #f43f5e;
+  opacity: 1;
+}
+.ig-wire__pkt {
+  fill: var(--admin-accent);
+  animation: ig-travel 1.3s ease-in-out infinite;
+}
+.ig-wire__cut {
+  stroke: #f43f5e;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  fill: none;
+}
+@keyframes ig-dash {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+@keyframes ig-travel {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(180px);
+  }
+}
+.ig-wire__badge {
+  position: absolute;
+  top: -8px;
+  right: 18px;
+  display: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: #fff;
+  border-radius: 50%;
+}
+.ig-wire.is-ok .ig-wire__badge {
+  display: grid;
+  background: #10b981;
+  animation: ig-pop 0.4s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.ig-wire.is-bad .ig-wire__badge {
+  display: grid;
+  background: #f43f5e;
+  animation: ig-pop 0.4s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+@keyframes ig-pop {
+  from {
+    transform: scale(0);
+  }
+}
+
+/* hazır ayarlar, segment */
+.ig-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ig-presets button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 14px;
+  color: var(--admin-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  background: var(--admin-card);
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.ig-presets button[aria-pressed='true'],
+.ig-presets button[aria-checked='true'] {
+  color: var(--admin-accent-text);
+  background: var(--admin-accent-soft);
+  border-color: var(--admin-accent);
+}
+.ig-tip {
+  margin: -4px 0 0;
+  padding: 10px 14px;
+  color: var(--admin-text-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+  background: var(--admin-input-bg);
+  border-left: 3px solid var(--admin-accent);
+  border-radius: 4px 12px 12px 4px;
+}
+.ig-row {
+  display: grid;
+  gap: 7px;
+}
+.ig-row > span {
+  color: var(--admin-text-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+.ig-seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 4px;
+  background: var(--admin-input-bg);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 14px;
+}
+.ig-seg button {
+  min-height: 38px;
+  padding: 0 8px;
+  color: var(--admin-text-muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  background: none;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.ig-seg button[aria-checked='true'] {
+  color: var(--admin-accent-text);
+  background: var(--admin-card);
+  box-shadow: 0 1px 4px #0002;
+}
+
+/* alanlar */
+.ig-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+.ig-field {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+.ig-field input {
+  width: 100%;
+  min-height: 56px;
+  padding: 22px 44px 6px 14px;
+  color: var(--admin-text);
+  font: inherit;
+  font-size: 15px;
+  background: var(--admin-input-bg);
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 14px;
+  outline: 0;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+}
+.ig-field input::placeholder {
+  color: var(--admin-text-muted);
+  opacity: 0.8;
+}
+.ig-field > span {
+  position: absolute;
+  top: 17px;
+  left: 15px;
+  color: var(--admin-text-muted);
+  font-size: 14px;
+  pointer-events: none;
+  transform-origin: left top;
+  transition: transform 0.18s, color 0.18s;
+}
+.ig-field input:focus {
+  background: var(--admin-card);
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 4px var(--admin-accent-soft);
+}
+.ig-field input:focus + span,
+.ig-field input:not(:placeholder-shown) + span {
+  color: var(--admin-accent-text);
+  transform: translateY(-12px) scale(0.78);
+}
+.ig-field small {
+  display: block;
+  margin: 4px 4px 0;
+  color: var(--admin-text-muted);
+  font-size: 11.5px;
+}
+.ig-eye {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--admin-text-muted);
+  background: none;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.ig-link {
+  justify-self: start;
+  color: #e11d48;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+/* düğmeler */
+.ig-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 20px;
+  color: var(--admin-btn-primary-text, #fff);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--admin-accent);
+  border: 0;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: transform 0.15s, filter 0.15s, opacity 0.15s;
+}
+.ig-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.ig-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.ig-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ig-btn--ghost {
+  color: var(--admin-text);
+  background: transparent;
+  border: 1.5px solid var(--admin-card-border);
+}
+.ig-spin {
+  animation: ig-rot 0.8s linear infinite;
+}
+@keyframes ig-rot {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* deneme paneli */
+.ig-test {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--admin-accent) 9%, transparent), transparent 70%), var(--admin-input-bg);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 20px;
+}
+.ig-test h4 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 14px;
+}
+.ig-test h4 svg {
+  color: #f59e0b;
+}
+.ig-test > p {
+  margin: -6px 0 0;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+}
+.ig-test__row {
+  display: flex;
+  gap: 10px;
+}
+.ig-test__row .ig-field {
+  flex: 1;
+}
+.ig-test__row .ig-btn {
+  align-self: stretch;
+  min-height: 56px;
+}
+.ig-test__why {
+  margin: 0;
+  color: #b45309;
+  font-size: 12px;
+}
+[data-theme='dark'] .ig-test__why {
+  color: #fcd34d;
+}
+.ig-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ig-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--admin-text-muted);
+  font-size: 13px;
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+.ig-steps li i {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  color: #fff;
+  border: 2px solid var(--admin-card-border);
+  border-radius: 50%;
+}
+.ig-steps li.is-done {
+  opacity: 1;
+}
+.ig-steps li.is-done i {
+  background: #10b981;
+  border-color: #10b981;
+}
+.ig-steps li.is-now {
+  color: var(--admin-text);
+  font-weight: 650;
+  opacity: 1;
+}
+.ig-steps li.is-now i {
+  border-color: var(--admin-accent);
+  border-top-color: transparent;
+  animation: ig-rot 0.8s linear infinite;
+}
+.ig-result {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  animation: ig-in 0.35s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+@keyframes ig-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.ig-result > span {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: #fff;
+  border-radius: 50%;
+}
+.ig-result strong {
+  font-size: 14px;
+}
+.ig-result p {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ig-result.is-ok {
+  background: rgba(16, 185, 129, 0.12);
+}
+.ig-result.is-ok > span {
+  background: #10b981;
+}
+.ig-result.is-bad {
+  background: rgba(244, 63, 94, 0.11);
+}
+.ig-result.is-bad > span {
+  background: #f43f5e;
+}
+.ig-log {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ig-log li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  color: var(--admin-text-muted);
+  font-size: 11.5px;
+  background: var(--admin-card);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 999px;
+}
+.ig-log i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.ig-log .is-ok i {
+  background: #10b981;
+}
+.ig-log .is-bad i {
+  background: #f43f5e;
+}
+.ig-log em {
+  color: var(--admin-text);
+  font-style: normal;
+  font-weight: 650;
+}
+
+/* kaydet çubuğu (kartın altında) */
+.ig-save {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-height: 0;
+  margin: 0 -20px -20px;
+  padding: 0 20px;
+  overflow: hidden;
+  background: var(--admin-input-bg);
+  border-top: 1px solid transparent;
+  transition: max-height 0.3s ease, padding 0.3s ease, border-color 0.3s;
+}
+.ig-save.is-show {
+  max-height: 90px;
+  padding: 12px 20px;
+  border-top-color: var(--admin-card-border);
+}
+.ig-save span {
+  flex: 1;
+  color: var(--admin-text-muted);
+  font-size: 12.5px;
+}
+.ig-save .ig-btn {
+  min-height: 44px;
+}
+
+@media (max-width: 560px) {
+  .ig-card {
+    padding: 16px;
+    border-radius: 22px;
+  }
+  .ig-save {
+    margin: 0 -16px -16px;
+    padding: 0 16px;
+  }
+  .ig-save.is-show {
+    padding: 12px 16px;
+  }
+  .ig-save span {
+    display: none;
+  }
+  .ig-save .ig-btn {
+    flex: 1;
+  }
+  .ig-test__row {
+    flex-direction: column;
+  }
+  .ig-test__row .ig-btn {
+    min-height: 48px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ig-status i,
+  .ig-wire__pkt,
+  .ig-wire.is-busy .ig-wire__line,
+  .ig-result,
+  .ig-spin {
+    animation: none;
+  }
+}
+
+/* dar ekranda içerik kartı taşırmasın */
+.ig {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 1280px) {
+  .ig {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.ig > *,
+.ig-card > *,
+.ig-test > * {
+  min-width: 0;
+}
+.ig-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+}
+.ig-seg button {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

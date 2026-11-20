@@ -1,7 +1,8 @@
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { prisma } from './prisma.js';
 import { config } from '../config.js';
-import { loginMailConfigured, sendLoginCode } from './login-mail.js';
+import { loginMailConfigured, sendLoginCode, type LoginMailSmtp } from './login-mail.js';
+import { loadActiveSmtp } from './integrations.js';
 
 const TTL = 5 * 60_000;
 const COOLDOWN = 60_000;
@@ -62,14 +63,12 @@ const invalid = () =>
 // Existing per-restaurant settings provide durable, atomic state across processes.
 // Codes are never stored or logged in plain text. No schema change is required.
 export async function requestAdminLoginCode(email: string) {
-  if (!loginMailConfigured())
-    throw new LoginCodeError(
-      503,
-      'Hızlı giriş şu anda kullanılamıyor. Şifreli giriş yapabilirsiniz.'
-    );
   const user = await prisma.user.findUnique({ where: { email } });
   const generic = { challengeId: randomUUID(), expiresIn: TTL / 1000, retryAfter: COOLDOWN / 1000 };
   if (!user || !user.isActive) return generic;
+  if (!loginMailConfigured() && !(await loadActiveSmtp(user.restaurantId))) {
+    throw new LoginCodeError(503, 'Hızlı giriş şu anda kullanılamıyor. Şifreli giriş yapabilirsiniz.');
+  }
   const key = keyFor(user.id);
   const row = await prisma.setting.findUnique({
     where: { restaurantId_key: { restaurantId: user.restaurantId, key } },
@@ -124,7 +123,23 @@ export async function requestAdminLoginCode(email: string) {
     }
   }
   try {
-    await sendLoginCode(email, code);
+    const own = await loadActiveSmtp(user.restaurantId);
+    const mine: LoginMailSmtp | null = own
+      ? {
+          host: own.host,
+          port: own.port,
+          encryption: own.encryption,
+          user: own.user,
+          password: own.password,
+          from: own.fromName ? `"${own.fromName}" <${own.fromEmail}>` : own.fromEmail,
+        }
+      : null;
+    try {
+      await sendLoginCode(email, code, mine);
+    } catch (first) {
+      if (!mine || !loginMailConfigured()) throw first;
+      await sendLoginCode(email, code);
+    }
   } catch (error) {
     // Şifre/kod yazdırılmaz; yalnızca SMTP hata türü ve sunucu yanıtı.
     const e = error as { code?: string; responseCode?: number; message?: string };
