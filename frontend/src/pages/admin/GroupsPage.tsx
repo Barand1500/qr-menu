@@ -491,7 +491,7 @@ export default function GroupsPage() {
             <span>
               {groups.filter(matches).length} eşleşme
               {status !== 'all'
-                ? ` · ${status === 'active' ? 'Açık' : 'Gizli'}`
+                ? ` · ${status === 'active' ? 'Göster' : 'Gizle'}`
                 : ''}
               {kind !== 'all'
                 ? ` · ${kind === 'main' ? 'Ana gruplar' : 'Alt gruplar'}`

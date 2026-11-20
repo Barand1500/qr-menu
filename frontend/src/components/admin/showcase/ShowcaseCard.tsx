@@ -151,7 +151,6 @@ export default function ShowcaseCard({
             <VisibilityToggle
               checked={item.isActive}
               label={`${item.name} menüde göster`}
-              onText="Yayında"
               disabled={busy}
               onToggle={onToggle}
             />

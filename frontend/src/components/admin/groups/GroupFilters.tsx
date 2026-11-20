@@ -98,8 +98,8 @@ export default function GroupFilters({
             {(
               [
                 ['all', 'Tümü'],
-                ['active', 'Açık'],
-                ['passive', 'Gizli'],
+                ['active', 'Göster'],
+                ['passive', 'Gizle'],
               ] as const
             ).map(([value, label]) => (
               <button

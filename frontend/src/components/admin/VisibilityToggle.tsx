@@ -8,8 +8,8 @@ export default function VisibilityToggle({
   checked,
   onToggle,
   label,
-  onText = 'Açık',
-  offText = 'Gizli',
+  onText = 'Göster',
+  offText = 'Gizle',
   disabled,
   className = '',
 }: {
@@ -28,7 +28,7 @@ export default function VisibilityToggle({
       role="switch"
       aria-checked={checked}
       aria-label={label}
-      title={checked ? 'Kapatmak için dokunun' : 'Açmak için dokunun'}
+      title={checked ? 'Gizlemek için dokunun' : 'Göstermek için dokunun'}
       disabled={disabled}
       className={`vt${checked ? ' is-on' : ''} ${className}`.trim()}
       onClick={onToggle}
