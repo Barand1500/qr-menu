@@ -8,6 +8,7 @@ import AdminLayout from '@/layouts/AdminLayout';
 import DashboardPage from '@/pages/admin/DashboardPage';
 import GroupsPage from '@/pages/admin/GroupsPage';
 import ProductsPage from '@/pages/admin/ProductsPage';
+import PriceHistoryPage from '@/pages/admin/PriceHistoryPage';
 import ShowcasePage from '@/pages/admin/ShowcasePage';
 import BarcodePage from '@/pages/admin/BarcodePage';
 import StatsPage from '@/pages/admin/StatsPage';
@@ -62,6 +63,7 @@ function AdminRoutes({ slug }: { slug: string }) {
         <Route index element={<DashboardPage />} />
         <Route path="groups" element={<GroupsPage />} />
         <Route path="products" element={<ProductsPage />} />
+        <Route path="price-history" element={<PriceHistoryPage />} />
         <Route path="icerik-havuzu" element={<IngredientPoolPage />} />
         <Route path="saatlik-menu" element={<TimeMenuPage />} />
         <Route path="showcase" element={<ShowcasePage />} />

@@ -19,6 +19,7 @@ export default function GroupsDialog({
   children,
   className = '',
   anchor,
+  headerActions,
 }: {
   open: boolean;
   title: string;
@@ -28,6 +29,8 @@ export default function GroupsDialog({
   children: ReactNode;
   className?: string;
   anchor?: { x: number; y: number };
+  /** Başlık satırında kapatma düğmesinin yanına konan ek düğmeler */
+  headerActions?: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -102,15 +105,18 @@ export default function GroupsDialog({
             <h2 id={titleId}>{title}</h2>
             {subtitle && <p>{subtitle}</p>}
           </div>
-          <button
-            type="button"
-            className="ag-icon"
-            aria-label="Pencereyi kapat"
-            disabled={busy}
-            onClick={onClose}
-          >
-            <X size={20} />
-          </button>
+          <div className="ag-dialog__actions">
+            {headerActions}
+            <button
+              type="button"
+              className="ag-icon"
+              aria-label="Pencereyi kapat"
+              disabled={busy}
+              onClick={onClose}
+            >
+              <X size={20} />
+            </button>
+          </div>
         </header>
         <div className="ag-dialog__body" aria-busy={busy || undefined}>
           {children}

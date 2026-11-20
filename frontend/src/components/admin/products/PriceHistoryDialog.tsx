@@ -1,20 +1,16 @@
-import { useState } from 'react';
-import { ArrowRight, RotateCcw, Tags, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowRight, ChartLine, Maximize2, RotateCcw, Tags, Trash2 } from 'lucide-react';
 import GroupsDialog from '@/components/admin/groups/GroupsDialog';
 import { Button } from '@/components/ui';
 import { formatMoney } from '@/lib/api';
+import { adminPath } from '@/lib/adminPath';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import PriceHistoryExplorer from './PriceHistoryExplorer';
+import { formatWhen } from '@/lib/priceHistory';
 import type { PriceChange } from './types';
 
-/** "Bugün 14:32", "Dün 09:10" ya da "18 Kas 2026, 14:32". */
-export function formatWhen(iso: string, now = new Date()): string {
-  const date = new Date(iso);
-  const time = date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const diff = Math.round((day(now) - day(date)) / 86400000);
-  if (diff === 0) return `Bugün ${time}`;
-  if (diff === 1) return `Dün ${time}`;
-  return `${date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}, ${time}`;
-}
+export { formatWhen };
 
 type Pending = { id: number; action: 'restore' | 'delete' } | null;
 
@@ -40,6 +36,39 @@ export default function PriceHistoryDialog({
   onDelete: (id: number) => void;
 }) {
   const [pending, setPending] = useState<Pending>(null);
+  const navigate = useNavigate();
+  const wide = useMediaQuery('(min-width: 1100px)');
+  // Geniş ekranda grafik paneli açılır (tercih hatırlanır); telefonda "Grafik" sekmesi.
+  const [chartOpen, setChartOpen] = useState(false);
+  const [chartMounted, setChartMounted] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    let stored = '1';
+    try {
+      stored = localStorage.getItem('aph_chart_open') ?? '1';
+    } catch {
+      /* tercih okunamadı */
+    }
+    const next = wide ? stored !== '0' : false;
+    setChartOpen(next);
+    setChartMounted(next);
+  }, [open, wide]);
+  function toggleChart(next: boolean) {
+    setChartOpen(next);
+    if (next) setChartMounted(true);
+    if (wide) {
+      try {
+        localStorage.setItem('aph_chart_open', next ? '1' : '0');
+      } catch {
+        /* tercih kaydedilemedi */
+      }
+    }
+  }
+  const openFull = () => {
+    setPending(null);
+    onClose();
+    navigate(adminPath('price-history'));
+  };
 
   function confirmText(change: PriceChange, index: number) {
     if (pending?.action === 'delete') {
@@ -63,8 +92,34 @@ export default function PriceHistoryDialog({
         setPending(null);
         onClose();
       }}
-      className="ap-history"
+      className={`ap-history${chartOpen ? ' has-chart' : ''}`}
+      headerActions={
+        <>
+          <button
+            type="button"
+            className="aph-tool aph-tool--chart"
+            aria-pressed={chartOpen}
+            onClick={() => toggleChart(!chartOpen)}
+          >
+            <ChartLine size={17} aria-hidden="true" />
+            <span className="aph-tool__label">{chartOpen ? 'Grafiği kapat' : 'Grafik'}</span>
+          </button>
+          <button type="button" className="aph-tool aph-tool--icon" aria-label="Tam ekran fiyat geçmişi" title="Tam ekran" onClick={openFull}>
+            <Maximize2 size={17} aria-hidden="true" />
+          </button>
+        </>
+      }
     >
+      <div className="aph-split">
+      <div className="aph-tabs" role="tablist" aria-label="Görünüm">
+        <button type="button" role="tab" aria-selected={!chartOpen} onClick={() => toggleChart(false)}>
+          Değişiklikler
+        </button>
+        <button type="button" role="tab" aria-selected={chartOpen} onClick={() => toggleChart(true)}>
+          Ürün grafiği
+        </button>
+      </div>
+      <div className="aph-pane aph-pane--list">
       {error && (
         <p role="alert" className="ag-form-error">
           {error}
@@ -160,6 +215,11 @@ export default function PriceHistoryDialog({
           })}
         </ol>
       )}
+      </div>
+      <aside className="aph-pane aph-pane--chart" aria-label="Ürün fiyat grafiği" aria-hidden={!chartOpen}>
+        {chartMounted ? <PriceHistoryExplorer variant="side" onOpenFull={openFull} /> : null}
+      </aside>
+      </div>
     </GroupsDialog>
   );
 }

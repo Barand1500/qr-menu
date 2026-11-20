@@ -1,4 +1,12 @@
 import { Router } from 'express';
+import {
+  HISTORY_SORTS,
+  buildSeries,
+  sortSummaries,
+  summarizeProducts,
+  type HistoryRow,
+  type HistorySort,
+} from '../lib/price-series.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -227,7 +235,7 @@ router.get('/price-changes', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   await importLegacyPriceSnapshot(restaurantId!);
   const rows = await prisma.priceChange.findMany({
-    where: { restaurantId: restaurantId! },
+    where: { restaurantId: restaurantId!, kind: { in: ['bulk', 'restore'] } },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: PRICE_HISTORY_LIMIT,
   });
@@ -241,6 +249,101 @@ router.get('/price-changes', async (req, res) => {
       itemCount: c.itemCount,
       sample: c.sample,
     })),
+  });
+});
+
+// Ürün bazlı fiyat geçmişi: geçmişi olan ürünlerin özeti (arama, sıralama, sayfalama)
+router.get('/price-history/products', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const q = String(req.query.q || '').trim().toLocaleLowerCase('tr');
+  const sort = (HISTORY_SORTS as readonly string[]).includes(String(req.query.sort))
+    ? (String(req.query.sort) as HistorySort)
+    : 'recent';
+  const limit = Math.min(60, Math.max(1, Number(req.query.limit) || 30));
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+  const items = await prisma.priceChangeItem.findMany({
+    where: { change: { restaurantId: restaurantId! } },
+    select: {
+      productId: true,
+      productName: true,
+      oldPrice: true,
+      newPrice: true,
+      change: { select: { id: true, createdAt: true, kind: true, summary: true, userName: true } },
+    },
+  });
+  const rows: HistoryRow[] = items.map((i) => ({
+    productId: i.productId,
+    productName: i.productName,
+    oldPrice: Number(i.oldPrice),
+    newPrice: i.newPrice == null ? null : Number(i.newPrice),
+    changeId: i.change.id,
+    at: i.change.createdAt,
+    kind: i.change.kind,
+    summary: i.change.summary,
+    userName: i.change.userName,
+  }));
+  const ids = [...new Set(rows.map((r) => r.productId))];
+  const products = await prisma.product.findMany({
+    where: { restaurantId: restaurantId!, id: { in: ids } },
+    include: { currency: true },
+  });
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const summaries = summarizeProducts(rows, new Map(products.map((p) => [p.id, Number(p.price)])));
+  const named = summaries.map((s) => {
+    const p = byId.get(s.productId);
+    return {
+      ...s,
+      name: p ? getProductField(p.i18n, 'tr', 'name') || s.name : s.name,
+      imageUrl: p?.imageUrl ?? null,
+      symbol: p?.currency?.symbol ?? '₺',
+      currentPrice: p ? Number(p.price) : null,
+      exists: Boolean(p),
+    };
+  });
+  const filtered = q ? named.filter((p) => p.name.toLocaleLowerCase('tr').includes(q)) : named;
+  const sorted = sortSummaries(filtered, sort) as typeof filtered;
+  res.json({ total: sorted.length, products: sorted.slice(offset, offset + limit) });
+});
+
+router.get('/:id/price-history', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ message: 'Geçersiz ürün' });
+  const [product, items] = await Promise.all([
+    prisma.product.findFirst({ where: { id, restaurantId: restaurantId! }, include: { currency: true } }),
+    prisma.priceChangeItem.findMany({
+      where: { productId: id, change: { restaurantId: restaurantId! } },
+      select: {
+        productName: true,
+        oldPrice: true,
+        newPrice: true,
+        change: { select: { id: true, createdAt: true, kind: true, summary: true, userName: true } },
+      },
+    }),
+  ]);
+  const rows: HistoryRow[] = items.map((i) => ({
+    productId: id,
+    productName: i.productName,
+    oldPrice: Number(i.oldPrice),
+    newPrice: i.newPrice == null ? null : Number(i.newPrice),
+    changeId: i.change.id,
+    at: i.change.createdAt,
+    kind: i.change.kind,
+    summary: i.change.summary,
+    userName: i.change.userName,
+  }));
+  if (!product && !rows.length) return res.status(404).json({ message: 'Ürün bulunamadı' });
+  res.json({
+    product: {
+      id,
+      name: product ? getProductField(product.i18n, 'tr', 'name') || rows[0]?.productName : rows[0]?.productName,
+      imageUrl: product?.imageUrl ?? null,
+      symbol: product?.currency?.symbol ?? '₺',
+      currentPrice: product ? Number(product.price) : null,
+      createdAt: product?.createdAt?.toISOString() ?? null,
+      exists: Boolean(product),
+    },
+    points: buildSeries(rows, product ? Number(product.price) : null),
   });
 });
 
@@ -710,6 +813,31 @@ router.put('/:id', async (req, res) => {
     include: { group: true, currency: true },
   });
 
+  if (price !== undefined && Math.abs(Number(price) - Number(existing.price)) > 0.0001) {
+    try {
+      await recordPriceChange(prisma, {
+        restaurantId: restaurantId!,
+        userId: req.user?.userId ?? null,
+        userName: await actorName(req),
+        kind: 'manual',
+        summary: 'Elle düzenlendi',
+        createdAt: new Date(),
+        items: [
+          {
+            productId: id,
+            productName: getProductField(existing.i18n, 'tr', 'name') || 'Ürün',
+            oldPrice: Number(existing.price),
+            newPrice: Number(price),
+            oldOptionGroups: null,
+            symbol: product.currency?.symbol ?? '₺',
+          },
+        ],
+      });
+    } catch {
+      /* geçmiş kaydı düzenlemeyi engellemesin */
+    }
+  }
+
   if (groupChanged) {
     await compactProductSortOrders(existing.groupId);
     await compactProductSortOrders(nextGroupId);
@@ -1066,7 +1194,7 @@ async function recordPriceChange(
     restaurantId: number;
     userId: number | null;
     userName: string;
-    kind: 'bulk' | 'restore';
+    kind: 'bulk' | 'restore' | 'manual';
     summary: string;
     createdAt: Date;
     items: HistoryItemInput[];

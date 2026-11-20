@@ -12,6 +12,7 @@ import {
   Clock,
   Eye,
   EyeOff,
+  ChartLine,
   FolderOpen,
   History,
   Layers3,
@@ -1149,6 +1150,10 @@ export default function ProductsPage() {
               </span>
             </button>
           )}
+          <Link to={adminPath('price-history')}>
+            <ChartLine size={20} />
+            <span>Ürün fiyat grafikleri</span>
+          </Link>
           <Link to={adminPath('urun-secenekleri')}>
             <Layers3 size={20} />
             <span>Varyant ve seçenekler</span>

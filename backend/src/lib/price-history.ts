@@ -1,6 +1,6 @@
 import type { BulkPriceParams } from './bulk-price.js';
 
-export type PriceChangeKind = 'bulk' | 'restore';
+export type PriceChangeKind = 'bulk' | 'restore' | 'manual';
 
 /** Listede gösterilen kısa örnek: ilk birkaç ürünün eski → yeni fiyatı. */
 export type PriceChangeSample = {
