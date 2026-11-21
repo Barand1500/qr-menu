@@ -25,11 +25,11 @@ export function resolveTableContext() {
 
 export function formatTableServiceLabel(tableNumber: string, groupSlug?: string | null) {
   if (tableNumber === ADMIN_PREVIEW_TABLE) return 'Admin masası';
-  const group =
-    groupSlug && groupSlug !== ADMIN_PREVIEW_GROUP
-      ? ` · ${groupSlug.charAt(0).toUpperCase()}${groupSlug.slice(1)}`
-      : '';
-  return `Masa ${tableNumber}${group}`;
+  // Grup varsa "Bahçe 5" gibi, yoksa "Masa 5" yazılır.
+  if (groupSlug && groupSlug !== ADMIN_PREVIEW_GROUP) {
+    return `${groupSlug.charAt(0).toLocaleUpperCase('tr')}${groupSlug.slice(1)} ${tableNumber}`;
+  }
+  return `Masa ${tableNumber}`;
 }
 
 export function adminPreviewMenuUrl() {

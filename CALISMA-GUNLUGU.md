@@ -742,3 +742,7 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 ## 2026-11-21 — Üst çubuk: masa görünümü pasif, garson uygulaması kaldırıldı
 - AdminLayout üst çubuğunda masa görünümü düğmesi pasif "Yakında" yapıldı; garson uygulaması bağlantısı kaldırıldı. /garson ve masa sayfası rotalarına dokunulmadı.
 - Doğrulama: tsc geçti; ekran kontrolü yapılmadı.
+
+## 2026-11-21 — Masa etiketi biçimi
+- `formatTableServiceLabel`: grup varsa "Bahce 5", yoksa "Masa 5" (eskiden "Masa 5 · Bahce"). Admin önizleme masası "Admin masası" olarak kaldı.
+- Doğrulama: tsc geçti; ekranda denenmedi.
