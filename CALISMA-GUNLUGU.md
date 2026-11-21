@@ -733,3 +733,8 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Sepet kapalıyken: sepet sağlayıcısı kapanır; menüde "Sepete ekle/seç" düğmeleri, alttaki Sepet düğmesi ve ürün sayfasındaki sepet çubuğu/düğmesi görünmez (fiyat gösterilir). Varyant kapalıyken: ürün detayında seçenekler gizli, listeden ana fiyatla doğrudan eklenir (`hasOptions:false`).
 - Diğer temalar kendi "sepet/varyant" ayarlarını zaten tema modallarında taşıyor; onlara dokunulmadı.
 - Doğrulama: backend tsc, yeni `test:sofra-config` ve theme-settings testi; frontend tsc/build; Chrome fixture: Tema Ayarları anahtarları (1440/390, açık/koyu) ve dock sepet düğmesi açık/kapalı (mobil+web). Sofra menü listesi ve ürün sayfasının uçtan uca (gerçek menüyle) davranışı denenmedi.
+
+## 2026-11-21 — Mobil logo çerçevesi ve sepet teması
+- Amaç: mobil menüde logonun turuncu çerçevesini kaldırmak; sepeti beyaz yerine temaya uygun koyu renge almak.
+- Değişiklik: `.sh-mlogo` (sahne-menu.css) çerçeve/gölge kaldırıldı; `cart-slip.css` koyu Sofra paletine (kahverengi yüzey, turuncu-amber rozet ve onay düğmesi) çevrildi, animasyonlar korundu.
+- Doğrulama: tsc, vite build, rc-check (mobil/masaüstü) geçti; mobil ekran görüntüsü incelendi. Gerçek cihazda ve logo ekran görüntüsünde bakılmadı.
