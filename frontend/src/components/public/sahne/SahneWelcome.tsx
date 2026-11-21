@@ -541,6 +541,45 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
   const stage = useIntro(media.ready, still, counter);
   const photos = media.photos.length ? media.photos : [media.hero];
 
+  // Telefonda sayfa kaydırılınca (adres çubuğu gizlenince) altta/üstte beyaz boşluk çıkıyordu:
+  // karşılama açıkken sayfa kilitlenir ve arka plan karşılama rengine boyanır. Yönetim önizlemesinde yapılmaz.
+  useEffect(() => {
+    if (editing) return;
+    const el = root.current;
+    if (!el) return;
+    const bg = getComputedStyle(el).backgroundColor;
+    const html = document.documentElement;
+    const body = document.body;
+    const saved = {
+      htmlBg: html.style.backgroundColor,
+      htmlOverflow: html.style.overflow,
+      htmlOverscroll: html.style.overscrollBehavior,
+      bodyBg: body.style.backgroundColor,
+      bodyPosition: body.style.position,
+      bodyInset: body.style.inset,
+      bodyWidth: body.style.width,
+      bodyOverscroll: body.style.overscrollBehavior,
+    };
+    html.style.backgroundColor = bg;
+    html.style.overflow = 'hidden';
+    html.style.overscrollBehavior = 'none';
+    body.style.backgroundColor = bg;
+    body.style.position = 'fixed';
+    body.style.inset = '0';
+    body.style.width = '100%';
+    body.style.overscrollBehavior = 'none';
+    return () => {
+      html.style.backgroundColor = saved.htmlBg;
+      html.style.overflow = saved.htmlOverflow;
+      html.style.overscrollBehavior = saved.htmlOverscroll;
+      body.style.backgroundColor = saved.bodyBg;
+      body.style.position = saved.bodyPosition;
+      body.style.inset = saved.bodyInset;
+      body.style.width = saved.bodyWidth;
+      body.style.overscrollBehavior = saved.bodyOverscroll;
+    };
+  }, [editing]);
+
   // Desktop: the fan of photos leans a little toward the pointer.
   useEffect(() => {
     const node = root.current,

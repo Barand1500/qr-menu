@@ -1635,9 +1635,29 @@ body {
 
 .public-social {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
+  max-width: 100%;
   gap: 0.45rem;
+  padding-block: 10px; /* gölge kesilmesin */
+  margin-block: -6px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.public-social::-webkit-scrollbar {
+  display: none;
+}
+.public-social > * {
+  flex: none;
+}
+/* ortalar; sığmayacak kadar çoksa soldan başlayıp yana kayar */
+.public-social > :first-child {
+  margin-inline-start: auto;
+}
+.public-social > :last-child {
+  margin-inline-end: auto;
 }
 
 .public-social__btn {

@@ -271,6 +271,15 @@ export function SahneLanguage({
 }) {
   const ref = useRef<HTMLDetailsElement>(null);
   const close = () => ref.current?.removeAttribute('open');
+  // Dışarı dokunulunca kapat. iPhone Safari'de dokunulan düğme odak almadığı için onBlur ile kapatmak,
+  // dil seçeneğine dokunulduğunda listeyi tıklama tamamlanmadan kapatıp seçimi engelliyordu.
+  useEffect(() => {
+    const outside = (e: PointerEvent) => {
+      if (ref.current?.open && !ref.current.contains(e.target as Node)) close();
+    };
+    document.addEventListener('pointerdown', outside);
+    return () => document.removeEventListener('pointerdown', outside);
+  }, []);
   if (languages.length < 2) return null;
   return (
     <details
@@ -280,9 +289,6 @@ export function SahneLanguage({
         if (e.key !== 'Escape') return;
         close();
         ref.current?.querySelector('summary')?.focus();
-      }}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget)) close();
       }}
     >
       <summary aria-label="Dil / Language">

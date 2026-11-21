@@ -901,3 +901,23 @@
     transition: none !important;
   }
 }
+
+/* Alt şerit: araçlar, sosyal simgeler ve imza ortada, alt alta */
+.sh-interlude__foot {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 14px;
+}
+.sh-interlude__foot .sh-interlude__tools {
+  flex: none;
+  justify-content: center;
+}
+.sh-interlude__foot .public-social {
+  width: 100%;
+  flex-wrap: nowrap;
+}
+.sh-interlude__signature {
+  margin-inline: auto;
+  text-align: center;
+}

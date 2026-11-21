@@ -298,7 +298,8 @@
 .sh-welcome {
   display: flex;
   flex-direction: column;
-  height: 100svh;
+  height: 100vh;
+  height: 100dvh;
   min-height: 540px;
   overflow: hidden;
   isolation: isolate;
@@ -1252,8 +1253,10 @@
   scale: 0.98;
 }
 .sh-tray.is-open .sh-tray__toggle {
-  background: var(--sh-text);
-  color: var(--sh-bg);
+  background: #18130ff2;
+  border-color: var(--sh-accent);
+  color: var(--sh-accent-2);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sh-accent) 40%, transparent), 0 14px 34px #00000080;
 }
 .sh-tray__icons {
   display: flex;
@@ -1395,4 +1398,10 @@
     opacity: 0;
     transform: translateY(46px) scale(0.7);
   }
+}
+
+/* Karşılama alt köşesindeki sosyal simgeler de ortalı, çoksa yana kayar */
+.sh-tray__panel .public-social,
+.sh-foot__links .public-social {
+  flex-wrap: nowrap;
 }

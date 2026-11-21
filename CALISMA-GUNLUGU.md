@@ -713,3 +713,10 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Resim kırpma ayarı baştan: geniş ekranda solda yapışkan canlı önizleme + sağda sıkı denetimler; telefonda önizleme üstte yapışık, denetimler tek sütun; kaydet çubuğu içeriğin altında yapışık. Önizleme çerçeveleri sabit boyda (taşma hatası giderildi).
 - Sepet/sipariş: sipariş onayında ayrı "Çağrın alındı" kartı artık fiş yazıcısının üstüne binmiyor (`notifyWaiterCalled` `silent`); aynı sipariş zaten iletilmişse yazıcı ekranı "Siparişin zaten iletilmişti" der.
 - Doğrulama: backend tsc + price-series testi; frontend tsc/build; Chrome fixture (sahte API) 1440/390, açık/koyu: fiyat geçmişi (pano, ayrıntı, kapatma), resim kırpma, entegrasyonlar. Gerçek veriyle ve gerçek telefonla denenmedi.
+
+## 2026-11-21 — Karşılama/menü düzeltmeleri (iPhone)
+- Dil seçimi iPhone'da çalışmıyordu: `SahneLanguage` listesi `onBlur` ile kapanıyordu; Safari/iOS dokunulan düğmeye odak vermediği için liste, dokunuş tamamlanmadan kapanıp seçimi engelliyordu. Artık dışarı dokunuşta (`pointerdown`) kapanır.
+- Karşılama ekranı: açıkken sayfa kilitlenir (html/body kaydırması kapalı, arka plan karşılama rengine boyanır), yükseklik `100dvh`; kaydırınca çıkan beyaz boşluk kalktı. Yönetim önizlemesinde uygulanmaz.
+- "Kapat" düğmesi (alt tepsi açıkken): krem yerine koyu cam + turuncu çerçeve/yazı.
+- Sosyal simgeler (`.public-social`): ortalı, çoksa yana kayar; "Diğer" panelinin alt şeridinde araçlar, simgeler ve imza ortalı alt alta.
+- Doğrulama: tsc/build temiz; Chrome (telefon boyutu) ile dil seçimi, dışarı dokunuşla kapanma, simge ortalama/kayma, karşılama kilidi ve renk. Gerçek iPhone/Safari'de denenmedi (sorunun nedeni kodla bulundu, cihazda doğrulanmalı).
