@@ -746,3 +746,8 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 ## 2026-11-21 — Masa etiketi biçimi
 - `formatTableServiceLabel`: grup varsa "Bahce 5", yoksa "Masa 5" (eskiden "Masa 5 · Bahce"). Admin önizleme masası "Admin masası" olarak kaldı.
 - Doğrulama: tsc geçti; ekranda denenmedi.
+
+## 2026-11-21 — Müşteri masa kodu ekranı yenilendi
+- Mavi eski tasarım yerine Sofra koyu-sıcak tema; telefonda alttan açılan sayfa, geniş ekranda ortada kart; 6 kutucuklu kod girişi (8 haneye kadar uzar); hata sallanması.
+- Arka plana tıklayınca kapanma kaldırıldı; X veya Escape ile kapanır, doğrulama sürerken kapanmaz.
+- Doğrulama: tsc, vite build, Chrome fixture (390 ve 1280): taşma yok, dış tık kapatmıyor, Escape kapatıyor. Gerçek sunucuyla kod doğrulama ve gerçek telefon denenmedi.

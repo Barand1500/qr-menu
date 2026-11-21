@@ -181,6 +181,16 @@ export default function TableSessionCodeGate({ slug, masa, grup, children }: Pro
     });
   }, [active, slug, table, group, verified]);
 
+  useEffect(() => {
+    if (!modalOpen || success || busy) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeModal(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalOpen, success, busy]);
+
   function closeModal(ok: boolean) {
     setModalOpen(false);
     setSuccess(false);
@@ -231,23 +241,15 @@ export default function TableSessionCodeGate({ slug, masa, grup, children }: Pro
       {children}
       {modalOpen ? (
         <div className="table-code-gate table-code-gate--modal" role="dialog" aria-modal="true">
-          <button
-            type="button"
-            className="table-code-gate__scrim"
-            aria-label="Kapat"
-            onClick={() => {
-              if (!success) closeModal(false);
-            }}
-          />
-          <div
-            className={`table-code-gate__card${success ? ' is-success' : ''}`}
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="table-code-gate__scrim" aria-hidden="true" />
+          <div className={`table-code-gate__card${success ? ' is-success' : ''}`}>
+            <span className="table-code-gate__grip" aria-hidden="true" />
             {!success ? (
               <button
                 type="button"
                 className="table-code-gate__close"
                 aria-label="Kapat"
+                disabled={busy}
                 onClick={() => closeModal(false)}
               >
                 <X className="w-5 h-5" />
@@ -280,18 +282,31 @@ export default function TableSessionCodeGate({ slug, masa, grup, children }: Pro
                 </div>
                 <form onSubmit={(e) => void submit(e)} className="table-code-gate__form">
                   <label htmlFor="table-access-code-modal">Erişim kodu</label>
-                  <input
-                    id="table-access-code-modal"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    autoFocus
-                    maxLength={8}
-                    placeholder="••••••"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                    disabled={busy}
-                  />
-                  {error ? <p className="table-code-gate__error">{error}</p> : null}
+                  <div className={`table-code-gate__cells${error ? ' has-error' : ''}`}>
+                    {Array.from({ length: Math.max(6, code.length) }, (_, i) => (
+                      <span
+                        key={i}
+                        className={`table-code-gate__cell${code[i] ? ' is-filled' : ''}${i === code.length ? ' is-current' : ''}`}
+                        aria-hidden="true"
+                      >
+                        {code[i] || ''}
+                      </span>
+                    ))}
+                    <input
+                      id="table-access-code-modal"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      autoFocus
+                      maxLength={8}
+                      value={code}
+                      onChange={(e) => {
+                        setError('');
+                        setCode(e.target.value.replace(/D/g, '').slice(0, 8));
+                      }}
+                      disabled={busy}
+                    />
+                  </div>
+                  {error ? <p className="table-code-gate__error" role="alert">{error}</p> : null}
                   <button type="submit" disabled={busy || code.length < 4}>
                     {busy ? 'Kontrol…' : 'Onayla ve devam et'}
                   </button>
