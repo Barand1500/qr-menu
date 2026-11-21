@@ -8,7 +8,6 @@ import {
   Puzzle,
   Armchair,
   Construction,
-  Smartphone,
   LayoutDashboard,
   UtensilsCrossed,
   Layers,
@@ -527,24 +526,17 @@ export default function AdminLayout() {
 
             <button
               type="button"
-              onClick={() => navigate(adminPath('masa-gorunumu'))}
+              disabled
               data-tour="header-floor"
-              className="p-2 rounded-lg hover:bg-[var(--admin-accent-soft)] transition"
-              title="Masa görünümü"
+              className="flex items-center gap-1.5 p-2 rounded-lg opacity-60 cursor-not-allowed"
+              title="Masa görünümü — yakında"
+              aria-label="Masa görünümü, yakında"
             >
-              <Armchair className="w-[18px] h-[18px]" style={{ color: 'var(--admin-accent)' }} />
+              <Armchair className="w-[18px] h-[18px]" style={{ color: 'var(--admin-text-muted)' }} />
+              <span className="hidden sm:inline text-[11px] font-semibold" style={{ color: 'var(--admin-text-muted)' }}>
+                Yakında
+              </span>
             </button>
-
-            <a
-              href="/garson"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 rounded-lg hover:bg-[var(--admin-accent-soft)] transition"
-              title="Garson uygulaması (ana ekrana ekle)"
-              aria-label="Garson uygulaması"
-            >
-              <Smartphone className="w-[18px] h-[18px]" style={{ color: 'var(--admin-accent)' }} />
-            </a>
 
             {!import.meta.env.PROD && (
               <button

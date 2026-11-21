@@ -738,3 +738,7 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Amaç: mobil menüde logonun turuncu çerçevesini kaldırmak; sepeti beyaz yerine temaya uygun koyu renge almak.
 - Değişiklik: `.sh-mlogo` (sahne-menu.css) çerçeve/gölge kaldırıldı; `cart-slip.css` koyu Sofra paletine (kahverengi yüzey, turuncu-amber rozet ve onay düğmesi) çevrildi, animasyonlar korundu.
 - Doğrulama: tsc, vite build, rc-check (mobil/masaüstü) geçti; mobil ekran görüntüsü incelendi. Gerçek cihazda ve logo ekran görüntüsünde bakılmadı.
+
+## 2026-11-21 — Üst çubuk: masa görünümü pasif, garson uygulaması kaldırıldı
+- AdminLayout üst çubuğunda masa görünümü düğmesi pasif "Yakında" yapıldı; garson uygulaması bağlantısı kaldırıldı. /garson ve masa sayfası rotalarına dokunulmadı.
+- Doğrulama: tsc geçti; ekran kontrolü yapılmadı.
