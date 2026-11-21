@@ -720,3 +720,16 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - "Kapat" düğmesi (alt tepsi açıkken): krem yerine koyu cam + turuncu çerçeve/yazı.
 - Sosyal simgeler (`.public-social`): ortalı, çoksa yana kayar; "Diğer" panelinin alt şeridinde araçlar, simgeler ve imza ortalı alt alta.
 - Doğrulama: tsc/build temiz; Chrome (telefon boyutu) ile dil seçimi, dışarı dokunuşla kapanma, simge ortalama/kayma, karşılama kilidi ve renk. Gerçek iPhone/Safari'de denenmedi (sorunun nedeni kodla bulundu, cihazda doğrulanmalı).
+
+## 2026-11-21 — Karşılama müziği
+- iPhone/Safari yalnızca tıklama/touchend/tuş gibi tamamlanmış hareketi ses izni sayar; eski kod yalnızca `pointerdown` dinliyordu, bu yüzden müzik ilk dokunuşta başlamıyordu. Artık `click`, `touchend`, `pointerup`, `keydown` ile, müzik başlayana kadar her harekette yeniden denenir.
+- Müzik başlayınca ses sessizden hedef seviyeye (0.28) yumuşakça yükselir.
+- Tarayıcı izin vermediyse müzik düğmesi nabız atar ve altında "Müziği başlat" ipucu çıkar (`music.blocked`).
+- Doğrulama: tsc/build temiz; Chrome (telefon + masaüstü) ile ipucu ve nabız. Gerçek ses çalma ve iPhone/Safari'de denenmedi (tarayıcı izin politikasına bağlı).
+
+## 2026-11-21 — Ürün detayında işletme adı kalktı; Sofra'ya Sepet ve Varyant anahtarları
+- Ürün detay (SiparisProductPage) üst çubuğundaki işletme adı (mobilde "CHEF") kaldırıldı; eylem düğmeleri sağa yaslı.
+- Sofra tema ayarına (`SofraConfig`) iki alan: `cartEnabled`, `variantsEnabled` (varsayılan AÇIK; eski kayıtlar değişmez). Yönetim > Tema Ayarları > sağ panelde "Sepet" ve "Varyantlar" Göster/Gizle anahtarları (kaydetmeden yayınlanmaz).
+- Sepet kapalıyken: sepet sağlayıcısı kapanır; menüde "Sepete ekle/seç" düğmeleri, alttaki Sepet düğmesi ve ürün sayfasındaki sepet çubuğu/düğmesi görünmez (fiyat gösterilir). Varyant kapalıyken: ürün detayında seçenekler gizli, listeden ana fiyatla doğrudan eklenir (`hasOptions:false`).
+- Diğer temalar kendi "sepet/varyant" ayarlarını zaten tema modallarında taşıyor; onlara dokunulmadı.
+- Doğrulama: backend tsc, yeni `test:sofra-config` ve theme-settings testi; frontend tsc/build; Chrome fixture: Tema Ayarları anahtarları (1440/390, açık/koyu) ve dock sepet düğmesi açık/kapalı (mobil+web). Sofra menü listesi ve ürün sayfasının uçtan uca (gerçek menüyle) davranışı denenmedi.

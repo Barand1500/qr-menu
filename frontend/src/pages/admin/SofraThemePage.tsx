@@ -11,7 +11,10 @@ import {
   Salad,
   Lightbulb,
   MessageCircleHeart,
+  ListChecks,
+  ShoppingBag,
 } from 'lucide-react';
+import VisibilityToggle from '@/components/admin/VisibilityToggle';
 import { Button, Input, PageHeader, Spinner } from '@/components/ui';
 import { api } from '@/lib/api';
 import {
@@ -683,6 +686,38 @@ export default function SofraThemePage() {
                   : 'Yedek menü fotoğrafı'}
               </button>
             )}
+          </div>
+          <div className="sofra-options" role="group" aria-label="Menü seçenekleri">
+            <div className="sofra-options__row">
+              <span className="sofra-options__icon" aria-hidden="true">
+                <ShoppingBag size={18} />
+              </span>
+              <div>
+                <strong>Sepet</strong>
+                <small>Kapalıyken “Sepete ekle”, sepet düğmesi ve sipariş akışı menüde görünmez.</small>
+              </div>
+              <VisibilityToggle
+                checked={draft.cartEnabled}
+                label="Sepet menüde görünsün"
+                disabled={saving}
+                onToggle={() => setDraft((prev) => ({ ...prev, cartEnabled: !prev.cartEnabled }))}
+              />
+            </div>
+            <div className="sofra-options__row">
+              <span className="sofra-options__icon" aria-hidden="true">
+                <ListChecks size={18} />
+              </span>
+              <div>
+                <strong>Varyantlar</strong>
+                <small>Kapalıyken ürünlerin seçenekleri (boyut, ekstra vb.) gizlenir; ürün ana fiyatıyla eklenir.</small>
+              </div>
+              <VisibilityToggle
+                checked={draft.variantsEnabled}
+                label="Varyantlar menüde görünsün"
+                disabled={saving}
+                onToggle={() => setDraft((prev) => ({ ...prev, variantsEnabled: !prev.variantsEnabled }))}
+              />
+            </div>
           </div>
           <p className="sofra-editor-note">
             Değişiklikler Kaydet dediğinizde yayınlanır. Ürün adları ve fiyatlar

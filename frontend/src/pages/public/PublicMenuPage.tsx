@@ -826,17 +826,20 @@ function PublicMenuPageInner({
     const config = normalizeSofraConfig(menu.sofra);
     const en = lang.split('-')[0] === 'en';
     const selectedId = groupId ? Number(groupId) : null;
-    const rows: SofraProduct[] = search.trim()
+    const sofraRows: SofraProduct[] = search.trim()
       ? filteredSearchResults
       : selectedId != null
         ? filteredGroupProducts
         : filteredPopular;
+    // Varyantlar kapalıysa ürünler seçenek istemez: listeden doğrudan ana fiyatla eklenir.
+    const rows: SofraProduct[] = config.variantsEnabled ? sofraRows : sofraRows.map((r) => ({ ...r, hasOptions: false }));
     return (
       <SahneNavProvider>
-      <SiparisCartProvider slug={slug} enabled>
+      <SiparisCartProvider slug={slug} enabled={config.cartEnabled}>
         <div className="sofra-public-shell" data-theme-menu="sofra">
           {tab === 'home' ? (
             <SofraLiveMenu
+              cartEnabled={config.cartEnabled}
               config={config}
               lang={lang}
               menu={menu}
@@ -1334,11 +1337,12 @@ function PublicMenuPageInner({
 
 function SofraLiveMenu({
   menu,
+  cartEnabled = true,
   ...props
 }: Omit<
   ComponentProps<typeof SofraMenuView>,
   'restaurant' | 'groups' | 'onProductOpen' | 'onAdd'
-> & { menu: MenuData }) {
+> & { menu: MenuData; cartEnabled?: boolean }) {
   const navigate = useNavigate();
   const { addItem } = useSiparisCart();
   return (
@@ -1347,23 +1351,30 @@ function SofraLiveMenu({
       restaurant={menu.restaurant}
       groups={menu.groups}
       onProductOpen={(id) => navigate(menuProductPath(id))}
-      onAdd={(p, from) => {
-        if (p.soldOut) return;
-        if (p.hasOptions !== false) {
-          navigate(menuProductPath(p.id));
-          return;
-        }
-        addItem({
-          productId: p.id,
-          name: p.name,
-          price: p.price,
-          currency: p.currency
-            ? { code: p.currency.code || undefined, symbol: p.currency.symbol || undefined }
-            : null,
-          imageUrl: p.imageUrl,
-          calories: p.calories,
-        }, { fromEl: from });
-      }}
+      onAdd={
+        cartEnabled
+          ? (p, from) => {
+              if (p.soldOut) return;
+              if (p.hasOptions !== false) {
+                navigate(menuProductPath(p.id));
+                return;
+              }
+              addItem(
+                {
+                  productId: p.id,
+                  name: p.name,
+                  price: p.price,
+                  currency: p.currency
+                    ? { code: p.currency.code || undefined, symbol: p.currency.symbol || undefined }
+                    : null,
+                  imageUrl: p.imageUrl,
+                  calories: p.calories,
+                },
+                { fromEl: from },
+              );
+            }
+          : undefined
+      }
     />
   );
 }

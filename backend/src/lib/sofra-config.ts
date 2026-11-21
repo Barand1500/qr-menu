@@ -17,6 +17,10 @@ export interface SofraConfig {
   openingHours: string;
   welcomeImage: string;
   menuImage: string;
+  /** Menüde sepet (Sepete ekle, sepet düğmesi) gösterilsin mi */
+  cartEnabled: boolean;
+  /** Ürün detayında varyant/seçenekler gösterilsin mi */
+  variantsEnabled: boolean;
   texts: Record<string, Partial<SofraCopy>>;
 }
 export const SOFRA_DEFAULTS: SofraConfig = {
@@ -24,6 +28,8 @@ export const SOFRA_DEFAULTS: SofraConfig = {
   openingHours: '',
   welcomeImage: '/sofra/breakfast.webp',
   menuImage: '/sofra/breakfast.webp',
+  cartEnabled: true,
+  variantsEnabled: true,
   texts: {
     tr: {
       welcomeTitle: 'İyi yemek.\nGüzel sohbet.',
@@ -90,6 +96,9 @@ export function normalizeSofraConfig(raw: unknown): SofraConfig {
     openingHours: text(source.openingHours, '', 150),
     welcomeImage: image(source.welcomeImage, SOFRA_DEFAULTS.welcomeImage),
     menuImage: image(source.menuImage, SOFRA_DEFAULTS.menuImage),
+    // Eski kayıtlarda alan yok: açık sayılır. Yalnızca açıkça false ise kapanır.
+    cartEnabled: source.cartEnabled !== false,
+    variantsEnabled: source.variantsEnabled !== false,
     texts,
   };
 }

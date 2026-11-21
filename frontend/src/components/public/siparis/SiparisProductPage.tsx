@@ -154,7 +154,6 @@ export default function SiparisProductPage({
         <button type="button" className="pd-glass pd-top__back" onClick={onBack} aria-label="Geri">
           <ArrowLeft size={20} />
         </button>
-        <p className="pd-top__brand">{product.restaurant.name}</p>
         <div className="pd-glass pd-top__actions">
           {showCart ? <SiparisCartButton alwaysShow /> : null}
           {!hideColorToggle && (

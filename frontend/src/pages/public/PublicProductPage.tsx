@@ -370,8 +370,10 @@ function PublicProductPageInner() {
   }
 
   if (theme === 'sofra') {
+    const sofraCart = product.sofra?.cartEnabled !== false;
+    const sofraVariants = product.sofra?.variantsEnabled !== false;
     return (
-      <SiparisCartProvider slug={slug} enabled>
+      <SiparisCartProvider slug={slug} enabled={sofraCart}>
         <div className="sofra-public-shell public-product-page" data-theme-menu="sofra">
           <SiparisProductPage
             key={product.id}
@@ -381,7 +383,7 @@ function PublicProductPageInner() {
                 ...product.restaurant,
                 name: product.sofra?.brandName || product.restaurant.name,
               },
-              menuFeatures: { ...product.menuFeatures, siparisCart: true, siparisVariants: true },
+              menuFeatures: { ...product.menuFeatures, siparisCart: sofraCart, siparisVariants: sofraVariants },
             }}
             related={related}
             galleryImages={galleryImages}

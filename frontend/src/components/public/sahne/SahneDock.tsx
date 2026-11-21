@@ -24,7 +24,7 @@ export default function SahneDock({
   onCategories?: () => void;
   service?: ReactNode;
 }) {
-  const { count, setSheetOpen } = useSiparisCart();
+  const { count, setSheetOpen, enabled: cartOn } = useSiparisCart();
   const nav = useSahneNav();
   const ref = useRef<HTMLElement>(null);
   const mobile = useMedia(ref, MOBILE_QUERY);
@@ -114,7 +114,7 @@ export default function SahneDock({
             <span>{en ? 'Categories' : 'Kategoriler'}</span>
           </button>
           {waiter}
-          {cart}
+          {cartOn ? cart : null}
           {more}
         </>
       ) : (
@@ -137,7 +137,7 @@ export default function SahneDock({
             </button>
           )}
           {waiter}
-          {cart}
+          {cartOn ? cart : null}
         </>
       )}
     </nav>
