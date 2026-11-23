@@ -130,15 +130,33 @@
   display: flex;
   flex-direction: column;
   flex: none;
-  gap: 18px;
+  align-self: flex-start;
   width: 236px;
+  will-change: transform;
   animation: rv-up var(--d, 48s) linear infinite;
+  animation-delay: var(--delay, 0s);
 }
 .rv-wall__col.is-reverse {
   animation-direction: reverse;
 }
+.rv-wall__group {
+  display: grid;
+  grid-auto-rows: max(148px, 18vh);
+  gap: 18px;
+  padding-bottom: 18px;
+}
 .rv-wall .rv-card {
-  flex: none;
+  box-sizing: border-box;
+  align-content: start;
+  overflow: hidden;
+  /* Only four moving layers; repeated background cards do not need live blur. */
+  backdrop-filter: none;
+}
+.rv-wall .rv-card blockquote {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 .rv-wall__fade {
   position: absolute;
@@ -174,7 +192,7 @@
 }
 @keyframes rv-up {
   to {
-    transform: translateY(calc(-50% - 9px));
+    transform: translate3d(0, -50%, 0);
   }
 }
 
@@ -289,5 +307,6 @@
   .rv-wall__col,
   .rv-ticker__quote {
     animation: none;
+    will-change: auto;
   }
 }
