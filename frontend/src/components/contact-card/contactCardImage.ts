@@ -7,6 +7,7 @@ type Options = {
   card: ContactCardConfig;
   name: string;
   logoUrl: string | null;
+  photoUrl: string | null;
   layout: ContactCardLayout;
   number: string;
   copy: ContactCardCopy;
@@ -70,7 +71,7 @@ export async function renderContactCardImage(o: Options): Promise<Blob> {
   const landscape = o.layout === 'landscape';
   const W = landscape ? 1600 : 1020;
   const hasMap = typeof card.lat === 'number' && typeof card.lng === 'number';
-  const H = landscape ? 1010 : hasMap ? 1790 : 1590;
+  const H = landscape ? (hasMap ? 1120 : 1010) : hasMap ? 1990 : 1590;
   const P = 64;
   const canvas = document.createElement('canvas');
   canvas.width = W;
@@ -80,6 +81,7 @@ export async function renderContactCardImage(o: Options): Promise<Blob> {
 
   await (document.fonts?.ready ?? Promise.resolve());
   const logo = o.logoUrl ? await loadImage(o.logoUrl) : null;
+  const photo = o.photoUrl ? await loadImage(o.photoUrl) : null;
   const mapTiles = hasMap ? await loadMapTiles(card.lat as number, card.lng as number) : null;
 
   // zemin
@@ -169,13 +171,37 @@ export async function renderContactCardImage(o: Options): Promise<Blob> {
   }
   y += logoSize + 56;
 
-  // yönetici
+  // yönetici + fotoğraf
+  const coverDraw = (img: HTMLImageElement, x: number, yy: number, w: number, h: number, r: number) => {
+    ctx.save();
+    roundRect(ctx, x, yy, w, h, r);
+    ctx.clip();
+    const k = Math.max(w / img.width, h / img.height);
+    ctx.drawImage(img, x + (w - img.width * k) / 2, yy + (h - img.height * k) / 2, img.width * k, img.height * k);
+    ctx.restore();
+    roundRect(ctx, x, yy, w, h, r);
+    ctx.strokeStyle = palette.light ? '#00000026' : '#ffffff2e';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  };
+  let nameW = colW;
+  if (photo && !landscape) {
+    const pw = 132;
+    const ph = 166;
+    coverDraw(photo, W - P - pw, y - 24, pw, ph, 26);
+    nameW = colW - pw - 30;
+  }
   if (card.managerName) {
     label(card.managerTitle ? `${t.manager} · ${card.managerTitle}` : t.manager, P, y, 22);
     ctx.font = `800 52px ${SANS}`;
     ctx.fillStyle = palette.ink;
-    ctx.fillText(wrap(ctx, card.managerName, colW, 1)[0], P, y + 58);
-    y += 112;
+    ctx.fillText(wrap(ctx, card.managerName, nameW, 1)[0], P, y + 58);
+  }
+  if (card.managerName || (photo && !landscape)) y += photo && !landscape ? 172 : 112;
+  if (photo && landscape) {
+    const signTop = H - P - 220;
+    const ph = signTop - (y + 6) - 26;
+    if (ph > 110) coverDraw(photo, P, y + 6, colW, ph, 28);
   }
 
   // alanlar
@@ -187,6 +213,9 @@ export async function renderContactCardImage(o: Options): Promise<Blob> {
     [t.address, card.address || card.placeLabel],
     [t.hours, card.hours],
   ].filter((r) => r[1]);
+  // Harita varsa çalışma saatleri haritanın altında çizilir
+  const tailRows = mapTiles ? rows.filter((r) => r[0] === t.hours) : [];
+  const mainRows = mapTiles ? rows.filter((r) => r[0] !== t.hours) : rows;
   let fx = P;
   let fy = y;
   let fw = colW;
@@ -211,14 +240,14 @@ export async function renderContactCardImage(o: Options): Promise<Blob> {
     ctx.stroke();
     ctx.setLineDash([]);
   }
-  for (const [idx, [name, value]] of rows.entries()) {
+  const drawRow = (name: string, value: string, isLast: boolean) => {
     label(name, fx, fy + 22, 21);
     ctx.font = `600 ${landscape ? 38 : 40}px ${SANS}`;
     ctx.fillStyle = palette.ink;
     const lines = wrap(ctx, value, fw, name === t.address ? 2 : 1);
     lines.forEach((line, i) => ctx.fillText(line, fx, fy + 66 + i * 46));
     let extra = 0;
-    if (idx === rows.length - 1 && card.address && card.placeLabel) {
+    if (isLast && card.address && card.placeLabel) {
       ctx.font = `500 28px ${SANS}`;
       ctx.fillStyle = palette.muted;
       const sub = wrap(ctx, card.placeLabel, fw, 2);
@@ -226,7 +255,9 @@ export async function renderContactCardImage(o: Options): Promise<Blob> {
       extra = sub.length * 36 + 4;
     }
     fy += 98 + (lines.length - 1) * 46 + extra;
-  }
+  };
+  const lastOverall = tailRows.length ? -1 : mainRows.length - 1;
+  mainRows.forEach(([name, value], idx) => drawRow(name, value, idx === lastOverall));
 
   // küçük harita
   if (mapTiles) {
@@ -265,6 +296,8 @@ export async function renderContactCardImage(o: Options): Promise<Blob> {
     ctx.textAlign = 'right';
     ctx.fillText('© OpenStreetMap', mx + mw - 14, my + mh - 12);
     ctx.textAlign = 'left';
+    fy = my + mh + 22;
+    tailRows.forEach(([name, value]) => drawRow(name, value, true));
   }
 
   // imza alanı

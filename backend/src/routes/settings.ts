@@ -218,6 +218,15 @@ router.get('/contact-card', async (req, res) => {
   res.json({ card: parseContactCard(row?.value), restaurant });
 });
 
+router.post('/contact-card/photo', upload.single('photo'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'Fotoğraf gerekli' });
+  if (!req.file.mimetype.startsWith('image/')) {
+    await fs.promises.unlink(req.file.path).catch(() => undefined);
+    return res.status(400).json({ message: 'Yalnızca resim yüklenebilir' });
+  }
+  res.json({ url: `/uploads/${req.file.filename}` });
+});
+
 router.put('/contact-card', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
   const card = normalizeContactCard((req.body as { card?: unknown } | undefined)?.card);

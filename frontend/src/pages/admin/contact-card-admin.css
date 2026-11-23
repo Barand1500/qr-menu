@@ -417,3 +417,79 @@
   background: transparent;
   border: 1px solid var(--admin-card-border);
 }
+
+/* fotoğraf yükleme */
+.ccp__photo {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+.ccp__photo-thumb {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 90px;
+  overflow: hidden;
+  color: var(--admin-text-muted);
+  background: var(--admin-accent-soft);
+  border: 1.5px dashed var(--admin-card-border);
+  border-radius: 14px;
+}
+.ccp__photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ccp__photo strong {
+  display: block;
+  color: var(--admin-text);
+  font-size: 13px;
+}
+.ccp__photo small {
+  display: block;
+  margin-top: 2px;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.ccp__photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.ccp__photo-btn,
+.ccp__photo-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  color: var(--admin-text);
+  font: 600 13px/1 inherit;
+  background: transparent;
+  border: 1px solid var(--admin-card-border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.ccp__photo-btn {
+  position: relative;
+  color: var(--admin-btn-primary-text, #fff);
+  background: var(--admin-accent);
+  border-color: transparent;
+}
+.ccp__photo-btn.is-disabled,
+.ccp__photo-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ccp__photo-btn input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.ccp__photo-btn.is-disabled input {
+  cursor: not-allowed;
+}

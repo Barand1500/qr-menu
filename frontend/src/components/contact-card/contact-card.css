@@ -57,7 +57,7 @@
   aspect-ratio: 640 / 404;
 }
 .cc[data-layout='portrait'] .cc-flip[data-map='true'] {
-  aspect-ratio: 360 / 640;
+  aspect-ratio: 360 / 670;
 }
 .cc-flip.is-flipped {
   transform: rotateY(180deg);
@@ -193,6 +193,33 @@
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.cc-person {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 10);
+  min-width: 0;
+}
+.cc-person__text {
+  min-width: 0;
+}
+.cc-photo {
+  display: block;
+  flex: none;
+  width: calc(var(--u) * 52);
+  height: calc(var(--u) * 64);
+  overflow: hidden;
+  background: var(--cc-paper);
+  border: 1px solid var(--cc-line);
+  border-radius: calc(var(--u) * 10);
+  box-shadow: 0 calc(var(--u) * 6) calc(var(--u) * 14) calc(var(--u) * -8) rgba(0, 0, 0, 0.6);
+}
+.cc-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .cc-person small {
   display: block;
@@ -364,11 +391,12 @@
 .cc[data-layout='landscape'] .cc-front {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: auto auto auto 1fr;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   grid-template-areas:
     'top top'
     'id fields'
     'person fields'
+    'photo fields'
     'sign fields';
   column-gap: calc(var(--u) * 30);
   row-gap: calc(var(--u) * 12);
@@ -381,7 +409,17 @@
   grid-area: id;
 }
 .cc[data-layout='landscape'] .cc-person {
+  display: contents;
+}
+.cc[data-layout='landscape'] .cc-person__text {
   grid-area: person;
+}
+.cc[data-layout='landscape'] .cc-photo {
+  grid-area: photo;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  border-radius: calc(var(--u) * 14);
 }
 .cc[data-layout='landscape'] .cc-side {
   grid-area: fields;

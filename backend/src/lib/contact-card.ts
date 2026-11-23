@@ -29,6 +29,8 @@ export type ContactCardConfig = {
   lng: number | null;
   /** Arama sonucundan gelen ayrıntılı adres (kartta adresin altında görünür) */
   placeLabel: string;
+  /** Kartın sol alanındaki fotoğraf (yüklenmiş dosya yolu) */
+  photoUrl: string;
   hours: string;
   /** Her çizgi ayrı SVG yoludur (M/L/Q komutları), sırayla çizilir. */
   signature: string[];
@@ -49,6 +51,7 @@ export const CONTACT_CARD_DEFAULTS: ContactCardConfig = {
   lat: null,
   lng: null,
   placeLabel: '',
+  photoUrl: '',
   hours: '',
   signature: [],
 };
@@ -76,6 +79,10 @@ const link = (value: unknown, max: number) => {
     return '';
   }
 };
+
+/** Yalnızca kendi yükleme klasörümüzdeki dosya yolu kabul edilir. */
+const uploadPath = (value: unknown) =>
+  typeof value === 'string' && /^\/uploads\/[\w.-]{1,120}$/.test(value.trim()) ? value.trim() : '';
 
 /** Yol yalnızca çizim komutları ve sayı içerebilir; başka her şey atılır. */
 const strokePath = (value: unknown) => {
@@ -116,6 +123,7 @@ export function normalizeContactCard(input: unknown): ContactCardConfig {
     mapUrl: link(s.mapUrl, 500),
     ...coordinates(s.lat, s.lng),
     placeLabel: text(s.placeLabel, 160),
+    photoUrl: uploadPath(s.photoUrl),
     hours: text(s.hours, 80),
     signature,
   };
@@ -145,6 +153,7 @@ export function contactCardHasContent(config: ContactCardConfig): boolean {
       config.address ||
       config.mapUrl ||
       config.lat !== null ||
+      config.photoUrl ||
       config.hours,
   );
 }

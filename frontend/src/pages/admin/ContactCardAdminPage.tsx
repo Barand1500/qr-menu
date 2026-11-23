@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Eye, Save, X } from 'lucide-react';
+import { Eye, ImagePlus, Save, Trash2, X } from 'lucide-react';
 import AdminOverlay from '@/components/admin/AdminOverlay';
 import AdminToast, { type AdminToastNotice } from '@/components/admin/AdminToast';
 import VisibilityToggle from '@/components/admin/VisibilityToggle';
@@ -8,7 +8,7 @@ import ContactMapPicker from '@/components/contact-card/ContactMapPicker';
 import SignaturePad from '@/components/contact-card/SignaturePad';
 import { Button, Input, PageHeader, Spinner } from '@/components/ui';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { api } from '@/lib/api';
+import { api, imageUrl } from '@/lib/api';
 import {
   CONTACT_CARD_DEFAULTS,
   CONTACT_CARD_PALETTES,
@@ -30,6 +30,7 @@ export default function ContactCardAdminPage() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<AdminToastNotice>(null);
   const [sheet, setSheet] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [device, setDevice] = useState<ContactCardLayout>('portrait');
   const wide = useMediaQuery('(min-width: 1100px)');
   // Konum izni için kayıtlı nokta: haritada başlangıç ve tek dokunuşla kullanım için hatırlanır
@@ -70,6 +71,23 @@ export default function ContactCardAdminPage() {
   // Önizleme, müşterinin göreceği temiz (doğrulanmış) kartı gösterir
   const preview = useMemo(() => normalizeContactCard(card), [card]);
   const empty = !contactCardHasContent(preview);
+
+  async function uploadPhoto(file: File | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return setNotice({ text: 'Yalnızca resim yükleyebilirsiniz.', error: true });
+    if (file.size > 5 * 1024 * 1024) return setNotice({ text: 'Fotoğraf en fazla 5 MB olabilir.', error: true });
+    setPhotoBusy(true);
+    try {
+      const form = new FormData();
+      form.append('photo', file);
+      const res = await api<{ url: string }>('/api/admin/settings/contact-card/photo', { method: 'POST', body: form });
+      set('photoUrl', res.url);
+    } catch (error) {
+      setNotice({ text: error instanceof Error ? error.message : 'Fotoğraf yüklenemedi.', error: true });
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   async function save() {
     if (saving) return;
@@ -148,6 +166,34 @@ export default function ContactCardAdminPage() {
             <div className="ccp__row">
               <Input label="Yönetici adı" value={card.managerName} maxLength={60} onChange={(e) => set('managerName', e.target.value)} />
               <Input label="Görevi" value={card.managerTitle} maxLength={60} onChange={(e) => set('managerTitle', e.target.value)} />
+            </div>
+            <div className="ccp__photo">
+              <span className="ccp__photo-thumb" aria-hidden="true">
+                {card.photoUrl ? <img src={imageUrl(card.photoUrl)} alt="" data-no-fit /> : <ImagePlus size={22} />}
+              </span>
+              <div>
+                <strong>Fotoğraf</strong>
+                <small>Kartın sol alanında görünür; telefonda küçük, geniş ekranda büyük çıkar.</small>
+                <div className="ccp__photo-actions">
+                  <label className={`ccp__photo-btn${photoBusy || saving ? ' is-disabled' : ''}`}>
+                    <ImagePlus size={16} aria-hidden="true" /> {photoBusy ? 'Yükleniyor…' : card.photoUrl ? 'Değiştir' : 'Fotoğraf yükle'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={photoBusy || saving}
+                      onChange={(e) => {
+                        void uploadPhoto(e.target.files?.[0]);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                  {card.photoUrl ? (
+                    <button type="button" disabled={photoBusy || saving} onClick={() => set('photoUrl', '')}>
+                      <Trash2 size={16} aria-hidden="true" /> Kaldır
+                    </button>
+                  ) : null}
+                </div>
+              </div>
             </div>
           </section>
 

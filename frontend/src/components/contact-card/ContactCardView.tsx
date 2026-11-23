@@ -115,6 +115,7 @@ export default function ContactCardView({ card, restaurant, lang = 'tr', layout,
       card,
       name: restaurant.name,
       logoUrl: restaurant.logoUrl ? imageUrl(restaurant.logoUrl) : null,
+      photoUrl: card.photoUrl ? imageUrl(card.photoUrl) : null,
       layout,
       number,
       copy: t,
@@ -172,6 +173,24 @@ export default function ContactCardView({ card, restaurant, lang = 'tr', layout,
       if ((error as Error)?.name !== 'AbortError') flash('fail');
     }
   }
+
+  // Harita varsa çalışma saatleri haritanın altında yer alır
+  const tailFields = hasMap ? fields.filter((f) => f.key === 'hours') : [];
+  const mainFields = hasMap ? fields.filter((f) => f.key !== 'hours') : fields;
+  const renderFields = (list: ContactCardField[]) =>
+    list.length ? (
+      <dl className="cc-fields">
+      {list.map((f) => (
+        <div key={f.key} data-field={f.key}>
+          <dt>{f.label}</dt>
+          <dd>
+            {f.value}
+            {f.sub ? <small>{f.sub}</small> : null}
+          </dd>
+        </div>
+      ))}
+    </dl>
+    ) : null;
 
   const mapUrl = contactCardMapUrl(card);
   const whatsappUrl = contactCardWhatsappUrl(card.whatsapp);
@@ -235,31 +254,31 @@ export default function ContactCardView({ card, restaurant, lang = 'tr', layout,
                     </div>
                   </div>
 
-                  {card.managerName ? (
+                  {card.managerName || card.photoUrl ? (
                     <div className="cc-person">
-                      <small>{card.managerTitle ? `${t.manager} · ${card.managerTitle}` : t.manager}</small>
-                      <strong>{card.managerName}</strong>
+                      <div className="cc-person__text">
+                        {card.managerName ? (
+                          <>
+                            <small>{card.managerTitle ? `${t.manager} · ${card.managerTitle}` : t.manager}</small>
+                            <strong>{card.managerName}</strong>
+                          </>
+                        ) : null}
+                      </div>
+                      {card.photoUrl ? (
+                        <span className="cc-photo">
+                          <img src={imageUrl(card.photoUrl)} alt="" data-no-fit />
+                        </span>
+                      ) : null}
                     </div>
                   ) : null}
 
                   {fields.length || hasMap ? (
                     <div className="cc-side">
-                      {fields.length ? (
-                        <dl className="cc-fields">
-                          {fields.map((f) => (
-                            <div key={f.key} data-field={f.key}>
-                              <dt>{f.label}</dt>
-                              <dd>
-                                {f.value}
-                                {f.sub ? <small>{f.sub}</small> : null}
-                              </dd>
-                            </div>
-                          ))}
-                        </dl>
-                      ) : null}
+                      {renderFields(mainFields)}
                       {hasMap ? (
                         <ContactMiniMap lat={card.lat as number} lng={card.lng as number} href={contactCardMapUrl(card)} label={t.mapTitle} />
                       ) : null}
+                      {renderFields(tailFields)}
                     </div>
                   ) : null}
 

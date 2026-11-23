@@ -51,6 +51,10 @@ assert.equal(m.contactCardMapUrl({ mapUrl: '', address: 'x', lat: 41, lng: 29 })
 assert.equal(m.contactCardMapUrl({ mapUrl: 'https://maps.app.goo.gl/x', address: 'x', lat: 41, lng: 29 }), 'https://maps.app.goo.gl/x');
 assert.equal(m.normalizeContactCard({ placeLabel: '  Bahçe   Sk., Kadıköy ' }).placeLabel, 'Bahçe Sk., Kadıköy');
 assert.equal(m.normalizeContactCard({}).placeLabel, '');
+assert.equal(m.normalizeContactCard({ photoUrl: '/uploads/logo-123.jpg' }).photoUrl, '/uploads/logo-123.jpg');
+assert.equal(m.normalizeContactCard({ photoUrl: 'https://kotu.com/x.jpg' }).photoUrl, '');
+assert.equal(m.normalizeContactCard({ photoUrl: '/uploads/../etc/passwd' }).photoUrl, '');
+assert.equal(m.normalizeContactCard({ photoUrl: '/uploads/a/b.jpg' }).photoUrl, '');
 // kaydet-oku turu değişmez
 assert.deepEqual(m.parseContactCard(m.serializeContactCard(c)), c);
 console.log('PASS: iletişim kartı şeması');

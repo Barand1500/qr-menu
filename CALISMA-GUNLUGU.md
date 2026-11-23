@@ -778,3 +778,8 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 ## 2026-11-23 — Harita kartın içine alındı
 - Alttaki ayrı harita bölümü kaldırıldı; küçük harita (5x3 karo + iğne, dokunmatik olmayan) kartın içinde, adres/saat satırlarının altında. Dokununca yol tarifi açılır; kart çevirme 3B ile sorunsuz. Dikey kart harita varsa biraz uzar. İndirilen resimde de harita çizilir (karolar yüklenemezse atlanır).
 - Doğrulama: tsc, vite build, Chrome fixture (390/320/1280, koyu ve fildişi), indirilen resim. Gerçek harita karoları denenmedi (sahte karo). Safari ctx.filter desteklemediği için indirilen resimdeki harita orada açık renk kalabilir.
+
+## 2026-11-23 — Çalışma saatleri haritadan sonra, kart fotoğrafı
+- Harita varsa çalışma saatleri (ve altındaki ayrıntılı adres) haritanın altında; kartta ve indirilen resimde.
+- Kart fotoğrafı: yönetimde yükleme (POST /api/admin/settings/contact-card/photo, yalnızca resim, 5 MB), kartta geniş ekranda sol alanda büyük, telefonda yönetici adının yanında küçük (52x64). Şema `photoUrl` yalnızca /uploads/ yolunu kabul eder (test).
+- Doğrulama: tsc, vite build, backend testi, Chrome fixture (390/320/1280). Gerçek yükleme (multer/disk) ve gerçek harita karoları denenmedi. Yüklenen dosyalar Kaydet basılmadan terk edilirse klasörde kalır (mevcut logo/kapak yüklemeleriyle aynı davranış). Backend deploy gerekir.
