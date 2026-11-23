@@ -208,14 +208,14 @@ export async function renderContactCardImage(o: Options): Promise<Blob> {
     ctx.stroke();
     ctx.setLineDash([]);
   }
-  for (const [name, value] of rows) {
+  for (const [idx, [name, value]] of rows.entries()) {
     label(name, fx, fy + 22, 21);
     ctx.font = `600 ${landscape ? 38 : 40}px ${SANS}`;
     ctx.fillStyle = palette.ink;
     const lines = wrap(ctx, value, fw, name === t.address ? 2 : 1);
     lines.forEach((line, i) => ctx.fillText(line, fx, fy + 66 + i * 46));
     let extra = 0;
-    if (name === t.address && card.address && card.placeLabel) {
+    if (idx === rows.length - 1 && card.address && card.placeLabel) {
       ctx.font = `500 28px ${SANS}`;
       ctx.fillStyle = palette.muted;
       const sub = wrap(ctx, card.placeLabel, fw, 2);

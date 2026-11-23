@@ -29,15 +29,13 @@ export function contactCardFields(card: ContactCardConfig, t: ContactCardCopy): 
     { key: 'whatsapp', label: t.whatsapp, value: card.whatsapp },
     { key: 'email', label: t.email, value: card.email },
     { key: 'web', label: t.web, value: card.website.replace(/^https?:\/\//, '').replace(/\/$/, '') },
-    {
-      key: 'address',
-      label: t.address,
-      value: card.address || card.placeLabel,
-      sub: card.address && card.placeLabel ? card.placeLabel : '',
-    },
+    { key: 'address', label: t.address, value: card.address || card.placeLabel },
     { key: 'hours', label: t.hours, value: card.hours },
   ];
-  return rows.filter((r) => r.value);
+  const shown = rows.filter((r) => r.value);
+  // Ayrıntılı yer adı ayrı alan olmaz: son satırın (genelde saatler) altında küçük yazılır
+  if (card.address && card.placeLabel && shown.length) shown[shown.length - 1].sub = card.placeLabel;
+  return shown;
 }
 
 type Props = {
