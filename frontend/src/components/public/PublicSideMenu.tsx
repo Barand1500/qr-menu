@@ -31,6 +31,8 @@ interface Language {
 
 export interface PublicSideMenuProps {
   sahne?: boolean;
+  managerContact?: import('@/lib/sofra').SofraConfig['managerContact'];
+  menuSlug?: string;
   /** İletişim kartı açıksa menüde "İletişim" bağlantısı görünür */
   hasContact?: boolean;
   /** Google + elle girilen yorumlar: varsa "Yorumlar" sayfası açılır */

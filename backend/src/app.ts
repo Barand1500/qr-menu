@@ -16,6 +16,7 @@ import languagesRouter from './routes/languages.js';
 import translateRouter from './routes/translate.js';
 import complaintsRouter from './routes/complaints.js';
 import suggestionsRouter from './routes/suggestions.js';
+import managerMessagesRouter, { publicManagerMessages } from './routes/manager-messages.js';
 import tableRequestsRouter from './routes/table-requests.js';
 import currenciesRouter from './routes/currencies.js';
 import addonsRouter from './routes/addons.js';
@@ -70,6 +71,7 @@ export function createApp() {
   app.use('/api/admin/translate', translateRouter);
   app.use('/api/admin/complaints', complaintsRouter);
   app.use('/api/admin/suggestions', suggestionsRouter);
+  app.use('/api/admin/manager-messages', managerMessagesRouter);
   app.use('/api/admin/table-requests', tableRequestsRouter);
   app.use('/api/admin/currencies', currenciesRouter);
   app.use('/api/admin/addons', addonsRouter);
@@ -78,6 +80,7 @@ export function createApp() {
   app.use('/api/admin/bulk-translate', bulkTranslateRouter);
   app.use('/api/admin/table-floor', tableFloorRouter);
   app.use('/api/admin/ai', aiAssistantRouter);
+  app.use('/api/menu', publicManagerMessages);
   app.use('/api/menu', publicMenuRouter);
   app.use('/api/menu', menuGamesRouter);
   app.use('/api/map-tiles', mapTilesRouter);

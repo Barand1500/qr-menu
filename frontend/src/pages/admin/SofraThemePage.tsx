@@ -1,6 +1,8 @@
+import { notifyManagerContactChanged } from '@/lib/managerContact';
 import { useEffect, useRef, useState } from 'react';
 import {
   Check,
+  Mail,
   Monitor,
   Smartphone,
   Save,
@@ -214,6 +216,11 @@ export default function SofraThemePage() {
   }
   async function save() {
     if (!data || savingRef.current || !dirty) return;
+    const contact = normalizeSofraConfig(draft).managerContact;
+    if (draft.managerContact.email.trim() && !contact.email || draft.managerContact.phone.trim() && !contact.phone) {
+      setMessage({ error: true, text: 'Yönetici e-postasını veya telefonunu kontrol edin.' });
+      return;
+    }
     savingRef.current = true;
     setSaving(true);
     setMessage(null);
@@ -249,6 +256,7 @@ export default function SofraThemePage() {
       );
       setDraft(next);
       setSaved(JSON.stringify(next));
+      notifyManagerContactChanged();
       setPending({});
       Object.values(urlsRef.current).forEach((url) => URL.revokeObjectURL(url));
       urlsRef.current = {};
@@ -486,6 +494,7 @@ export default function SofraThemePage() {
                       names: shownGroups.map((g) => g.name),
                     }}
                     actions={[
+                      ...(draft.managerContact.enabled ? [{ id: 'manager', icon: <Mail size={16}/>, label: lang === 'en' ? 'Write to manager' : 'Yöneticiye yaz', onClick: () => {} }] : []),
                       {
                         id: 'prefs',
                         icon: <Salad size={16} />,
@@ -718,6 +727,20 @@ export default function SofraThemePage() {
                 onToggle={() => setDraft((prev) => ({ ...prev, variantsEnabled: !prev.variantsEnabled }))}
               />
             </div>
+          </div>
+          <div className="sofra-options" role="group" aria-label="Yöneticiye yaz ayarları">
+            <div className="sofra-options__row">
+              <span className="sofra-options__icon" aria-hidden><Mail size={18} /></span>
+              <div><strong>Yöneticiye yaz</strong><small>Özel notlar yalnızca Raporlar → Yönetici Mesajları'nda görünür.</small></div>
+              <VisibilityToggle checked={draft.managerContact.enabled} label="Yöneticiye yaz menüde görünsün" disabled={saving}
+                onToggle={() => setDraft(prev => ({ ...prev, managerContact: { ...prev.managerContact, enabled: !prev.managerContact.enabled } }))} />
+            </div>
+            {draft.managerContact.enabled && <div className="sofra-editor-details">
+              <Input type="email" label="Yönetici e-postası (isteğe bağlı, menüde görünür)" value={draft.managerContact.email} disabled={saving} maxLength={150}
+                onChange={e => setDraft(prev => ({ ...prev, managerContact: { ...prev.managerContact, email: e.target.value } }))} />
+              <Input type="tel" label="Yönetici telefonu (isteğe bağlı, menüde görünür)" value={draft.managerContact.phone} disabled={saving} maxLength={30}
+                onChange={e => setDraft(prev => ({ ...prev, managerContact: { ...prev.managerContact, phone: e.target.value } }))} />
+            </div>}
           </div>
           <p className="sofra-editor-note">
             Değişiklikler Kaydet dediğinizde yayınlanır. Ürün adları ve fiyatlar

@@ -1,3 +1,6 @@
+import { useManagerContact } from '@/lib/managerContact';
+import ManagerMessageSheet from '@/components/public/manager/ManagerMessageSheet';
+import { Mail } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
@@ -135,6 +138,7 @@ function PublicWelcomePageInner({
   const [welcomeStep, setWelcomeStep] = useState<'lang' | 'prefs'>('lang');
   const [prefsPanelIn, setPrefsPanelIn] = useState(false);
   const [dietaryPrefs, setDietaryPrefs] = useState<DietaryPrefs>(() => loadDietaryPrefs());
+  const [managerOpen, setManagerOpen] = useState(false);
   const [complaintOpen, setComplaintOpen] = useState(false);
   const [suggestionOpen, setSuggestionOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -142,6 +146,7 @@ function PublicWelcomePageInner({
 
   usePublicRtl(selectedLang);
   const reviews = useReviews(slug, selectedLang);
+  const managerContact = useManagerContact(data?.theme === 'sofra' ? slug : null, data?.sofra?.managerContact);
 
   useEffect(() => {
     if (tableNo) sessionStorage.setItem('menu_masa', tableNo);
@@ -464,6 +469,11 @@ function PublicWelcomePageInner({
           entering={entering}
           tableLabel={tableNo ? `${t.table} ${tableNo}` : null}
           actions={[
+            ...(managerContact.enabled ? [{
+              id: 'manager', icon: <Mail size={16} aria-hidden/>,
+              label: selectedLang.startsWith('tr') ? 'Yöneticiye yaz' : 'Write to manager',
+              onClick: () => setManagerOpen(true),
+            }] : []),
             {
               id: 'prefs',
               icon: <Salad size={16} aria-hidden />,
@@ -538,6 +548,7 @@ function PublicWelcomePageInner({
             tabIndex={-1}
           />
         )}
+        <ManagerMessageSheet open={managerOpen} onClose={() => setManagerOpen(false)} slug={slug} lang={selectedLang} contact={managerContact}/>
         <ComplaintBoxModal
           open={complaintOpen}
           slug={slug}

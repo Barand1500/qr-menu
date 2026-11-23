@@ -34,14 +34,18 @@ import {
   type MenuGameId,
 } from '@/lib/menuGames';
 import { gameCatalogEntry, gamesUi } from '@/lib/menuGamesUi';
+import ManagerMessageForm from '../manager/ManagerMessageForm';
+import { Mail } from 'lucide-react';
 import './sahne-more.css';
 
-type View = 'explore' | 'language' | 'preferences' | 'reviews';
+type View = 'explore' | 'language' | 'preferences' | 'reviews' | 'manager';
 
 /** A small restaurant intermission, with utilities on their own page. */
 export default function SahneMore({
   open,
   hasContact = false,
+  managerContact,
+  menuSlug,
   reviews = null,
   tab,
   restaurantName,
@@ -61,6 +65,7 @@ export default function SahneMore({
   onAssistant,
 }: PublicSideMenuProps) {
   const [view, setView] = useState<View>('explore');
+  const [managerBusy, setManagerBusy] = useState(false);
   const [hoveredGame, setHoveredGame] = useState<MenuGameId | null>(null);
   const viewRef = useRef<HTMLElement>(null);
   const returnRef = useRef<HTMLButtonElement | null>(null);
@@ -80,11 +85,12 @@ export default function SahneMore({
     : [];
 
   const close = () => {
+    if (managerBusy) return;
     onGamesPromoDismiss?.();
     onClose();
   };
   const panelRef = useSheetFocus(open, () =>
-    view === 'explore' ? close() : setView('explore'),
+    managerBusy ? undefined : view === 'explore' ? close() : setView('explore'),
   );
 
   useEffect(() => {
@@ -102,7 +108,12 @@ export default function SahneMore({
     return () => cancelAnimationFrame(frame);
   }, [view, open]);
 
+  useEffect(() => {
+    if (!managerContact?.enabled && view === 'manager') setView('explore');
+  }, [managerContact?.enabled, view]);
+
   function utility(next: View, target: HTMLButtonElement) {
+    if (managerBusy) return;
     returnRef.current = target;
     setView(next);
   }
@@ -134,7 +145,7 @@ export default function SahneMore({
     <>
       <div
         className={`sh-interlude-shade ${open ? 'is-open' : ''}`}
-        onClick={close}
+        onClick={view === 'manager' ? undefined : close}
         aria-hidden="true"
       />
       <aside
@@ -157,6 +168,7 @@ export default function SahneMore({
           </span>
           <button
             className="sh-interlude__close"
+            disabled={managerBusy}
             onClick={close}
             aria-label={chrome.close}
           >
@@ -249,6 +261,11 @@ export default function SahneMore({
                     <span>{chrome.about}</span>
                     <ArrowUpRight />
                   </button>
+                  {managerContact?.enabled && menuSlug && (
+                    <button className="sh-interlude__nav" onClick={e => utility('manager', e.currentTarget)}>
+                      <Mail size={18}/><span>{en ? 'Write to manager' : 'Yöneticiye yaz'}</span><ArrowUpRight/>
+                    </button>
+                  )}
                   {hasContact && (
                     <button
                       className="sh-interlude__nav"
@@ -342,20 +359,23 @@ export default function SahneMore({
             <section className="sh-interlude__utility-page">
               <button
                 className="sh-interlude__back"
-                onClick={() => setView('explore')}
+                disabled={managerBusy}
+                onClick={() => { if (!managerBusy) setView('explore'); }}
               >
                 <ArrowLeft size={18} />
                 {chrome.menu}
               </button>
               <div className="sh-interlude__page-heading">
                 <span className="sh-interlude__page-icon">
-                  {view === 'language' ? <Globe2 /> : view === 'reviews' ? <Star /> : <Leaf />}
+                  {view === 'manager' ? <Mail /> : view === 'language' ? <Globe2 /> : view === 'reviews' ? <Star /> : <Leaf />}
                 </span>
                 <h2 id={titleId}>
-                  {view === 'language' ? chrome.lang : view === 'reviews' ? reviewsCopy(activeLang).title : ui.sideTitle}
+                  {view === 'manager' ? (en ? 'Write to manager' : 'Yöneticiye yaz') : view === 'language' ? chrome.lang : view === 'reviews' ? reviewsCopy(activeLang).title : ui.sideTitle}
                 </h2>
               </div>
-              {view === 'reviews' && reviews ? (
+              {view === 'manager' && managerContact?.enabled && menuSlug ? (
+                <ManagerMessageForm contact={managerContact} slug={menuSlug} lang={activeLang} onBusy={setManagerBusy} />
+              ) : view === 'reviews' && reviews ? (
                 <ReviewsPage reviews={reviews} lang={activeLang} />
               ) : view === 'language' ? (
                 <div

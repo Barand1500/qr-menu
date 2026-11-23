@@ -1,3 +1,4 @@
+import { normalizeManagerContact, type ManagerContact } from './manager-contact.js';
 // Pure, dependency-free schema shared with the frontend. No database or secrets here.
 export const SOFRA_SETTINGS_KEY = 'sofra_theme_v1';
 export const SOFRA_TEXT_FIELDS = [
@@ -13,6 +14,7 @@ export const SOFRA_TEXT_FIELDS = [
 export type SofraTextField = (typeof SOFRA_TEXT_FIELDS)[number];
 export type SofraCopy = Record<SofraTextField, string>;
 export interface SofraConfig {
+  managerContact: ManagerContact;
   brandName: string;
   openingHours: string;
   welcomeImage: string;
@@ -24,6 +26,7 @@ export interface SofraConfig {
   texts: Record<string, Partial<SofraCopy>>;
 }
 export const SOFRA_DEFAULTS: SofraConfig = {
+  managerContact: { enabled: false, email: '', phone: '' },
   brandName: '',
   openingHours: '',
   welcomeImage: '/sofra/breakfast.webp',
@@ -92,6 +95,7 @@ export function normalizeSofraConfig(raw: unknown): SofraConfig {
     }
   }
   return {
+    managerContact: normalizeManagerContact(source.managerContact),
     brandName: text(source.brandName, '', 100),
     openingHours: text(source.openingHours, '', 150),
     welcomeImage: image(source.welcomeImage, SOFRA_DEFAULTS.welcomeImage),

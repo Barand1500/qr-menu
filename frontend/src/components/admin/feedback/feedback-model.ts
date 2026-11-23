@@ -1,7 +1,8 @@
-export type FeedbackKind = 'suggestion' | 'complaint';
+export type FeedbackKind = 'suggestion' | 'complaint' | 'manager';
 
 export interface FeedbackItem {
   id: number;
+  kind?: 'suggestion' | 'complaint';
   fullName?: string | null;
   phone?: string | null;
   email?: string | null;
@@ -81,6 +82,42 @@ export const FEEDBACK_COPY = {
     emptyReaderHelp:
       'Bir mesaj seçin; ayrıntıları okuyun, misafirinizle iletişime geçin.',
     letterLabel: 'MİSAFİRİNİZİN GERİ BİLDİRİMİ',
+    replyTitle: 'Bir yanıtla ilk adımı atın.',
+  },
+  manager: {
+    title: 'Yönetici Mesajları',
+    noun: 'mesaj',
+    endpoint: 'manager-messages',
+    description: 'Yalnızca yöneticilerin görebildiği özel misafir notları.',
+    unreadSuffix: ' okunmamış özel not · Yalnızca yöneticilere.',
+    filterLabel: 'Mesaj görünümü',
+    searchLabel: 'Mesaj ara',
+    searchPlaceholder: 'İsim, iletişim bilgisi veya mesaj ara',
+    refreshLabel: 'Yönetici mesajlarını yenile',
+    listLabel: 'Yönetici mesajları',
+    listHeading: 'GELEN MESAJLAR',
+    loadingLabel: 'Yönetici mesajları yükleniyor',
+    loadError: 'Mesajlar yüklenemedi.',
+    emptySearch: 'Aramanızla eşleşen mesaj yok.',
+    emptyInbox: 'Henüz yöneticiye özel bir not yok.',
+    emptyUnreadHelp: 'Diğer mesajlara Tümü bölümünden ulaşabilirsiniz.',
+    emptyInboxHelp: 'Misafirleriniz yöneticiye yazdığında yalnızca burada görünür.',
+    noMessage: 'Bu kayıtta mesaj metni bulunmuyor.',
+    previewFallback: 'Mesaj metni bulunmuyor.',
+    readSuffix: ' mesajını oku',
+    readToast: 'Mesaj okundu olarak işaretlendi.',
+    deleteToast: 'Mesaj silindi.',
+    deleteError: 'Mesaj silinemedi.',
+    deleteLabel: 'Mesajı sil',
+    deleteGroup: 'Mesajı silme onayı',
+    deleteConfirm: 'Bu mesaj kalıcı olarak silinecek.',
+    detailLabel: 'Seçilen mesaj',
+    dialogLabel: 'Mesaj ayrıntısı',
+    closeLabel: 'Mesajı kapat',
+    emptyReaderTitle: 'Önce dinleyelim.',
+    emptyReaderHelp:
+      'Bir mesaj seçin; ayrıntıları okuyun, misafirinizle iletişime geçin.',
+    letterLabel: 'YÖNETİCİYE ÖZEL BİR NOT',
     replyTitle: 'Bir yanıtla ilk adımı atın.',
   },
 } as const;

@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Inbox,
+  Mail,
   Lightbulb,
   MessageSquareText,
   RefreshCw,
@@ -38,7 +39,7 @@ const PAGE_SIZE = 20;
 
 export default function FeedbackInbox({ kind }: { kind: FeedbackKind }) {
   const copy = FEEDBACK_COPY[kind];
-  const NoteIcon = kind === 'complaint' ? MessageSquareText : Lightbulb;
+  const NoteIcon = kind === 'manager' ? Mail : kind === 'complaint' ? MessageSquareText : Lightbulb;
   const { user } = useAuth();
   const [view, setView] = useState<View>({ filter: 'all', query: '', page: 1 });
   const [search, setSearch] = useState('');

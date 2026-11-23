@@ -70,7 +70,7 @@ export default function FeedbackReader({
   onConfirmChange: (value: boolean) => void;
 }) {
   const copy = FEEDBACK_COPY[kind];
-  const NoteIcon = kind === 'complaint' ? MessageSquareText : Lightbulb;
+  const NoteIcon = kind === 'manager' ? Mail : kind === 'complaint' ? MessageSquareText : Lightbulb;
   const hasContact = Boolean(item.phone?.trim() || item.email?.trim());
   return (
     <div className="asg-reader__inner">
@@ -95,6 +95,7 @@ export default function FeedbackReader({
             <FeedbackRating rating={item.rating} />
           </div>
         )}
+        {kind === 'manager' && <span className="asg-read-badge">{item.kind === 'suggestion' ? 'Öneri' : 'Şikâyet'} · Yöneticiye özel</span>}
         <div className="asg-note">
           <Quote size={30} strokeWidth={1.2} aria-hidden="true" />
           <p>{item.message?.trim() || copy.noMessage}</p>
@@ -122,7 +123,7 @@ export default function FeedbackReader({
             <fieldset disabled={busy}>
               <FeedbackReplyPanel
                 key={item.id}
-                kind={kind}
+                kind={kind === 'manager' ? item.kind || 'complaint' : kind}
                 phone={item.phone}
                 email={item.email}
                 guestName={item.fullName}

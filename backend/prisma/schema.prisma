@@ -41,6 +41,7 @@ model Restaurant {
   showcaseImages ShowcaseImage[]
   settings       Setting[]
   viewEvents     ViewEvent[]
+  managerMessages ManagerMessage[]
   complaints     Complaint[]
   suggestions    Suggestion[]
   tableRequests  TableServiceRequest[]
@@ -487,4 +488,20 @@ model PriceChangeItem {
 
   @@index([changeId])
   @@map("fiyat_degisiklik_urunleri")
+}
+
+/// Private guest messages: accessible only to restaurant administrators.
+model ManagerMessage {
+  id Int @id @default(autoincrement())
+  restaurantId Int @map("restoran_id")
+  kind String @db.VarChar(20)
+  fullName String? @map("ad_soyad") @db.VarChar(150)
+  phone String? @db.VarChar(30)
+  email String? @db.VarChar(150)
+  message String @map("mesaj") @db.Text
+  isRead Boolean @default(false) @map("okundu")
+  createdAt DateTime @default(now()) @map("olusturma")
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  @@index([restaurantId, isRead, createdAt])
+  @@map("yonetici_mesajlari")
 }

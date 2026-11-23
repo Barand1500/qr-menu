@@ -44,6 +44,7 @@ import {
   fetchAndCacheAdminPath,
   getAdminPathSlug,
 } from '@/lib/adminPath';
+import ManagerMessagesPage from '@/pages/admin/ManagerMessagesPage';
 import { fetchAndCacheSiteTitle } from '@/lib/siteTitle';
 
 function LegacyMenuRedirect({ to }: { to: 'welcome' | 'home' | 'group' | 'product' }) {
@@ -78,6 +79,7 @@ function AdminRoutes({ slug }: { slug: string }) {
         <Route path="stats" element={<StatsPage />} />
         <Route path="complaints" element={<ComplaintsPage />} />
         <Route path="suggestions" element={<SuggestionsPage />} />
+        <Route path="manager-messages" element={<ManagerMessagesPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="settings" element={<SettingsPage />} />

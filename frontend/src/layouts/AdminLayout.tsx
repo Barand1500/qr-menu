@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef, type ReactNode } from 're
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LogOut,
+  Mail,
   ExternalLink,
   ChevronDown,
   RotateCcw,
@@ -50,7 +51,7 @@ import AdminPageTransition from '@/components/admin/AdminPageTransition';
 import '@/admin-tour.css';
 import '@/admin-ai.css';
 
-function buildNav() {
+function buildNav(manager: boolean) {
   const base = adminPath();
   return {
     mainNavBase: [
@@ -73,6 +74,7 @@ function buildNav() {
       { to: adminPath('stats'), label: 'İstatistikler', tourId: 'nav-stats' },
       { to: adminPath('suggestions'), label: 'Öneri Kutusu', tourId: 'nav-suggestions' },
       { to: adminPath('complaints'), label: 'Şikayet Kutusu', tourId: 'nav-complaints' },
+      ...(manager ? [{ to: adminPath('manager-messages'), label: 'Yönetici Mesajları', tourId: 'nav-manager-messages' }] : []),
     ],
     managementNav: [
       { to: adminPath('customers'), label: 'Müşteriler', tourId: 'nav-customers' },
@@ -165,7 +167,7 @@ export default function AdminLayout() {
   const navRef = useRef<HTMLElement>(null);
   const navIndicatorRef = useRef<HTMLDivElement>(null);
 
-  const { mainNavBase, startupNav, reportNav, managementNav } = buildNav();
+  const { mainNavBase, startupNav, reportNav, managementNav } = buildNav(user?.role === 'admin');
   const mainNav = [
     ...mainNavBase,
     ...(isOwned('lang-pack')
@@ -190,6 +192,7 @@ export default function AdminLayout() {
     'nav-stats': BarChart3,
     'nav-suggestions': Lightbulb,
     'nav-complaints': MessageSquareWarning,
+    'nav-manager-messages': Mail,
     'nav-customers': UsersRound,
     'nav-users': UserCog,
     'nav-settings': Settings,
@@ -278,7 +281,8 @@ export default function AdminLayout() {
   const reportsActive =
     location.pathname.startsWith(adminPath('stats')) ||
     location.pathname.startsWith(adminPath('suggestions')) ||
-    location.pathname.startsWith(adminPath('complaints'));
+    location.pathname.startsWith(adminPath('complaints')) ||
+    location.pathname.startsWith(adminPath('manager-messages'));
   const managementActive =
     location.pathname.startsWith(adminPath('users')) ||
     location.pathname.startsWith(adminPath('settings'));

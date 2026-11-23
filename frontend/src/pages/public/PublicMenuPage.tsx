@@ -1,3 +1,4 @@
+import { useManagerContact } from '@/lib/managerContact';
 import { SahneLanguage, SahneNavProvider } from '@/components/public/sahne/shared';
 import SahneDock from '@/components/public/sahne/SahneDock';
 import { useEffect, useState, type ReactNode, type ComponentProps } from 'react';
@@ -261,6 +262,7 @@ function PublicMenuPageInner({
   );
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const reviews = useReviews(slug, lang);
+  const managerContact = useManagerContact(menu?.theme === 'sofra' ? slug : null, menu?.sofra?.managerContact);
   const [searchOpen, setSearchOpen] = useState(false);
   const [popularProducts, setPopularProducts] = useState<PopularProduct[]>([]);
   const [popularLoading, setPopularLoading] = useState(false);
@@ -741,6 +743,8 @@ function PublicMenuPageInner({
   const sideMenu = (
     <PublicSideMenu
       sahne={isSofra}
+      managerContact={managerContact}
+      menuSlug={slug || undefined}
       hasContact={Boolean(menu.contactCard)}
       reviews={reviews}
       open={sideMenuOpen}

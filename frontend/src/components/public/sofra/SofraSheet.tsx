@@ -78,6 +78,7 @@ export default function SofraSheet({
   subtitle,
   children,
   busy = false,
+  dismissOnBackdrop = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -85,6 +86,7 @@ export default function SofraSheet({
   subtitle?: string;
   children: ReactNode;
   busy?: boolean;
+  dismissOnBackdrop?: boolean;
 }) {
   const mounted = useSheetPresence(open);
   const close = () => {
@@ -95,7 +97,7 @@ export default function SofraSheet({
   if (!mounted) return null;
   return (
     <div className={`sofra-sheet${open ? ' is-open' : ''}`} inert={!open}>
-      <button className="sofra-sheet-shade" onClick={close} aria-label="Kapat" tabIndex={-1} />
+      <button className="sofra-sheet-shade" disabled={!dismissOnBackdrop} aria-hidden={!dismissOnBackdrop || undefined} onClick={dismissOnBackdrop ? close : undefined} aria-label="Kapat" tabIndex={-1} />
       <section
         className="sofra-sheet-panel"
         role="dialog"
