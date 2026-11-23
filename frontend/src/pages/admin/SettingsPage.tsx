@@ -126,7 +126,7 @@ const SECTIONS: {
   {
     id: 'integrations',
     title: 'Entegrasyonlar',
-    description: 'E-posta ve SMS bağlantıları',
+    description: 'E-posta, SMS ve yorum bağlantıları',
     icon: PlugZap,
   },
   {

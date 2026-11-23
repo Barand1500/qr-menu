@@ -789,3 +789,8 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Yönetim: Entegrasyonlar sekmesinde "Google yorumları" (işletme ara/seç, Bağlantıyı dene, Göster/Gizle) ve "Müşteri yorumları (elle)" (en fazla 12).
 - Müşteri: geniş ekran karşılamada arkada 3B eğik yorum duvarı + puan rozeti; telefon karşılamada puan rozeti + dönen tek yorum (mevcut tasarım korundu); "Daha fazla" ekranında "Yorumlar" sayfası (puan, Google'da yorum yaz, Haritada gör, tüm yorumlar). Sahte yorum eklenmedi; elle girilenler "Misafirlerimizden" etiketiyle gösterilir.
 - Doğrulama: tsc (ön/arka), vite build, backend testleri, Chrome fixture (karşılama 390/1440, Daha fazla, yönetim 390/1100). Gerçek Google anahtarı ve gerçek Google yanıtı denenmedi (sahte yanıtla). Backend deploy + .env anahtarı gerekir.
+
+## 2026-11-23 — Entegrasyonlar sayfası yeniden tasarlandı
+- Dağınık, farklı boyutlu kartlar yerine bağlantı merkezi: üstte "x/4 açık" halkalı özet, altında eşit boyutlu 4 kart (E-posta, SMS, Google yorumları, Müşteri yorumları). Açık kartların kenarında dönen ışık, hover/basma animasyonu; durum rozeti (Açık/Eksik/Kapalı) ve "Kaydedilmemiş değişiklik var" uyarısı.
+- Karta dokununca ayarlar telefonda alttan açılan sayfada, geniş ekranda sağdan çekmecede açılır; yalnızca X veya Escape kapatır (dışarı tıklama kapatmaz), kaydederken kapanmaz. Mevcut formlar/test/kaydet akışı aynen korundu; yorum durumu `useReviewsState` ile tek yerde tutulur.
+- Doğrulama: tsc, vite build, Chrome fixture (1280/390): kart boyları eşit, taşma yok, dış tık kapatmıyor, Escape kapatıyor. Gerçek SMTP/SMS testleri ve gerçek cihaz denenmedi.

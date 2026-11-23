@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Check, Eye, EyeOff, Loader2, Mail, MessageSquareText, Send, Server, ShieldCheck, X, Zap } from 'lucide-react';
+import { Check, Eye, EyeOff, Loader2, Mail, MessageSquareQuote, MessageSquareText, Star, Send, Server, X, Zap } from 'lucide-react';
 import { api } from '@/lib/api';
-import ReviewsIntegration from './ReviewsIntegration';
+import IntegrationHub, { type HubTile } from './IntegrationHub';
+import { ReviewsChannel, useReviewsState } from './ReviewsIntegration';
 import './integrations-settings.css';
 
 type Encryption = 'starttls' | 'ssl' | 'none';
@@ -298,6 +299,8 @@ export default function IntegrationsSettings({ onToast, adminEmail }: { onToast:
   const [saving, setSaving] = useState<'smtp' | 'sms' | null>(null);
   const [smtpWire, setSmtpWire] = useState<'idle' | 'busy' | 'ok' | 'bad'>('idle');
   const [smsWire, setSmsWire] = useState<'idle' | 'busy' | 'ok' | 'bad'>('idle');
+  const reviews = useReviewsState(onToast);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const hydrate = (r: Loaded) => {
     setLoaded(r);
@@ -385,12 +388,7 @@ export default function IntegrationsSettings({ onToast, adminEmail }: { onToast:
       : { tone: 'idle' as const, text: 'Açık ama bilgiler eksik' }
     : { tone: 'off' as const, text: 'Kapalı' };
 
-  return (
-    <div className="ig">
-      <p className="ig-lead">
-        <ShieldCheck size={18} aria-hidden /> Şifreler şifreli saklanır ve ekranda bir daha gösterilmez. Boş bıraktığınız gizli alan eski değerini korur.
-      </p>
-
+  const smtpPanel = (
       <Channel
         icon={<Mail size={22} />}
         title="E-posta (SMTP)"
@@ -461,7 +459,8 @@ export default function IntegrationsSettings({ onToast, adminEmail }: { onToast:
           }}
         />
       </Channel>
-
+  );
+  const smsPanel = (
       <Channel
         icon={<MessageSquareText size={22} />}
         title="SMS"
@@ -514,8 +513,20 @@ export default function IntegrationsSettings({ onToast, adminEmail }: { onToast:
           run={async (to) => api<{ ms: number }>('/api/admin/settings/integrations/sms/test', { method: 'POST', body: JSON.stringify({ to, config: sms }) })}
         />
       </Channel>
+  );
 
-      <ReviewsIntegration onToast={onToast} />
-    </div>
+  const tiles: HubTile[] = [
+    { id: 'smtp', icon: <Mail size={24} />, title: 'E-posta', blurb: 'Giriş kodları ve bildirimler bu hesaptan gider', status: smtpStatus, dirty: smtpDirty, hue: 'linear-gradient(135deg,#6366f1,#a855f7)' },
+    { id: 'sms', icon: <MessageSquareText size={24} />, title: 'SMS', blurb: 'Telefon numarasına kısa mesaj göndermek için', status: smsStatus, dirty: smsDirty, hue: 'linear-gradient(135deg,#8b5cf6,#ec4899)' },
+    { id: 'google', icon: <Star size={24} />, title: 'Google yorumları', blurb: 'Puanınız ve yorumlarınız karşılama ekranında görünür', status: reviews.googleStatus, dirty: reviews.dirty, hue: 'linear-gradient(135deg,#f59e0b,#ef4444)' },
+    { id: 'manual', icon: <MessageSquareQuote size={24} />, title: 'Müşteri yorumları', blurb: 'Gerçekten aldığınız güzel sözleri kendiniz yazın', status: reviews.manualStatus, dirty: reviews.dirty, hue: 'linear-gradient(135deg,#14b8a6,#3b82f6)' },
+  ];
+  const panel =
+    openId === 'smtp' ? smtpPanel : openId === 'sms' ? smsPanel : openId === 'google' ? <ReviewsChannel s={reviews} part="google" /> : openId === 'manual' ? <ReviewsChannel s={reviews} part="manual" /> : null;
+
+  return (
+    <IntegrationHub tiles={tiles} openId={openId} onOpen={setOpenId} onClose={() => setOpenId(null)} busy={saving !== null || reviews.saving} >
+      {panel}
+    </IntegrationHub>
   );
 }

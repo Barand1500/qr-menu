@@ -5,7 +5,7 @@ import { Channel, Field } from './IntegrationsSettings';
 import './reviews-integration.css';
 
 type Manual = { name: string; text: string; rating: number };
-type Config = {
+export type ReviewsDraft = {
   googleEnabled: boolean;
   placeId: string;
   placeName: string;
@@ -13,17 +13,18 @@ type Config = {
   manualEnabled: boolean;
   manual: Manual[];
 };
-type Loaded = { config: Config; keyConfigured: boolean };
+type Loaded = { config: ReviewsDraft; keyConfigured: boolean };
 type Hit = { id: string; name: string; address: string; rating: number | null; count: number | null };
 type TestResult = { name: string; rating: number | null; count: number | null; reviewCount: number; sample: { name: string; text: string; rating: number } | null };
+type Status = { tone: 'ok' | 'idle' | 'off'; text: string };
 
 const MAX_MANUAL = 12;
 const apiError = (e: unknown) => (e instanceof Error ? e.message : 'İşlem tamamlanamadı.');
 
-/** Entegrasyonlar > Yorumlar: Google yorumları (işletme seçilerek) ve elle girilen müşteri yorumları. */
-export default function ReviewsIntegration({ onToast }: { onToast: (text: string, error?: boolean) => void }) {
+/** Yorum ayarlarının tek kaynağı: Google ve elle yorumlar aynı taslağı paylaşır, tek istekle kaydedilir. */
+export function useReviewsState(onToast: (text: string, error?: boolean) => void) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [draft, setDraft] = useState<Config | null>(null);
+  const [draft, setDraft] = useState<ReviewsDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<Hit[]>([]);
@@ -49,16 +50,10 @@ export default function ReviewsIntegration({ onToast }: { onToast: (text: string
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!loaded || !draft) {
-    return (
-      <p className="rvi-loading">
-        <Loader2 size={16} className="animate-spin" aria-hidden /> Yorum ayarları yükleniyor…
-      </p>
-    );
-  }
-
-  const dirty = JSON.stringify(draft) !== JSON.stringify(loaded.config);
-  const set = (patch: Partial<Config>) => setDraft((d) => (d ? { ...d, ...patch } : d));
+  const ready = Boolean(loaded && draft);
+  const dirty = ready && JSON.stringify(draft) !== JSON.stringify(loaded!.config);
+  const set = (patch: Partial<ReviewsDraft>) => setDraft((d) => (d ? { ...d, ...patch } : d));
+  const keyConfigured = loaded?.keyConfigured ?? false;
 
   async function save() {
     if (!draft) return;
@@ -117,30 +112,53 @@ export default function ReviewsIntegration({ onToast }: { onToast: (text: string
   const setManual = (i: number, patch: Partial<Manual>) =>
     setDraft((d) => (d ? { ...d, manual: d.manual.map((m, k) => (k === i ? { ...m, ...patch } : m)) } : d));
 
-  const googleStatus = !loaded.keyConfigured
-    ? { tone: 'idle' as const, text: 'Sunucuda Google anahtarı tanımlı değil' }
-    : draft.googleEnabled && draft.placeId
-      ? { tone: 'ok' as const, text: `Açık · ${draft.placeName || 'işletme seçili'}` }
-      : { tone: 'off' as const, text: draft.placeId ? 'Kapalı · işletme seçili' : 'Kapalı · işletme seçilmedi' };
-  const manualStatus = draft.manualEnabled
-    ? { tone: 'ok' as const, text: `Açık · ${draft.manual.length} yorum` }
-    : { tone: 'off' as const, text: 'Kapalı' };
+  const googleStatus: Status = !draft
+    ? { tone: 'off', text: 'Yükleniyor…' }
+    : !keyConfigured
+      ? { tone: 'idle', text: 'Sunucuda Google anahtarı tanımlı değil' }
+      : draft.googleEnabled && draft.placeId
+        ? { tone: 'ok', text: `Açık · ${draft.placeName || 'işletme seçili'}` }
+        : { tone: 'off', text: draft.placeId ? 'Kapalı · işletme seçili' : 'Kapalı · işletme seçilmedi' };
+  const manualStatus: Status = !draft
+    ? { tone: 'off', text: 'Yükleniyor…' }
+    : draft.manualEnabled
+      ? { tone: 'ok', text: `Açık · ${draft.manual.length} yorum` }
+      : { tone: 'off', text: 'Kapalı' };
 
-  return (
-    <>
+  return {
+    ready, loaded, draft, dirty, saving, keyConfigured, set, setManual, save, reset: () => loaded && setDraft(loaded.config),
+    query, setQuery, hits, searching, searchError, search, pick, testing, test, testError, runTest,
+    googleStatus, manualStatus,
+  };
+}
+export type ReviewsState = ReturnType<typeof useReviewsState>;
+
+/** İki yorum kanalından biri: "google" ya da "manual". */
+export function ReviewsChannel({ s, part }: { s: ReviewsState; part: 'google' | 'manual' }) {
+  const { draft } = s;
+  if (!s.ready || !draft) {
+    return (
+      <p className="rvi-loading">
+        <Loader2 size={16} className="animate-spin" aria-hidden /> Yorum ayarları yükleniyor…
+      </p>
+    );
+  }
+
+  if (part === 'google') {
+    return (
       <Channel
         icon={<Star size={22} />}
         title="Google yorumları"
-        subtitle="İşletmenizin Google puanı ve yorumları karşılama ve “Daha fazla” ekranında görünür"
+        subtitle="Google puanınız ve yorumlarınız karşılama ve “Daha fazla” ekranında görünür"
         enabled={draft.googleEnabled}
-        onEnabled={(v) => set({ googleEnabled: v && Boolean(draft.placeId) })}
-        status={googleStatus}
-        dirty={dirty}
-        saving={saving}
-        onSave={() => void save()}
-        onReset={() => setDraft(loaded.config)}
+        onEnabled={(v) => s.set({ googleEnabled: v && Boolean(draft.placeId) })}
+        status={s.googleStatus}
+        dirty={s.dirty}
+        saving={s.saving}
+        onSave={() => void s.save()}
+        onReset={s.reset}
       >
-        {!loaded.keyConfigured ? (
+        {!s.keyConfigured ? (
           <p className="ig-tip">
             Bu özellik için sunucuya Google Places anahtarı eklenmeli (<code>GOOGLE_PLACES_API_KEY</code>). Eklenene kadar Google yorumları gösterilmez; elle girdiğiniz yorumlar çalışmaya devam eder.
           </p>
@@ -155,7 +173,7 @@ export default function ReviewsIntegration({ onToast }: { onToast: (text: string
               <strong>{draft.placeName || 'Seçili işletme'}</strong>
               {draft.placeAddress ? <small>{draft.placeAddress}</small> : null}
             </div>
-            <button type="button" className="ig-link" onClick={() => set({ placeId: '', placeName: '', placeAddress: '', googleEnabled: false })}>
+            <button type="button" className="ig-link" onClick={() => s.set({ placeId: '', placeName: '', placeAddress: '', googleEnabled: false })}>
               Değiştir
             </button>
           </div>
@@ -164,19 +182,19 @@ export default function ReviewsIntegration({ onToast }: { onToast: (text: string
         {!draft.placeId ? (
           <>
             <div className="rvi-search">
-              <div onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), void search())}>
-                <Field label="İşletme adı veya adresi" value={query} onChange={setQuery} placeholder="Zeen Cafe Kadıköy" maxLength={120} />
+              <div onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), void s.search())}>
+                <Field label="İşletme adı veya adresi" value={s.query} onChange={s.setQuery} placeholder="Zeen Cafe Kadıköy" maxLength={120} />
               </div>
-              <button type="button" className="ig-btn" disabled={!loaded.keyConfigured || searching || query.trim().length < 2} onClick={() => void search()}>
-                {searching ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Search size={16} aria-hidden />} Ara
+              <button type="button" className="ig-btn" disabled={!s.keyConfigured || s.searching || s.query.trim().length < 2} onClick={() => void s.search()}>
+                {s.searching ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Search size={16} aria-hidden />} Ara
               </button>
             </div>
-            {searchError ? <p className="rvi-error">{searchError}</p> : null}
-            {hits.length ? (
+            {s.searchError ? <p className="rvi-error">{s.searchError}</p> : null}
+            {s.hits.length ? (
               <ul className="rvi-hits">
-                {hits.map((h) => (
+                {s.hits.map((h) => (
                   <li key={h.id}>
-                    <button type="button" onClick={() => pick(h)}>
+                    <button type="button" onClick={() => s.pick(h)}>
                       <strong>{h.name}</strong>
                       <small>{h.address}</small>
                       {h.rating !== null ? (
@@ -192,67 +210,69 @@ export default function ReviewsIntegration({ onToast }: { onToast: (text: string
           </>
         ) : (
           <div className="rvi-test">
-            <button type="button" className="ig-btn ig-btn--ghost" disabled={testing || !loaded.keyConfigured} onClick={() => void runTest()}>
-              {testing ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Zap size={16} aria-hidden />} Bağlantıyı dene
+            <button type="button" className="ig-btn ig-btn--ghost" disabled={s.testing || !s.keyConfigured} onClick={() => void s.runTest()}>
+              {s.testing ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Zap size={16} aria-hidden />} Bağlantıyı dene
             </button>
-            {test ? (
+            {s.test ? (
               <p className="rvi-ok">
-                Bağlandı: {test.name}
-                {test.rating !== null ? ` · ★ ${test.rating.toFixed(1)}` : ''}
-                {test.count ? ` · ${test.count} yorum` : ''} · {test.reviewCount} yorum okundu
-                {test.sample ? <em>“{test.sample.text.slice(0, 90)}{test.sample.text.length > 90 ? '…' : ''}” — {test.sample.name}</em> : null}
+                Bağlandı: {s.test.name}
+                {s.test.rating !== null ? ` · ★ ${s.test.rating.toFixed(1)}` : ''}
+                {s.test.count ? ` · ${s.test.count} yorum` : ''} · {s.test.reviewCount} yorum okundu
+                {s.test.sample ? <em>“{s.test.sample.text.slice(0, 90)}{s.test.sample.text.length > 90 ? '…' : ''}” — {s.test.sample.name}</em> : null}
               </p>
             ) : null}
-            {testError ? <p className="rvi-error">{testError}</p> : null}
+            {s.testError ? <p className="rvi-error">{s.testError}</p> : null}
           </div>
         )}
         <p className="ig-tip">Google en fazla 5 yorum verir; puan ve yorum sayısı tamdır. Yorumlar saklanmaz, 6 saatte bir Google’dan tazelenir.</p>
       </Channel>
+    );
+  }
 
-      <Channel
-        icon={<MessageSquareQuote size={22} />}
-        title="Müşteri yorumları (elle)"
-        subtitle="Gerçekten aldığınız güzel sözleri kendiniz yazın; “Misafirlerimizden” etiketiyle görünür"
-        enabled={draft.manualEnabled}
-        onEnabled={(v) => set({ manualEnabled: v })}
-        status={manualStatus}
-        dirty={dirty}
-        saving={saving}
-        onSave={() => void save()}
-        onReset={() => setDraft(loaded.config)}
-      >
-        <p className="ig-tip">Yalnızca müşterilerinizin gerçekten söylediği ya da yazdığı yorumları ekleyin. Uydurma yorum yanıltıcıdır ve işletmenizi riske atar.</p>
-        <ul className="rvi-list">
-          {draft.manual.map((m, i) => (
-            <li key={i} className="rvi-item">
-              <div className="rvi-item__top">
-                <Field label="Müşteri adı" value={m.name} onChange={(v) => setManual(i, { name: v })} maxLength={40} />
-                <div className="rvi-rate" role="radiogroup" aria-label="Puan">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button key={n} type="button" role="radio" aria-checked={m.rating === n} className={n <= m.rating ? 'is-on' : ''} onClick={() => setManual(i, { rating: n })} aria-label={`${n} yıldız`}>
-                      <Star size={18} fill={n <= m.rating ? 'currentColor' : 'none'} aria-hidden />
-                    </button>
-                  ))}
-                </div>
-                <button type="button" className="rvi-del" aria-label="Yorumu sil" onClick={() => set({ manual: draft.manual.filter((_, k) => k !== i) })}>
-                  <Trash2 size={17} aria-hidden />
-                </button>
+  return (
+    <Channel
+      icon={<MessageSquareQuote size={22} />}
+      title="Müşteri yorumları (elle)"
+      subtitle="Gerçekten aldığınız güzel sözleri kendiniz yazın; “Misafirlerimizden” etiketiyle görünür"
+      enabled={draft.manualEnabled}
+      onEnabled={(v) => s.set({ manualEnabled: v })}
+      status={s.manualStatus}
+      dirty={s.dirty}
+      saving={s.saving}
+      onSave={() => void s.save()}
+      onReset={s.reset}
+    >
+      <p className="ig-tip">Yalnızca müşterilerinizin gerçekten söylediği ya da yazdığı yorumları ekleyin. Uydurma yorum yanıltıcıdır ve işletmenizi riske atar.</p>
+      <ul className="rvi-list">
+        {draft.manual.map((m, i) => (
+          <li key={i} className="rvi-item">
+            <div className="rvi-item__top">
+              <Field label="Müşteri adı" value={m.name} onChange={(v) => s.setManual(i, { name: v })} maxLength={40} />
+              <div className="rvi-rate" role="radiogroup" aria-label="Puan">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button key={n} type="button" role="radio" aria-checked={m.rating === n} className={n <= m.rating ? 'is-on' : ''} onClick={() => s.setManual(i, { rating: n })} aria-label={`${n} yıldız`}>
+                    <Star size={18} fill={n <= m.rating ? 'currentColor' : 'none'} aria-hidden />
+                  </button>
+                ))}
               </div>
-              <textarea value={m.text} maxLength={300} rows={2} placeholder="Yorum metni" aria-label="Yorum metni" onChange={(e) => setManual(i, { text: e.target.value })} />
-              <small>{m.text.length}/300</small>
-            </li>
-          ))}
-        </ul>
-        <button
-          type="button"
-          className="ig-btn ig-btn--ghost"
-          disabled={draft.manual.length >= MAX_MANUAL}
-          onClick={() => set({ manual: [...draft.manual, { name: '', text: '', rating: 5 }] })}
-        >
-          <Plus size={16} aria-hidden /> {draft.manual.length >= MAX_MANUAL ? `En fazla ${MAX_MANUAL} yorum` : 'Yorum ekle'}
-        </button>
-        <p className="ig-tip">Adı ya da metni boş bırakılan satırlar kaydedilirken atılır.</p>
-      </Channel>
-    </>
+              <button type="button" className="rvi-del" aria-label="Yorumu sil" onClick={() => s.set({ manual: draft.manual.filter((_, k) => k !== i) })}>
+                <Trash2 size={17} aria-hidden />
+              </button>
+            </div>
+            <textarea value={m.text} maxLength={300} rows={2} placeholder="Yorum metni" aria-label="Yorum metni" onChange={(e) => s.setManual(i, { text: e.target.value })} />
+            <small>{m.text.length}/300</small>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        className="ig-btn ig-btn--ghost"
+        disabled={draft.manual.length >= MAX_MANUAL}
+        onClick={() => s.set({ manual: [...draft.manual, { name: '', text: '', rating: 5 }] })}
+      >
+        <Plus size={16} aria-hidden /> {draft.manual.length >= MAX_MANUAL ? `En fazla ${MAX_MANUAL} yorum` : 'Yorum ekle'}
+      </button>
+      <p className="ig-tip">Adı ya da metni boş bırakılan satırlar kaydedilirken atılır.</p>
+    </Channel>
   );
 }
