@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { SofraConfig } from '@/lib/sofra';
+import { useMessageIntro } from './useMessageIntro';
 import './manager-message.css';
 
 type Props = {
@@ -25,6 +26,13 @@ export default function ManagerMessageForm({
   onBusy,
 }: Props) {
   const en = !lang.startsWith('tr');
+  const input = useRef<HTMLTextAreaElement>(null);
+  const intro = useMessageIntro(
+    input,
+    en
+      ? 'Dear manager, I have a little idea…'
+      : 'Sevgili yönetici, küçük bir önerim var…',
+  );
   const [kind, setKind] = useState<'suggestion' | 'complaint'>('suggestion');
   const [message, setMessage] = useState(''),
     [name, setName] = useState(''),
@@ -94,6 +102,8 @@ export default function ManagerMessageForm({
     <form
       className={`manager-note${busy ? ' is-sending' : ''}`}
       onSubmit={submit}
+      onPointerDownCapture={intro.stop}
+      onKeyDownCapture={intro.stop}
     >
       <aside className="manager-note__aside">
         <span className="manager-note__seal" aria-hidden>
@@ -158,15 +168,39 @@ export default function ManagerMessageForm({
           </div>
           <label className="manager-note__message">
             <span>{en ? 'Your note' : 'Notunuz'}</span>
-            <textarea
-              aria-label={en ? 'Your note' : 'Notunuz'}
-              required
-              minLength={5}
-              maxLength={2000}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder={en ? 'Dear manager…' : 'Sevgili yönetici…'}
-            />
+            <div
+              className="manager-note__paper"
+              data-intro={intro.playing || undefined}
+            >
+              <textarea
+                ref={input}
+                onBeforeInput={intro.stop}
+                onPaste={intro.stop}
+                onCompositionStart={intro.stop}
+                aria-label={en ? 'Your note' : 'Notunuz'}
+                required
+                minLength={5}
+                maxLength={2000}
+                value={message}
+                onChange={(e) => {
+                  intro.stop();
+                  setMessage(e.target.value);
+                }}
+                placeholder={
+                  intro.playing || intro.started
+                    ? ''
+                    : en
+                      ? 'Dear manager…'
+                      : 'Sevgili yönetici…'
+                }
+              />
+              {intro.playing && (
+                <span className="manager-note__intro" aria-hidden="true">
+                  {intro.preview}
+                  <i />
+                </span>
+              )}
+            </div>
             <small>{message.length} / 2000</small>
           </label>
           <details className="manager-note__reply">
@@ -175,27 +209,29 @@ export default function ManagerMessageForm({
               <small>{en ? 'optional' : 'isteğe bağlı'}</small>
               <ChevronDown size={15} />
             </summary>
-            <label>
-              <span>{en ? 'Your name' : 'Adınız'}</span>
-              <input
-                value={name}
-                minLength={2}
-                maxLength={150}
-                onChange={(e) => setName(e.target.value)}
-                autoComplete="name"
-              />
-            </label>
-            <label>
-              <span>{en ? 'Email or phone' : 'E-posta veya telefon'}</span>
-              <input
-                value={reply}
-                maxLength={150}
-                onChange={(e) => setReply(e.target.value)}
-                placeholder={
-                  en ? 'How can we reach you?' : 'Size nereden ulaşalım?'
-                }
-              />
-            </label>
+            <div className="manager-note__reply-fields">
+              <label>
+                <span>{en ? 'Your name' : 'Adınız'}</span>
+                <input
+                  value={name}
+                  minLength={2}
+                  maxLength={150}
+                  onChange={(e) => setName(e.target.value)}
+                  autoComplete="name"
+                />
+              </label>
+              <label>
+                <span>{en ? 'Email or phone' : 'E-posta veya telefon'}</span>
+                <input
+                  value={reply}
+                  maxLength={150}
+                  onChange={(e) => setReply(e.target.value)}
+                  placeholder={
+                    en ? 'How can we reach you?' : 'Size nereden ulaşalım?'
+                  }
+                />
+              </label>
+            </div>
           </details>
         </fieldset>
         {error && (

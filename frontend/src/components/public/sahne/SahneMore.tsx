@@ -156,6 +156,7 @@ export default function SahneMore({
         aria-modal={open ? true : undefined}
         aria-hidden={!open}
         aria-labelledby={titleId}
+        data-view={view}
         className={`sh-interlude ${open ? 'is-open' : ''}`}
       >
         <header className="sh-interlude__head">
@@ -263,7 +264,7 @@ export default function SahneMore({
                   </button>
                   {managerContact?.enabled && menuSlug && (
                     <button className="sh-interlude__nav" onClick={e => utility('manager', e.currentTarget)}>
-                      <Mail size={18}/><span>{en ? 'Write to manager' : 'Yöneticiye yaz'}</span><ArrowUpRight/>
+                      <small className="sh-interlude__nav-marker"><Mail size={16}/></small><span>{en ? 'Write to manager' : 'Yöneticiye yaz'}</span><ArrowUpRight/>
                     </button>
                   )}
                   {hasContact && (
