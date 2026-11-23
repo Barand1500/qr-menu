@@ -288,3 +288,132 @@
     display: none;
   }
 }
+
+/* konum seçici */
+.ccp-map {
+  display: grid;
+  gap: 8px;
+}
+.ccp-map__search {
+  display: flex;
+  gap: 8px;
+}
+.ccp-map__search label {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 12px;
+  color: var(--admin-text-muted);
+  background: var(--admin-input-bg, transparent);
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 14px;
+}
+.ccp-map__search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 46px;
+  color: var(--admin-text);
+  font-size: 16px;
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+.ccp-map__search > button,
+.ccp-map__bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 46px;
+  padding: 0 16px;
+  color: var(--admin-btn-primary-text, #fff);
+  font-weight: 700;
+  font-size: 13px;
+  background: var(--admin-accent);
+  border: 0;
+  border-radius: 14px;
+  cursor: pointer;
+}
+.ccp-map__search > button:disabled,
+.ccp-map__bar button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ccp-map__hits {
+  display: grid;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--admin-card);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 14px;
+}
+.ccp-map__hits button {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  color: var(--admin-text);
+  font-size: 12.5px;
+  line-height: 1.35;
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.ccp-map__hits button:hover {
+  background: var(--admin-accent-soft);
+}
+.ccp-map__error {
+  margin: 0;
+  color: #dc2626;
+  font-size: 12px;
+}
+.ccp-map__canvas {
+  position: relative;
+  overflow: hidden;
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 16px;
+}
+.ccp-map__canvas > div:first-child {
+  height: 280px;
+}
+.ccp-map__hint {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  z-index: 500;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 12.5px;
+  text-align: center;
+  background: rgba(15, 23, 42, 0.78);
+  border-radius: 12px;
+  pointer-events: none;
+}
+.ccp-map__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+}
+.ccp-map__bar div {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ccp-map__bar button {
+  min-height: 40px;
+  padding: 0 12px;
+  color: var(--admin-text);
+  font-size: 12.5px;
+  background: transparent;
+  border: 1px solid var(--admin-card-border);
+}

@@ -762,3 +762,9 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Ön yüz: `components/contact-card/` (kart, imza animasyonu, mühür, PNG üretimi, imza kutusu), yönetim sayfası `İletişim Kartı` (Görünüm menüsü), Sofra menüsünde "İletişim" bağlantısı (menü ekranından 03).
 - Doğrulama: tsc, vite build, backend testi, Chrome fixture (390/320/1280): kart 4 renkte, çevirme, PNG indirme, yönetim sayfası, imza çizme/geri alma, mobil önizleme sayfası, Escape. Gerçek cihaz, gerçek paylaşım penceresi ve gerçek sunucu denenmedi.
 - Not: three.js (PaperCrumple) kurulamadığı için kullanılmadı. Yalnızca Sofra menüsünde var; eski temalar görünmez. Backend deploy gerekir.
+
+## 2026-11-23 — İletişim kartı düzeltmeleri ve harita
+- Menü (Daha fazla) geniş ekranda alt şerit tek satıra alındı, kısa ekranda liste satırları sıkıştırıldı.
+- Paylaş düğmesi üzerine gelince koyulaşıp yazısı kayboluyordu; kaldırıldı (hafif parlama). Yatay kart 640px yerine 880px.
+- Harita: kart şemasına lat/lng; yönetimde Leaflet konum seçici (adres ara, haritaya dokun, iğne sürükle, konum izni noktasını kullan, kaldır) + isteğe bağlı bağlantı; müşteri sayfasında karanlık harita + Yol tarifi. Yol tarifi önceliği: bağlantı > iğne > adres.
+- Doğrulama: tsc, vite build, backend testi, Chrome fixture (menü 1440x772, kart 390/320/1280, yönetim 1400/390). Gerçek harita karoları ve gerçek adres araması (Nominatim) denenmedi; karolar sahte yanıtla test edildi.

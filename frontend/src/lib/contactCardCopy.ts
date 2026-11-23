@@ -30,6 +30,7 @@ export function contactCardCopy(lang: string) {
         copied: 'Link copied',
         failed: 'Could not complete',
         flip: 'Flip the card',
+        mapTitle: 'Find us',
       }
     : {
         title: 'İletişim kartı',
@@ -58,5 +59,6 @@ export function contactCardCopy(lang: string) {
         copied: 'Bağlantı kopyalandı',
         failed: 'Tamamlanamadı',
         flip: 'Kartı çevir',
+        mapTitle: 'Bizi bulun',
       };
 }

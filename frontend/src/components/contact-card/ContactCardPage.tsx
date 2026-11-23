@@ -1,10 +1,13 @@
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { contactCardCopy } from '@/lib/contactCardCopy';
-import type { ContactCardConfig } from '@/lib/contactCard';
+import { contactCardMapUrl, type ContactCardConfig } from '@/lib/contactCard';
 import ContactCardView, { type ContactCardRestaurant } from './ContactCardView';
 import './contact-card-page.css';
+
+// Harita kitaplığı yalnızca konumu olan kartta yüklenir
+const ContactCardMap = lazy(() => import('./ContactCardMap'));
 
 /** Menüdeki "İletişim" sayfası: telefonda dikey, geniş ekranda yatay kart. */
 export default function ContactCardPage({
@@ -39,6 +42,20 @@ export default function ContactCardPage({
         layout={wide ? 'landscape' : 'portrait'}
         menuUrl={`${window.location.origin}/menu`}
       />
+      {typeof card.lat === 'number' && typeof card.lng === 'number' ? (
+        <div className="cc-page__map" data-layout={wide ? 'landscape' : 'portrait'}>
+          <Suspense fallback={<div className="cc-map cc-map--loading" aria-hidden="true" />}>
+            <ContactCardMap
+              lat={card.lat}
+              lng={card.lng}
+              address={card.address}
+              href={contactCardMapUrl(card)}
+              label={t.mapTitle}
+              actionLabel={t.location}
+            />
+          </Suspense>
+        </div>
+      ) : null}
     </section>
   );
 }

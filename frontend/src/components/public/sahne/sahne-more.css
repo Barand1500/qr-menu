@@ -921,3 +921,42 @@
   margin-inline: auto;
   text-align: center;
 }
+
+/* Geniş ekran: alt şerit tek satırda (dil/tercih solda, sosyal ortada, imza sağda); liste sıkışmaz */
+@media (min-width: 1024px) {
+  .sh-interlude__foot {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 20px;
+    padding-block: 14px;
+  }
+  .sh-interlude__foot .sh-interlude__tools {
+    flex: none;
+    justify-content: flex-start;
+  }
+  .sh-interlude__foot .public-social {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: center;
+  }
+  .sh-interlude__signature {
+    margin-inline: auto 0;
+    text-align: end;
+    white-space: nowrap;
+  }
+}
+@media (min-width: 1024px) and (max-height: 860px) {
+  .sh-interlude__nav {
+    min-height: 68px;
+    padding-block: 12px;
+  }
+  .sh-interlude__right {
+    gap: 22px;
+  }
+  .sh-interlude__head {
+    padding-block: 16px;
+  }
+}

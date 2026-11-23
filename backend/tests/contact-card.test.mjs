@@ -39,6 +39,16 @@ assert.equal(m.contactCardMapUrl({ mapUrl: '', address: '' }), '');
 assert.equal(m.contactCardWhatsappUrl('0532 111 22 33'), 'https://wa.me/905321112233');
 assert.equal(m.contactCardWhatsappUrl('+90 532 111 22 33'), 'https://wa.me/905321112233');
 assert.equal(m.contactCardWhatsappUrl(''), '');
+// harita noktası: geçerli çift tutulur, yarım/aralık dışı atılır
+const pin = m.normalizeContactCard({ lat: 41.0082123456, lng: 28.9784 });
+assert.equal(pin.lat, 41.008212);
+assert.equal(pin.lng, 28.9784);
+assert.deepEqual([m.normalizeContactCard({ lat: 41 }).lat, m.normalizeContactCard({ lat: 41 }).lng], [null, null]);
+assert.equal(m.normalizeContactCard({ lat: 91, lng: 10 }).lat, null);
+assert.equal(m.normalizeContactCard({ lat: '41', lng: '29' }).lat, null);
+assert.equal(m.contactCardHasContent({ ...m.CONTACT_CARD_DEFAULTS, lat: 41, lng: 29 }), true);
+assert.equal(m.contactCardMapUrl({ mapUrl: '', address: 'x', lat: 41, lng: 29 }), 'https://www.google.com/maps/search/?api=1&query=41,29');
+assert.equal(m.contactCardMapUrl({ mapUrl: 'https://maps.app.goo.gl/x', address: 'x', lat: 41, lng: 29 }), 'https://maps.app.goo.gl/x');
 // kaydet-oku turu değişmez
 assert.deepEqual(m.parseContactCard(m.serializeContactCard(c)), c);
 console.log('PASS: iletişim kartı şeması');

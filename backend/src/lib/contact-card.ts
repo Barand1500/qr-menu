@@ -24,6 +24,9 @@ export type ContactCardConfig = {
   address: string;
   /** Google Maps vb. konum bağlantısı. Boşsa adresten arama bağlantısı üretilir. */
   mapUrl: string;
+  /** Haritadan seçilen nokta (ikisi birlikte dolu ya da ikisi de boş) */
+  lat: number | null;
+  lng: number | null;
   hours: string;
   /** Her çizgi ayrı SVG yoludur (M/L/Q komutları), sırayla çizilir. */
   signature: string[];
@@ -41,6 +44,8 @@ export const CONTACT_CARD_DEFAULTS: ContactCardConfig = {
   website: '',
   address: '',
   mapUrl: '',
+  lat: null,
+  lng: null,
   hours: '',
   signature: [],
 };
@@ -78,6 +83,14 @@ const strokePath = (value: unknown) => {
   return v;
 };
 
+/** Enlem/boylam: geçerli aralıkta iki sayı; aksi halde konum yok sayılır. */
+function coordinates(lat: unknown, lng: unknown): { lat: number | null; lng: number | null } {
+  const a = typeof lat === 'number' ? lat : NaN;
+  const b = typeof lng === 'number' ? lng : NaN;
+  if (!Number.isFinite(a) || !Number.isFinite(b) || Math.abs(a) > 90 || Math.abs(b) > 180) return { lat: null, lng: null };
+  return { lat: Math.round(a * 1e6) / 1e6, lng: Math.round(b * 1e6) / 1e6 };
+}
+
 export function normalizeContactCard(input: unknown): ContactCardConfig {
   const s = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
   const tone = CONTACT_CARD_TONES.includes(s.tone as ContactCardTone)
@@ -98,6 +111,7 @@ export function normalizeContactCard(input: unknown): ContactCardConfig {
     website: link(s.website, 200),
     address: text(s.address, 200),
     mapUrl: link(s.mapUrl, 500),
+    ...coordinates(s.lat, s.lng),
     hours: text(s.hours, 80),
     signature,
   };
@@ -126,13 +140,19 @@ export function contactCardHasContent(config: ContactCardConfig): boolean {
       config.website ||
       config.address ||
       config.mapUrl ||
+      config.lat !== null ||
       config.hours,
   );
 }
 
-/** Konum bağlantısı: yazılmışsa o, yoksa adresten Google Maps araması. */
-export function contactCardMapUrl(config: Pick<ContactCardConfig, 'mapUrl' | 'address'>): string {
+/** Konum bağlantısı: yazılmış bağlantı, yoksa haritadaki nokta, yoksa adresten Google Maps araması. */
+export function contactCardMapUrl(
+  config: Pick<ContactCardConfig, 'mapUrl' | 'address'> & { lat?: number | null; lng?: number | null },
+): string {
   if (config.mapUrl) return config.mapUrl;
+  if (typeof config.lat === 'number' && typeof config.lng === 'number') {
+    return `https://www.google.com/maps/search/?api=1&query=${config.lat},${config.lng}`;
+  }
   if (config.address) {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(config.address)}`;
   }

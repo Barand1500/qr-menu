@@ -4,6 +4,7 @@ import AdminOverlay from '@/components/admin/AdminOverlay';
 import AdminToast, { type AdminToastNotice } from '@/components/admin/AdminToast';
 import VisibilityToggle from '@/components/admin/VisibilityToggle';
 import ContactCardView, { type ContactCardLayout } from '@/components/contact-card/ContactCardView';
+import ContactMapPicker from '@/components/contact-card/ContactMapPicker';
 import SignaturePad from '@/components/contact-card/SignaturePad';
 import { Button, Input, PageHeader, Spinner } from '@/components/ui';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -31,6 +32,8 @@ export default function ContactCardAdminPage() {
   const [sheet, setSheet] = useState(false);
   const [device, setDevice] = useState<ContactCardLayout>('portrait');
   const wide = useMediaQuery('(min-width: 1100px)');
+  // Konum izni için kayıtlı nokta: haritada başlangıç ve tek dokunuşla kullanım için hatırlanır
+  const [home, setHome] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -43,6 +46,18 @@ export default function ContactCardAdminPage() {
       })
       .catch(() => alive && setNotice({ text: 'Kart bilgileri yüklenemedi.', error: true }))
       .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    api<{ enabled: boolean; lat: number; lng: number }>('/api/admin/settings/geo-lock')
+      .then((g) => {
+        if (alive && g.enabled && Number.isFinite(g.lat) && Number.isFinite(g.lng)) setHome({ lat: g.lat, lng: g.lng });
+      })
+      .catch(() => undefined);
     return () => {
       alive = false;
     };
@@ -151,9 +166,19 @@ export default function ContactCardAdminPage() {
           <section className="ccp__panel">
             <h2>Konum ve saatler</h2>
             <Input label="Adres" value={card.address} maxLength={200} onChange={(e) => set('address', e.target.value)} />
-            <Input label="Harita bağlantısı" value={card.mapUrl} maxLength={500} onChange={(e) => set('mapUrl', e.target.value)} />
             <p className="ccp__help">
-              Google Haritalar’da konumunuzu açıp “Paylaş” bağlantısını yapıştırın. Boş bırakırsanız adresten aranır.
+              Konumu iki yoldan verebilirsiniz: haritada arayıp iğneyi bırakın (menüde harita görünür) ya da aşağıya bağlantı yapıştırın.
+            </p>
+            <ContactMapPicker
+              lat={card.lat}
+              lng={card.lng}
+              home={home}
+              disabled={saving}
+              onChange={(p) => setCard((prev) => ({ ...prev, lat: p ? p.lat : null, lng: p ? p.lng : null }))}
+            />
+            <Input label="Harita bağlantısı (isteğe bağlı)" value={card.mapUrl} maxLength={500} onChange={(e) => set('mapUrl', e.target.value)} />
+            <p className="ccp__help">
+              Bağlantı varsa “Yol tarifi” düğmesi onu açar. Boşsa seçtiğiniz iğne, o da yoksa adres kullanılır.
             </p>
             <Input label="Çalışma saatleri" value={card.hours} maxLength={80} placeholder="Her gün 09:00 – 23:00" onChange={(e) => set('hours', e.target.value)} />
           </section>

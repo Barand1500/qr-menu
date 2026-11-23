@@ -30,3 +30,93 @@
     padding-inline: 32px;
   }
 }
+
+.cc-page__map {
+  width: 100%;
+  max-width: 360px;
+  margin: 26px auto 0;
+}
+.cc-page__map[data-layout='landscape'] {
+  max-width: 880px;
+}
+.cc-map {
+  overflow: hidden;
+  background: #17120e;
+  border: 1px solid rgba(246, 238, 228, 0.16);
+  border-radius: 22px;
+}
+.cc-map--loading {
+  height: 260px;
+}
+.cc-map__canvas {
+  height: 240px;
+  background: #1a1511;
+}
+.cc-page__map[data-layout='landscape'] .cc-map__canvas {
+  height: 320px;
+}
+/* karanlık görünüm: açık harita karolarını sayfa temasına uydurur */
+.cc-map__canvas .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.92) saturate(0.55) sepia(0.25);
+}
+.cc-map__canvas .leaflet-control-attribution {
+  color: #cbbfae;
+  background: rgba(14, 11, 9, 0.7);
+}
+.cc-map__canvas .leaflet-control-attribution a {
+  color: #ffb44a;
+}
+.cc-map__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+}
+.cc-map__bar > div {
+  min-width: 0;
+}
+.cc-map__bar small {
+  display: block;
+  color: #a99b8d;
+  font: 700 10px/1 ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.cc-map__bar strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 13.5px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.cc-map__bar a {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 16px;
+  color: #1a0d05;
+  font-weight: 800;
+  font-size: 13px;
+  text-decoration: none;
+  background: linear-gradient(120deg, #ff6b2c, #ffb44a);
+  border-radius: 14px;
+}
+.cc-map__bar a:hover {
+  filter: brightness(1.08);
+}
+.cc-map__bar a:focus-visible {
+  outline: 2px solid #ffb44a;
+  outline-offset: 3px;
+}
+@media (max-width: 420px) {
+  .cc-map__bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cc-map__bar a {
+    justify-content: center;
+  }
+}
