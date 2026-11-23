@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Bell, CarFront, Wind, HandHelping, KeyRound, Receipt, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { api, formatMoney } from '@/lib/api';
 import { playAdminNotificationSound } from '@/lib/notificationSound';
@@ -9,7 +8,6 @@ import {
   subscribeTableRequestCreated,
   type TableRequestNotifyPayload,
 } from '@/lib/tableRequestNotify';
-import { adminPath } from '@/lib/adminPath';
 
 const MUTE_KEY = 'menu_qr_table_call_muted';
 
@@ -69,7 +67,6 @@ function codeKey(row: PendingCodeRow) {
 }
 
 export default function AdminNotificationBell() {
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<TableServiceRequestRow[]>([]);
   const [pendingCodes, setPendingCodes] = useState<PendingCodeRow[]>([]);
@@ -227,24 +224,8 @@ export default function AdminNotificationBell() {
         /* continue navigation */
       }
     }
+    // Masa görünümü şimdilik kapalı: bildirime dokunmak yalnızca okundu yapar.
     setOpen(false);
-    if (item.tableNumber === 'admin') return;
-
-    const params = new URLSearchParams();
-    params.set('panel', 'garson');
-    params.set('masa', item.tableNumber);
-    if (item.groupSlug) params.set('grup', item.groupSlug);
-    params.set('cagri', String(item.id));
-    params.set('tip', item.type);
-    navigate(`${adminPath('masa-gorunumu')}?${params}`);
-  }
-
-  function handleCodeClick(row: PendingCodeRow) {
-    setOpen(false);
-    const params = new URLSearchParams();
-    params.set('masa', row.tableNumber);
-    if (row.groupSlug) params.set('grup', row.groupSlug);
-    navigate(`${adminPath('masa-gorunumu')}?${params}`);
   }
 
   async function clearAll() {
@@ -346,7 +327,7 @@ export default function AdminNotificationBell() {
                       <button
                         type="button"
                         className="admin-notify__item is-new is-code"
-                        onClick={() => handleCodeClick(entry.code)}
+                        onClick={() => setOpen(false)}
                       >
                         <span className="admin-notify__item-icon admin-notify__item-icon--code">
                           <KeyRound className="w-4 h-4" />
@@ -396,16 +377,6 @@ export default function AdminNotificationBell() {
               })}
             </ul>
           )}
-          <button
-            type="button"
-            className="admin-notify__goto"
-            onClick={() => {
-              setOpen(false);
-              navigate(adminPath('masa-gorunumu'));
-            }}
-          >
-            Masa görünümüne git
-          </button>
         </div>
       )}
     </div>

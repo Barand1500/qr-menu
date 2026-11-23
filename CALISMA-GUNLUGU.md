@@ -751,3 +751,7 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Mavi eski tasarım yerine Sofra koyu-sıcak tema; telefonda alttan açılan sayfa, geniş ekranda ortada kart; 6 kutucuklu kod girişi (8 haneye kadar uzar); hata sallanması.
 - Arka plana tıklayınca kapanma kaldırıldı; X veya Escape ile kapanır, doğrulama sürerken kapanmaz.
 - Doğrulama: tsc, vite build, Chrome fixture (390 ve 1280): taşma yok, dış tık kapatmıyor, Escape kapatıyor. Gerçek sunucuyla kod doğrulama ve gerçek telefon denenmedi.
+
+## 2026-11-23 — Bildirimlerden masa görünümü bağlantıları kaldırıldı
+- AdminNotificationBell: "Masa görünümüne git" düğmesi silindi; bildirim/kod satırına dokunmak artık masa görünümüne gitmiyor (okundu yapıp paneli kapatıyor). Kullanılmayan `.admin-notify__goto` CSS silindi.
+- Doğrulama: tsc geçti; ekranda denenmedi. Masa görünümü açılınca bağlantılar geri eklenecek.
