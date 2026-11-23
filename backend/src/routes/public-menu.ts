@@ -80,6 +80,8 @@ import { distanceMeters, isWithinGeoLock, loadGeoLock } from '../lib/geo-lock.js
 import { isMaintenanceEnabled } from '../lib/maintenance.js';
 import { addRunnerScore, getRunnerScores } from '../lib/maintenance-scores.js';
 import { ABOUT_PAGE_KEY, parseAboutPage } from '../lib/about-page.js';
+import { REVIEWS_KEY, parseReviews } from '../lib/reviews-config.js';
+import { buildPublicReviews } from '../lib/reviews-public.js';
 import { CONTACT_CARD_KEY, contactCardHasContent, parseContactCard } from '../lib/contact-card.js';
 import {
   WELCOME_BASKETBALL_CONFIG_KEY,
@@ -266,6 +268,19 @@ router.post('/:slug/geo-check', async (req, res) => {
     code: allowed ? 'OK' : 'GEO_OUTSIDE',
     message: allowed ? 'Tamam' : 'Bölge dışındasınız',
   });
+});
+
+router.get('/:slug/reviews', async (req, res) => {
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug: String(req.params.slug) } });
+  if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
+  const row = await prisma.setting.findUnique({
+    where: { restaurantId_key: { restaurantId: restaurant.id, key: REVIEWS_KEY } },
+  });
+  const lang = String(req.query.lang || 'tr').slice(0, 8);
+  const reviews = await buildPublicReviews(parseReviews(row?.value), lang);
+  // Birkaç dakika tarayıcı/ara önbelleği: Google'a her ziyarette gidilmez
+  res.setHeader('Cache-Control', 'public, max-age=300');
+  res.json({ reviews });
 });
 
 router.get('/:slug/welcome', async (req, res) => {

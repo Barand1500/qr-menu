@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Check, Eye, EyeOff, Loader2, Mail, MessageSquareText, Send, Server, ShieldCheck, X, Zap } from 'lucide-react';
 import { api } from '@/lib/api';
+import ReviewsIntegration from './ReviewsIntegration';
 import './integrations-settings.css';
 
 type Encryption = 'starttls' | 'ssl' | 'none';
@@ -49,7 +50,7 @@ const readLog = (key: string): TestLog[] => {
   }
 };
 
-function Field({
+export function Field({
   label,
   value,
   onChange,
@@ -231,7 +232,7 @@ function TestPanel({
   );
 }
 
-function Channel({
+export function Channel({
   icon,
   title,
   subtitle,
@@ -513,6 +514,8 @@ export default function IntegrationsSettings({ onToast, adminEmail }: { onToast:
           run={async (to) => api<{ ms: number }>('/api/admin/settings/integrations/sms/test', { method: 'POST', body: JSON.stringify({ to, config: sms }) })}
         />
       </Channel>
+
+      <ReviewsIntegration onToast={onToast} />
     </div>
   );
 }

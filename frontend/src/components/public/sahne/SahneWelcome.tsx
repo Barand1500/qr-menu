@@ -1,3 +1,6 @@
+import ReviewsTicker from '@/components/public/reviews/ReviewsTicker';
+import ReviewsWall3D from '@/components/public/reviews/ReviewsWall3D';
+import { RatingBadge } from '@/components/public/reviews/ReviewParts';
 import {
   useEffect,
   useId,
@@ -298,6 +301,7 @@ function MusicControl({
   compact?: boolean;
 }) {
   const live = music.on && music.playing;
+  const waiting = music.on && !music.playing && Boolean(music.blocked);
   const bars = (
     <span className="sh-music__bars" aria-hidden="true">
       <i />
@@ -309,7 +313,7 @@ function MusicControl({
   return (
     <button
       type="button"
-      className={`sh-music${compact ? ' sh-music--icon' : ''}${live ? ' is-playing' : ''}`}
+      className={`sh-music${compact ? ' sh-music--icon' : ''}${live ? ' is-playing' : ''}${waiting ? ' is-waiting' : ''}`}
       aria-pressed={music.on}
       aria-label={music.label}
       title={music.label}
@@ -335,6 +339,7 @@ function MusicControl({
           {bars}
         </>
       )}
+      {waiting ? <span className="sh-music__hint">{music.label}</span> : null}
     </button>
   );
 }
@@ -722,6 +727,7 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
         <main className="sh-mhero">
           {title}
           {subtitle}
+          {p.reviews ? <ReviewsTicker reviews={p.reviews} lang={p.lang} /> : null}
           <SlideToEnter onEnter={enter} disabled={p.entering} inert={editing}>
             {enterLabel}
           </SlideToEnter>
@@ -751,6 +757,7 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
           <i />
           <i />
         </div>
+        {p.reviews?.items.length ? <ReviewsWall3D items={p.reviews.items} lang={p.lang} /> : null}
         {header}
         <main className="sh-hero">
           <div className="sh-hero__copy">
@@ -772,6 +779,11 @@ export default function SahneWelcome(p: SofraWelcomeProps) {
                 </button>
               </Magnetic>
             </div>
+            {p.reviews ? (
+              <div className="sh-hero__rating">
+                <RatingBadge reviews={p.reviews} lang={p.lang} />
+              </div>
+            ) : null}
           </div>
           <div className="sh-fan" data-count={fan.length}>
             {fan.map((src, i) => {

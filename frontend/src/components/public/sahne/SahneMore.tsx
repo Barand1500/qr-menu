@@ -10,6 +10,7 @@ import {
   Leaf,
   Search,
   Sparkles,
+  Star,
   Timer,
   Utensils,
   X,
@@ -25,6 +26,8 @@ import {
   resolvePrefCatalog,
 } from '@/lib/prefCatalog';
 import { sideMenuUi } from '@/lib/menuChromeUi';
+import ReviewsPage from '@/components/public/reviews/ReviewsPage';
+import { formatRating, reviewsCopy } from '@/lib/reviews';
 import {
   MENU_GAMES_CATALOG,
   enabledMenuGames,
@@ -33,12 +36,13 @@ import {
 import { gameCatalogEntry, gamesUi } from '@/lib/menuGamesUi';
 import './sahne-more.css';
 
-type View = 'explore' | 'language' | 'preferences';
+type View = 'explore' | 'language' | 'preferences' | 'reviews';
 
 /** A small restaurant intermission, with utilities on their own page. */
 export default function SahneMore({
   open,
   hasContact = false,
+  reviews = null,
   tab,
   restaurantName,
   languages,
@@ -345,13 +349,15 @@ export default function SahneMore({
               </button>
               <div className="sh-interlude__page-heading">
                 <span className="sh-interlude__page-icon">
-                  {view === 'language' ? <Globe2 /> : <Leaf />}
+                  {view === 'language' ? <Globe2 /> : view === 'reviews' ? <Star /> : <Leaf />}
                 </span>
                 <h2 id={titleId}>
-                  {view === 'language' ? chrome.lang : ui.sideTitle}
+                  {view === 'language' ? chrome.lang : view === 'reviews' ? reviewsCopy(activeLang).title : ui.sideTitle}
                 </h2>
               </div>
-              {view === 'language' ? (
+              {view === 'reviews' && reviews ? (
+                <ReviewsPage reviews={reviews} lang={activeLang} />
+              ) : view === 'language' ? (
                 <div
                   className="sh-interlude__languages"
                   role="group"
@@ -458,6 +464,17 @@ export default function SahneMore({
               <span>{activeLanguage?.name || activeLang}</span>
               <ArrowUpRight size={15} />
             </button>
+            {reviews && (reviews.items.length > 0 || reviews.rating !== null) && (
+              <button
+                className={`sh-interlude__tool ${view === 'reviews' ? 'is-active' : ''}`}
+                onClick={(e) => utility(view === 'reviews' ? 'explore' : 'reviews', e.currentTarget)}
+                aria-expanded={view === 'reviews'}
+              >
+                <Star size={18} />
+                <span>{reviewsCopy(activeLang).title}</span>
+                {reviews.rating !== null ? <b>{formatRating(reviews.rating, activeLang)}</b> : <ArrowUpRight size={15} />}
+              </button>
+            )}
             {onDietaryPrefsChange && (
               <button
                 className={`sh-interlude__tool ${view === 'preferences' ? 'is-active' : ''}`}

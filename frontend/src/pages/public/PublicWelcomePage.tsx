@@ -35,6 +35,7 @@ import CupsWelcomeGame from '@/components/public/CupsWelcomeGame';
 import BoardWelcome from '@/components/public/BoardWelcome';
 import type { WelcomeBasketballConfig } from '@/lib/welcomeBasketballConfig';
 import type { WelcomeCupsConfig } from '@/lib/welcomeCupsConfig';
+import { useReviews } from '@/lib/reviews';
 import { SofraWelcomeView } from '@/components/public/sofra/SofraCanvas';
 import SofraDialog from '@/components/public/sofra/SofraDialog';
 import { normalizeSofraConfig, type SofraConfig } from '@/lib/sofra';
@@ -140,6 +141,7 @@ function PublicWelcomePageInner({
   const [loading, setLoading] = useState(true);
 
   usePublicRtl(selectedLang);
+  const reviews = useReviews(slug, selectedLang);
 
   useEffect(() => {
     if (tableNo) sessionStorage.setItem('menu_masa', tableNo);
@@ -225,9 +227,17 @@ function PublicWelcomePageInner({
       audio.load();
     };
 
+    let fade = 0;
     const onPlay = () => {
       setMusicPlaying(true);
       setMusicBlocked(false);
+      // sessizden hedef sese yumuşak geçiş
+      window.clearInterval(fade);
+      audio.volume = 0;
+      fade = window.setInterval(() => {
+        audio.volume = Math.min(0.28, audio.volume + 0.02);
+        if (audio.volume >= 0.28) window.clearInterval(fade);
+      }, 120);
     };
     const onPause = () => setMusicPlaying(false);
     const onError = () => loadSource(sourceIndex + 1);
@@ -239,6 +249,7 @@ function PublicWelcomePageInner({
     audioRef.current = audio;
 
     return () => {
+      window.clearInterval(fade);
       audio.removeEventListener('play', onPlay);
       audio.removeEventListener('pause', onPause);
       audio.removeEventListener('error', onError);
@@ -296,12 +307,14 @@ function PublicWelcomePageInner({
   useEffect(() => {
     if (!musicBlocked || !musicOn) return;
 
+    // iPhone/Safari yalnızca tıklama, touchend ve tuş basma gibi "tamamlanmış" kullanıcı hareketini
+    // ses izni sayar (pointerdown yetmez). Müzik başlayana kadar her harekette tekrar denenir.
     const unlock = () => {
-      tryPlayMusic();
+      void tryPlayMusic();
     };
-
-    document.addEventListener('pointerdown', unlock, { once: true });
-    return () => document.removeEventListener('pointerdown', unlock);
+    const events = ['click', 'touchend', 'pointerup', 'keydown'] as const;
+    events.forEach((name) => document.addEventListener(name, unlock, { capture: true, passive: true }));
+    return () => events.forEach((name) => document.removeEventListener(name, unlock, { capture: true }));
   }, [musicBlocked, musicOn, tryPlayMusic]);
 
   function toggleMusic() {
@@ -438,6 +451,7 @@ function PublicWelcomePageInner({
       <>
         <GeoCheckInBridge slug={slug} masa={tableNo} grup={groupSlug} coords={coords} />
         <SofraWelcomeView
+          reviews={reviews}
           config={normalizeSofraConfig(data.sofra)}
           restaurant={data.restaurant}
           lang={selectedLang}
@@ -471,7 +485,7 @@ function PublicWelcomePageInner({
           ]}
           music={
             data.welcomeMusicUrl
-              ? { on: musicOn, playing: musicPlaying, label: musicLabel, onToggle: toggleMusic }
+              ? { on: musicOn, playing: musicPlaying, label: musicLabel, onToggle: toggleMusic, blocked: musicBlocked }
               : undefined
           }
           extra={

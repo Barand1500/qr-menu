@@ -18,6 +18,7 @@
     "test:customer-contact": "node tests/customer-contact.test.mjs",
     "test:sofra-config": "node tests/sofra-config.test.mjs",
     "test:contact-card": "node tests/contact-card.test.mjs",
+    "test:reviews": "node tests/reviews.test.mjs",
     "test:login": "node tests/admin-login.test.mjs && node tests/login-mail.test.mjs",
     "test:customer": "node tests/customer-email.test.mjs && node tests/customer-mail.test.mjs",
     "start": "node dist/index.js",

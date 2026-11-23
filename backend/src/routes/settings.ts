@@ -77,6 +77,8 @@ import {
 } from '../lib/time-menu.js';
 import { ABOUT_PAGE_KEY, parseAboutPage, serializeAboutPage } from '../lib/about-page.js';
 import type { AboutPageConfig } from '../lib/about-page.js';
+import { REVIEWS_KEY, normalizeReviews, parseReviews, serializeReviews } from '../lib/reviews-config.js';
+import { PlacesError, placesKey, searchPlaces, testPlace, clearPlacesCache } from '../lib/google-places.js';
 import { CONTACT_CARD_KEY, normalizeContactCard, parseContactCard, serializeContactCard } from '../lib/contact-card.js';
 import {
   ADMIN_PATH_KEY,
@@ -202,6 +204,58 @@ router.put('/welcome-messages', async (req, res) => {
   });
 
   res.json({ ok: true });
+});
+
+router.get('/reviews', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const row = await prisma.setting.findUnique({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: REVIEWS_KEY } },
+  });
+  res.json({ config: parseReviews(row?.value), keyConfigured: Boolean(placesKey()) });
+});
+
+router.put('/reviews', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const config = normalizeReviews((req.body as { config?: unknown } | undefined)?.config);
+  await prisma.setting.upsert({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: REVIEWS_KEY } },
+    update: { value: serializeReviews(config) },
+    create: { restaurantId: restaurantId!, key: REVIEWS_KEY, value: serializeReviews(config) },
+  });
+  clearPlacesCache();
+  res.json({ config, keyConfigured: Boolean(placesKey()) });
+});
+
+router.get('/reviews/search', async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  if (q.length < 2) return res.json([]);
+  if (q.length > 120) return res.status(400).json({ message: 'Arama çok uzun' });
+  try {
+    res.json(await searchPlaces(q));
+  } catch (e) {
+    const err = e instanceof PlacesError ? e : new PlacesError('Arama başarısız');
+    res.status(err.status).json({ message: err.message });
+  }
+});
+
+router.post('/reviews/test', async (req, res) => {
+  const placeId = String((req.body as { placeId?: unknown } | undefined)?.placeId || '');
+  const clean = normalizeReviews({ placeId }).placeId;
+  if (!clean) return res.status(400).json({ message: 'Önce bir işletme seçin' });
+  try {
+    const place = await testPlace(clean);
+    res.json({
+      name: place.name,
+      address: place.address,
+      rating: place.rating,
+      count: place.count,
+      reviewCount: place.reviews.length,
+      sample: place.reviews[0] ? { name: place.reviews[0].name, text: place.reviews[0].text, rating: place.reviews[0].rating } : null,
+    });
+  } catch (e) {
+    const err = e instanceof PlacesError ? e : new PlacesError('Test başarısız');
+    res.status(err.status).json({ message: err.message });
+  }
 });
 
 router.get('/contact-card', async (req, res) => {

@@ -1,3 +1,4 @@
+import type { PublicReviews } from '@/lib/reviews';
 import type { ReactNode } from 'react';
 import type { SofraConfig } from '@/lib/sofra';
 import type {
@@ -25,6 +26,8 @@ export interface SofraWelcomeMusic {
   playing: boolean;
   label: string;
   onToggle: () => void;
+  /** Tarayıcı otomatik çalmaya izin vermedi: ilk dokunuşta başlar. */
+  blocked?: boolean;
 }
 
 export type SofraWelcomeProps = {
@@ -39,6 +42,8 @@ export type SofraWelcomeProps = {
   actions?: SofraWelcomeAction[];
   music?: SofraWelcomeMusic;
   extra?: ReactNode;
+  /** Google + elle girilen yorumlar (yoksa karşılama değişmez) */
+  reviews?: PublicReviews | null;
   entering?: boolean;
   /** Editor-only media snapshot from this business; avoids a separate, inaccurate static layout. */
   previewMedia?: { hero: string; photos: string[]; names: string[] };

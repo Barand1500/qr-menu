@@ -1405,3 +1405,40 @@
 .sh-foot__links .public-social {
   flex-wrap: nowrap;
 }
+
+/* Müzik, tarayıcı izni bekliyor: düğme nabız atar, altında kısa ipucu çıkar */
+.sh-music.is-waiting {
+  position: relative;
+  border-color: #ffb44a99;
+  animation: sh-ring-out 1.8s ease-out infinite;
+}
+.sh-music__hint {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 5;
+  padding: 7px 12px;
+  color: #241809;
+  font: 700 12px/1.2 var(--sh-body);
+  white-space: nowrap;
+  background: linear-gradient(120deg, var(--sh-accent), var(--sh-accent-2));
+  border-radius: 999px;
+  box-shadow: 0 10px 24px #00000066;
+  pointer-events: none;
+  animation: sh-fade 0.5s 0.6s both;
+}
+.sh-music__hint::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  right: 18px;
+  width: 9px;
+  height: 9px;
+  background: var(--sh-accent);
+  transform: rotate(45deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sh-music.is-waiting {
+    animation: none;
+  }
+}

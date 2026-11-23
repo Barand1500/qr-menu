@@ -45,6 +45,7 @@ import {
 import PublicSocialLinks from '@/components/public/PublicSocialLinks';
 import AboutPageView from '@/components/public/AboutPageView';
 import SahneAboutPage from '@/components/public/sahne/SahneAboutPage';
+import { useReviews } from '@/lib/reviews';
 import ContactCardPage from '@/components/contact-card/ContactCardPage';
 import type { ContactCardConfig } from '@/lib/contactCard';
 import SahneSocialLinks from '@/components/public/sahne/SahneSocialLinks';
@@ -259,6 +260,7 @@ function PublicMenuPageInner({
     new URLSearchParams(window.location.search).get('sayfa') === 'iletisim' ? 'contact' : 'home'
   );
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
+  const reviews = useReviews(slug, lang);
   const [searchOpen, setSearchOpen] = useState(false);
   const [popularProducts, setPopularProducts] = useState<PopularProduct[]>([]);
   const [popularLoading, setPopularLoading] = useState(false);
@@ -740,6 +742,7 @@ function PublicMenuPageInner({
     <PublicSideMenu
       sahne={isSofra}
       hasContact={Boolean(menu.contactCard)}
+      reviews={reviews}
       open={sideMenuOpen}
       tab={tab}
       restaurantName={isSofra ? menu.sofra?.brandName || menu.restaurant.name : menu.restaurant.name}

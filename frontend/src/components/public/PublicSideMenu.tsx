@@ -33,6 +33,8 @@ export interface PublicSideMenuProps {
   sahne?: boolean;
   /** İletişim kartı açıksa menüde "İletişim" bağlantısı görünür */
   hasContact?: boolean;
+  /** Google + elle girilen yorumlar: varsa "Yorumlar" sayfası açılır */
+  reviews?: import('@/lib/reviews').PublicReviews | null;
   open: boolean;
   tab: PublicTab;
   restaurantName: string;

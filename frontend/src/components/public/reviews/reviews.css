@@ -1,0 +1,293 @@
+/* Yorumlar: kart, puan rozeti, 3B duvar (geniş ekran), dönen yorum (telefon), yorumlar sayfası.
+   Renkler Sofra/Sahne değişkenlerinden gelir; değişken yoksa koyu sıcak varsayılanlar kullanılır. */
+.rv-stars {
+  display: inline-flex;
+  gap: 2px;
+  color: color-mix(in srgb, var(--sh-text, #f6eee4) 28%, transparent);
+}
+.rv-stars .is-on {
+  color: var(--sh-accent-2, #ffb44a);
+}
+
+.rv-card {
+  --rv-ink: var(--sh-text, #f6eee4);
+  --rv-muted: var(--sh-muted, #a99b8d);
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 14px 16px;
+  color: var(--rv-ink);
+  background: color-mix(in srgb, var(--rv-ink) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rv-ink) 14%, transparent);
+  border-radius: 18px;
+  font-family: var(--sh-body, 'Inter', system-ui, sans-serif);
+  backdrop-filter: blur(6px);
+}
+.rv-card__top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.rv-card__top > div {
+  min-width: 0;
+}
+.rv-card figcaption {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rv-card small {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--rv-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rv-card blockquote {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.rv-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--sh-accent, #ff6b2c), var(--sh-accent-2, #ffb44a));
+  border-radius: 50%;
+}
+.rv-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.rv-avatar b {
+  color: #1a0d05;
+  font-size: 15px;
+}
+
+.rv-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px 7px 11px;
+  color: var(--sh-text, #f6eee4);
+  font: 600 13px/1 var(--sh-body, 'Inter', system-ui, sans-serif);
+  background: color-mix(in srgb, var(--sh-text, #f6eee4) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sh-text, #f6eee4) 18%, transparent);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+}
+.rv-badge svg {
+  color: var(--sh-accent-2, #ffb44a);
+}
+.rv-badge strong {
+  font-size: 14px;
+}
+.rv-badge span {
+  color: var(--sh-muted, #a99b8d);
+  font-weight: 500;
+}
+
+/* 3B duvar: karşılamanın arkasında eğik, sürekli akan yorum sütunları */
+.rv-wall {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  perspective: 300px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+/* Metnin okunması için sol taraf sönük tutulur */
+.rv-wall::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(90deg, var(--sh-bg, #0e0b09) 0%, color-mix(in srgb, var(--sh-bg, #0e0b09) 82%, transparent) 36%, transparent 72%);
+}
+.rv-wall__stage {
+  display: flex;
+  flex: none;
+  gap: 18px;
+  height: 140vh;
+  transform: translateX(120px) translateZ(-100px) rotateX(20deg) rotateY(-10deg) rotateZ(20deg);
+}
+.rv-wall__col {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  gap: 18px;
+  width: 236px;
+  animation: rv-up var(--d, 48s) linear infinite;
+}
+.rv-wall__col.is-reverse {
+  animation-direction: reverse;
+}
+.rv-wall .rv-card {
+  flex: none;
+}
+.rv-wall__fade {
+  position: absolute;
+  pointer-events: none;
+}
+.rv-wall__fade--top,
+.rv-wall__fade--bottom {
+  right: 0;
+  left: 0;
+  height: 26%;
+}
+.rv-wall__fade--top {
+  top: 0;
+  background: linear-gradient(to bottom, var(--sh-bg, #0e0b09), transparent);
+}
+.rv-wall__fade--bottom {
+  bottom: 0;
+  background: linear-gradient(to top, var(--sh-bg, #0e0b09), transparent);
+}
+.rv-wall__fade--left,
+.rv-wall__fade--right {
+  top: 0;
+  bottom: 0;
+  width: 26%;
+}
+.rv-wall__fade--left {
+  left: 0;
+  background: linear-gradient(to right, var(--sh-bg, #0e0b09), transparent);
+}
+.rv-wall__fade--right {
+  right: 0;
+  background: linear-gradient(to left, var(--sh-bg, #0e0b09), transparent);
+}
+@keyframes rv-up {
+  to {
+    transform: translateY(calc(-50% - 9px));
+  }
+}
+
+/* telefon: puan rozeti + dönen tek yorum */
+.rv-ticker {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  width: min(100%, 360px);
+  margin-inline: auto;
+}
+.rv-ticker__quote {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-height: 92px;
+  margin: 0;
+  padding: 12px 16px;
+  color: var(--sh-text, #f6eee4);
+  text-align: center;
+  background: color-mix(in srgb, var(--sh-text, #f6eee4) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sh-text, #f6eee4) 14%, transparent);
+  border-radius: 18px;
+  backdrop-filter: blur(10px);
+  animation: rv-swap 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.rv-ticker__quote blockquote {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font: 400 13.5px/1.45 var(--sh-body, 'Inter', system-ui, sans-serif);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.rv-ticker__quote figcaption {
+  color: var(--sh-muted, #a99b8d);
+  font: 600 11.5px/1 var(--sh-body, 'Inter', system-ui, sans-serif);
+}
+@keyframes rv-swap {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+/* yorumlar sayfası ("Daha fazla") */
+.rv-page {
+  display: grid;
+  gap: 18px;
+  padding-bottom: 24px;
+}
+.rv-page__head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--sh-text, #f6eee4);
+}
+.rv-page__head > strong {
+  font: 500 clamp(54px, 9vw, 84px) / 1 var(--sh-display, 'Bricolage Grotesque', system-ui, sans-serif);
+  letter-spacing: -0.05em;
+}
+.rv-page__head div {
+  display: grid;
+  gap: 6px;
+}
+.rv-page__head small {
+  color: var(--sh-muted, #a99b8d);
+  font-size: 13px;
+}
+.rv-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rv-page__actions a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  color: var(--sh-text, #f6eee4);
+  font: 600 13px/1 var(--sh-body, 'Inter', system-ui, sans-serif);
+  text-decoration: none;
+  border: 1px solid color-mix(in srgb, var(--sh-text, #f6eee4) 24%, transparent);
+  border-radius: 999px;
+}
+.rv-page__actions a.is-primary {
+  color: #1a0d05;
+  background: linear-gradient(120deg, var(--sh-accent, #ff6b2c), var(--sh-accent-2, #ffb44a));
+  border-color: transparent;
+}
+.rv-page__actions a:focus-visible {
+  outline: 2px solid var(--sh-accent-2, #ffb44a);
+  outline-offset: 3px;
+}
+.rv-page__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+.rv-page__empty {
+  margin: 0;
+  color: var(--sh-muted, #a99b8d);
+}
+@media (min-width: 760px) {
+  .rv-page__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rv-wall__col,
+  .rv-ticker__quote {
+    animation: none;
+  }
+}
