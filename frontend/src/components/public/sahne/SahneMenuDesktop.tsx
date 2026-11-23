@@ -1,3 +1,6 @@
+import MenuShareButton from '../share/MenuShareButton';
+import { publicMenuShareUrl } from '@/lib/menuShare';
+import { menuGroupPath } from '@/lib/menuPaths';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowUpRight, Sparkles } from 'lucide-react';
 import { SofraBrand, SofraText } from '../sofra/SofraElements';
@@ -219,6 +222,14 @@ export default function SahneMenuDesktop(p: SofraMenuProps) {
                 </div>
               )}
               <div className="sh-ghead__copy">
+                {!m.searching && m.group && !editing && (
+                  <MenuShareButton
+                    url={publicMenuShareUrl(menuGroupPath(m.group.id))}
+                    title={`${brand} · ${m.group.name}`}
+                    lang={p.lang}
+                    label={p.lang.startsWith('tr') ? 'Kategoriyi paylaş' : 'Share category'}
+                  />
+                )}
                 <p className="sh-kicker">
                   {m.searching
                     ? t.results

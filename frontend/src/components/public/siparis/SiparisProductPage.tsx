@@ -1,3 +1,5 @@
+import MenuShareButton from '../share/MenuShareButton';
+import { publicMenuShareUrl } from '@/lib/menuShare';
 import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, ArrowLeft, Check, Clock, Plus, UtensilsCrossed } from 'lucide-react';
@@ -155,6 +157,11 @@ export default function SiparisProductPage({
           <ArrowLeft size={20} />
         </button>
         <div className="pd-glass pd-top__actions">
+          {hideColorToggle && (
+            <MenuShareButton url={publicMenuShareUrl(menuProductPath(product.id))}
+              title={`${product.restaurant.name} · ${product.name}`} lang={lang}
+              label={en ? 'Share product' : 'Ürünü paylaş'} />
+          )}
           {showCart ? <SiparisCartButton alwaysShow /> : null}
           {!hideColorToggle && (
             <MenuColorModeToggle colorMode={colorMode} onToggle={toggleColorMode} />

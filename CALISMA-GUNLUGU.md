@@ -804,3 +804,10 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - "Yorum ekle" düğmesi başlıkta açma/kapama anahtarının yanına taşındı (telefonda yalnızca + simgesi); yeni yorum eklenince liste alta kayar ve ad alanına odaklanır. İki uyarı metni tek satırda birleşti, sayaç (8/12) eklendi; liste boşken yönlendirme yazısı.
 - `Channel` bileşenine başlık için `extra` alanı eklendi.
 - Doğrulama: tsc, vite build, Chrome fixture (1340/390): 2 sütun, iç kaydırma, ekleme + odak, taşma yok.
+
+## 2026-11-23 — Müşteri: konum, kategori ve ürün paylaşımı
+- Kullanıcı WhatsApp ve diğer uygulamalara bağlantı göndermeyi istedi. Güncel Sahne tasarımına uygun küçük paylaşım kontrolü kategori başlığına, ürün detay çubuğuna ve iletişim kartının konum alanına eklendi; karşılama/admin tasarımı değiştirilmedi.
+- Ortak bileşen: WhatsApp, Telegram, kopyala, destekleniyorsa sistem paylaşımı. Kısa animasyonlu popover ekran kenarlarına yerleşir; X/Escape/dış tıkla kapanır. Kopyalama başarısı doğrulanır; izin hatasında eski yöntem, sonra elle kopyalama sunulur. Sistem paylaşımı iptalinde hata yok.
+- Ürün/kategori bağlantılarında masa/oturum/kampanya sorguları paylaşılmaz; mevcut public rotalar kullanılır. Konum, işletmenin mevcut harita bağlantısıdır; cihaz konumu alınmaz. Editör önizlemesinde paylaşım gizlidir. Önceki iletişim kartı paylaşım/indirme davranışı korundu. Yeni bağımlılık veya backend değişikliği yok.
+- Doğrulama: frontend TypeScript + Vite build geçti (mevcut bundle boyutu uyarısı sürüyor). Chrome fixture 320/390/768/1280/1440 px: taşma, uzun ad, çok görselli detay, kopyalama hata/başarı, paylaşım başarı/iptal/hata, X/Escape/dış tık/odak, hareket azaltma, eksik konum ve editörde gizleme geçti; JavaScript hatası yok. İletişim kartının çevirme/paylaşım/PNG indirme fixture'ı da geçti.
+- Fiziksel cihaz, gerçek uygulamalara gönderim ve canlı sunucuda derin bağlantı akışı denenmedi; paylaşım API'leri fixture'da taklit edildi. Görüntüler ve kapsam: docs/customer-sharing-review/README.md. Commit/push yapılmadı.

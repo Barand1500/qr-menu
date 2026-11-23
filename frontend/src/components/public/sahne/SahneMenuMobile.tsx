@@ -14,6 +14,9 @@ import {
   useMenuModel,
 } from './menuShared';
 import { Photo, cssVars, isRtl, pad2, useReveal, useSahneNav } from './shared';
+import MenuShareButton from '../share/MenuShareButton';
+import { publicMenuShareUrl } from '@/lib/menuShare';
+import { menuGroupPath } from '@/lib/menuPaths';
 import './sahne.css';
 import './sahne-menu.css';
 
@@ -274,6 +277,18 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
                   : `${t.category} ${pad2(m.groupIndex + 1)} / ${pad2(p.groups.length)}`}
               </p>
               <h1>{m.searching ? `“${p.search?.trim()}”` : m.group?.name}</h1>
+              {!m.searching && m.group && !editing && (
+                <MenuShareButton
+                  url={publicMenuShareUrl(menuGroupPath(m.group.id))}
+                  title={`${brand} · ${m.group.name}`}
+                  lang={p.lang}
+                  label={
+                    p.lang.startsWith('tr')
+                      ? 'Kategoriyi paylaş'
+                      : 'Share category'
+                  }
+                />
+              )}
               {!p.loading && !p.error && (
                 <p className="sh-ghead__count">{t.items(m.count)}</p>
               )}
