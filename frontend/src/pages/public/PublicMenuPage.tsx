@@ -254,7 +254,10 @@ function PublicMenuPageInner({
       isDiabetic?: boolean;
     }[]
   >([]);
-  const [tab, setTab] = useState<PublicTab>('home');
+  // Paylaşılan bağlantı (?sayfa=iletisim) doğrudan iletişim kartını açar
+  const [tab, setTab] = useState<PublicTab>(() =>
+    new URLSearchParams(window.location.search).get('sayfa') === 'iletisim' ? 'contact' : 'home'
+  );
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [popularProducts, setPopularProducts] = useState<PopularProduct[]>([]);
@@ -480,6 +483,8 @@ function PublicMenuPageInner({
   }
 
   if (!menu) return null;
+  // Kart kapatılmışsa ya da yoksa iletişim sekmesi açık kalmasın
+  if (tab === 'contact' && !menu.contactCard) setTab('home');
 
   // Business photos for the customer sign-in screen: showcase first, then categories, then popular dishes.
   const signInPhotos = [

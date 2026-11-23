@@ -12,6 +12,7 @@ import {
 } from '@/lib/contactCard';
 import { contactCardCopy, type ContactCardCopy } from '@/lib/contactCardCopy';
 import { renderContactCardImage } from './contactCardImage';
+import ContactShareBurst from './ContactShareBurst';
 import ContactCardSignature from './ContactCardSignature';
 import './contact-card.css';
 
@@ -19,7 +20,7 @@ export type ContactCardLayout = 'portrait' | 'landscape';
 
 export type ContactCardRestaurant = { name: string; logoUrl?: string | null; slug?: string };
 
-export type ContactCardField = { key: string; label: string; value: string };
+export type ContactCardField = { key: string; label: string; value: string; sub?: string };
 
 /** Kartta görünen alanlar: boş olanlar hiç gösterilmez. */
 export function contactCardFields(card: ContactCardConfig, t: ContactCardCopy): ContactCardField[] {
@@ -28,7 +29,12 @@ export function contactCardFields(card: ContactCardConfig, t: ContactCardCopy): 
     { key: 'whatsapp', label: t.whatsapp, value: card.whatsapp },
     { key: 'email', label: t.email, value: card.email },
     { key: 'web', label: t.web, value: card.website.replace(/^https?:\/\//, '').replace(/\/$/, '') },
-    { key: 'address', label: t.address, value: card.address },
+    {
+      key: 'address',
+      label: t.address,
+      value: card.address || card.placeLabel,
+      sub: card.address && card.placeLabel ? card.placeLabel : '',
+    },
     { key: 'hours', label: t.hours, value: card.hours },
   ];
   return rows.filter((r) => r.value);
@@ -43,9 +49,12 @@ type Props = {
   actions?: boolean;
   /** Menü adresi (arka yüzdeki QR) */
   menuUrl: string;
+  /** Paylaşılan bağlantı (doğrudan iletişim kartını açar); yoksa menuUrl */
+  shareUrl?: string;
 };
 
-export default function ContactCardView({ card, restaurant, lang = 'tr', layout, actions = true, menuUrl }: Props) {
+export default function ContactCardView({ card, restaurant, lang = 'tr', layout, actions = true, menuUrl, shareUrl }: Props) {
+  const link = shareUrl || menuUrl;
   const t = contactCardCopy(lang);
   const palette = CONTACT_CARD_PALETTES[card.tone];
   const fields = useMemo(() => contactCardFields(card, t), [card, t]);
@@ -53,6 +62,7 @@ export default function ContactCardView({ card, restaurant, lang = 'tr', layout,
   const [playKey, setPlayKey] = useState(0);
   const [status, setStatus] = useState<'' | 'save' | 'share' | 'copy' | 'fail'>('');
   const [busy, setBusy] = useState<'' | 'save' | 'share'>('');
+  const [burst, setBurst] = useState<'closed' | 'open' | 'closing'>('closed');
   const tiltRef = useRef<HTMLDivElement>(null);
   const timer = useRef(0);
   const number = cardNumber(restaurant.slug || restaurant.name);
@@ -132,38 +142,34 @@ export default function ContactCardView({ card, restaurant, lang = 'tr', layout,
     }
   }
 
-  async function share() {
-    if (busy) return;
-    setBusy('share');
+  function closeBurst() {
+    setBurst((b) => (b === 'open' ? 'closing' : b));
+    window.setTimeout(() => setBurst((b) => (b === 'closing' ? 'closed' : b)), 360);
+  }
+
+  /** Paylaş: bağlantıyı panoya kopyalar ve gönderme balonlarını açar (tekrar basınca kapatır). */
+  async function toggleShare() {
+    if (burst === 'open') {
+      closeBurst();
+      return;
+    }
+    setBurst('open');
+    const copied = await copyText(link);
+    flash(copied ? 'copy' : 'fail');
+  }
+
+  /** Tarayıcının kendi paylaşım penceresi: varsa kart resmiyle birlikte. */
+  async function nativeShare() {
+    const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
     try {
-      const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
       const blob = await makeImage().catch(() => null);
       const file = blob ? new File([blob], 'restoran-karti.png', { type: 'image/png' }) : null;
-      const data: ShareData = { title: restaurant.name, text: restaurant.name, url: menuUrl };
-      if (file && nav.canShare?.({ files: [file] })) {
-        await nav.share({ ...data, files: [file] });
-        flash('share');
-      } else if (nav.share) {
-        await nav.share(data);
-        flash('share');
-      } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(menuUrl);
-        flash('copy');
-      } else {
-        flash('fail');
-      }
+      const data: ShareData = { title: restaurant.name, text: `${restaurant.name} · ${t.shareText}`, url: link };
+      if (file && nav.canShare?.({ files: [file] })) await nav.share({ ...data, files: [file] });
+      else await nav.share(data);
+      flash('share');
     } catch (error) {
-      // Kullanıcı paylaşım penceresini kapattıysa hata sayılmaz; başka hatada bağlantı kopyalanır
-      if ((error as Error)?.name !== 'AbortError') {
-        try {
-          await navigator.clipboard.writeText(menuUrl);
-          flash('copy');
-        } catch {
-          flash('fail');
-        }
-      }
-    } finally {
-      setBusy('');
+      if ((error as Error)?.name !== 'AbortError') flash('fail');
     }
   }
 
@@ -240,7 +246,10 @@ export default function ContactCardView({ card, restaurant, lang = 'tr', layout,
                       {fields.map((f) => (
                         <div key={f.key} data-field={f.key}>
                           <dt>{f.label}</dt>
-                          <dd>{f.value}</dd>
+                          <dd>
+                            {f.value}
+                            {f.sub ? <small>{f.sub}</small> : null}
+                          </dd>
                         </div>
                       ))}
                     </dl>
@@ -257,11 +266,6 @@ export default function ContactCardView({ card, restaurant, lang = 'tr', layout,
                     </div>
                   ) : null}
 
-                  <p className="cc-mrz" aria-hidden="true">
-                    {mrz(restaurant.name, 30)}
-                    <br />
-                    {mrz(card.managerName || number, 30)}
-                  </p>
                   <i className="cc-glare" aria-hidden="true" />
                 </article>
 
@@ -303,11 +307,26 @@ export default function ContactCardView({ card, restaurant, lang = 'tr', layout,
                 {status === 'save' ? <Check size={18} /> : <Download size={18} />}
                 <span>{status === 'save' ? t.saved : t.save}</span>
               </button>
-              <button type="button" className="is-primary" onClick={() => void share()} disabled={busy !== ''}>
+              <button
+                type="button"
+                className={`is-primary${burst === 'open' ? ' is-open' : ''}`}
+                onClick={() => void toggleShare()}
+                aria-expanded={burst === 'open'}
+              >
                 {status === 'share' || status === 'copy' ? <Check size={18} /> : <Share2 size={18} />}
-                <span>{status === 'copy' ? t.copied : status === 'share' ? t.shared : t.share}</span>
+                <span>{status === 'copy' ? t.copyLabel : status === 'share' ? t.shared : t.share}</span>
               </button>
             </div>
+            {burst !== 'closed' ? (
+              <ContactShareBurst
+                url={link}
+                text={`${restaurant.name} · ${t.shareText}`}
+                copy={t}
+                closing={burst === 'closing'}
+                onNative={typeof navigator.share === 'function' ? () => void nativeShare() : undefined}
+                onPick={closeBurst}
+              />
+            ) : null}
             <p className="cc-status" role="status" aria-live="polite">
               {status === 'fail' ? statusText : ''}
             </p>
@@ -318,12 +337,24 @@ export default function ContactCardView({ card, restaurant, lang = 'tr', layout,
   );
 }
 
-/** Kimlik kartlarındaki makine okunur satır süsü */
-function mrz(text: string, length: number) {
-  const map: Record<string, string> = { ç: 'c', ğ: 'g', ı: 'i', ö: 'o', ş: 's', ü: 'u', Ç: 'C', Ğ: 'G', İ: 'I', Ö: 'O', Ş: 'S', Ü: 'U' };
-  const clean = text
-    .replace(/[çğıöşüÇĞİÖŞÜ]/g, (c) => map[c] || c)
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, '<');
-  return `<<${clean}`.padEnd(length, '<').slice(0, length);
+/** Panoya kopyalar; eski tarayıcılarda/güvenli olmayan bağlantıda gizli alanla dener. */
+async function copyText(value: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    try {
+      const area = document.createElement('textarea');
+      area.value = value;
+      area.setAttribute('readonly', '');
+      area.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand('copy');
+      area.remove();
+      return ok;
+    } catch {
+      return false;
+    }
+  }
 }

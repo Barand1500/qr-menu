@@ -174,7 +174,7 @@ export default function ContactCardAdminPage() {
               lng={card.lng}
               home={home}
               disabled={saving}
-              onChange={(p) => setCard((prev) => ({ ...prev, lat: p ? p.lat : null, lng: p ? p.lng : null }))}
+              onChange={(p, label) => setCard((prev) => ({ ...prev, lat: p ? p.lat : null, lng: p ? p.lng : null, placeLabel: p ? label || '' : '' }))}
             />
             <Input label="Harita bağlantısı (isteğe bağlı)" value={card.mapUrl} maxLength={500} onChange={(e) => set('mapUrl', e.target.value)} />
             <p className="ccp__help">

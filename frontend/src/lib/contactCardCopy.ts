@@ -31,6 +31,14 @@ export function contactCardCopy(lang: string) {
         failed: 'Could not complete',
         flip: 'Flip the card',
         mapTitle: 'Find us',
+        mapHint: 'Open in maps',
+        shareHint: 'Link copied · now send it with',
+        shareText: 'Contact card',
+        copyLabel: 'Copied',
+        sms: 'SMS',
+        instagram: 'Instagram',
+        telegram: 'Telegram',
+        more: 'More',
       }
     : {
         title: 'İletişim kartı',
@@ -60,5 +68,13 @@ export function contactCardCopy(lang: string) {
         failed: 'Tamamlanamadı',
         flip: 'Kartı çevir',
         mapTitle: 'Bizi bulun',
+        mapHint: 'Haritada aç',
+        shareHint: 'Bağlantı kopyalandı · şimdi şununla gönder',
+        shareText: 'İletişim kartı',
+        copyLabel: 'Kopyalandı',
+        sms: 'SMS',
+        instagram: 'Instagram',
+        telegram: 'Telegram',
+        more: 'Diğer',
       };
 }

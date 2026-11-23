@@ -768,3 +768,9 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Paylaş düğmesi üzerine gelince koyulaşıp yazısı kayboluyordu; kaldırıldı (hafif parlama). Yatay kart 640px yerine 880px.
 - Harita: kart şemasına lat/lng; yönetimde Leaflet konum seçici (adres ara, haritaya dokun, iğne sürükle, konum izni noktasını kullan, kaldır) + isteğe bağlı bağlantı; müşteri sayfasında karanlık harita + Yol tarifi. Yol tarifi önceliği: bağlantı > iğne > adres.
 - Doğrulama: tsc, vite build, backend testi, Chrome fixture (menü 1440x772, kart 390/320/1280, yönetim 1400/390). Gerçek harita karoları ve gerçek adres araması (Nominatim) denenmedi; karolar sahte yanıtla test edildi.
+
+## 2026-11-23 — İletişim kartı: adres, süs satırlar, paylaşım balonları
+- Kart adres alanı: yazılan adresin altında, haritadan seçilen ayrıntılı yer adı (`placeLabel`, yalnızca aramadan seçilince saklanır) görünür; harita altındaki adres yazısı kaldırıldı.
+- Kimlik kartı süsü olan "<<CHEF<<<" satırları kart ve indirilen resimden kaldırıldı.
+- Paylaş: bağlantıyı panoya kopyalar (güvenli olmayan bağlantıda gizli alan yedeği) ve düğmeden WhatsApp / Instagram / Telegram / SMS (+ tarayıcı destekliyorsa "Diğer", kart resmiyle) balonları fırlatır. Bağlantı `/menu/home?sayfa=iletisim` doğrudan iletişim kartını açar.
+- Doğrulama: tsc, vite build, backend testi, Chrome fixture (390/320/1280): pano içeriği, bağlantılar, kapanma, taşma. Gerçek telefonda paylaşım uygulamaları denenmedi. Instagram bağlantı paylaşımı için web adresi sunmuyor: bağlantı kopyalı olarak mesajlar açılır, kullanıcı yapıştırır.

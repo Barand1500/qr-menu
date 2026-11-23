@@ -22,7 +22,8 @@ export default function ContactMapPicker({
   lng: number | null;
   /** Konum izni (Geo-Lock) için kayıtlı nokta: varsa tek dokunuşla kullanılır */
   home: Point | null;
-  onChange: (point: Point | null) => void;
+  /** label: yalnızca aramadan seçilince dolu gelir (elle taşıma yer adını sıfırlar) */
+  onChange: (point: Point | null, label?: string) => void;
   disabled?: boolean;
 }) {
   const host = useRef<HTMLDivElement>(null);
@@ -115,7 +116,7 @@ export default function ContactMapPicker({
     const p = { lat: Number(hit.lat.toFixed(6)), lng: Number(hit.lng.toFixed(6)) };
     setHits([]);
     setQuery(hit.label.split(',').slice(0, 3).join(','));
-    change.current(p);
+    change.current(p, hit.label.split(',').slice(0, 4).join(',').trim());
     map.current?.setView([p.lat, p.lng], 17);
   }
 

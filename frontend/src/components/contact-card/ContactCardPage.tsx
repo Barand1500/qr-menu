@@ -41,6 +41,7 @@ export default function ContactCardPage({
         lang={lang}
         layout={wide ? 'landscape' : 'portrait'}
         menuUrl={`${window.location.origin}/menu`}
+        shareUrl={`${window.location.origin}/menu/home?sayfa=iletisim`}
       />
       {typeof card.lat === 'number' && typeof card.lng === 'number' ? (
         <div className="cc-page__map" data-layout={wide ? 'landscape' : 'portrait'}>
@@ -48,9 +49,9 @@ export default function ContactCardPage({
             <ContactCardMap
               lat={card.lat}
               lng={card.lng}
-              address={card.address}
               href={contactCardMapUrl(card)}
               label={t.mapTitle}
+              hint={t.mapHint}
               actionLabel={t.location}
             />
           </Suspense>

@@ -27,6 +27,8 @@ export type ContactCardConfig = {
   /** Haritadan seçilen nokta (ikisi birlikte dolu ya da ikisi de boş) */
   lat: number | null;
   lng: number | null;
+  /** Arama sonucundan gelen ayrıntılı adres (kartta adresin altında görünür) */
+  placeLabel: string;
   hours: string;
   /** Her çizgi ayrı SVG yoludur (M/L/Q komutları), sırayla çizilir. */
   signature: string[];
@@ -46,6 +48,7 @@ export const CONTACT_CARD_DEFAULTS: ContactCardConfig = {
   mapUrl: '',
   lat: null,
   lng: null,
+  placeLabel: '',
   hours: '',
   signature: [],
 };
@@ -112,6 +115,7 @@ export function normalizeContactCard(input: unknown): ContactCardConfig {
     address: text(s.address, 200),
     mapUrl: link(s.mapUrl, 500),
     ...coordinates(s.lat, s.lng),
+    placeLabel: text(s.placeLabel, 160),
     hours: text(s.hours, 80),
     signature,
   };

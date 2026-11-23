@@ -8,16 +8,16 @@ import { pinIcon } from './mapPin';
 export default function ContactCardMap({
   lat,
   lng,
-  address,
   href,
   label,
+  hint,
   actionLabel,
 }: {
   lat: number;
   lng: number;
-  address: string;
   href: string;
   label: string;
+  hint: string;
   actionLabel: string;
 }) {
   const host = useRef<HTMLDivElement>(null);
@@ -50,7 +50,7 @@ export default function ContactCardMap({
       <div className="cc-map__bar">
         <div>
           <small>{label}</small>
-          {address ? <strong>{address}</strong> : null}
+          <strong>{hint}</strong>
         </div>
         <a href={href} target="_blank" rel="noopener noreferrer">
           <Navigation size={16} aria-hidden="true" /> {actionLabel}

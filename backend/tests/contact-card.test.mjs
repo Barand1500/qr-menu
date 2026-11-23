@@ -49,6 +49,8 @@ assert.equal(m.normalizeContactCard({ lat: '41', lng: '29' }).lat, null);
 assert.equal(m.contactCardHasContent({ ...m.CONTACT_CARD_DEFAULTS, lat: 41, lng: 29 }), true);
 assert.equal(m.contactCardMapUrl({ mapUrl: '', address: 'x', lat: 41, lng: 29 }), 'https://www.google.com/maps/search/?api=1&query=41,29');
 assert.equal(m.contactCardMapUrl({ mapUrl: 'https://maps.app.goo.gl/x', address: 'x', lat: 41, lng: 29 }), 'https://maps.app.goo.gl/x');
+assert.equal(m.normalizeContactCard({ placeLabel: '  Bahçe   Sk., Kadıköy ' }).placeLabel, 'Bahçe Sk., Kadıköy');
+assert.equal(m.normalizeContactCard({}).placeLabel, '');
 // kaydet-oku turu değişmez
 assert.deepEqual(m.parseContactCard(m.serializeContactCard(c)), c);
 console.log('PASS: iletişim kartı şeması');

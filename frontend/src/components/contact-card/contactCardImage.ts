@@ -62,12 +62,6 @@ function spaced(ctx: CanvasRenderingContext2D, value: string) {
   (ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = value;
 }
 
-function mrz(text: string, length: number) {
-  const map: Record<string, string> = { ç: 'c', ğ: 'g', ı: 'i', ö: 'o', ş: 's', ü: 'u', Ç: 'C', Ğ: 'G', İ: 'I', Ö: 'O', Ş: 'S', Ü: 'U' };
-  const clean = text.replace(/[çğıöşüÇĞİÖŞÜ]/g, (c) => map[c] || c).toUpperCase().replace(/[^A-Z0-9]+/g, '<');
-  return `<<${clean}`.padEnd(length, '<').slice(0, length);
-}
-
 /** Kartın ön yüzünü PNG olarak çizer (ekran görüntüsü yerine temiz, yüksek çözünürlüklü görüntü). */
 export async function renderContactCardImage(o: Options): Promise<Blob> {
   const { card, copy: t } = o;
@@ -187,7 +181,7 @@ export async function renderContactCardImage(o: Options): Promise<Blob> {
     [t.whatsapp, card.whatsapp],
     [t.email, card.email],
     [t.web, card.website.replace(/^https?:\/\//, '').replace(/\/$/, '')],
-    [t.address, card.address],
+    [t.address, card.address || card.placeLabel],
     [t.hours, card.hours],
   ].filter((r) => r[1]);
   let fx = P;
@@ -220,15 +214,23 @@ export async function renderContactCardImage(o: Options): Promise<Blob> {
     ctx.fillStyle = palette.ink;
     const lines = wrap(ctx, value, fw, name === t.address ? 2 : 1);
     lines.forEach((line, i) => ctx.fillText(line, fx, fy + 66 + i * 46));
-    fy += 98 + (lines.length - 1) * 46;
+    let extra = 0;
+    if (name === t.address && card.address && card.placeLabel) {
+      ctx.font = `500 28px ${SANS}`;
+      ctx.fillStyle = palette.muted;
+      const sub = wrap(ctx, card.placeLabel, fw, 2);
+      sub.forEach((line, i) => ctx.fillText(line, fx, fy + 66 + lines.length * 46 - 6 + i * 36));
+      extra = sub.length * 36 + 4;
+    }
+    fy += 98 + (lines.length - 1) * 46 + extra;
   }
 
   // imza alanı
   if (card.signature.length) {
     const boxW = landscape ? colW : W - P * 2;
-    const boxH = landscape ? 220 : 230;
+    const boxH = landscape ? 220 : 210;
     const bx = P;
-    const by = landscape ? H - P - 130 - boxH : H - P - 116 - boxH;
+    const by = H - P - boxH;
     roundRect(ctx, bx, by, boxW, boxH, 30);
     ctx.fillStyle = palette.light ? '#ffffffb3' : '#ffffff12';
     ctx.fill();
@@ -271,16 +273,6 @@ export async function renderContactCardImage(o: Options): Promise<Blob> {
     ctx.restore();
     ctx.textAlign = 'left';
   }
-
-  // makine okunur süs satırları
-  ctx.font = `700 26px ${MONO}`;
-  ctx.fillStyle = palette.light ? '#0000002b' : '#ffffff30';
-  spaced(ctx, '2px');
-  const mrzW = landscape ? colW : W - P * 2;
-  const chars = Math.floor(mrzW / 20);
-  ctx.fillText(mrz(o.name, chars), P, H - P - 30);
-  ctx.fillText(mrz(card.managerName || o.number, chars), P, H - P + 6);
-  spaced(ctx, '0px');
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('png'))), 'image/png');
