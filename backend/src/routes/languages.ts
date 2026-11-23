@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { authRequired } from '../lib/auth.js';
 import { clearLanguageCache } from '../lib/i18n-json.js';
+import { purgeLanguage } from '../lib/language-cleanup.js';
 
 const router = Router();
 router.use(authRequired);
@@ -47,6 +48,9 @@ router.post('/', async (req, res) => {
     });
   }
 
+  // Daha önce bu kodla eklenip silinmiş bir dilin artık çevirileri varsa yeni dili "hazır" göstermesin
+  await purgeLanguage(normalized, { keepAllergens: true });
+
   const created = await prisma.language.create({
     data: { code: normalized, name: displayName, isActive: true },
   });
@@ -68,9 +72,11 @@ router.delete('/:id', async (req, res) => {
     return res.status(400).json({ message: 'Türkçe dil silinemez' });
   }
 
+  // Bu dile ait çeviriler (gruplar, ürünler, hikâyeler, tema metinleri, sözlük…) tüm restoranlardan silinir
+  const purged = await purgeLanguage(existing.code);
   await prisma.language.delete({ where: { id } });
   clearLanguageCache();
-  res.json({ ok: true });
+  res.json({ ok: true, purged });
 });
 
 export default router;

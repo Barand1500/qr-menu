@@ -291,14 +291,8 @@ export function applyAllergenTagsToI18n(
   textForLang: (lang: string) => string
 ) {
   const map = { ...asMap<ProductI18nEntry>(existing) };
-  const codes = new Set([
-    ...languages.map((l) => l.code),
-    ...Object.keys(map),
-    'tr',
-    'en',
-    'ru',
-    'ar',
-  ]);
+  // Yalnızca sistemde ekli diller (silinmiş bir dilin çevirisi geri gelmesin)
+  const codes = new Set([...languages.map((l) => l.code), 'tr']);
   for (const code of codes) {
     map[code] = {
       ...map[code],

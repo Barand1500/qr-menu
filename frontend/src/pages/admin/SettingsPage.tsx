@@ -1570,6 +1570,9 @@ export default function SettingsPage() {
             <p>
               Bu {deleteTarget.kind === 'language' ? 'dil' : 'para birimi'} menü
               seçeneklerinizden kaldırılacak.
+              {deleteTarget.kind === 'language'
+                ? ' Bu dile ait tüm çeviriler (gruplar, ürünler, hikâyeler, karşılama ve tema metinleri, hakkımızda, iletişim…) kalıcı olarak silinir; dili sonradan yeniden eklerseniz baştan çevirmeniz gerekir.'
+                : ''}
             </p>
             <button
               className="ast-button is-danger"

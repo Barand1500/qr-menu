@@ -1,4 +1,5 @@
 import { fetchPlace, placesKey } from './google-places.js';
+import { dictText, reviewKey, type Dict } from './i18n-dict.js';
 import {
   googleWriteReviewUrl,
   type PublicReviewItem,
@@ -7,7 +8,7 @@ import {
 } from './reviews-config.js';
 
 /** Müşteriye gidecek yorum paketi: Google (varsa) + elle girilenler; hiçbiri yoksa null. */
-export async function buildPublicReviews(config: ReviewsConfig, lang: string): Promise<PublicReviews | null> {
+export async function buildPublicReviews(config: ReviewsConfig, lang: string, dict: Dict = {}): Promise<PublicReviews | null> {
   const google: PublicReviewItem[] = [];
   let rating: number | null = null;
   let count: number | null = null;
@@ -28,7 +29,7 @@ export async function buildPublicReviews(config: ReviewsConfig, lang: string): P
   }
 
   const manual: PublicReviewItem[] = config.manualEnabled
-    ? config.manual.map((r, i) => ({ id: `m${i}`, name: r.name, text: r.text, rating: r.rating, source: 'manual', photo: '', when: '' }))
+    ? config.manual.map((r, i) => ({ id: `m${i}`, name: r.name, text: dictText(dict, reviewKey(r.name, r.text), lang.split('-')[0].toLowerCase(), r.text), rating: r.rating, source: 'manual', photo: '', when: '' }))
     : [];
 
   // Google ve elle girilenler sırayla karışık dizilir; biri bitince diğeri devam eder

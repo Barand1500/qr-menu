@@ -83,6 +83,7 @@ import { isMaintenanceEnabled } from '../lib/maintenance.js';
 import { addRunnerScore, getRunnerScores } from '../lib/maintenance-scores.js';
 import { ABOUT_PAGE_KEY, parseAboutPage } from '../lib/about-page.js';
 import { REVIEWS_KEY, parseReviews } from '../lib/reviews-config.js';
+import { loadDict, translateAbout, translateCampaignName, translateContact, translateOptionGroups } from '../lib/translatable.js';
 import { buildPublicReviews } from '../lib/reviews-public.js';
 import { CONTACT_CARD_KEY, contactCardHasContent, parseContactCard } from '../lib/contact-card.js';
 import {
@@ -95,10 +96,10 @@ import {
 } from '../lib/welcome-cups-config.js';
 import { activeOptionGroups } from '../lib/product-options.js';
 
-/** Müşteriye yalnızca açık ve içeriği olan kart gider. */
-function publicContactCard(raw?: string | null) {
+/** Müşteriye yalnızca açık ve içeriği olan kart gider; metinler istenen dile çevrilmiş gelir. */
+function publicContactCard(raw: string | null | undefined, dict: Awaited<ReturnType<typeof loadDict>>, lang: string) {
   const card = parseContactCard(raw);
-  return card.enabled && contactCardHasContent(card) ? card : null;
+  return card.enabled && contactCardHasContent(card) ? translateContact(card, dict, lang) : null;
 }
 
 const router = Router();
@@ -123,10 +124,10 @@ function mapCurrency(currency?: {
   };
 }
 
-function campaignMeta(campaign: CampaignCtx | null) {
+function campaignMeta(campaign: CampaignCtx | null, dict: Awaited<ReturnType<typeof loadDict>>, lang: string) {
   if (!campaign) return null;
   return {
-    name: campaign.name,
+    name: translateCampaignName(campaign.name, campaign.slug, dict, lang),
     slug: campaign.slug,
     itemCount: campaign.productIds.length,
   };
@@ -279,7 +280,7 @@ router.get('/:slug/reviews', async (req, res) => {
     where: { restaurantId_key: { restaurantId: restaurant.id, key: REVIEWS_KEY } },
   });
   const lang = String(req.query.lang || 'tr').slice(0, 8);
-  const reviews = await buildPublicReviews(parseReviews(row?.value), lang);
+  const reviews = await buildPublicReviews(parseReviews(row?.value), lang, await loadDict(restaurant.id));
   // Visibility must be fresh; Google responses are cached separately on the server.
   res.setHeader('Cache-Control', 'no-store');
   res.json({ reviews });
@@ -349,7 +350,7 @@ router.get('/:slug/welcome', async (req, res) => {
     welcomeMusicUrl: musicSetting?.value || null,
     theme: 'sofra',
     sofra: await loadSofraConfig(restaurant.id, restaurant.welcomeI18n),
-    campaign: campaignMeta(campaign),
+    campaign: campaignMeta(campaign, await loadDict(restaurant.id), getLangCode(req).toLowerCase().split('-')[0]),
     socialLinks: publicSocialLinks(parseSocialLinks(socialSetting?.value), 'welcome'),
     prefCatalog,
     basketballConfig: parseWelcomeBasketballConfig(basketballSetting?.value),
@@ -369,6 +370,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
 
   const language = await prisma.language.findFirst({ where: { code: lang, isActive: true } });
   const activeLang = language?.code || 'tr';
+  const dict = await loadDict(restaurant.id);
   const campaign = await loadCampaignContext(restaurant.id, campaignSlug);
 
   if (campaignSlug && !campaign) {
@@ -494,7 +496,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
     calories: product.calories,
     isRecommended: timePatch?.isRecommended ?? product.isRecommended,
     features: features.length > 0 ? features : legacyFeatures,
-    campaign: campaignMeta(campaign),
+    campaign: campaignMeta(campaign, dict, activeLang),
     theme: 'sofra',
     sofra: await loadSofraConfig(restaurant.id, restaurant.welcomeI18n),
     group: {
@@ -524,7 +526,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
       siparisCart: siparisCfg.cartEnabled,
       siparisVariants: siparisCfg.variantsEnabled,
     },
-    optionGroups: activeOptionGroups(product.optionGroups),
+    optionGroups: translateOptionGroups(activeOptionGroups(product.optionGroups), product.id, dict, activeLang),
     ...stockPublicFields(product),
   });
 });
@@ -540,6 +542,7 @@ router.get('/:slug', async (req, res) => {
 
   const language = await prisma.language.findFirst({ where: { code: lang, isActive: true } });
   const activeLang = language?.code || 'tr';
+  const dict = await loadDict(restaurant.id);
   const campaign = await loadCampaignContext(restaurant.id, campaignSlug);
 
   if (campaignSlug && !campaign) {
@@ -777,12 +780,12 @@ router.get('/:slug', async (req, res) => {
     },
     welcomeMessage: getWelcomeMessage(restaurant.welcomeI18n, activeLang),
     about: aboutSetting?.value || '',
-    aboutPage: parseAboutPage(aboutPageSetting?.value, aboutSetting?.value || ''),
-    contactCard: publicContactCard(contactCardSetting?.value),
+    aboutPage: translateAbout(parseAboutPage(aboutPageSetting?.value, aboutSetting?.value || ''), dict, activeLang),
+    contactCard: publicContactCard(contactCardSetting?.value, dict, activeLang),
     languages: languages.map((l) => ({ code: l.code, name: l.name })),
     theme: 'sofra',
     sofra: await loadSofraConfig(restaurant.id, restaurant.welcomeI18n),
-    campaign: campaignMeta(campaign),
+    campaign: campaignMeta(campaign, dict, activeLang),
     features: {
       menuAssistant,
       menuAssistantStyle: menuAssistant
@@ -1001,7 +1004,7 @@ router.get('/:slug/groups/:groupId/products', async (req, res) => {
       name: getGroupName(group.i18n, activeLang),
       imageUrl: group.imageUrl,
     },
-    campaign: campaignMeta(campaign),
+    campaign: campaignMeta(campaign, await loadDict(restaurant.id), lang.toLowerCase().split('-')[0]),
     products: mapped,
     children,
   });
