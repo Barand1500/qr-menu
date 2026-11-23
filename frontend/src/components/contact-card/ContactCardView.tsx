@@ -13,6 +13,7 @@ import {
 import { contactCardCopy, type ContactCardCopy } from '@/lib/contactCardCopy';
 import { renderContactCardImage } from './contactCardImage';
 import ContactShareBurst from './ContactShareBurst';
+import ContactMiniMap from './ContactMiniMap';
 import ContactCardSignature from './ContactCardSignature';
 import './contact-card.css';
 
@@ -65,6 +66,7 @@ export default function ContactCardView({ card, restaurant, lang = 'tr', layout,
   const timer = useRef(0);
   const number = cardNumber(restaurant.slug || restaurant.name);
   const hasSignature = card.signature.length > 0;
+  const hasMap = typeof card.lat === 'number' && typeof card.lng === 'number';
   const signatureStart = 1.05;
   const timeline = useMemo(() => signatureTimeline(card.signature, signatureStart), [card.signature]);
 
@@ -203,6 +205,7 @@ export default function ContactCardView({ card, restaurant, lang = 'tr', layout,
             <div className="cc-tilt" ref={tiltRef}>
               <div
                 className={`cc-flip${flipped ? ' is-flipped' : ''}`}
+                data-map={hasMap}
                 role="button"
                 tabIndex={0}
                 aria-label={t.flip}
@@ -239,18 +242,25 @@ export default function ContactCardView({ card, restaurant, lang = 'tr', layout,
                     </div>
                   ) : null}
 
-                  {fields.length ? (
-                    <dl className="cc-fields">
-                      {fields.map((f) => (
-                        <div key={f.key} data-field={f.key}>
-                          <dt>{f.label}</dt>
-                          <dd>
-                            {f.value}
-                            {f.sub ? <small>{f.sub}</small> : null}
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
+                  {fields.length || hasMap ? (
+                    <div className="cc-side">
+                      {fields.length ? (
+                        <dl className="cc-fields">
+                          {fields.map((f) => (
+                            <div key={f.key} data-field={f.key}>
+                              <dt>{f.label}</dt>
+                              <dd>
+                                {f.value}
+                                {f.sub ? <small>{f.sub}</small> : null}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                      ) : null}
+                      {hasMap ? (
+                        <ContactMiniMap lat={card.lat as number} lng={card.lng as number} href={contactCardMapUrl(card)} label={t.mapTitle} />
+                      ) : null}
+                    </div>
                   ) : null}
 
                   {hasSignature ? (

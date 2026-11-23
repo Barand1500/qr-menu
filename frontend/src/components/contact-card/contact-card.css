@@ -56,6 +56,9 @@
 .cc[data-layout='landscape'] .cc-flip {
   aspect-ratio: 640 / 404;
 }
+.cc[data-layout='portrait'] .cc-flip[data-map='true'] {
+  aspect-ratio: 360 / 640;
+}
 .cc-flip.is-flipped {
   transform: rotateY(180deg);
 }
@@ -206,12 +209,17 @@
   letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
+.cc-side {
+  display: grid;
+  gap: calc(var(--u) * 10);
+  min-width: 0;
+  padding-top: calc(var(--u) * 12);
+  border-top: 1.5px dashed var(--cc-line);
+}
 .cc-fields {
   display: grid;
   gap: calc(var(--u) * 7);
   margin: 0;
-  padding-top: calc(var(--u) * 12);
-  border-top: 1.5px dashed var(--cc-line);
 }
 .cc-fields div {
   min-width: 0;
@@ -375,7 +383,7 @@
 .cc[data-layout='landscape'] .cc-person {
   grid-area: person;
 }
-.cc[data-layout='landscape'] .cc-fields {
+.cc[data-layout='landscape'] .cc-side {
   grid-area: fields;
   align-content: start;
   padding: 0 0 0 calc(var(--u) * 24);
@@ -697,5 +705,93 @@
   .cc-burst__label,
   .cc-share button.is-primary.is-open::after {
     animation: none;
+  }
+}
+
+/* kartın içindeki küçük harita */
+.cc-minimap {
+  --cc-tile: calc(var(--u) * 120);
+  position: relative;
+  display: block;
+  height: calc(var(--u) * 84);
+  overflow: hidden;
+  color: inherit;
+  background: var(--cc-paper);
+  border: 1px solid var(--cc-line);
+  border-radius: calc(var(--u) * 12);
+  text-decoration: none;
+}
+.cc[data-layout='landscape'] .cc-minimap {
+  height: calc(var(--u) * 92);
+}
+.cc-minimap__tiles {
+  position: absolute;
+  width: calc(var(--cc-tile) * 5);
+  height: calc(var(--cc-tile) * 3);
+  left: calc(50% - (2 + var(--fx)) * var(--cc-tile));
+  top: calc(50% - (1 + var(--fy)) * var(--cc-tile));
+}
+.cc-minimap__tiles img {
+  position: absolute;
+  display: block;
+  width: var(--cc-tile);
+  height: var(--cc-tile);
+  max-width: none;
+  object-fit: fill;
+  user-select: none;
+  /* koyu kartlarda açık harita karolarını kart rengine yaklaştırır */
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.92) saturate(0.55) sepia(0.25);
+}
+.cc[data-light='true'] .cc-minimap__tiles img {
+  filter: saturate(0.8) sepia(0.2);
+}
+.cc-minimap__pin {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--u) * 14);
+  height: calc(var(--u) * 14);
+  margin: calc(var(--u) * -7) 0 0 calc(var(--u) * -7);
+  background: var(--cc-accent);
+  border: calc(var(--u) * 2) solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 calc(var(--u) * 3) calc(var(--u) * 8) rgba(0, 0, 0, 0.5);
+}
+.cc-minimap__pin::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--u) * -6);
+  border: calc(var(--u) * 1.5) solid var(--cc-accent);
+  border-radius: 50%;
+  animation: cc-pin-ping 2.4s ease-out 1.4s infinite;
+}
+.cc-minimap small {
+  position: absolute;
+  right: calc(var(--u) * 5);
+  bottom: calc(var(--u) * 3);
+  padding: 0 calc(var(--u) * 3);
+  color: #fff;
+  font: 600 calc(var(--u) * 5.5) / 1.5 var(--cc-font);
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: calc(var(--u) * 3);
+}
+.cc-minimap:focus-visible {
+  outline: 2px solid var(--cc-accent-2);
+  outline-offset: 2px;
+}
+@keyframes cc-pin-ping {
+  from {
+    opacity: 0.8;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-minimap__pin::after {
+    animation: none;
+    opacity: 0;
   }
 }

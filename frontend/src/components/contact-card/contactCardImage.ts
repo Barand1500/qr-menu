@@ -1,6 +1,7 @@
 import { CONTACT_CARD_PALETTES, SIGNATURE_BOX, type ContactCardConfig } from '@/lib/contactCard';
 import type { ContactCardCopy } from '@/lib/contactCardCopy';
 import type { ContactCardLayout } from './ContactCardView';
+import { MINIMAP_ZOOM, tilePosition } from './ContactMiniMap';
 
 type Options = {
   card: ContactCardConfig;
@@ -68,7 +69,8 @@ export async function renderContactCardImage(o: Options): Promise<Blob> {
   const palette = CONTACT_CARD_PALETTES[card.tone];
   const landscape = o.layout === 'landscape';
   const W = landscape ? 1600 : 1020;
-  const H = landscape ? 1010 : 1590;
+  const hasMap = typeof card.lat === 'number' && typeof card.lng === 'number';
+  const H = landscape ? 1010 : hasMap ? 1790 : 1590;
   const P = 64;
   const canvas = document.createElement('canvas');
   canvas.width = W;
@@ -78,6 +80,7 @@ export async function renderContactCardImage(o: Options): Promise<Blob> {
 
   await (document.fonts?.ready ?? Promise.resolve());
   const logo = o.logoUrl ? await loadImage(o.logoUrl) : null;
+  const mapTiles = hasMap ? await loadMapTiles(card.lat as number, card.lng as number) : null;
 
   // zemin
   const bg = ctx.createLinearGradient(0, 0, W, H);
@@ -225,6 +228,45 @@ export async function renderContactCardImage(o: Options): Promise<Blob> {
     fy += 98 + (lines.length - 1) * 46 + extra;
   }
 
+  // küçük harita
+  if (mapTiles) {
+    const mw = fw;
+    const mh = landscape ? 250 : 270;
+    const mx = fx;
+    const my = fy + 14;
+    ctx.save();
+    roundRect(ctx, mx, my, mw, mh, 28);
+    ctx.clip();
+    ctx.fillStyle = palette.paper;
+    ctx.fillRect(mx, my, mw, mh);
+    const T = 240;
+    const { x: px, y: py } = mapTiles.pos;
+    const fxr = px - Math.floor(px);
+    const fyr = py - Math.floor(py);
+    if (!palette.light) (ctx as CanvasRenderingContext2D & { filter?: string }).filter = 'invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.92) saturate(0.55) sepia(0.25)';
+    for (const tile of mapTiles.tiles) {
+      ctx.drawImage(tile.img, mx + mw / 2 - (2 + fxr) * T + tile.col * T, my + mh / 2 - (1 + fyr) * T + tile.row * T, T, T);
+    }
+    (ctx as CanvasRenderingContext2D & { filter?: string }).filter = 'none';
+    ctx.fillStyle = palette.accent;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.arc(mx + mw / 2, my + mh / 2, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    roundRect(ctx, mx, my, mw, mh, 28);
+    ctx.strokeStyle = palette.light ? '#00000026' : '#ffffff2e';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.font = `600 17px ${SANS}`;
+    ctx.fillStyle = '#ffffffcc';
+    ctx.textAlign = 'right';
+    ctx.fillText('© OpenStreetMap', mx + mw - 14, my + mh - 12);
+    ctx.textAlign = 'left';
+  }
+
   // imza alanı
   if (card.signature.length) {
     const boxW = landscape ? colW : W - P * 2;
@@ -277,4 +319,23 @@ export async function renderContactCardImage(o: Options): Promise<Blob> {
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('png'))), 'image/png');
   });
+}
+
+/** Konumun çevresindeki 5×3 harita karosunu yükler; biri bile yüklenmezse harita çizilmez. */
+async function loadMapTiles(lat: number, lng: number) {
+  const pos = tilePosition(lat, lng);
+  const tx = Math.floor(pos.x);
+  const ty = Math.floor(pos.y);
+  const base = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  const jobs: Promise<{ col: number; row: number; img: HTMLImageElement } | null>[] = [];
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 5; col++) {
+      jobs.push(
+        loadImage(`${base}/api/map-tiles/${MINIMAP_ZOOM}/${tx - 2 + col}/${ty - 1 + row}.png`).then((img) => (img ? { col, row, img } : null)),
+      );
+    }
+  }
+  const done = await Promise.all(jobs);
+  if (done.some((d) => !d)) return null;
+  return { pos, tiles: done as { col: number; row: number; img: HTMLImageElement }[] };
 }

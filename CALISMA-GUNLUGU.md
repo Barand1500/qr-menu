@@ -774,3 +774,7 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Kimlik kartı süsü olan "<<CHEF<<<" satırları kart ve indirilen resimden kaldırıldı.
 - Paylaş: bağlantıyı panoya kopyalar (güvenli olmayan bağlantıda gizli alan yedeği) ve düğmeden WhatsApp / Instagram / Telegram / SMS (+ tarayıcı destekliyorsa "Diğer", kart resmiyle) balonları fırlatır. Bağlantı `/menu/home?sayfa=iletisim` doğrudan iletişim kartını açar.
 - Doğrulama: tsc, vite build, backend testi, Chrome fixture (390/320/1280): pano içeriği, bağlantılar, kapanma, taşma. Gerçek telefonda paylaşım uygulamaları denenmedi. Instagram bağlantı paylaşımı için web adresi sunmuyor: bağlantı kopyalı olarak mesajlar açılır, kullanıcı yapıştırır.
+
+## 2026-11-23 — Harita kartın içine alındı
+- Alttaki ayrı harita bölümü kaldırıldı; küçük harita (5x3 karo + iğne, dokunmatik olmayan) kartın içinde, adres/saat satırlarının altında. Dokununca yol tarifi açılır; kart çevirme 3B ile sorunsuz. Dikey kart harita varsa biraz uzar. İndirilen resimde de harita çizilir (karolar yüklenemezse atlanır).
+- Doğrulama: tsc, vite build, Chrome fixture (390/320/1280, koyu ve fildişi), indirilen resim. Gerçek harita karoları denenmedi (sahte karo). Safari ctx.filter desteklemediği için indirilen resimdeki harita orada açık renk kalabilir.
