@@ -272,7 +272,7 @@ export function Channel({
           <p>{subtitle}</p>
         </div>
         {extra}
-        <button type="button" role="switch" aria-checked={enabled} aria-label={`${title} kullan`} className={`ig-switch${enabled ? ' is-on' : ''}`} onClick={() => onEnabled(!enabled)}>
+        <button type="button" role="switch" disabled={saving} aria-checked={enabled} aria-label={`${title} kullan`} className={`ig-switch${enabled ? ' is-on' : ''}`} onClick={() => onEnabled(!enabled)}>
           <i />
         </button>
       </header>

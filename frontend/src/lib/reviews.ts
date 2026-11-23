@@ -19,19 +19,26 @@ export type PublicReviews = {
   items: ReviewItem[];
 };
 
+export const REVIEWS_CHANGED = 'menu-reviews-updated';
+export function notifyReviewsChanged() {
+  pending.clear();
+  window.dispatchEvent(new Event(REVIEWS_CHANGED));
+  try { localStorage.setItem(REVIEWS_CHANGED, String(Date.now()) + Math.random()); } catch { /* storage may be disabled */ }
+}
+
 // Aynı sayfada karşılama ve "Daha fazla" aynı veriyi paylaşır; ikinci kez istek atılmaz.
 const pending = new Map<string, Promise<PublicReviews | null>>();
 
-export function loadReviews(slug: string, lang: string): Promise<PublicReviews | null> {
+export function loadReviews(slug: string, lang: string, fresh = false): Promise<PublicReviews | null> {
   const key = `${slug}|${lang}`;
-  let job = pending.get(key);
+  let job = fresh ? undefined : pending.get(key);
   if (!job) {
-    job = api<{ reviews: PublicReviews | null }>(`/api/menu/${slug}/reviews?lang=${encodeURIComponent(lang)}`)
+    job = api<{ reviews: PublicReviews | null }>(`/api/menu/${slug}/reviews?lang=${encodeURIComponent(lang)}`, { cache: 'no-store' })
       .then((r) => r.reviews)
-      .catch(() => null);
+      .catch(() => null)
+      .finally(() => { if (pending.get(key) === job) pending.delete(key); });
     pending.set(key, job);
-    // Beş dakika sonra yeniden okunabilsin
-    window.setTimeout(() => pending.delete(key), 5 * 60 * 1000);
+
   }
   return job;
 }
@@ -40,11 +47,29 @@ export function loadReviews(slug: string, lang: string): Promise<PublicReviews |
 export function useReviews(slug: string | null | undefined, lang: string): PublicReviews | null {
   const [data, setData] = useState<PublicReviews | null>(null);
   useEffect(() => {
+    setData(null);
     if (!slug) return;
-    let alive = true;
-    void loadReviews(slug, lang).then((r) => alive && setData(r));
+    let alive = true, request = 0;
+    const refresh = (fresh = false) => {
+      const id = ++request;
+      void loadReviews(slug, lang, fresh).then((r) => { if (alive && id === request) setData(r); });
+    };
+    const changed = () => refresh(true);
+    const visible = () => { if (!document.hidden) refresh(true); };
+    const storage = (e: StorageEvent) => { if (e.key === REVIEWS_CHANGED) changed(); };
+    refresh();
+    window.addEventListener(REVIEWS_CHANGED, changed);
+    window.addEventListener('storage', storage);
+    window.addEventListener('focus', visible);
+    document.addEventListener('visibilitychange', visible);
+    const timer = window.setInterval(visible, 30000);
     return () => {
       alive = false;
+      window.clearInterval(timer);
+      window.removeEventListener(REVIEWS_CHANGED, changed);
+      window.removeEventListener('storage', storage);
+      window.removeEventListener('focus', visible);
+      document.removeEventListener('visibilitychange', visible);
     };
   }, [slug, lang]);
   return data;

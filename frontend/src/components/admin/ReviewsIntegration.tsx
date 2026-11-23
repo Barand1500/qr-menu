@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Loader2, MessageSquareQuote, Plus, Search, Star, Trash2, Zap } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Channel, Field } from './IntegrationsSettings';
+import { notifyReviewsChanged } from '@/lib/reviews';
 import './reviews-integration.css';
 
 type Manual = { name: string; text: string; rating: number };
@@ -55,17 +56,37 @@ export function useReviewsState(onToast: (text: string, error?: boolean) => void
   const set = (patch: Partial<ReviewsDraft>) => setDraft((d) => (d ? { ...d, ...patch } : d));
   const keyConfigured = loaded?.keyConfigured ?? false;
 
+  const writeLock = useRef(false);
+  async function toggle(channel: 'manualEnabled' | 'googleEnabled', enabled: boolean) {
+    if (!draft || !loaded || writeLock.current) return;
+    writeLock.current = true;
+    setSaving(true);
+    try {
+      const res = await api<Loaded>('/api/admin/settings/reviews', {
+        method: 'PATCH', body: JSON.stringify({ channel, enabled }),
+      });
+      setLoaded(res);
+      setDraft((d) => d ? { ...d, [channel]: res.config[channel] } : d);
+      notifyReviewsChanged();
+      onToast(enabled ? 'Yorumlar menüde gösteriliyor.' : 'Yorumlar menüden gizlendi.');
+    } catch (e) { onToast(apiError(e), true); }
+    finally { writeLock.current = false; setSaving(false); }
+  }
+
   async function save() {
-    if (!draft) return;
+    if (!draft || writeLock.current) return;
+    writeLock.current = true;
     setSaving(true);
     try {
       const res = await api<Loaded>('/api/admin/settings/reviews', { method: 'PUT', body: JSON.stringify({ config: draft }) });
       setLoaded(res);
       setDraft(res.config);
+      notifyReviewsChanged();
       onToast('Yorum ayarları kaydedildi.');
     } catch (e) {
       onToast(apiError(e), true);
     } finally {
+      writeLock.current = false;
       setSaving(false);
     }
   }
@@ -126,7 +147,7 @@ export function useReviewsState(onToast: (text: string, error?: boolean) => void
       : { tone: 'off', text: 'Kapalı' };
 
   return {
-    ready, loaded, draft, dirty, saving, keyConfigured, set, setManual, save, reset: () => loaded && setDraft(loaded.config),
+    ready, loaded, draft, dirty, saving, keyConfigured, set, setManual, save, toggle, reset: () => loaded && setDraft(loaded.config),
     query, setQuery, hits, searching, searchError, search, pick, testing, test, testError, runTest,
     googleStatus, manualStatus,
   };
@@ -151,7 +172,7 @@ export function ReviewsChannel({ s, part }: { s: ReviewsState; part: 'google' | 
         title="Google yorumları"
         subtitle="Google puanınız ve yorumlarınız karşılama ve “Daha fazla” ekranında görünür"
         enabled={draft.googleEnabled}
-        onEnabled={(v) => s.set({ googleEnabled: v && Boolean(draft.placeId) })}
+        onEnabled={(v) => void s.toggle('googleEnabled', v)}
         status={s.googleStatus}
         dirty={s.dirty}
         saving={s.saving}
@@ -256,7 +277,7 @@ function ManualChannel({ s, draft }: { s: ReviewsState; draft: ReviewsDraft }) {
       title="Müşteri yorumları (elle)"
       subtitle="Gerçekten aldığınız güzel sözleri kendiniz yazın; “Misafirlerimizden” etiketiyle görünür"
       enabled={draft.manualEnabled}
-      onEnabled={(v) => s.set({ manualEnabled: v })}
+      onEnabled={(v) => void s.toggle('manualEnabled', v)}
       status={s.manualStatus}
       dirty={s.dirty}
       saving={s.saving}

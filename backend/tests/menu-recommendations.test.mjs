@@ -1,0 +1,34 @@
+﻿import assert from 'node:assert/strict';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { build } from 'esbuild';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const out=path.join(root,'node_modules/.recommendations-check/recommendations.mjs');
+await build({entryPoints:[path.join(root,'src/lib/menu-recommendations.ts')],outfile:out,bundle:true,platform:'node',format:'esm'});
+const {recommendMeals,classifyMeal}=await import(pathToFileURL(out));
+const meal=(id,name,group,price=250,calories=null,description='')=>({id,name,classificationName:name,classificationDescription:description,classificationLang:'tr',groupNames:[group],price,calories,currency:{code:'TRY'}});
+const menu=[meal(1,'Tiramisu','Tatlılar',100,400),meal(2,'Sufle','Tatlılar',110,700),meal(3,'Ballı cevizli pasta','Tatlılar',120,550),meal(4,'Margherita Pizza','Pizzalar',450,800),meal(5,'Zeen Burger','Burgerler',600,900),meal(6,'Tavuklu salata','Salatalar',350,280),meal(7,'Balık ızgara','Ana yemekler',650,500),meal(8,'Latte','İçecekler',150,200),meal(9,'Limonata','İçecekler',140,150),meal(10,'Günün özel lezzeti','Şefin seçimi',300),{...meal(11,'Ucuz pizza','Pizza',1,700),soldOut:true}];
+for(const hunger of ['light','hungry','stuffed'])for(const budget of ['low','mid','high']){
+ assert(recommendMeals(menu,{taste:'savory',hunger,budget}).every(p=>[4,5,6,7].includes(p.id)));
+ assert(recommendMeals(menu,{taste:'sweet',hunger,budget}).every(p=>[1,2,3].includes(p.id)));
+ assert(recommendMeals(menu,{taste:'fresh',hunger,budget}).every(p=>[6,...(hunger==='light'?[9]:[])].includes(p.id)));
+}
+assert.deepEqual(recommendMeals(menu.slice(0,3),{taste:'savory',hunger:'hungry',budget:'low'}),[]);
+assert.equal(classifyMeal(meal(12,'Balkabağı çorbası','Çorbalar')),'fresh');
+assert.equal(classifyMeal(meal(13,'Burger','Burgerler',250,600,'Tatlı çikolata sosu ve bal dokunuşuyla.')),'savory');
+assert.equal(classifyMeal({...meal(14,'Penne pasta','Pasta'),classificationLang:'en'}),'savory');
+assert.equal(classifyMeal(meal(15,'Çikolatalı pasta','Tatlılar')),'sweet');
+assert.equal(classifyMeal(meal(16,'Gizli tarif','Tatlılar')),'sweet');
+assert.equal(classifyMeal(meal(17,'Mango milkshake','İçecekler')),'drink');
+assert.equal(classifyMeal(meal(18,'Tatlı patates kızartması','Atıştırmalıklar')),'savory');
+assert.equal(classifyMeal(meal(19,'Çikolatalı pizza','Tatlılar')),'sweet');
+assert.equal(classifyMeal(meal(40,'Pastırma','Kahvaltılar')),'savory');
+assert.equal(classifyMeal(meal(41,'Bal kaymak','Kahvaltılar')),'sweet');
+assert.equal(classifyMeal(meal(42,'Penne Pasta','Makarnalar')),'savory');
+const prices=[meal(21,'Burger','Burgerler',900,600),meal(22,'Burger','Burgerler',1500,600),meal(23,'Burger','Burgerler',2300,600)];
+assert.equal(recommendMeals(prices,{taste:'savory',hunger:'hungry',budget:'low'})[0].id,21);
+assert.equal(recommendMeals(prices.map(p=>({...p,price:p.price*10})),{taste:'savory',hunger:'hungry',budget:'low'})[0].id,21);
+assert.equal(recommendMeals([meal(30,'Pizza','Pizza',250,300),meal(31,'Pizza','Pizza',250,850)],{taste:'savory',hunger:'stuffed',budget:'high'})[0].id,31);
+assert.equal(recommendMeals([meal(30,'Pizza','Pizza',250,300),meal(31,'Pizza','Pizza',250,850)],{taste:'savory',hunger:'light',budget:'high'})[0].id,30);
+assert.deepEqual(recommendMeals([],{taste:'sweet',hunger:'light',budget:'mid'}),[]);
+console.log('PASS: all taste/hunger/budget combinations, category signals, word boundaries, languages, stock, empty matches, relative budget, calories');

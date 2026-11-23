@@ -1,3 +1,4 @@
+import { recommendMeals, type MealHunger, type MealTaste, type MealBudget } from '../lib/menu-recommendations.js';
 import { searchMenu } from '../lib/menuSearch.js';
 import { IMAGE_FIT_KEY, parseImageFit } from '../lib/image-fit.js';
 import { parseServiceRequest } from '../lib/table-service-request.js';
@@ -7,6 +8,7 @@ import { loadSofraConfig } from '../lib/sofra.js';
 import { parseClientMeta } from '../lib/client-meta.js';
 import {
   getGroupName,
+  getRawField,
   getLanguages,
   getProductField,
   getShowcaseTitles,
@@ -278,8 +280,8 @@ router.get('/:slug/reviews', async (req, res) => {
   });
   const lang = String(req.query.lang || 'tr').slice(0, 8);
   const reviews = await buildPublicReviews(parseReviews(row?.value), lang);
-  // Birkaç dakika tarayıcı/ara önbelleği: Google'a her ziyarette gidilmez
-  res.setHeader('Cache-Control', 'public, max-age=300');
+  // Visibility must be fresh; Google responses are cached separately on the server.
+  res.setHeader('Cache-Control', 'no-store');
   res.json({ reviews });
 });
 
@@ -844,87 +846,41 @@ router.get('/:slug/assistant-suggest', async (req, res) => {
   const activeLang = language?.code || 'tr';
   const campaign = await loadCampaignContext(restaurant.id, campaignSlug);
 
+  if (!['light', 'hungry', 'stuffed'].includes(hunger) || !['sweet', 'savory', 'fresh'].includes(taste) || !['low', 'mid', 'high'].includes(budget)) {
+    return res.status(400).json({ message: 'Geçersiz menü tercihi' });
+  }
+  if (campaignSlug && !campaign) return res.status(404).json({ message: 'Kampanya bulunamadı' });
+  const timeMenu = await getTimeMenuRuntime(restaurant.id);
   const products = await prisma.product.findMany({
-    where: { restaurantId: restaurant.id, isActive: true },
-    include: { group: true, currency: true },
-    take: 200,
+    where: { restaurantId: restaurant.id, isActive: true, group: { isActive: true } },
+    include: { group: { include: { parent: true } }, currency: true },
   });
-
-  const scored = products
-    .filter((p) => !campaign || campaign.itemByProductId.has(p.id))
-    .map((p) => {
+  const candidates = products
+    .filter(p => !isSoldOut(p.stockQty) && (!p.group.parent || p.group.parent.isActive) &&
+      (!campaign || campaign.itemByProductId.has(p.id)))
+    .flatMap(p => {
       const name = getProductField(p.i18n, activeLang, 'name') || '';
       const description = getProductField(p.i18n, activeLang, 'description') || '';
-      const hay = `${name} ${description}`.toLocaleLowerCase('tr-TR');
-      const priced = applyCampaignPrice(
-        p.id,
-        { price: Number(p.price), currency: mapCurrency(p.currency) },
-        campaign,
-        mapCurrency
-      );
-      const price = priced.price;
-      const cal = p.calories ?? 0;
-      let score = 10;
-
-      if (hunger === 'light') {
-        if (cal > 0 && cal <= 400) score += 25;
-        else if (cal > 600) score -= 15;
-        if (/salata|corba|çorba|smoothie|meyve|hafif|salad|soup/.test(hay)) score += 18;
-        if (/burger|pizza|tatli|tatlı|dessert|sufle/.test(hay)) score -= 10;
-      } else if (hunger === 'stuffed') {
-        if (cal >= 600) score += 20;
-        if (/burger|pizza|kebap|tabak|menu|menü|serpme|paylaş|paylas/.test(hay)) score += 18;
-        if (/salata|çorba|corba|smoothie/.test(hay)) score -= 8;
-      } else {
-        if (cal > 0 && cal >= 350 && cal <= 750) score += 15;
-        score += 5;
-      }
-
-      if (taste === 'sweet') {
-        if (/tatli|tatlı|dessert|cikolata|çikolata|tiramisu|sufle|pasta|dondurma|bal|waffle/.test(hay))
-          score += 28;
-        else score -= 8;
-      } else if (taste === 'fresh') {
-        if (/salata|meyve|smoothie|avokado|yogurt|yoğurt|detox|taze|portakal/.test(hay)) score += 24;
-        if (/kızart|kizart|burger|sucuk/.test(hay)) score -= 6;
-      } else {
-        if (/burger|pizza|tavuk|et |kebap|makarna|tost|kahvalti|kahvaltı|main|ana/.test(hay))
-          score += 18;
-        if (/tatli|tatlı|dessert|sufle/.test(hay)) score -= 10;
-      }
-
-      if (budget === 'low') {
-        if (price <= 120) score += 22;
-        else if (price <= 180) score += 8;
-        else score -= 12;
-      } else if (budget === 'high') {
-        if (price >= 220) score += 18;
-        else if (price < 120) score -= 6;
-        if (p.isRecommended) score += 8;
-      } else {
-        if (price >= 100 && price <= 260) score += 14;
-      }
-
-      if (p.isRecommended) score += 6;
-      if (p.isVegan && taste === 'fresh') score += 6;
-
-      return {
-        id: p.id,
-        name,
-        description,
-        price,
-        currency: priced.currency,
-        imageUrl: parseProductImages(p)[0] ?? null,
-        calories: p.calories,
-        groupId: p.groupId,
-        groupName: getGroupName(p.group.i18n, activeLang),
-        score,
+      const priced = applyCampaignPrice(p.id, { price: Number(p.price), currency: mapCurrency(p.currency) }, campaign, mapCurrency);
+      const patch = timeMenu.config.enabled ? patchProductForSlot(p.id,
+        { isRecommended: p.isRecommended, price: priced.price }, timeMenu.rules.get(p.id)) : null;
+      if (patch?.hidden) return [];
+      const canonical = getRawField(p.i18n, 'tr', 'name');
+      return [{
+        id: p.id, name, description, price: patch?.price ?? priced.price, currency: priced.currency,
+        imageUrl: parseProductImages(p)[0] ?? null, calories: p.calories,
+        groupId: p.groupId, groupName: getGroupName(p.group.i18n, activeLang),
+        classificationName: canonical || name,
+        classificationDescription: getProductField(p.i18n, canonical ? 'tr' : activeLang, 'description') || '',
+        classificationLang: canonical ? 'tr' : activeLang,
+        groupNames: [getGroupName(p.group.i18n, 'tr'), p.group.parent ? getGroupName(p.group.parent.i18n, 'tr') : ''],
+        isRecommended: patch?.isRecommended ?? p.isRecommended,
         ...stockPublicFields(p),
-      };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5)
-    .map(({ score: _s, ...rest }) => rest);
+      }];
+    });
+  const scored = recommendMeals(candidates, {
+    hunger: hunger as MealHunger, taste: taste as MealTaste, budget: budget as MealBudget,
+  }).map(({ classificationName, classificationDescription, classificationLang, groupNames, isRecommended, ...product }) => product);
 
   res.json({ products: scored });
 });

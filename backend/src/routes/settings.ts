@@ -226,6 +226,29 @@ router.put('/reviews', async (req, res) => {
   res.json({ config, keyConfigured: Boolean(placesKey()) });
 });
 
+// Visibility is saved independently: toggling must not discard an unfinished review draft.
+router.patch('/reviews', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const { channel, enabled } = req.body || {};
+  if (!['manualEnabled', 'googleEnabled'].includes(channel) || typeof enabled !== 'boolean') {
+    return res.status(400).json({ message: 'Geçersiz yorum görünürlüğü' });
+  }
+  const row = await prisma.setting.findUnique({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: REVIEWS_KEY } },
+  });
+  const current = parseReviews(row?.value);
+  if (channel === 'googleEnabled' && enabled && !current.placeId) {
+    return res.status(400).json({ message: 'Önce seçtiğiniz Google işletmesini kaydedin.' });
+  }
+  const config = normalizeReviews({ ...current, [channel]: enabled });
+  await prisma.setting.upsert({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: REVIEWS_KEY } },
+    update: { value: serializeReviews(config) },
+    create: { restaurantId: restaurantId!, key: REVIEWS_KEY, value: serializeReviews(config) },
+  });
+  res.json({ config, keyConfigured: Boolean(placesKey()) });
+});
+
 router.get('/reviews/search', async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (q.length < 2) return res.json([]);
