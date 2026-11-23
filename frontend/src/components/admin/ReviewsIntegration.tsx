@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2, MessageSquareQuote, Plus, Search, Star, Trash2, Zap } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Channel, Field } from './IntegrationsSettings';
@@ -229,6 +229,27 @@ export function ReviewsChannel({ s, part }: { s: ReviewsState; part: 'google' | 
     );
   }
 
+  return <ManualChannel s={s} draft={draft} />;
+}
+
+function ManualChannel({ s, draft }: { s: ReviewsState; draft: ReviewsDraft }) {
+  const list = useRef<HTMLUListElement>(null);
+  const count = useRef(draft.manual.length);
+  const full = draft.manual.length >= MAX_MANUAL;
+
+  // Yeni yorum eklenince liste en alta kayar ve ad alanına odaklanır
+  useEffect(() => {
+    if (draft.manual.length > count.current) {
+      const el = list.current;
+      if (el) {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        const inputs = el.querySelectorAll<HTMLInputElement>('input');
+        window.setTimeout(() => inputs[inputs.length - 1]?.focus({ preventScroll: true }), 250);
+      }
+    }
+    count.current = draft.manual.length;
+  }, [draft.manual.length]);
+
   return (
     <Channel
       icon={<MessageSquareQuote size={22} />}
@@ -241,38 +262,49 @@ export function ReviewsChannel({ s, part }: { s: ReviewsState; part: 'google' | 
       saving={s.saving}
       onSave={() => void s.save()}
       onReset={s.reset}
+      extra={
+        <button
+          type="button"
+          className="rvi-add"
+          disabled={full}
+          onClick={() => s.set({ manual: [...draft.manual, { name: '', text: '', rating: 5 }] })}
+          aria-label={full ? `En fazla ${MAX_MANUAL} yorum` : 'Yorum ekle'}
+        >
+          <Plus size={16} aria-hidden /> <span>{full ? `${MAX_MANUAL}/${MAX_MANUAL}` : 'Yorum ekle'}</span>
+        </button>
+      }
     >
-      <p className="ig-tip">Yalnızca müşterilerinizin gerçekten söylediği ya da yazdığı yorumları ekleyin. Uydurma yorum yanıltıcıdır ve işletmenizi riske atar.</p>
-      <ul className="rvi-list">
-        {draft.manual.map((m, i) => (
-          <li key={i} className="rvi-item">
-            <div className="rvi-item__top">
-              <Field label="Müşteri adı" value={m.name} onChange={(v) => s.setManual(i, { name: v })} maxLength={40} />
-              <div className="rvi-rate" role="radiogroup" aria-label="Puan">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <button key={n} type="button" role="radio" aria-checked={m.rating === n} className={n <= m.rating ? 'is-on' : ''} onClick={() => s.setManual(i, { rating: n })} aria-label={`${n} yıldız`}>
-                    <Star size={18} fill={n <= m.rating ? 'currentColor' : 'none'} aria-hidden />
+      <div className="rvi-manual">
+        <p className="ig-tip">
+          Yalnızca müşterilerinizin gerçekten söylediği ya da yazdığı yorumları ekleyin; uydurma yorum yanıltıcıdır ve işletmenizi riske atar. Adı ya da metni boş satırlar kaydedilirken atılır.
+          <b className="rvi-count"> {draft.manual.length}/{MAX_MANUAL}</b>
+        </p>
+        {draft.manual.length ? (
+          <ul className="rvi-list" ref={list}>
+            {draft.manual.map((m, i) => (
+              <li key={i} className="rvi-item">
+                <div className="rvi-item__top">
+                  <Field label="Müşteri adı" value={m.name} onChange={(v) => s.setManual(i, { name: v })} maxLength={40} />
+                  <div className="rvi-rate" role="radiogroup" aria-label="Puan">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button key={n} type="button" role="radio" aria-checked={m.rating === n} className={n <= m.rating ? 'is-on' : ''} onClick={() => s.setManual(i, { rating: n })} aria-label={`${n} yıldız`}>
+                        <Star size={18} fill={n <= m.rating ? 'currentColor' : 'none'} aria-hidden />
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" className="rvi-del" aria-label="Yorumu sil" onClick={() => s.set({ manual: draft.manual.filter((_, k) => k !== i) })}>
+                    <Trash2 size={17} aria-hidden />
                   </button>
-                ))}
-              </div>
-              <button type="button" className="rvi-del" aria-label="Yorumu sil" onClick={() => s.set({ manual: draft.manual.filter((_, k) => k !== i) })}>
-                <Trash2 size={17} aria-hidden />
-              </button>
-            </div>
-            <textarea value={m.text} maxLength={300} rows={2} placeholder="Yorum metni" aria-label="Yorum metni" onChange={(e) => s.setManual(i, { text: e.target.value })} />
-            <small>{m.text.length}/300</small>
-          </li>
-        ))}
-      </ul>
-      <button
-        type="button"
-        className="ig-btn ig-btn--ghost"
-        disabled={draft.manual.length >= MAX_MANUAL}
-        onClick={() => s.set({ manual: [...draft.manual, { name: '', text: '', rating: 5 }] })}
-      >
-        <Plus size={16} aria-hidden /> {draft.manual.length >= MAX_MANUAL ? `En fazla ${MAX_MANUAL} yorum` : 'Yorum ekle'}
-      </button>
-      <p className="ig-tip">Adı ya da metni boş bırakılan satırlar kaydedilirken atılır.</p>
+                </div>
+                <textarea value={m.text} maxLength={300} rows={2} placeholder="Yorum metni" aria-label="Yorum metni" onChange={(e) => s.setManual(i, { text: e.target.value })} />
+                <small>{m.text.length}/300</small>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="rvi-empty">Henüz yorum yok. Sağ üstteki “Yorum ekle” ile başlayın.</p>
+        )}
+      </div>
     </Channel>
   );
 }

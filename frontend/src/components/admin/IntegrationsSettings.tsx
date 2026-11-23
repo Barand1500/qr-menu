@@ -244,6 +244,7 @@ export function Channel({
   saving,
   onSave,
   onReset,
+  extra,
   children,
 }: {
   icon: ReactNode;
@@ -256,6 +257,8 @@ export function Channel({
   saving: boolean;
   onSave: () => void;
   onReset: () => void;
+  /** Başlıkta, açma/kapama anahtarının yanında görünen ek düğme */
+  extra?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -268,6 +271,7 @@ export function Channel({
           <h3>{title}</h3>
           <p>{subtitle}</p>
         </div>
+        {extra}
         <button type="button" role="switch" aria-checked={enabled} aria-label={`${title} kullan`} className={`ig-switch${enabled ? ' is-on' : ''}`} onClick={() => onEnabled(!enabled)}>
           <i />
         </button>

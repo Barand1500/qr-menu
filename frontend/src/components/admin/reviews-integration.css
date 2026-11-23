@@ -105,12 +105,58 @@
 }
 
 /* elle girilen yorumlar */
+.rvi-manual {
+  display: grid;
+  gap: 12px;
+}
+.rvi-count {
+  white-space: nowrap;
+}
+.rvi-empty {
+  margin: 0;
+  padding: 18px;
+  color: var(--admin-text-muted);
+  font-size: 13px;
+  text-align: center;
+  border: 1.5px dashed var(--admin-card-border);
+  border-radius: 14px;
+}
+/* uzun liste kendi içinde kayar; geniş ekranda satır başına iki yorum */
 .rvi-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  margin: 0 0 10px;
-  padding: 0;
+  max-height: min(52vh, 480px);
+  margin: 0;
+  padding: 2px 6px 2px 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   list-style: none;
+  scrollbar-width: thin;
+}
+@media (max-width: 899px) {
+  .rvi-list {
+    grid-template-columns: minmax(0, 1fr);
+    max-height: 56vh;
+  }
+}
+.rvi-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  color: var(--admin-btn-primary-text, #fff);
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--admin-accent);
+  border: 0;
+  border-radius: 14px;
+  cursor: pointer;
+}
+.rvi-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .rvi-item {
   display: grid;
@@ -187,5 +233,16 @@
   }
   .rvi-search {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 420px) {
+  .rvi-add span {
+    display: none;
+  }
+  .rvi-add {
+    width: 44px;
+    justify-content: center;
+    padding: 0;
   }
 }

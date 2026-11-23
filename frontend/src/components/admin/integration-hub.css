@@ -430,3 +430,10 @@
     animation: none;
   }
 }
+
+.igh-dock .ig-card > .rvi-manual {
+  column-span: all;
+}
+.igh-dock .ig-card__head {
+  gap: 12px;
+}
