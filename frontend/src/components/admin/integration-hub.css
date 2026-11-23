@@ -338,3 +338,95 @@
     transform: none;
   }
 }
+
+/* geniş ekran: ayarlar kartların hemen altında, yatay bir alanda açılır */
+.igh-tile.is-open {
+  border-color: var(--admin-accent);
+  box-shadow: 0 18px 36px -20px color-mix(in srgb, var(--admin-accent) 65%, transparent);
+}
+.igh-dock {
+  position: relative;
+  padding: 24px 28px;
+  background: var(--admin-card);
+  border: 1px solid color-mix(in srgb, var(--admin-accent) 40%, var(--admin-card-border));
+  border-radius: 26px;
+  animation: igh-dock-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* seçili karta bakan ok */
+.igh-dock::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: var(--notch, 50%);
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  background: var(--admin-card);
+  border-top: 1px solid color-mix(in srgb, var(--admin-accent) 40%, var(--admin-card-border));
+  border-left: 1px solid color-mix(in srgb, var(--admin-accent) 40%, var(--admin-card-border));
+  border-radius: 3px 0 0 0;
+  transform: rotate(45deg);
+  transition: left 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.igh-dock__close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--admin-text);
+  background: var(--admin-card);
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.igh-dock__close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+/* kanal kartı düzleşir; içerik iki sütuna yayılır, başlık ve kaydet çubuğu tam genişlik kalır */
+.igh-dock .ig-card {
+  display: block;
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  column-count: 2;
+  column-gap: 40px;
+}
+.igh-dock .ig-card > * {
+  margin: 0 0 16px;
+  break-inside: avoid;
+}
+.igh-dock .ig-card > .ig-card__head,
+.igh-dock .ig-card > .ig-status,
+.igh-dock .ig-card > .ig-save {
+  column-span: all;
+}
+.igh-dock .ig-card__head {
+  padding-right: 56px;
+}
+.igh-dock .ig-save {
+  position: static;
+  margin: 0 -28px -24px;
+  padding-inline: 28px;
+  border-radius: 0 0 25px 25px;
+}
+.igh-dock .ig-save.is-show {
+  padding: 14px 28px;
+}
+@keyframes igh-dock-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .igh-dock {
+    animation: none;
+  }
+}

@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { ArrowUpRight, ShieldCheck, X } from 'lucide-react';
 import AdminOverlay from './AdminOverlay';
 import './integration-hub.css';
@@ -19,7 +20,7 @@ const PILL = { ok: 'Açık', idle: 'Eksik', off: 'Kapalı' } as const;
 
 /**
  * Entegrasyonlar: eşit boyutlu kartlardan oluşan bağlantı merkezi.
- * Karta dokununca ayar paneli açılır (telefonda alttan, geniş ekranda sağdan).
+ * Karta dokununca ayarlar açılır: telefonda alttan sayfa, geniş ekranda kartların hemen altında yatay bir alan.
  */
 export default function IntegrationHub({
   tiles,
@@ -39,6 +40,39 @@ export default function IntegrationHub({
   const live = tiles.filter((t) => t.status.tone === 'ok').length;
   const open = tiles.find((t) => t.id === openId) || null;
   const ratio = tiles.length ? live / tiles.length : 0;
+  const wide = useMediaQuery('(min-width: 900px)');
+  const gridRef = useRef<HTMLDivElement>(null);
+  const dockRef = useRef<HTMLElement>(null);
+  const [notch, setNotch] = useState(0);
+
+  // Geniş ekran: alan açılınca görünür yere kayar; ok işareti seçili kartın altını gösterir
+  useLayoutEffect(() => {
+    if (!wide || !openId) return;
+    const place = () => {
+      const tile = gridRef.current?.querySelector<HTMLElement>('.igh-tile.is-open');
+      const dock = dockRef.current;
+      if (!tile || !dock) return;
+      const t = tile.getBoundingClientRect();
+      const d = dock.getBoundingClientRect();
+      setNotch(t.left + t.width / 2 - d.left);
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [wide, openId]);
+  useEffect(() => {
+    if (!wide || !openId) return;
+    const id = window.setTimeout(() => dockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 120);
+    return () => window.clearTimeout(id);
+  }, [wide, openId]);
+  useEffect(() => {
+    if (!wide || !openId || busy) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [wide, openId, busy, onClose]);
   const R = 22;
   const C = 2 * Math.PI * R;
 
@@ -64,12 +98,13 @@ export default function IntegrationHub({
         </div>
       </section>
 
-      <div className="igh-grid">
+      <div className="igh-grid" ref={gridRef}>
         {tiles.map((t, i) => (
           <button
             key={t.id}
             type="button"
-            className={`igh-tile is-${t.status.tone}`}
+            className={`igh-tile is-${t.status.tone}${wide && openId === t.id ? ' is-open' : ''}`}
+            aria-expanded={wide ? openId === t.id : undefined}
             style={{ ['--i' as string]: i, ['--hue' as string]: t.hue }}
             onClick={() => onOpen(t.id)}
             aria-haspopup="dialog"
@@ -94,7 +129,16 @@ export default function IntegrationHub({
         ))}
       </div>
 
-      {open ? (
+      {open && wide ? (
+        <section className="igh-dock" ref={dockRef} key={open.id} aria-label={`${open.title} ayarları`} style={{ ['--notch' as string]: `${notch}px` }}>
+          <button type="button" className="igh-dock__close" onClick={onClose} disabled={busy} aria-label="Kapat">
+            <X size={20} />
+          </button>
+          {children}
+        </section>
+      ) : null}
+
+      {open && !wide ? (
         <AdminOverlay label={`${open.title} ayarları`} className="igh-overlay" busy={busy} onClose={onClose}>
           <div className="igh-sheet">
             <header>

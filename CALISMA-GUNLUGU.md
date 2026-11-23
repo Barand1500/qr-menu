@@ -794,3 +794,7 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Dağınık, farklı boyutlu kartlar yerine bağlantı merkezi: üstte "x/4 açık" halkalı özet, altında eşit boyutlu 4 kart (E-posta, SMS, Google yorumları, Müşteri yorumları). Açık kartların kenarında dönen ışık, hover/basma animasyonu; durum rozeti (Açık/Eksik/Kapalı) ve "Kaydedilmemiş değişiklik var" uyarısı.
 - Karta dokununca ayarlar telefonda alttan açılan sayfada, geniş ekranda sağdan çekmecede açılır; yalnızca X veya Escape kapatır (dışarı tıklama kapatmaz), kaydederken kapanmaz. Mevcut formlar/test/kaydet akışı aynen korundu; yorum durumu `useReviewsState` ile tek yerde tutulur.
 - Doğrulama: tsc, vite build, Chrome fixture (1280/390): kart boyları eşit, taşma yok, dış tık kapatmıyor, Escape kapatıyor. Gerçek SMTP/SMS testleri ve gerçek cihaz denenmedi.
+
+## 2026-11-23 — Entegrasyonlar: geniş ekranda alt alanda açılma
+- Geniş ekranda (>=900px) karta dokununca ayarlar sağdan çekmece yerine kartların hemen altında yatay bir alanda açılır (iki sütun, seçili karta bakan ok, seçili kart vurgulu); başka karta dokununca alan değişir. X veya Escape kapatır. Telefonda alttan açılan sayfa aynen kaldı.
+- Doğrulama: tsc, vite build, Chrome fixture (1280: dört panel de kartların altında, taşma yok, dış tık kapatmıyor, Escape kapatıyor; 390: alttan sayfa). Gerçek formlarla uzun içerikte iki sütun akışı denenmedi.
