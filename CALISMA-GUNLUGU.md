@@ -755,3 +755,10 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 ## 2026-11-23 — Bildirimlerden masa görünümü bağlantıları kaldırıldı
 - AdminNotificationBell: "Masa görünümüne git" düğmesi silindi; bildirim/kod satırına dokunmak artık masa görünümüne gitmiyor (okundu yapıp paneli kapatıyor). Kullanılmayan `.admin-notify__goto` CSS silindi.
 - Doğrulama: tsc geçti; ekranda denenmedi. Masa görünümü açılınca bağlantılar geri eklenecek.
+
+## 2026-11-23 — İletişim kartı (restoran kimlik kartı)
+- Amaç: yenigörev dosyasındaki istek: menüde restoranın bilgilerini gösteren, çevrilebilir, indirilebilir ve paylaşılabilir kart; yönetim panelinden doldurulur; imza çizimi.
+- Arka uç: `lib/contact-card.ts` (saf şema + doğrulama), `GET/PUT /api/admin/settings/contact-card`, herkese açık menü yanıtına `contactCard` (yalnızca açık ve içeriği olan kart). Test: `npm run test:contact-card`.
+- Ön yüz: `components/contact-card/` (kart, imza animasyonu, mühür, PNG üretimi, imza kutusu), yönetim sayfası `İletişim Kartı` (Görünüm menüsü), Sofra menüsünde "İletişim" bağlantısı (menü ekranından 03).
+- Doğrulama: tsc, vite build, backend testi, Chrome fixture (390/320/1280): kart 4 renkte, çevirme, PNG indirme, yönetim sayfası, imza çizme/geri alma, mobil önizleme sayfası, Escape. Gerçek cihaz, gerçek paylaşım penceresi ve gerçek sunucu denenmedi.
+- Not: three.js (PaperCrumple) kurulamadığı için kullanılmadı. Yalnızca Sofra menüsünde var; eski temalar görünmez. Backend deploy gerekir.

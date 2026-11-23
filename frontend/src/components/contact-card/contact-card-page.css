@@ -1,0 +1,32 @@
+/* Menüdeki iletişim sayfası: koyu, Sofra temasıyla uyumlu zemin */
+.cc-page {
+  min-height: 100dvh;
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 16px calc(120px + env(safe-area-inset-bottom, 0px));
+  color: #f6eee4;
+  background: radial-gradient(90% 40% at 50% 0%, rgba(255, 107, 44, 0.14), transparent 70%), #0e0b09;
+}
+.cc-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-bottom: 8px;
+  padding: 0 14px 0 10px;
+  color: inherit;
+  font: 600 14px/1 var(--sh-body, 'Inter', system-ui, sans-serif);
+  background: transparent;
+  border: 1px solid rgba(246, 238, 228, 0.18);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.cc-page__title {
+  margin: 8px 0 22px;
+  text-align: center;
+  font: 800 clamp(26px, 5vw, 40px) / 1.1 var(--sh-display, 'Bricolage Grotesque', 'Inter', system-ui, sans-serif);
+  letter-spacing: -0.03em;
+}
+@media (min-width: 760px) {
+  .cc-page {
+    padding-inline: 32px;
+  }
+}

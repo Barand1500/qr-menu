@@ -77,6 +77,7 @@ import {
 } from '../lib/time-menu.js';
 import { ABOUT_PAGE_KEY, parseAboutPage, serializeAboutPage } from '../lib/about-page.js';
 import type { AboutPageConfig } from '../lib/about-page.js';
+import { CONTACT_CARD_KEY, normalizeContactCard, parseContactCard, serializeContactCard } from '../lib/contact-card.js';
 import {
   ADMIN_PATH_KEY,
   DEFAULT_ADMIN_PATH,
@@ -201,6 +202,32 @@ router.put('/welcome-messages', async (req, res) => {
   });
 
   res.json({ ok: true });
+});
+
+router.get('/contact-card', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const [row, restaurant] = await Promise.all([
+    prisma.setting.findUnique({
+      where: { restaurantId_key: { restaurantId: restaurantId!, key: CONTACT_CARD_KEY } },
+    }),
+    prisma.restaurant.findUnique({
+      where: { id: restaurantId! },
+      select: { name: true, slug: true, logoUrl: true },
+    }),
+  ]);
+  res.json({ card: parseContactCard(row?.value), restaurant });
+});
+
+router.put('/contact-card', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  const card = normalizeContactCard((req.body as { card?: unknown } | undefined)?.card);
+  const value = serializeContactCard(card);
+  await prisma.setting.upsert({
+    where: { restaurantId_key: { restaurantId: restaurantId!, key: CONTACT_CARD_KEY } },
+    update: { value },
+    create: { restaurantId: restaurantId!, key: CONTACT_CARD_KEY, value },
+  });
+  res.json({ card });
 });
 
 router.put('/company', async (req, res) => {

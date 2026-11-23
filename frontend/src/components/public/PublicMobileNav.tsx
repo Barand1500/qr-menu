@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Home, Menu, Moon, Search, ShoppingBag, Sun, UserRound } from 'lucide-react';
 import type { MenuColorMode } from '@/lib/menuColorMode';
 
-export type PublicTab = 'home' | 'about' | 'settings';
+export type PublicTab = 'home' | 'about' | 'contact' | 'settings';
 
 interface PublicMobileNavProps {
   tab: PublicTab;

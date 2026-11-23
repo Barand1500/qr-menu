@@ -45,6 +45,8 @@ import {
 import PublicSocialLinks from '@/components/public/PublicSocialLinks';
 import AboutPageView from '@/components/public/AboutPageView';
 import SahneAboutPage from '@/components/public/sahne/SahneAboutPage';
+import ContactCardPage from '@/components/contact-card/ContactCardPage';
+import type { ContactCardConfig } from '@/lib/contactCard';
 import SahneSocialLinks from '@/components/public/sahne/SahneSocialLinks';
 import { parseAboutPage, type AboutPageConfig } from '@/lib/aboutPage';
 import '@/about-page.css';
@@ -99,6 +101,7 @@ interface MenuData {
   welcomeMessage: string;
   about?: string;
   aboutPage?: AboutPageConfig;
+  contactCard?: ContactCardConfig | null;
   languages: { code: string; name: string }[];
   showcase?: ShowcaseItem[];
   stories?: MenuStory[];
@@ -731,6 +734,7 @@ function PublicMenuPageInner({
   const sideMenu = (
     <PublicSideMenu
       sahne={isSofra}
+      hasContact={Boolean(menu.contactCard)}
       open={sideMenuOpen}
       tab={tab}
       restaurantName={isSofra ? menu.sofra?.brandName || menu.restaurant.name : menu.restaurant.name}
@@ -742,7 +746,7 @@ function PublicMenuPageInner({
       onClose={() => setSideMenuOpen(false)}
       onTab={(t) => {
         setTab(t);
-        if (groupId && !(isSofra && t === 'about')) navigate(menuHomePath());
+        if (groupId && !(isSofra && (t === 'about' || t === 'contact'))) navigate(menuHomePath());
       }}
       onLangChange={changeLang}
       onDietaryPrefsChange={changeDietaryPrefs}
@@ -888,6 +892,13 @@ function PublicMenuPageInner({
                   </>
                 ) : null
               }
+            />
+          ) : tab === 'contact' && menu.contactCard ? (
+            <ContactCardPage
+              card={menu.contactCard}
+              restaurant={{ name: menu.sofra?.brandName || menu.restaurant.name, logoUrl: menu.restaurant.logoUrl, slug: menu.restaurant.slug }}
+              lang={lang}
+              onBack={() => setTab('home')}
             />
           ) : tab === 'about' ? (
             <SahneAboutPage

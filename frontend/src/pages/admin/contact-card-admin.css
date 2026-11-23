@@ -1,0 +1,290 @@
+/* İletişim kartı yönetimi: telefonda tek sütun + altta sabit çubuk, geniş ekranda form + canlı önizleme */
+.ccp {
+  padding-bottom: 8px;
+}
+.ccp__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.ccp__form {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.ccp__panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  background: var(--admin-card);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 18px;
+}
+.ccp__panel h2 {
+  margin: 0;
+  color: var(--admin-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+.ccp__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+.ccp__help,
+.ccp__tip {
+  margin: 0;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.ccp__switch {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+.ccp__switch strong {
+  display: block;
+  color: var(--admin-text);
+  font-size: 14px;
+}
+.ccp__switch small {
+  display: block;
+  margin-top: 2px;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.ccp__save {
+  min-height: 40px;
+}
+
+/* renk seçimi */
+.ccp__tones {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.ccp__tones button {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 4px;
+  color: var(--admin-text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  background: transparent;
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 14px;
+  cursor: pointer;
+}
+.ccp__tones button i {
+  width: 100%;
+  max-width: 54px;
+  height: 30px;
+  border-radius: 9px;
+}
+.ccp__tones button.is-active {
+  color: var(--admin-accent-text);
+  background: var(--admin-accent-soft);
+  border-color: var(--admin-accent);
+}
+
+/* imza alanı */
+.ccp-pad {
+  display: grid;
+  gap: 8px;
+}
+.ccp-pad__surface {
+  position: relative;
+  aspect-ratio: 900 / 460;
+  overflow: hidden;
+  background: #fffdf8;
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 16px;
+}
+.ccp-pad__surface canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none; /* çizerken sayfa kaymasın */
+}
+.ccp-pad__line {
+  position: absolute;
+  right: 6%;
+  bottom: 22%;
+  left: 6%;
+  border-bottom: 1.5px dashed #1b2a4a33;
+}
+.ccp-pad__hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #1b2a4a66;
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.ccp-pad__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+}
+.ccp-pad__bar div {
+  display: flex;
+  gap: 6px;
+}
+.ccp-pad__bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  color: var(--admin-text);
+  font-size: 12.5px;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid var(--admin-card-border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.ccp-pad__bar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* telefonda alt çubuk */
+.ccp__bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 16px -16px -8px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--admin-card);
+  border-top: 1px solid var(--admin-card-border);
+}
+.ccp__bar button {
+  min-height: 48px;
+}
+
+/* telefonda önizleme: alttan açılan sayfa */
+.ccp-overlay {
+  align-items: flex-end;
+  padding: 0;
+}
+.ccp-sheet {
+  display: flex;
+  flex-direction: column;
+  width: min(520px, 100%);
+  max-height: min(92dvh, 760px);
+  background: var(--admin-card);
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -20px 50px rgba(0, 0, 0, 0.35);
+  animation: ccp-sheet-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.ccp-sheet > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 6px;
+  color: var(--admin-text);
+}
+.ccp-sheet > header button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--admin-text);
+  background: transparent;
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.ccp-sheet__body {
+  padding: 8px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@keyframes ccp-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+/* geniş ekran: sağda yapışkan canlı önizleme */
+@media (min-width: 1100px) {
+  .ccp__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 480px);
+    gap: 24px;
+  }
+  .ccp__row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ccp__preview {
+    position: sticky;
+    top: 16px;
+    display: grid;
+    gap: 14px;
+    justify-items: center;
+    padding: 18px;
+    background: var(--admin-card);
+    border: 1px solid var(--admin-card-border);
+    border-radius: 22px;
+  }
+  .ccp__stage {
+    width: 100%;
+    max-width: 330px;
+  }
+  .ccp__stage.is-wide {
+    max-width: 440px;
+  }
+  .ccp__device {
+    display: inline-flex;
+    padding: 3px;
+    background: var(--admin-accent-soft);
+    border-radius: 999px;
+  }
+  .ccp__device button {
+    min-height: 36px;
+    padding: 0 16px;
+    color: var(--admin-text-muted);
+    font-size: 12.5px;
+    font-weight: 600;
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .ccp__device button.is-active {
+    color: var(--admin-btn-primary-text, #fff);
+    background: var(--admin-accent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ccp-sheet {
+    animation: none;
+  }
+}
+
+/* Girdi kutuları boşlukları kendi ızgarasıyla verir */
+.ccp__panel .float-field {
+  margin: 0;
+}
+
+/* Telefonda Kaydet altta sabit çubukta; başlıkta tekrar etmesin */
+@media (max-width: 1099px) {
+  .ccp__save {
+    display: none;
+  }
+}

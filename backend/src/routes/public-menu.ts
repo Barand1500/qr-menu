@@ -80,6 +80,7 @@ import { distanceMeters, isWithinGeoLock, loadGeoLock } from '../lib/geo-lock.js
 import { isMaintenanceEnabled } from '../lib/maintenance.js';
 import { addRunnerScore, getRunnerScores } from '../lib/maintenance-scores.js';
 import { ABOUT_PAGE_KEY, parseAboutPage } from '../lib/about-page.js';
+import { CONTACT_CARD_KEY, contactCardHasContent, parseContactCard } from '../lib/contact-card.js';
 import {
   WELCOME_BASKETBALL_CONFIG_KEY,
   parseWelcomeBasketballConfig,
@@ -89,6 +90,12 @@ import {
   parseWelcomeCupsConfig,
 } from '../lib/welcome-cups-config.js';
 import { activeOptionGroups } from '../lib/product-options.js';
+
+/** Müşteriye yalnızca açık ve içeriği olan kart gider. */
+function publicContactCard(raw?: string | null) {
+  const card = parseContactCard(raw);
+  return card.enabled && contactCardHasContent(card) ? card : null;
+}
 
 const router = Router();
 
@@ -529,6 +536,7 @@ router.get('/:slug', async (req, res) => {
     languages,
     aboutSetting,
     aboutPageSetting,
+    contactCardSetting,
     socialSetting,
     menuAssistant,
     assistantStyleSetting,
@@ -586,6 +594,11 @@ router.get('/:slug', async (req, res) => {
     prisma.setting.findUnique({
       where: {
         restaurantId_key: { restaurantId: restaurant.id, key: ABOUT_PAGE_KEY },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: {
+        restaurantId_key: { restaurantId: restaurant.id, key: CONTACT_CARD_KEY },
       },
     }),
     prisma.setting.findUnique({
@@ -748,6 +761,7 @@ router.get('/:slug', async (req, res) => {
     welcomeMessage: getWelcomeMessage(restaurant.welcomeI18n, activeLang),
     about: aboutSetting?.value || '',
     aboutPage: parseAboutPage(aboutPageSetting?.value, aboutSetting?.value || ''),
+    contactCard: publicContactCard(contactCardSetting?.value),
     languages: languages.map((l) => ({ code: l.code, name: l.name })),
     theme: 'sofra',
     sofra: await loadSofraConfig(restaurant.id, restaurant.welcomeI18n),

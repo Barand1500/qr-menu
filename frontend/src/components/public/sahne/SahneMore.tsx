@@ -38,6 +38,7 @@ type View = 'explore' | 'language' | 'preferences';
 /** A small restaurant intermission, with utilities on their own page. */
 export default function SahneMore({
   open,
+  hasContact = false,
   tab,
   restaurantName,
   languages,
@@ -101,7 +102,7 @@ export default function SahneMore({
     returnRef.current = target;
     setView(next);
   }
-  function navigate(next: 'home' | 'about') {
+  function navigate(next: 'home' | 'about' | 'contact') {
     onTab(next);
     close();
   }
@@ -244,6 +245,17 @@ export default function SahneMore({
                     <span>{chrome.about}</span>
                     <ArrowUpRight />
                   </button>
+                  {hasContact && (
+                    <button
+                      className="sh-interlude__nav"
+                      onClick={() => navigate('contact')}
+                      aria-current={tab === 'contact' ? 'page' : undefined}
+                    >
+                      <small>03</small>
+                      <span>{en ? 'Contact' : 'İletişim'}</span>
+                      <ArrowUpRight />
+                    </button>
+                  )}
                 </div>
 
                 {games.length > 0 && (

@@ -25,6 +25,7 @@ import {
   UsersRound,
   UserCog,
   Settings,
+  IdCard,
   Sparkles,
   CircleHelp,
 } from 'lucide-react';
@@ -66,6 +67,7 @@ function buildNav() {
       ] : []),
       { to: adminPath('startup', 'games'), label: 'Oyun Ekranı', tourId: 'nav-games-screen' },
       { to: adminPath('startup', 'theme'), label: 'Tema Ayarları', tourId: 'nav-sofra-theme' },
+      { to: adminPath('contact-card'), label: 'İletişim Kartı', tourId: 'nav-contact-card' },
     ],
     reportNav: [
       { to: adminPath('stats'), label: 'İstatistikler', tourId: 'nav-stats' },
@@ -184,6 +186,7 @@ export default function AdminLayout() {
     'nav-menu-theme': LayoutTemplate,
     'nav-games-screen': Gamepad2,
     'nav-sofra-theme': Palette,
+    'nav-contact-card': IdCard,
     'nav-stats': BarChart3,
     'nav-suggestions': Lightbulb,
     'nav-complaints': MessageSquareWarning,
@@ -279,7 +282,9 @@ export default function AdminLayout() {
   const managementActive =
     location.pathname.startsWith(adminPath('users')) ||
     location.pathname.startsWith(adminPath('settings'));
-  const startupActive = location.pathname.startsWith(adminPath('startup'));
+  const startupActive =
+    location.pathname.startsWith(adminPath('startup')) ||
+    location.pathname.startsWith(adminPath('contact-card'));
   const extensionsActive = location.pathname.startsWith(adminPath('extensions'));
 
   useLayoutEffect(() => {

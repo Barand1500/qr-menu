@@ -22,7 +22,7 @@ import { MENU_GAMES_CATALOG, enabledMenuGames, type MenuGameId } from '@/lib/men
 import { gameCatalogEntry, gamesUi } from '@/lib/menuGamesUi';
 import type { PublicMenuGames } from '@/lib/menuGamesConfig';
 
-export type PublicTab = 'home' | 'about' | 'settings';
+export type PublicTab = 'home' | 'about' | 'contact' | 'settings';
 
 interface Language {
   code: string;
@@ -31,6 +31,8 @@ interface Language {
 
 export interface PublicSideMenuProps {
   sahne?: boolean;
+  /** İletişim kartı açıksa menüde "İletişim" bağlantısı görünür */
+  hasContact?: boolean;
   open: boolean;
   tab: PublicTab;
   restaurantName: string;

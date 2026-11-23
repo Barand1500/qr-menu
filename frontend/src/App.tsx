@@ -21,6 +21,7 @@ import WelcomeThemePage from '@/pages/admin/WelcomeThemePage';
 import MenuThemePage from '@/pages/admin/MenuThemePage';
 import GamesScreenPage from '@/pages/admin/GamesScreenPage';
 import SofraThemePage from '@/pages/admin/SofraThemePage';
+import ContactCardAdminPage from '@/pages/admin/ContactCardAdminPage';
 import { SHOW_LEGACY_THEME_SETTINGS } from '@/lib/adminThemeSettings';
 import ExtensionsHubPage from '@/pages/admin/ExtensionsHubPage';
 import BulkTranslatePage from '@/pages/admin/BulkTranslatePage';
@@ -73,6 +74,7 @@ function AdminRoutes({ slug }: { slug: string }) {
         <Route path="startup/menu" element={SHOW_LEGACY_THEME_SETTINGS ? <MenuThemePage /> : <Navigate to={`${base}/startup/theme`} replace />} />
         <Route path="startup/games" element={<GamesScreenPage />} />
         <Route path="startup/theme" element={<SofraThemePage />} />
+        <Route path="contact-card" element={<ContactCardAdminPage />} />
         <Route path="stats" element={<StatsPage />} />
         <Route path="complaints" element={<ComplaintsPage />} />
         <Route path="suggestions" element={<SuggestionsPage />} />
