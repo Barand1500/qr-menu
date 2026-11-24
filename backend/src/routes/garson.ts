@@ -178,12 +178,13 @@ router.post('/visit', async (req, res) => {
 });
 
 
-/** Close exactly the displayed seating; never silently settle an outstanding bill. */
+/** Gösterilen oturumu kapatır. Açık hesap varsa yalnızca garson açıkça onaylarsa (force) kapanır. */
 router.post('/close', async (req, res) => {
   try {
     const restaurantId = await getRestaurantId(req);
     const me = await whoAmI(req);
     const sessionId = Number(req.body?.sessionId);
+    const force = req.body?.force === true; // garson açık hesabı bilerek kapatıyor
     if (restaurantId == null || !me) return res.status(401).json({ message: 'Yetkisiz' });
     if (!Number.isSafeInteger(sessionId) || sessionId <= 0) return res.status(400).json({ message: 'Geçersiz oturum' });
     const result = await prisma.$transaction(async (tx) => {
@@ -202,7 +203,7 @@ router.post('/close', async (req, res) => {
         }
       }
       const remaining = remainingBalance(parseOrdersJson(session.ordersJson), parsePaymentsJson(session.paymentsJson), seatFee, meta.checkDiscount);
-      if (remaining > 0.009) return { status: 409, message: 'Masada açık hesap var. Önce masa yönetiminden ödemeyi tamamlayın.' };
+      if (remaining > 0.009 && !force) return { status: 409, message: 'Masada açık hesap var. Önce masa yönetiminden ödemeyi tamamlayın.' };
       const closedAt = new Date();
       const changed = await tx.tableFloorSession.updateMany({
         where: { id: session.id, restaurantId, status: { in: [...ACTIVE_STATUSES] }, ordersJson: session.ordersJson, paymentsJson: session.paymentsJson, metaJson: session.metaJson },

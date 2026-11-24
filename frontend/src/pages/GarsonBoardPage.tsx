@@ -266,7 +266,7 @@ export default function GarsonBoardPage() {
     }
     setCloseAsk(null);
     void run(`x${t.key}`, async () => {
-      await post('close', { sessionId: t.session!.id });
+      await post('close', { sessionId: t.session!.id, force: true });
       setSheetKey(null);
     }, `${t.label} kapatıldı`);
   };
@@ -539,7 +539,7 @@ export default function GarsonBoardPage() {
       </>}
       {s.session ? (
         <button type="button" className={`gb-close${closeAsk === s.key ? ' is-ask' : ''}`} disabled={busy.has(`x${s.key}`)} onClick={() => closeTable(s)}>
-          <Power size={18} aria-hidden="true" /> {closeAsk === s.key ? 'Emin misin? Tekrar dokun' : 'Masayı kapat'}
+          <Power size={18} aria-hidden="true" /> {closeAsk === s.key ? (s.session.total > 0 ? `Hesap ${money(s.session.total)} ödenmemiş olabilir. Yine de kapat` : 'Emin misin? Tekrar dokun') : 'Masayı kapat'}
         </button>
       ) : null}
     </>

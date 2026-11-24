@@ -909,3 +909,9 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Değişiklik: Backend `POST /api/admin/garson/close` (açık hesap varsa kapatmaz; oturum değiştiyse reddeder), `table-presence.ts` + `POST /api/menu/:slug/table-presence` (yalnızca kaba ekran türü ve kategori/ürün/oyun adı; sepet içeriği, arama metni, konum yok; 75 sn sonra düşer), pano `session.activity`, gate yanıtına `sessionId`. Frontend: kod penceresi `document.body`'ye portal + z-index 12000 (sepet 300'ün üstünde), kod alanındaki `/D/g` → `/\D/g`, `tablePresence.ts` (ekran bildirimi: değişince + 30 sn), sepet/oyun/kategori/ürün sayfalarına bildirim, garson panosunda masa altında canlı satır + ayrıntıda "Şu an", "Masayı kapat" (iki dokunuş onayı).
 - Doğrulama: tsc (front/back), vite build, `npm run test:garson` (yeni table-presence testi dahil), Chrome fixture (web): canlı satır, kapatma isteği. 
 - Doğrulanmadı: kod penceresinin gerçek sepetin üstünde görünmesi tarayıcıda denenmedi; gerçek DB/gerçek müşteri; telefonda garson ekranı bu turda yeniden bakılmadı.
+
+## 2026-11-24 — Masayı kapat: açık hesapta zorla kapatma
+
+- Amaç: Hesabı açık masa kapatılamıyordu; garson bilerek kapatabilsin.
+- Değişiklik: `/close` isteği `force: true` ile açık hesap kontrolünü atlar; panelde ikinci dokunuşta "Hesap … ödenmemiş olabilir. Yine de kapat" uyarısı gösterilir. Oturum değişmişse (başka işlem) hâlâ reddeder.
+- Doğrulama: tsc (front/back). Tarayıcıda/gerçek veride denenmedi.
