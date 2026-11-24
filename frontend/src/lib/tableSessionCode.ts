@@ -8,6 +8,7 @@ export type TableSessionGateInfo = {
   enabled: boolean;
   needsCode: boolean;
   sessionId?: number | null;
+  groupName?: string | null;
   tableNumber: string | null;
   groupSlug: string | null;
   status: TableSessionGateStatus;

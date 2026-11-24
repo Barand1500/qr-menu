@@ -82,6 +82,7 @@ import { useSiparisCart } from '@/hooks/useSiparisCart';
 import { SofraMenuView, type SofraProduct } from '@/components/public/sofra/SofraCanvas';
 import { normalizeSofraConfig, type SofraConfig } from '@/lib/sofra';
 import { pickMenuLang } from '@/lib/menuLang';
+import { useTableLabel } from '@/lib/tableContext';
 import {
   loadDietaryPrefs,
   preferenceUi,
@@ -233,6 +234,7 @@ function PublicMenuPageInner({
   const [menu, setMenu] = useState<MenuData | null>(null);
   usePublicImageFit(slug, useMenuImageEntries(menu));
   const [products, setProducts] = useState<ProductData | null>(null);
+  const tableText = useTableLabel(lang.split('-')[0] === 'en' ? 'Table' : 'Masa');
   usePresenceEntry('category', products?.group.name || '', Boolean(groupId && products));
   const [groupLoading, setGroupLoading] = useState(false);
   const [groupError, setGroupError] = useState<string | null>(null);
@@ -879,12 +881,7 @@ function PublicMenuPageInner({
               headerTools={
                 <>
                   <SahneLanguage lang={lang} languages={menu.languages} onChange={changeLang} />
-                  {(searchParams.get('masa') || sessionStorage.getItem('menu_masa')) && (
-                    <span className="sofra-table">
-                      {en ? 'Table' : 'Masa'}{' '}
-                      {searchParams.get('masa') || sessionStorage.getItem('menu_masa')}
-                    </span>
-                  )}
+                  {tableText && <span className="sofra-table">{tableText}</span>}
                   {profileIcon}
                 </>
               }

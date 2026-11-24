@@ -1603,12 +1603,15 @@ router.get('/:slug/table-session-gate', async (req, res) => {
   if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
 
   const codeCfg = await loadTableSessionCodeConfig(restaurant.id);
+  const groupRow = grup ? await prisma.qrTableGroup.findFirst({ where: { restaurantId: restaurant.id, slug: grup }, select: { name: true } }) : null;
+  const groupName = groupRow?.name || null;
   if (!codeCfg.enabled || !masa || masa === 'admin') {
     const activeSession = masa && masa !== 'admin' ? await findActiveSession(restaurant.id, masa, grup) : null;
     return res.json({
       enabled: false,
       needsCode: false,
       sessionId: activeSession?.id ?? null,
+      groupName,
       tableNumber: masa || null,
       groupSlug: grup,
       status: 'empty',
@@ -1622,6 +1625,7 @@ router.get('/:slug/table-session-gate', async (req, res) => {
     enabled: true,
     needsCode: status !== 'verified',
     sessionId: session.id,
+    groupName,
     tableNumber: masa,
     groupSlug: grup,
     status,

@@ -43,6 +43,7 @@ import { SofraWelcomeView } from '@/components/public/sofra/SofraCanvas';
 import SofraDialog from '@/components/public/sofra/SofraDialog';
 import { normalizeSofraConfig, type SofraConfig } from '@/lib/sofra';
 import { pickMenuLang } from '@/lib/menuLang';
+import { useTableLabel } from '@/lib/tableContext';
 
 interface WelcomeData {
   restaurant: { id: number; name: string; slug: string; logoUrl?: string | null };
@@ -127,6 +128,7 @@ function PublicWelcomePageInner({
   const [selectedLang, setSelectedLang] = useState(
     () => localStorage.getItem('menu_lang') || 'tr'
   );
+  const tableText = useTableLabel(welcomeUi(selectedLang).table, tableNo, groupSlug);
   const [musicOn, setMusicOn] = useState(
     () => localStorage.getItem('menu_music_muted') !== 'true'
   );
@@ -467,7 +469,7 @@ function PublicWelcomePageInner({
           }}
           onEnter={() => enterMenu(selectedLang)}
           entering={entering}
-          tableLabel={tableNo ? `${t.table} ${tableNo}` : null}
+          tableLabel={tableText}
           actions={[
             ...(managerContact.enabled ? [{
               id: 'manager', icon: <Mail size={16} aria-hidden/>,
@@ -564,14 +566,7 @@ function PublicWelcomePageInner({
   }
 
   if (data.theme === 'board') {
-    const tableLabel =
-      tableNo || groupSlug
-        ? groupSlug
-          ? `${groupSlug.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase())}${
-              tableNo ? ` · ${t.table} ${tableNo}` : ''
-            }`
-          : `${t.table} ${tableNo}`
-        : null;
+    const tableLabel = tableText;
     const campaignLabel = campaignSlug ? data.campaign?.name || t.campaign : null;
 
     return (
@@ -730,15 +725,7 @@ function PublicWelcomePageInner({
             )}
             {(tableNo || groupSlug || campaignSlug) && (
               <div className="welcome-card__context">
-                {(tableNo || groupSlug) && (
-                  <span className="welcome-card__chip">
-                    {groupSlug
-                      ? `${groupSlug.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase())}${
-                          tableNo ? ` · ${t.table} ${tableNo}` : ''
-                        }`
-                      : `${t.table} ${tableNo}`}
-                  </span>
-                )}
+                {tableText && <span className="welcome-card__chip">{tableText}</span>}
                 {campaignSlug && (
                   <span className="welcome-card__chip welcome-card__chip--campaign">
                     {data?.campaign?.name || t.campaign}

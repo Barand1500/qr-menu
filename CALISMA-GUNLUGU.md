@@ -933,3 +933,9 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 
 - Sorun: Masaüstü kategori başlığında paylaş düğmesi metin sütununun içinde kalıyordu. Düzeltme: `menu-share.css` düğmeyi başlık kartının (`.sh-ghead`) sağ üst köşesine sabitler (telefondaki başlıkta önceki turda sağ üste alınmıştı).
 - Doğrulama: vite build. Sahne teması tarayıcıda açılıp ekran görüntüsüyle bakılmadı.
+
+## 2026-11-24 — Müşteri tarafında "Bahçe 2" masa etiketi
+
+- Sorun: Karşılama ve menü başlığındaki çip yalnızca "Masa 2" yazıyordu; grup bilgisi gösterilmiyordu.
+- Değişiklik: `table-session-gate` yanıtı `groupName` döndürür (backend); `tableContext.ts` içinde `useTableLabel` ("Bahçe 2", grup yoksa "Masa 2"; ad sunucudan gelince kendiliğinden güncellenir) ve `rememberTableGroupName`; karşılama (Sahne/board/klasik) ve menü başlığı bunu kullanır; `formatTableServiceLabel` de grup adını kullanır.
+- Doğrulama: tsc (front/back), vite build. Tarayıcıda gerçek QR bağlantısıyla denenmedi.

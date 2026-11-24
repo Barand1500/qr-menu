@@ -22,6 +22,7 @@ import {
   ADMIN_PREVIEW_TABLE,
   formatTableServiceLabel,
   getTableContext,
+  rememberTableGroupName,
 } from '@/lib/tableContext';
 import { usePageBackdrop } from '@/lib/pageBackdrop';
 import { sendPresence, subscribePresence, topPresence, usePresenceEntry, type PresenceKind } from '@/lib/tablePresence';
@@ -118,6 +119,7 @@ export default function TableSessionCodeGate({ slug, masa, grup, children }: Pro
       const info = await fetchTableSessionGate(slug, table, group);
       setTtlMinutes(info.ttlMinutes || 120);
       setSessionId(info.sessionId ?? null);
+      rememberTableGroupName(group, info.groupName);
       if (!info.enabled) {
         setEnabled(false);
         setVerified(true);
