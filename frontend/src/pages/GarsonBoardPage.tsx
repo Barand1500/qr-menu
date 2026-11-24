@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  Activity,
   ArrowLeft,
   Bell,
   BellOff,
@@ -12,6 +13,7 @@ import {
   ConciergeBell,
   Flame,
   Footprints,
+  LayoutGrid,
   QrCode,
   Receipt,
   ShoppingBag,
@@ -243,219 +245,238 @@ export default function GarsonBoardPage() {
     return acc;
   }, []);
 
-  return (
-    <div className="gb" lang="tr">
-      <header className="gb-top">
-        <button type="button" className="gb-icon" onClick={() => navigate(adminPath())} aria-label="Yönetime dön">
-          <ArrowLeft size={20} />
-        </button>
-        <div className="gb-top__title">
-          <strong>
-            <ConciergeBell size={18} aria-hidden="true" /> Garson
-          </strong>
-          <span className={`gb-live${offline ? ' is-off' : ''}`}>
-            <i aria-hidden="true" /> {offline ? 'Bağlantı yok' : board ? `${board.me.name} · canlı` : 'Bağlanıyor…'}
-          </span>
-        </div>
-        <button type="button" className={`gb-icon${sound ? ' is-on' : ''}`} onClick={toggleSound} aria-pressed={sound} aria-label={sound ? 'Sesi kapat' : 'Sesi aç'}>
-          {sound ? <Bell size={20} /> : <BellOff size={20} />}
-        </button>
-      </header>
 
-      {offline ? (
-        <p className="gb-offline" role="status">
-          <WifiOff size={16} aria-hidden="true" /> İnternet gitti. Son görülen durum gösteriliyor, kendiliğinden yeniden deneniyor.
-        </p>
-      ) : null}
+  const wide = useWide();
+  const filterCounts: Record<Filter, number> = {
+    all: tables.length,
+    busy: tables.filter((t) => t.state !== 'empty').length,
+    due: tables.filter((t) => t.visit === 'due' || t.visit === 'late').length,
+    empty: tables.filter((t) => t.state === 'empty').length,
+  };
+  const FILTERS: [Filter, string][] = [
+    ['all', 'Hepsi'],
+    ['busy', 'Dolu'],
+    ['due', 'Uğranmalı'],
+    ['empty', 'Boş'],
+  ];
 
-      <div className="gb-stats" role="group" aria-label="Özet">
-        <button type="button" className={`gb-stat is-hot${counts?.calls ? ' has' : ''}`} onClick={() => setTab('calls')}>
-          <b>{counts?.callTables ?? 0}</b>
-          <span>Bekleyen masa</span>
-        </button>
-        <button
-          type="button"
-          className={`gb-stat is-warn${counts?.due ? ' has' : ''}`}
-          onClick={() => {
-            setTab('tables');
-            setFilter('due');
-          }}
-        >
-          <b>{counts?.due ?? 0}</b>
-          <span>Uğranmalı</span>
-        </button>
-        <button
-          type="button"
-          className="gb-stat"
-          onClick={() => {
-            setTab('tables');
-            setFilter('busy');
-          }}
-        >
-          <b>{counts?.busy ?? 0}</b>
-          <span>Dolu masa</span>
-        </button>
-      </div>
+  // Geniş ekranda ayrıntı sağ panelde açılır; Escape ile kapanır
+  useEffect(() => {
+    if (!wide || !sheetKey) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setSheetKey(null);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [wide, sheetKey]);
 
-      <nav className="gb-tabs" role="tablist" aria-label="Bölümler">
-        {(
-          [
-            ['calls', 'Çağrılar', counts?.callTables],
-            ['tables', 'Masalar', 0],
-            ['feed', 'Akış', 0],
-          ] as [Tab, string, number | undefined][]
-        ).map(([id, label, n]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'is-active' : ''} onClick={() => setTab(id)}>
-            {label}
-            {n ? <em>{n}</em> : null}
-          </button>
-        ))}
-      </nav>
+  const hasCalls = (counts?.callTables ?? 0) > 0;
 
-      {!board ? (
-        <div className="gb-empty">
-          <span className="gb-spinner" aria-hidden="true" />
-          <p>Masalar yükleniyor…</p>
-        </div>
-      ) : tab === 'calls' ? (
-        <main className="gb-list" aria-live="polite">
-          {callTables.length === 0 ? (
-            <div className="gb-empty">
-              <span className="gb-bell" aria-hidden="true">
-                <BellRing size={34} />
-                <i />
-                <i />
+  /* ---------- ortak parçalar ---------- */
+
+  const status = (
+    <div className={`gb-status${hasCalls ? ' is-hot' : ' is-calm'}`} role="status">
+      <span className="gb-radar" aria-hidden="true">
+        <i />
+        <b>{hasCalls ? counts?.callTables : <Check size={26} />}</b>
+      </span>
+      <span className="gb-status__text">
+        <strong>{hasCalls ? `${counts?.callTables} masa bekliyor` : 'Her şey yolunda'}</strong>
+        <small>
+          {hasCalls
+            ? `${counts?.calls} istek · en uzun ${ago(now - Math.min(...callTables.map((t) => t.calls[0].at)))}`
+            : 'Bekleyen çağrı yok'}
+        </small>
+      </span>
+    </div>
+  );
+
+  const queue = !board ? null : callTables.length === 0 ? (
+    <div className="gb-empty">
+      <span className="gb-bell" aria-hidden="true">
+        <BellRing size={30} />
+        <i />
+        <i />
+      </span>
+      <h2>Bekleyen masa yok</h2>
+      <p>Yeni çağrı gelince burada belirir ve ses çalar.</p>
+    </div>
+  ) : (
+    <div className="gb-list" aria-live="polite">
+      {callTables.map((t, i) => (
+        <CallCard key={t.key} t={t} now={now} busy={busy.has(`c${t.key}`)} flash={flash === t.key} index={i} onClaim={claim} onUnclaim={unclaim} onResolve={resolve} onOpen={() => setSheetKey(t.key)} />
+      ))}
+    </div>
+  );
+
+  const feed = !board ? null : board.feed.length === 0 ? (
+    <div className="gb-empty">
+      <h2>Henüz hareket yok</h2>
+      <p>QR okutmalar, çağrılar ve garson hareketleri burada sırayla görünür.</p>
+    </div>
+  ) : (
+    <ol className="gb-feed">
+      {board.feed.map((f) => {
+        const Icon = FEED_ICON[f.kind];
+        return (
+          <li key={f.id} className={`k-${f.kind}`}>
+            <span className="gb-feed__icon" aria-hidden="true">
+              <Icon size={16} />
+            </span>
+            <div>
+              <p>
+                <strong>{f.table}</strong> {f.who ? <>· {f.who} </> : null}
+                {f.text}
+              </p>
+              <small>
+                {clock(f.at)} · {since(now - f.at)}
+              </small>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+
+  const floor = !board ? null : !board.hasTables && !tables.length ? (
+    <div className="gb-empty">
+      <h2>Henüz masa yok</h2>
+      <p>Yönetimde “Barkod Yazdır” bölümünden masa grupları oluşturunca burada görünür.</p>
+    </div>
+  ) : !groups.length ? (
+    <div className="gb-empty">
+      <h2>Bu süzgeçte masa yok</h2>
+      <button type="button" className="gb-btn gb-btn--soft" onClick={() => setFilter('all')}>
+        Hepsini göster
+      </button>
+    </div>
+  ) : (
+    <div className="gb-floor">
+      {groups.map((g) => {
+        const open = !collapsed.has(g.name);
+        const callN = g.tables.filter((t) => t.calls.length).length;
+        const busyN = g.tables.filter((t) => t.state !== 'empty').length;
+        const dueN = g.tables.filter((t) => t.visit === 'due' || t.visit === 'late').length;
+        const alertN = g.tables.filter((t) => alerts.has(t.key)).length;
+        return (
+          <section key={g.name} className={`gb-zone${open ? ' is-open' : ''}${callN ? ' has-call' : ''}${alertN ? ' has-alert' : ''}`}>
+            <button type="button" className="gb-zone__head" aria-expanded={open} onClick={() => toggleGroup(g.name)}>
+              <span className="gb-zone__name">{g.name}</span>
+              <span className="gb-zone__meta">
+                {callN ? (
+                  <b className="gb-pill is-hot">
+                    <BellRing size={13} aria-hidden="true" /> {callN}
+                  </b>
+                ) : null}
+                {dueN ? <b className="gb-pill is-warn">{dueN} uğranmalı</b> : null}
+                <span className="gb-zone__count">
+                  {busyN}/{g.tables.length}
+                </span>
               </span>
-              <h2>Şu an bekleyen masa yok</h2>
-              <p>Yeni bir çağrı gelince burada belirir ve ses çalar. Boş zamanında “Masalar”dan uğranmayı bekleyen masalara bakabilirsin.</p>
-              <button type="button" className="gb-btn gb-btn--soft" onClick={() => setTab('tables')}>
-                <Users size={18} aria-hidden="true" /> Masalara bak
-              </button>
-            </div>
-          ) : (
-            callTables.map((t, i) => (
-              <CallCard key={t.key} t={t} now={now} busy={busy.has(`c${t.key}`)} flash={flash === t.key} index={i} onClaim={claim} onUnclaim={unclaim} onResolve={resolve} onOpen={() => setSheetKey(t.key)} />
-            ))
-          )}
-        </main>
-      ) : tab === 'tables' ? (
-        <main className="gb-tables">
-          <div className="gb-chips" role="group" aria-label="Süzgeç">
-            {(
-              [
-                ['all', 'Hepsi'],
-                ['busy', 'Dolu'],
-                ['due', 'Uğranmalı'],
-                ['empty', 'Boş'],
-              ] as [Filter, string][]
-            ).map(([id, label]) => (
-              <button key={id} type="button" aria-pressed={filter === id} className={filter === id ? 'is-active' : ''} onClick={() => setFilter(id)}>
-                {label}
-              </button>
-            ))}
-          </div>
-          {!board.hasTables && !tables.length ? (
-            <div className="gb-empty">
-              <h2>Henüz masa yok</h2>
-              <p>Yönetimde “Barkod Yazdır” bölümünden masa grupları oluşturunca burada görünür.</p>
-            </div>
-          ) : !groups.length ? (
-            <div className="gb-empty">
-              <h2>Bu süzgeçte masa yok</h2>
-              <button type="button" className="gb-btn gb-btn--soft" onClick={() => setFilter('all')}>
-                Hepsini göster
-              </button>
-            </div>
-          ) : (
-            groups.map((g) => {
-              const open = !collapsed.has(g.name);
-              const callN = g.tables.filter((t) => t.calls.length).length;
-              const busyN = g.tables.filter((t) => t.state !== 'empty').length;
-              const dueN = g.tables.filter((t) => t.visit === 'due' || t.visit === 'late').length;
-              const alertN = g.tables.filter((t) => alerts.has(t.key)).length;
-              return (
-              <section key={g.name} className={`gb-group${open ? ' is-open' : ''}${callN ? ' has-call' : ''}${alertN ? ' has-alert' : ''}`}>
-                <button type="button" className="gb-group__head" aria-expanded={open} onClick={() => toggleGroup(g.name)}>
-                  <span className="gb-group__name">{g.name}</span>
-                  <span className="gb-group__meta">
-                    {callN ? (
-                      <b className="gb-pill is-hot">
-                        <BellRing size={13} aria-hidden="true" /> {callN} çağrı
-                      </b>
-                    ) : null}
-                    {dueN ? <b className="gb-pill is-warn">{dueN} uğranmalı</b> : null}
-                    <span className="gb-group__count">
-                      {busyN}/{g.tables.length} dolu
-                    </span>
-                  </span>
-                  <ChevronDown className="gb-group__chev" size={20} aria-hidden="true" />
-                </button>
-                <div className="gb-group__body">
-                <div className="gb-grid">
-                  {g.tables.map((t) => (
-                    <button key={t.key} type="button" className={`gb-tile is-${t.state} v-${t.visit}${flash === t.key ? ' is-flash' : ''}${alerts.has(t.key) ? ' is-alert' : ''}`} onClick={() => setSheetKey(t.key)}>
-                      <span className="gb-tile__num">{shortName(t)}</span>
-                      <span className="gb-tile__icons" aria-hidden="true">
-                        {t.calls.length ? <BellRing size={13} /> : null}
-                        {t.session?.scanned ? <QrCode size={13} /> : null}
+              <ChevronDown className="gb-zone__chev" size={20} aria-hidden="true" />
+            </button>
+            <div className="gb-zone__body">
+              <div className="gb-discs">
+                {g.tables.map((t) => {
+                  const num = shortName(t);
+                  const cap =
+                    t.state === 'call'
+                      ? t.calls[0].label
+                      : t.lastVisit
+                        ? `${t.lastVisit.mine ? 'Sen' : t.lastVisit.name.split(' ')[0]} · ${ago(now - t.lastVisit.at)}`
+                        : t.state === 'empty'
+                          ? 'Boş'
+                          : t.state === 'reserved'
+                            ? 'Rezerve'
+                            : 'Uğranmadı';
+                  const more = t.session ? (t.session.total > 0 ? money(t.session.total) : t.session.scanned ? 'QR okutuldu' : 'Oturumda') : '';
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      aria-label={`${t.label}, ${cap}`}
+                      className={`gb-disc is-${t.state} v-${t.visit}${flash === t.key ? ' is-flash' : ''}${alerts.has(t.key) ? ' is-alert' : ''}${sheetKey === t.key ? ' is-picked' : ''}`}
+                      onClick={() => setSheetKey(t.key)}
+                    >
+                      <span className={`gb-disc__ring${num.length > 3 ? ' is-long' : ''}`}>
+                        <b>{num}</b>
+                        {t.calls.length ? (
+                          <i className="gb-disc__badge is-bell">
+                            <BellRing size={12} aria-hidden="true" />
+                          </i>
+                        ) : t.session?.scanned ? (
+                          <i className="gb-disc__badge">
+                            <QrCode size={12} aria-hidden="true" />
+                          </i>
+                        ) : null}
+                        {t.visit === 'due' || t.visit === 'late' ? <i className="gb-disc__dot" aria-hidden="true" /> : null}
                       </span>
-                      <small>
-                        {t.state === 'call'
-                          ? t.calls[0].label
-                          : t.lastVisit
-                            ? `${t.lastVisit.mine ? 'Sen' : t.lastVisit.name.split(' ')[0]} · ${ago(now - t.lastVisit.at)}`
-                            : t.state === 'empty'
-                              ? 'Boş'
-                              : t.state === 'reserved'
-                                ? 'Rezerve'
-                                : 'Uğranmadı'}
-                      </small>
-                      {t.session ? (
-                        <em className="gb-tile__more">{t.session.total > 0 ? money(t.session.total) : t.session.scanned ? 'QR okutuldu' : 'Oturumda'}</em>
-                      ) : null}
-                      {t.visit === 'due' || t.visit === 'late' ? <i className="gb-tile__dot" aria-label="Uğranmalı" /> : null}
+                      <small>{cap}</small>
+                      {more ? <em>{more}</em> : null}
                     </button>
-                  ))}
-                </div>
-                </div>
-              </section>
-              );
-            })
-          )}
-        </main>
-      ) : (
-        <main className="gb-feed">
-          {board.feed.length === 0 ? (
-            <div className="gb-empty">
-              <h2>Henüz hareket yok</h2>
-              <p>QR okutmalar, çağrılar ve garson hareketleri burada sırayla görünür.</p>
+                  );
+                })}
+              </div>
             </div>
-          ) : (
-            <ol>
-              {board.feed.map((f) => {
-                const Icon = FEED_ICON[f.kind];
-                return (
-                  <li key={f.id} className={`k-${f.kind}`}>
-                    <span className="gb-feed__icon" aria-hidden="true">
-                      <Icon size={16} />
-                    </span>
-                    <div>
-                      <p>
-                        <strong>{f.table}</strong> {f.who ? <>· {f.who} </> : null}
-                        {f.text}
-                      </p>
-                      <small>
-                        {clock(f.at)} · {since(now - f.at)}
-                      </small>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          )}
-        </main>
-      )}
+          </section>
+        );
+      })}
+    </div>
+  );
 
+  const detailBody = (s: BoardTable) => (
+    <>
+      <ul className="gb-facts">
+        <li>
+          <QrCode size={18} aria-hidden="true" />
+          <span>
+            {s.session?.scanned
+              ? `QR okutuldu · ${clock(s.session.openedAt)}${s.session.codeStatus === 'verified' ? ' · kod girildi ✓' : s.session.codeStatus === 'pending' ? ' · kod bekleniyor' : ''}`
+              : s.session
+                ? `Masa açıldı · ${clock(s.session.openedAt)}`
+                : 'Masa boş'}
+          </span>
+        </li>
+        {s.session && s.session.itemCount > 0 ? (
+          <li>
+            <Receipt size={18} aria-hidden="true" />
+            <span>
+              Hesap {money(s.session.total)} · {s.session.itemCount} ürün
+            </span>
+          </li>
+        ) : null}
+        {s.session?.guestName ? (
+          <li>
+            <Users size={18} aria-hidden="true" />
+            <span>Misafir: {s.session.guestName}</span>
+          </li>
+        ) : null}
+        {s.session?.waiterName ? (
+          <li>
+            <ConciergeBell size={18} aria-hidden="true" />
+            <span>Masanın garsonu: {s.session.waiterName}</span>
+          </li>
+        ) : null}
+        <li className={`is-visit v-${s.visit}`}>
+          <Clock size={18} aria-hidden="true" />
+          <span>
+            {s.lastVisit
+              ? `Son uğrayan: ${s.lastVisit.mine ? 'sen' : s.lastVisit.name} · ${since(now - s.lastVisit.at)}`
+              : s.session
+                ? 'Bu masaya henüz uğranmadı'
+                : 'Bugün uğranmadı'}
+          </span>
+        </li>
+      </ul>
+      {s.calls.length ? <CallBody t={s} now={now} busy={busy.has(`c${s.key}`)} onClaim={claim} onUnclaim={unclaim} onResolve={resolve} /> : null}
+      <button type="button" className={`gb-btn gb-btn--big${flash === s.key ? ' is-done' : ''}`} disabled={busy.has(`v${s.key}`)} onClick={() => void visit(s)}>
+        {flash === s.key ? <Check size={22} aria-hidden="true" /> : <Footprints size={22} aria-hidden="true" />}
+        {flash === s.key ? 'Kaydedildi' : 'Masaya uğradım'}
+      </button>
+      <p className="gb-sheet__hint">Basınca “kim, ne zaman uğradı” kaydedilir; diğer garsonlar da görür.</p>
+    </>
+  );
+
+  const overlays = (
+    <>
       {banner ? (
         <button
           type="button"
@@ -464,6 +485,7 @@ export default function GarsonBoardPage() {
           onClick={() => {
             setBanner(null);
             setTab('calls');
+            if (wide) setSheetKey(null);
           }}
         >
           <BellRing size={20} aria-hidden="true" />
@@ -478,6 +500,205 @@ export default function GarsonBoardPage() {
           <Check size={16} aria-hidden="true" /> {toast}
         </div>
       ) : null}
+    </>
+  );
+
+  const offlineNote = offline ? (
+    <p className="gb-offline" role="status">
+      <WifiOff size={16} aria-hidden="true" /> İnternet gitti. Son görülen durum gösteriliyor, kendiliğinden yeniden deneniyor.
+    </p>
+  ) : null;
+
+  const loading = (
+    <div className="gb-empty">
+      <span className="gb-spinner" aria-hidden="true" />
+      <p>Masalar yükleniyor…</p>
+    </div>
+  );
+
+  const soundBtn = (
+    <button type="button" className={`gb-icon${sound ? ' is-on' : ''}`} onClick={toggleSound} aria-pressed={sound} aria-label={sound ? 'Sesi kapat' : 'Sesi aç'}>
+      {sound ? <Bell size={20} /> : <BellOff size={20} />}
+    </button>
+  );
+  const backBtn = (
+    <button type="button" className="gb-icon" onClick={() => navigate(adminPath())} aria-label="Yönetime dön">
+      <ArrowLeft size={20} />
+    </button>
+  );
+  const liveText = offline ? 'Bağlantı yok' : board ? `${board.me.name} · canlı` : 'Bağlanıyor…';
+
+  /* ---------- GENİŞ EKRAN: komuta merkezi ---------- */
+  if (wide) {
+    return (
+      <div className="gb gb--w" lang="tr">
+        <aside className="gb-rail">
+          <div className="gb-rail__top">
+            {backBtn}
+            <div className="gb-brand">
+              <strong>
+                <ConciergeBell size={20} aria-hidden="true" /> Garson
+              </strong>
+              <span className={`gb-live${offline ? ' is-off' : ''}`}>
+                <i aria-hidden="true" /> {liveText}
+              </span>
+            </div>
+            {soundBtn}
+          </div>
+          {status}
+          <div className="gb-rail__stats">
+            <div>
+              <b>{counts?.busy ?? 0}</b>
+              <span>Dolu masa</span>
+            </div>
+            <div className={counts?.due ? 'is-warn' : ''}>
+              <b>{counts?.due ?? 0}</b>
+              <span>Uğranmalı</span>
+            </div>
+          </div>
+          <nav className="gb-rail__filters" aria-label="Süzgeç">
+            <h3>Masaları göster</h3>
+            {FILTERS.map(([id, label]) => (
+              <button key={id} type="button" aria-pressed={filter === id} className={filter === id ? 'is-active' : ''} onClick={() => setFilter(id)}>
+                <span>{label}</span>
+                <em>{filterCounts[id]}</em>
+              </button>
+            ))}
+          </nav>
+          {board?.restaurant ? <p className="gb-rail__foot">{board.restaurant}</p> : null}
+        </aside>
+
+        <main className="gb-center">
+          <header className="gb-center__head">
+            <h1>Salon planı</h1>
+            <button
+              type="button"
+              className="gb-link"
+              onClick={() => {
+                const names = groups.map((g) => g.name);
+                const allClosed = names.every((n) => collapsed.has(n));
+                const next = new Set(collapsed);
+                names.forEach((n) => (allClosed ? next.delete(n) : next.add(n)));
+                setCollapsed(next);
+                saveCollapsed(next);
+              }}
+            >
+              {groups.length && groups.every((g) => collapsed.has(g.name)) ? 'Hepsini aç' : 'Hepsini kapat'}
+            </button>
+          </header>
+          {offlineNote}
+          {!board ? loading : floor}
+        </main>
+
+        <aside className="gb-side">
+          {sheet ? (
+            <section className="gb-detail" aria-label={`${sheet.label} ayrıntısı`}>
+              <header>
+                <div>
+                  <small>{sheet.groupName}</small>
+                  <h2>{sheet.label}</h2>
+                </div>
+                <button type="button" onClick={() => setSheetKey(null)} aria-label="Kapat">
+                  <X size={22} />
+                </button>
+              </header>
+              <div className="gb-sheet__body">{detailBody(sheet)}</div>
+            </section>
+          ) : (
+            <>
+              <h2 className="gb-side__title">
+                Çağrılar {hasCalls ? <em>{counts?.callTables}</em> : null}
+              </h2>
+              {!board ? loading : queue}
+              <h2 className="gb-side__title">Akış</h2>
+              {feed}
+            </>
+          )}
+        </aside>
+        {overlays}
+      </div>
+    );
+  }
+
+  /* ---------- TELEFON: cep radarı ---------- */
+  return (
+    <div className="gb gb--m" lang="tr">
+      <header className="gb-top">
+        {backBtn}
+        <div className="gb-brand">
+          <strong>
+            <ConciergeBell size={18} aria-hidden="true" /> Garson
+          </strong>
+          <span className={`gb-live${offline ? ' is-off' : ''}`}>
+            <i aria-hidden="true" /> {liveText}
+          </span>
+        </div>
+        {soundBtn}
+      </header>
+      {offlineNote}
+      <div className="gb-m-hero">
+        {status}
+        <div className="gb-m-chips">
+          <button
+            type="button"
+            className={counts?.due ? 'is-warn' : ''}
+            onClick={() => {
+              setTab('tables');
+              setFilter('due');
+            }}
+          >
+            <b>{counts?.due ?? 0}</b> uğranmalı
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTab('tables');
+              setFilter('busy');
+            }}
+          >
+            <b>{counts?.busy ?? 0}</b> dolu masa
+          </button>
+        </div>
+      </div>
+
+      {!board ? (
+        loading
+      ) : tab === 'calls' ? (
+        <main className="gb-m-main">{queue}</main>
+      ) : tab === 'tables' ? (
+        <main className="gb-m-main">
+          <div className="gb-chips" role="group" aria-label="Süzgeç">
+            {FILTERS.map(([id, label]) => (
+              <button key={id} type="button" aria-pressed={filter === id} className={filter === id ? 'is-active' : ''} onClick={() => setFilter(id)}>
+                {label} <em>{filterCounts[id]}</em>
+              </button>
+            ))}
+          </div>
+          {floor}
+        </main>
+      ) : (
+        <main className="gb-m-main">{feed}</main>
+      )}
+
+      <nav className="gb-dock" role="tablist" aria-label="Bölümler">
+        {(
+          [
+            ['calls', 'Çağrılar', BellRing, counts?.callTables],
+            ['tables', 'Masalar', LayoutGrid, 0],
+            ['feed', 'Akış', Activity, 0],
+          ] as [Tab, string, typeof Bell, number | undefined][]
+        ).map(([id, label, Icon, n]) => (
+          <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'is-active' : ''} onClick={() => setTab(id)}>
+            <span className="gb-dock__icon">
+              <Icon size={22} aria-hidden="true" />
+              {n ? <em>{n}</em> : null}
+            </span>
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      {overlays}
 
       {sheet ? (
         <AdminOverlay label={`${sheet.label} ayrıntısı`} className="gb-overlay" onClose={() => setSheetKey(null)}>
@@ -492,60 +713,7 @@ export default function GarsonBoardPage() {
                 <X size={22} />
               </button>
             </header>
-            <div className="gb-sheet__body">
-              <ul className="gb-facts">
-                <li>
-                  <QrCode size={18} aria-hidden="true" />
-                  <span>
-                    {sheet.session?.scanned
-                      ? `QR okutuldu · ${clock(sheet.session.openedAt)}${sheet.session.codeStatus === 'verified' ? ' · kod girildi ✓' : sheet.session.codeStatus === 'pending' ? ' · kod bekleniyor' : ''}`
-                      : sheet.session
-                        ? `Masa açıldı · ${clock(sheet.session.openedAt)}`
-                        : 'Masa boş'}
-                  </span>
-                </li>
-                {sheet.session && sheet.session.itemCount > 0 ? (
-                  <li>
-                    <Receipt size={18} aria-hidden="true" />
-                    <span>
-                      Hesap {money(sheet.session.total)} · {sheet.session.itemCount} ürün
-                    </span>
-                  </li>
-                ) : null}
-                {sheet.session?.guestName ? (
-                  <li>
-                    <Users size={18} aria-hidden="true" />
-                    <span>Misafir: {sheet.session.guestName}</span>
-                  </li>
-                ) : null}
-                {sheet.session?.waiterName ? (
-                  <li>
-                    <ConciergeBell size={18} aria-hidden="true" />
-                    <span>Masanın garsonu: {sheet.session.waiterName}</span>
-                  </li>
-                ) : null}
-                <li className={`is-visit v-${sheet.visit}`}>
-                  <Clock size={18} aria-hidden="true" />
-                  <span>
-                    {sheet.lastVisit
-                      ? `Son uğrayan: ${sheet.lastVisit.mine ? 'sen' : sheet.lastVisit.name} · ${since(now - sheet.lastVisit.at)}`
-                      : sheet.session
-                        ? 'Bu masaya henüz uğranmadı'
-                        : 'Bugün uğranmadı'}
-                  </span>
-                </li>
-              </ul>
-
-              {sheet.calls.length ? (
-                <CallBody t={sheet} now={now} busy={busy.has(`c${sheet.key}`)} onClaim={claim} onUnclaim={unclaim} onResolve={resolve} />
-              ) : null}
-
-              <button type="button" className={`gb-btn gb-btn--big${flash === sheet.key ? ' is-done' : ''}`} disabled={busy.has(`v${sheet.key}`)} onClick={() => void visit(sheet)}>
-                {flash === sheet.key ? <Check size={22} aria-hidden="true" /> : <Footprints size={22} aria-hidden="true" />}
-                {flash === sheet.key ? 'Kaydedildi' : 'Masaya uğradım'}
-              </button>
-              <p className="gb-sheet__hint">Basınca “kim, ne zaman uğradı” kaydedilir; diğer garsonlar da görür.</p>
-            </div>
+            <div className="gb-sheet__body">{detailBody(sheet)}</div>
           </div>
         </AdminOverlay>
       ) : null}
@@ -553,7 +721,19 @@ export default function GarsonBoardPage() {
   );
 }
 
-/** Bekleyen masa kartı (Çağrılar sekmesi). */
+function useWide() {
+  const q = '(min-width: 1024px)';
+  const [wide, setWide] = useState(() => (typeof window !== 'undefined' ? window.matchMedia(q).matches : false));
+  useEffect(() => {
+    const m = window.matchMedia(q);
+    const on = () => setWide(m.matches);
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, []);
+  return wide;
+}
+
+/** Bekleyen masa kartı. */
 function CallCard({
   t,
   now,
@@ -577,9 +757,11 @@ function CallCard({
 }) {
   const wait = now - t.calls[0].at;
   const level = urgency(wait);
+  const num = shortName(t);
   return (
     <article className={`gb-card is-${level}${flash ? ' is-flash' : ''}`} style={{ ['--i' as string]: index }}>
       <button type="button" className="gb-card__head" onClick={onOpen} aria-label={`${t.label} ayrıntısı`}>
+        <span className={`gb-card__num${num.length > 3 ? ' is-long' : ''}`}>{num}</span>
         <span className="gb-card__table">
           <small>{t.groupName}</small>
           <strong>{t.label}</strong>

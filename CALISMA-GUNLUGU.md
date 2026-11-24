@@ -863,3 +863,10 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Değişiklik: `GarsonBoardPage.tsx`, `garson-board.css`. Her masa grubu açılır-kapanır kart oldu (büyük ad; "2 çağrı", "1 uğranmalı", "5/6 dolu" özeti; durum cihazda `garson_board_collapsed` ile hatırlanır). Kapalı bölümde yeni çağrı gelirse bölüm kendiliğinden açılır, ilgili masa ~12 sn yanıp söner. Web (≥1024px): geniş sayfa, büyük masa kutuları, kutuda hesap/QR bilgisi. Mobil düzen kompakt kaldı.
 - Doğrulama: tsc, vite build, Chrome fixture (390 ve 1280): kapatma, kapalıyken çağrıda otomatik açılma, yanıp sönme, yatay taşma yok, sayfa hatası yok.
 - Doğrulanmadı: gerçek telefon/tablet, gerçek veri; 320 px ve tablet genişliği ayrıca bakılmadı.
+
+## 2026-11-24 — Garson paneli: tasarım baştan (telefon ve web ayrı)
+
+- Amaç: panelin görünümü sıfırdan, telefon ve geniş ekran için birbirinden farklı yapılsın.
+- Değişiklik: `GarsonBoardPage.tsx` ve `garson-board.css` yeniden yazıldı (veri/çağrı mantığı ve API aynı). Telefon: üstte radar durum kartı ("3 masa bekliyor" / "Her şey yolunda"), altta yüzen sekme çubuğu (Çağrılar/Masalar/Akış), yuvarlak masalar, alttan açılan ayrıntı sayfası. Web (≥1024px): sekmesiz üç bölmeli komuta merkezi — solda durum + süzgeç, ortada açılır-kapanır salon planı, sağda çağrılar + akış; masa seçince ayrıntı sağ panelde açılır (Escape/X ile kapanır). Açılır bölümler ve çağrıda otomatik açılma/yanıp sönme korundu.
+- Doğrulama: tsc, vite build, Chrome fixture 320/390 (telefon) ve 1024/1280 (web): çağrı al/hallettim, uğradım, bölüm kapatma ve otomatik açılma, Escape, yatay taşma yok, sayfa hatası yok.
+- Doğrulanmadı: gerçek cihaz, tablet (768) genişliği, gerçek veri.
