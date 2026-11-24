@@ -119,8 +119,8 @@ const SECTIONS: {
   },
   {
     id: 'images',
-    title: 'Resim kırpma',
-    description: 'Görseller nasıl görünsün',
+    title: 'Görsel ayarları',
+    description: 'Kırpma, yerleşim ve arka plan',
     icon: Crop,
   },
   {
@@ -832,7 +832,44 @@ export default function SettingsPage() {
             <ChevronDown size={18} />
           </button>
           <fieldset className="ast-workspace" disabled={busy} key={active}>
-            {active === 'images' && <ImageFitSettings onToast={toast} />}
+            {active === 'images' && (
+              <>
+                <ImageFitSettings onToast={toast} />
+                <Section
+                  title="Görsel arka planı"
+                  description="Ürün ve grup görseli yüklerken arka planın nasıl ele alınacağını seçin."
+                >
+                  <div className="ast-radio-list" role="radiogroup" aria-label="Görsel arka planı">
+                    {(
+                      [
+                        ['ask', 'Her seferinde sor', 'Görsel yüklerken arka planı silmek isteyip istemediğiniz sorulur.'],
+                        ['auto', 'Düzse otomatik sil', 'Arka planı tek renk olan görseller sorulmadan şeffaf yapılır; fotoğraf gibi karmaşık görsellere dokunulmaz.'],
+                        ['never', 'Hiç sorma', 'Görseller olduğu gibi yüklenir.'],
+                      ] as const
+                    ).map(([value, label, hint]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        role="radio"
+                        aria-checked={imageMode === value}
+                        disabled={imageMode === undefined}
+                        onClick={() => void chooseImageMode(value)}
+                      >
+                        <span>
+                          <strong>{label}</strong>
+                          <small>{hint}</small>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="ast-hint">
+                    {imageMode === null
+                      ? 'Henüz seçmediniz: ilk ürün veya grup görselinde sorulur. Seçiminiz tüm işletme için geçerli olur ve hemen kaydedilir.'
+                      : 'Seçiminiz tüm işletme için geçerlidir ve hemen kaydedilir. Logo yüklerken her zaman sorulur.'}
+                  </p>
+                </Section>
+              </>
+            )}
             {active === 'integrations' && <IntegrationsSettings onToast={toast} adminEmail={user?.email} />}
             {active === 'business' && (
               <>
@@ -876,39 +913,6 @@ export default function SettingsPage() {
                       </button>
                     </div>
                   </div>
-                </Section>
-                <Section
-                  title="Görseller"
-                  description="Ürün ve grup görseli yüklerken arka planın nasıl ele alınacağını seçin."
-                >
-                  <div className="ast-radio-list" role="radiogroup" aria-label="Görsel arka planı">
-                    {(
-                      [
-                        ['ask', 'Her seferinde sor', 'Görsel yüklerken arka planı silmek isteyip istemediğiniz sorulur.'],
-                        ['auto', 'Düzse otomatik sil', 'Arka planı tek renk olan görseller sorulmadan şeffaf yapılır; fotoğraf gibi karmaşık görsellere dokunulmaz.'],
-                        ['never', 'Hiç sorma', 'Görseller olduğu gibi yüklenir.'],
-                      ] as const
-                    ).map(([value, label, hint]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        role="radio"
-                        aria-checked={imageMode === value}
-                        disabled={imageMode === undefined}
-                        onClick={() => void chooseImageMode(value)}
-                      >
-                        <span>
-                          <strong>{label}</strong>
-                          <small>{hint}</small>
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  <p className="ast-hint">
-                    {imageMode === null
-                      ? 'Henüz seçmediniz: ilk ürün veya grup görselinde sorulur. Seçiminiz tüm işletme için geçerli olur ve hemen kaydedilir.'
-                      : 'Seçiminiz tüm işletme için geçerlidir ve hemen kaydedilir. Logo yüklerken her zaman sorulur.'}
-                  </p>
                 </Section>
                 <Section
                   title="Hakkımızda"
