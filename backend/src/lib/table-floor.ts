@@ -1,3 +1,4 @@
+import { parsePresence, type PresenceClient } from './table-presence.js';
 import { prisma } from './prisma.js';
 import {
   codeExpiryDate,
@@ -55,6 +56,7 @@ export type FloorCheckDiscount = {
 };
 
 export type FloorSessionMeta = {
+  presence?: PresenceClient[];
   pax?: number;
   serviceNote?: string;
   waiterUserId?: number | null;
@@ -78,6 +80,7 @@ export function parseSessionMeta(raw?: string | null): FloorSessionMeta {
         : null;
     const discountValue = discountRaw ? Math.abs(Number(discountRaw.value) || 0) : 0;
     return {
+      presence: parsePresence(r.presence),
       pax: Number.isFinite(pax) && pax > 0 ? Math.min(99, pax) : undefined,
       serviceNote: String(r.serviceNote || '').trim().slice(0, 1000) || undefined,
       waiterUserId:
@@ -102,6 +105,7 @@ export function parseSessionMeta(raw?: string | null): FloorSessionMeta {
 
 export function serializeSessionMeta(meta: FloorSessionMeta): string {
   return JSON.stringify({
+    presence: parsePresence(meta.presence),
     pax: meta.pax && meta.pax > 0 ? meta.pax : undefined,
     serviceNote: meta.serviceNote || undefined,
     waiterUserId: meta.waiterUserId ?? null,

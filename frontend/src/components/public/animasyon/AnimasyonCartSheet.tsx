@@ -1,3 +1,4 @@
+import { usePresenceEntry } from '@/lib/tablePresence';
 import { Minus, Plus, ShoppingBag, X, HandHelping, Check, AlertCircle, TriangleAlert } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatMoney, imageUrl, api, isCodeRequiredError } from '@/lib/api';
@@ -29,6 +30,7 @@ export default function AnimasyonCartSheet({ lang }: { lang: string }) {
     clear,
   } = useSiparisCart();
   const { ensureUnlocked, markNeedsUnlock } = useTableSessionCode();
+  usePresenceEntry('cart', '', sheetOpen);
   const [tableCtx] = useState(() => resolveTableContext());
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);

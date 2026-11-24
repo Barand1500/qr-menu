@@ -8,6 +8,8 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
+import { useLocation } from 'react-router-dom';
 import { CheckCircle2, KeyRound, ShieldCheck, X } from 'lucide-react';
 import {
   clearTableCodeCache,
@@ -21,6 +23,7 @@ import {
   formatTableServiceLabel,
   getTableContext,
 } from '@/lib/tableContext';
+import { sendPresence, subscribePresence, topPresence, usePresenceEntry, type PresenceKind } from '@/lib/tablePresence';
 import '@/table-session-code.css';
 
 type TableSessionCodeContextValue = {
@@ -74,6 +77,8 @@ export default function TableSessionCodeGate({ slug, masa, grup, children }: Pro
   const [verified, setVerified] = useState(true);
   const [ttlMinutes, setTtlMinutes] = useState(120);
   const [modalOpen, setModalOpen] = useState(false);
+  const [sessionId, setSessionId] = useState<number | null>(null);
+  const { pathname } = useLocation();
   const [success, setSuccess] = useState(false);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -110,6 +115,7 @@ export default function TableSessionCodeGate({ slug, masa, grup, children }: Pro
       const cached = readTableCodeCache(slug, table, group);
       const info = await fetchTableSessionGate(slug, table, group);
       setTtlMinutes(info.ttlMinutes || 120);
+      setSessionId(info.sessionId ?? null);
       if (!info.enabled) {
         setEnabled(false);
         setVerified(true);
@@ -131,6 +137,51 @@ export default function TableSessionCodeGate({ slug, masa, grup, children }: Pro
   useEffect(() => {
     void bootstrap();
   }, [bootstrap]);
+
+  // Kod penceresi açıkken garson panosunda "kod giriyor" görünsün
+  usePresenceEntry('code', '', modalOpen);
+
+  // Müşterinin ekranı: değişince ve ~30 sn'de bir kaba durum gönder
+  const baseKind: PresenceKind = pathname.includes('/menu/product/')
+    ? 'product'
+    : pathname.includes('/menu/group/')
+      ? 'category'
+      : pathname.includes('/menu/home')
+        ? 'menu'
+        : 'welcome';
+  useEffect(() => {
+    if (!slug || !active || !sessionId) return;
+    let last = '';
+    let timer = 0;
+    const push = (force = false) => {
+      if (document.hidden) return;
+      const top = topPresence(baseKind);
+      const sig = `${top.kind}|${top.label}`;
+      if (!force && sig === last) return;
+      last = sig;
+      void sendPresence(slug, { tableNumber: table, groupSlug: group, sessionId, kind: top.kind, label: top.label, active: true });
+    };
+    const schedule = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => push(), 500);
+    };
+    const onVisibility = () => {
+      if (document.hidden) {
+        last = '';
+        void sendPresence(slug, { tableNumber: table, groupSlug: group, sessionId, kind: baseKind, label: '', active: false });
+      } else push(true);
+    };
+    push(true);
+    const unsub = subscribePresence(schedule);
+    const beat = window.setInterval(() => push(true), 30000);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearInterval(beat);
+      unsub();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [slug, active, sessionId, table, group, baseKind]);
 
   useEffect(() => {
     return () => {
@@ -239,7 +290,8 @@ export default function TableSessionCodeGate({ slug, masa, grup, children }: Pro
   return (
     <TableSessionCodeContext.Provider value={value}>
       {children}
-      {modalOpen ? (
+      {modalOpen
+        ? createPortal(
         <div className="table-code-gate table-code-gate--modal" role="dialog" aria-modal="true">
           <div className="table-code-gate__scrim" aria-hidden="true" />
           <div className={`table-code-gate__card${success ? ' is-success' : ''}`}>
@@ -301,7 +353,7 @@ export default function TableSessionCodeGate({ slug, masa, grup, children }: Pro
                       value={code}
                       onChange={(e) => {
                         setError('');
-                        setCode(e.target.value.replace(/D/g, '').slice(0, 8));
+                        setCode(e.target.value.replace(/\D/g, '').slice(0, 8));
                       }}
                       disabled={busy}
                     />
@@ -314,8 +366,10 @@ export default function TableSessionCodeGate({ slug, masa, grup, children }: Pro
               </>
             )}
           </div>
-        </div>
-      ) : null}
+        </div>,
+        document.body,
+      )
+        : null}
     </TableSessionCodeContext.Provider>
   );
 }

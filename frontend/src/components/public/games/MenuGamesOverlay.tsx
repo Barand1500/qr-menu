@@ -15,6 +15,7 @@ import {
   type MenuGameId,
 } from '@/lib/menuGames';
 import { gameCatalogEntry, gamesUi } from '@/lib/menuGamesUi';
+import { usePresenceEntry } from '@/lib/tablePresence';
 import type { PublicMenuGames } from '@/lib/menuGamesConfig';
 
 type Props = {
@@ -67,6 +68,8 @@ export default function MenuGamesOverlay({
   const memoryPairs = cfg?.memory?.pairs || [];
   const pairCount = cfg?.memory?.pairCount || 6;
   const detectiveQuestions = cfg?.detective?.questions || [];
+
+  usePresenceEntry('game', active ? gameCatalogEntry(active, 'tr').title : 'Oyunlar', open);
 
   if (!open) return null;
 

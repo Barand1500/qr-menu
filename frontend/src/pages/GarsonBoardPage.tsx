@@ -12,9 +12,11 @@ import {
   Clock,
   ConciergeBell,
   Flame,
+  Eye,
   Footprints,
   LayoutGrid,
   QrCode,
+  Power,
   Receipt,
   ShoppingBag,
   Users,
@@ -26,7 +28,7 @@ import { api } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
 import { applyDocumentTitle } from '@/lib/siteTitle';
 import { playAdminNotificationSound } from '@/lib/notificationSound';
-import { ago, clock, since, money, urgency, type Board, type BoardCall, type BoardTable, type CallType, type FeedKind } from '@/lib/garsonBoard';
+import { activityText, ago, clock, since, money, urgency, type Board, type BoardCall, type BoardTable, type CallType, type FeedKind } from '@/lib/garsonBoard';
 import '@/garson-board.css';
 
 const POLL_MS = 4000;
@@ -71,6 +73,7 @@ export default function GarsonBoardPage() {
   });
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [flash, setFlash] = useState<string | null>(null);
+  const [closeAsk, setCloseAsk] = useState<string | null>(null);
   const [toast, setToast] = useState('');
   const [banner, setBanner] = useState<{ text: string; id: number; tableKey?: string } | null>(null);
   // Kapalı bölümler (cihazda hatırlanır) ve yeni çağrı gelen, yanıp sönen masalar
@@ -254,6 +257,20 @@ export default function GarsonBoardPage() {
       await post('visit', { group: t.group, table: t.code });
     }, board?.codeGateEnabled && t.session && t.session.codeStatus !== 'verified' ? undefined : `${t.label}: uğradın, kaydedildi`, t.key);
 
+  const closeTable = (t: BoardTable) => {
+    if (!t.session) return;
+    if (closeAsk !== t.key) {
+      setCloseAsk(t.key);
+      window.setTimeout(() => setCloseAsk((k) => (k === t.key ? null : k)), 5000);
+      return;
+    }
+    setCloseAsk(null);
+    void run(`x${t.key}`, async () => {
+      await post('close', { sessionId: t.session!.id });
+      setSheetKey(null);
+    }, `${t.label} kapatıldı`);
+  };
+
   const counts = board?.counts;
   const visibleTables = tables.filter((t) =>
     filter === 'all' ? true : filter === 'busy' ? t.state !== 'empty' : filter === 'due' ? t.visit === 'due' || t.visit === 'late' : t.state === 'empty',
@@ -430,6 +447,7 @@ export default function GarsonBoardPage() {
                         {t.visit === 'due' || t.visit === 'late' ? <i className="gb-disc__dot" aria-hidden="true" /> : null}
                       </span>
                       <small>{cap}</small>
+                      {activityText(t.session?.activity) ? <span className="gb-disc__live">{activityText(t.session?.activity)}</span> : null}
                       {more ? <em>{more}</em> : null}
                     </button>
                   );
@@ -475,6 +493,12 @@ export default function GarsonBoardPage() {
             <span>Masanın garsonu: {s.session.waiterName}</span>
           </li>
         ) : null}
+        {activityText(s.session?.activity) ? (
+          <li className="is-live">
+            <Eye size={18} aria-hidden="true" />
+            <span>Şu an: {activityText(s.session?.activity)}</span>
+          </li>
+        ) : null}
         <li className={`is-visit v-${s.visit}`}>
           <Clock size={18} aria-hidden="true" />
           <span>
@@ -513,6 +537,11 @@ export default function GarsonBoardPage() {
         </button>
         <p className="gb-sheet__hint">{board?.codeGateEnabled && s.session && s.session.codeStatus !== 'verified' ? 'Uğradığınızı işaretleyin; müşteriye vereceğiniz kod burada görünsün.' : 'Basınca “kim, ne zaman uğradı” kaydedilir; diğer garsonlar da görür.'}</p>
       </>}
+      {s.session ? (
+        <button type="button" className={`gb-close${closeAsk === s.key ? ' is-ask' : ''}`} disabled={busy.has(`x${s.key}`)} onClick={() => closeTable(s)}>
+          <Power size={18} aria-hidden="true" /> {closeAsk === s.key ? 'Emin misin? Tekrar dokun' : 'Masayı kapat'}
+        </button>
+      ) : null}
     </>
   );
 

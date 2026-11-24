@@ -22,6 +22,7 @@ export type BoardTable = {
   calls: BoardCall[];
   session: {
     id: number;
+    activity: { kind: 'welcome' | 'menu' | 'category' | 'product' | 'cart' | 'game' | 'code'; label: string; count: number; at: number }[];
     code: string | null;
     codeExpiresAt: number | null;
     codeVerifiedAt: number | null;
@@ -51,6 +52,24 @@ export type Board = {
   feed: FeedItem[];
   counts: { calls: number; callTables: number; busy: number; due: number; mine: number };
 };
+
+export type Activity = NonNullable<BoardTable['session']>['activity'][number];
+const ACTIVITY_TEXT: Record<Activity['kind'], (l: string) => string> = {
+  welcome: () => 'Karşılama ekranında',
+  menu: () => 'Menüde geziniyor',
+  category: (l) => (l ? `${l} bölümünde` : 'Bir kategoride'),
+  product: (l) => (l ? `${l} ürününe bakıyor` : 'Bir ürüne bakıyor'),
+  cart: () => 'Sepette',
+  game: (l) => (l ? `${l} oynuyor` : 'Oyun oynuyor'),
+  code: () => 'Kod giriyor',
+};
+/** Masadaki müşterilerin şu anki ekranları: "Pizza bölümünde" / "Sepette · +1 kişi" */
+export function activityText(list: Activity[] | undefined): string {
+  if (!list?.length) return '';
+  const first = list.reduce((a, b) => (b.at > a.at ? b : a));
+  const total = list.reduce((n, a) => n + a.count, 0);
+  return ACTIVITY_TEXT[first.kind](first.label) + (total > 1 ? ` · +${total - 1}` : '');
+}
 
 /** "az önce", "3 dk", "1 sa 5 dk" */
 export function ago(ms: number): string {

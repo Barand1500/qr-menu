@@ -1,3 +1,4 @@
+import { PRESENCE_KINDS, updatePresence, type PresenceKind } from '../lib/table-presence.js';
 import { recommendMeals, type MealHunger, type MealTaste, type MealBudget } from '../lib/menu-recommendations.js';
 import { searchMenu } from '../lib/menuSearch.js';
 import { IMAGE_FIT_KEY, parseImageFit } from '../lib/image-fit.js';
@@ -1603,9 +1604,11 @@ router.get('/:slug/table-session-gate', async (req, res) => {
 
   const codeCfg = await loadTableSessionCodeConfig(restaurant.id);
   if (!codeCfg.enabled || !masa || masa === 'admin') {
+    const activeSession = masa && masa !== 'admin' ? await findActiveSession(restaurant.id, masa, grup) : null;
     return res.json({
       enabled: false,
       needsCode: false,
+      sessionId: activeSession?.id ?? null,
       tableNumber: masa || null,
       groupSlug: grup,
       status: 'empty',
@@ -1618,12 +1621,38 @@ router.get('/:slug/table-session-gate', async (req, res) => {
   res.json({
     enabled: true,
     needsCode: status !== 'verified',
+    sessionId: session.id,
     tableNumber: masa,
     groupSlug: grup,
     status,
     expiresAt: session.codeExpiresAt?.toISOString() || null,
     ttlMinutes: codeCfg.ttlMinutes,
   });
+});
+
+/** Coarse live screen state. Never opens/reopens a seating or stores form contents. */
+router.post('/:slug/table-presence', async (req, res) => {
+  try {
+    const restaurant = await prisma.restaurant.findUnique({ where: { slug: req.params.slug }, select: { id: true } });
+    if (!restaurant) return res.status(404).json({ message: 'Menü bulunamadı' });
+    const body = req.body || {};
+    const table = String(body.tableNumber || '').trim();
+    const group = String(body.groupSlug || '').trim() || null;
+    const sessionId = Number(body.sessionId);
+    const visitorId = String(body.visitorId || '');
+    const kind = body.kind as PresenceKind;
+    if (!Number.isSafeInteger(sessionId) || sessionId <= 0 || !table || table === 'admin' || !/^[a-zA-Z0-9-]{8,80}$/.test(visitorId) || !PRESENCE_KINDS.includes(kind)) return res.status(400).json({ message: 'Geçersiz durum' });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const session = await prisma.tableFloorSession.findFirst({ where: { id: sessionId, restaurantId: restaurant.id, tableNumber: table, groupSlug: group, status: { in: ['open', 'reserved'] } } });
+      if (!session) return res.status(409).json({ code: 'SESSION_CLOSED' });
+      let raw: Record<string, unknown> = {};
+      try { const parsed = JSON.parse(session.metaJson || '{}'); if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) raw = parsed; } catch { /* legacy empty metadata */ }
+      const presence = updatePresence(raw.presence, { id: visitorId, kind, label: String(body.label || ''), at: Date.now() }, body.active !== false);
+      const changed = await prisma.tableFloorSession.updateMany({ where: { id: session.id, restaurantId: restaurant.id, status: { in: ['open', 'reserved'] }, metaJson: session.metaJson }, data: { metaJson: JSON.stringify({ ...raw, presence }) } });
+      if (changed.count) return res.json({ ok: true });
+    }
+    return res.status(409).json({ code: 'PRESENCE_BUSY' });
+  } catch { return res.status(503).json({ message: 'Durum güncellenemedi' }); }
 });
 
 /** Masa erişim kodunu doğrula */

@@ -7,6 +7,7 @@ export type TableSessionGateStatus = 'empty' | 'pending' | 'verified' | 'expired
 export type TableSessionGateInfo = {
   enabled: boolean;
   needsCode: boolean;
+  sessionId?: number | null;
   tableNumber: string | null;
   groupSlug: string | null;
   status: TableSessionGateStatus;

@@ -10,7 +10,7 @@
   --tc-accent-2: #ffb44a;
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: 12000;
   display: flex;
   align-items: flex-end;
   justify-content: center;

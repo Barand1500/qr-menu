@@ -1448,3 +1448,55 @@
   .gb-access-code { animation: none; }
 }
 .gb-disc__badge.is-verified { color: var(--gb-ok); }
+
+/* canlı ekran bilgisi ve masayı kapat */
+.gb-disc__live {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--gb-accent);
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gb-disc__live::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+  animation: gb-blink 1.6s ease-in-out infinite;
+}
+.gb--w .gb-disc__live {
+  font-size: 12px;
+}
+.gb-facts li.is-live,
+.gb-facts li.is-live svg {
+  color: var(--gb-accent);
+}
+.gb-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  color: var(--gb-muted);
+  font-size: 15px;
+  font-weight: 700;
+  background: transparent;
+  border: 1px dashed var(--gb-line);
+  border-radius: 18px;
+}
+.gb-close.is-ask {
+  color: #fff;
+  background: var(--gb-hot);
+  border: 1px solid var(--gb-hot);
+}
+.gb-close:disabled {
+  opacity: 0.6;
+}

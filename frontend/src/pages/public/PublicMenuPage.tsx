@@ -29,6 +29,7 @@ import {
 import { checkInTable } from '@/lib/tableCheckin';
 import GeoLockGate from '@/components/public/GeoLockGate';
 import MaintenanceGate from '@/components/public/MaintenanceGate';
+import { usePresenceEntry } from '@/lib/tablePresence';
 import TableSessionCodeGate from '@/components/public/TableSessionCodeGate';
 import type { GeoCoords } from '@/lib/geoLock';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
@@ -232,6 +233,7 @@ function PublicMenuPageInner({
   const [menu, setMenu] = useState<MenuData | null>(null);
   usePublicImageFit(slug, useMenuImageEntries(menu));
   const [products, setProducts] = useState<ProductData | null>(null);
+  usePresenceEntry('category', products?.group.name || '', Boolean(groupId && products));
   const [groupLoading, setGroupLoading] = useState(false);
   const [groupError, setGroupError] = useState<string | null>(null);
   const [groupRetry, setGroupRetry] = useState(0);

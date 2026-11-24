@@ -1,3 +1,4 @@
+import type { PresenceSummary } from './table-presence.js';
 // Garson paneli: masa panosu (çağrı, QR, uğranma) ve garsonların "gidiyorum / uğradım / hallettim" kayıtları.
 // Saf mantık burada; veritabanı okuma/yazma ayrı (garson-board-store.ts). Şema değişikliği gerekmez.
 
@@ -174,6 +175,7 @@ export type SessionIn = {
   openedBy: string; // qr | admin
   guestName: string | null;
   codeStatus: 'empty' | 'pending' | 'verified' | 'expired';
+  activity?: PresenceSummary[];
   accessCode?: string | null;
   codeExpiresAt?: number | null;
   codeVerifiedAt?: number | null;
@@ -211,6 +213,7 @@ export type BoardTable = {
   calls: BoardCall[];
   session: {
     id: number;
+    activity: PresenceSummary[];
     code: string | null;
     codeExpiresAt: number | null;
     codeVerifiedAt: number | null;
@@ -326,6 +329,7 @@ export function buildBoard(input: {
       session: s
         ? {
             id: s.id,
+            activity: s.activity || [],
             code: codeGateEnabled && handoff?.u === me.id && s.codeStatus === 'pending' ? s.accessCode || null : null,
             codeExpiresAt: s.codeExpiresAt ?? null,
             codeVerifiedAt: s.codeVerifiedAt ?? null,

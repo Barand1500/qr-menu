@@ -1,3 +1,4 @@
+import { usePresenceEntry } from '@/lib/tablePresence';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Minus, Plus, Printer, ShoppingBag, TriangleAlert, X } from 'lucide-react';
 import { formatMoney, imageUrl, api, isCodeRequiredError } from '@/lib/api';
@@ -36,6 +37,7 @@ export default function SiparisCartSheet({ lang }: { lang: string }) {
   const { slug: hookSlug } = useMenuSlug();
   const { enabled, items, note, count, totalPrice, totalCalories, sheetOpen, setSheetOpen, setQty, setNote, clear } = useSiparisCart();
   const { ensureUnlocked, markNeedsUnlock } = useTableSessionCode();
+  usePresenceEntry('cart', '', enabled && sheetOpen);
   const [tableCtx] = useState(() => resolveTableContext());
   const [busy, setBusy] = useState(false);
   const [ceremony, setCeremony] = useState<Ceremony>(CLOSED);

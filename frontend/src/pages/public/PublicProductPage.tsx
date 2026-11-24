@@ -36,6 +36,7 @@ import SiparisCartSheet from '@/components/public/siparis/SiparisCartSheet';
 import AnimasyonCartSheet from '@/components/public/animasyon/AnimasyonCartSheet';
 import { SiparisCartProvider } from '@/hooks/useSiparisCart';
 import MaintenanceGate from '@/components/public/MaintenanceGate';
+import { usePresenceEntry } from '@/lib/tablePresence';
 import TableSessionCodeGate from '@/components/public/TableSessionCodeGate';
 import ServiceCallNotice from '@/components/public/ServiceCallNotice';
 import { useEffect, useMemo, useState } from 'react';
@@ -109,6 +110,7 @@ function PublicProductPageInner() {
   const { demoEnabled } = useDemoData();
   const [lang] = useState(() => localStorage.getItem('menu_lang') || 'tr');
   const [product, setProduct] = useState<ProductDetail | null>(null);
+  usePresenceEntry('product', product?.name || '', Boolean(product));
   usePublicImageFit(
     slug ?? undefined,
     useMemo(

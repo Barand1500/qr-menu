@@ -1,3 +1,4 @@
+import { summarizePresence } from '../lib/table-presence.js';
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId } from '../lib/auth.js';
@@ -6,6 +7,10 @@ import {
   findActiveSession,
   ordersTotal,
   parseOrdersJson,
+  parsePaymentsJson,
+  parseSeatingFee,
+  remainingBalance,
+  seatingFeeAmount,
   parseSessionMeta,
   tableCode,
 } from '../lib/table-floor.js';
@@ -106,6 +111,7 @@ router.get('/board', async (req, res) => {
       openedBy: s.openedBy,
       guestName: s.guestName,
       codeStatus: codeConfig.enabled ? resolveCodeGateStatus(s) : 'empty',
+      activity: summarizePresence(parseSessionMeta(s.metaJson).presence, now),
       accessCode: s.accessCode,
       codeExpiresAt: s.codeExpiresAt?.getTime() ?? null,
       codeVerifiedAt: codeConfig.enabled ? s.codeVerifiedAt?.getTime() ?? null : null,
@@ -168,6 +174,47 @@ router.post('/visit', async (req, res) => {
     res.json({ ok: true, at: now, name: me.name });
   } catch {
     res.status(500).json({ message: 'Ziyaret kaydedilemedi. Lütfen tekrar deneyin.' });
+  }
+});
+
+
+/** Close exactly the displayed seating; never silently settle an outstanding bill. */
+router.post('/close', async (req, res) => {
+  try {
+    const restaurantId = await getRestaurantId(req);
+    const me = await whoAmI(req);
+    const sessionId = Number(req.body?.sessionId);
+    if (restaurantId == null || !me) return res.status(401).json({ message: 'Yetkisiz' });
+    if (!Number.isSafeInteger(sessionId) || sessionId <= 0) return res.status(400).json({ message: 'Geçersiz oturum' });
+    const result = await prisma.$transaction(async (tx) => {
+      const session = await tx.tableFloorSession.findFirst({ where: { id: sessionId, restaurantId, status: { in: [...ACTIVE_STATUSES] } } });
+      if (!session) return { status: 409, message: 'Bu masa oturumu zaten kapanmış. Pano güncellendi.' };
+      const meta = parseSessionMeta(session.metaJson);
+      const group = session.groupSlug ? await tx.qrTableGroup.findFirst({ where: { restaurantId, slug: session.groupSlug } }) : null;
+      let seatFee = 0;
+      if (group) {
+        const styles = (group.tableStyles && typeof group.tableStyles === 'object' ? group.tableStyles : {}) as Record<string, { seatingFee?: unknown }>;
+        for (let n = 1; n <= group.tableCount; n++) {
+          if (tableCode(n, group.prefix || '') === session.tableNumber) {
+            seatFee = seatingFeeAmount(parseSeatingFee(styles[String(n)]?.seatingFee), session.openedAt, session.status);
+            break;
+          }
+        }
+      }
+      const remaining = remainingBalance(parseOrdersJson(session.ordersJson), parsePaymentsJson(session.paymentsJson), seatFee, meta.checkDiscount);
+      if (remaining > 0.009) return { status: 409, message: 'Masada açık hesap var. Önce masa yönetiminden ödemeyi tamamlayın.' };
+      const closedAt = new Date();
+      const changed = await tx.tableFloorSession.updateMany({
+        where: { id: session.id, restaurantId, status: { in: [...ACTIVE_STATUSES] }, ordersJson: session.ordersJson, paymentsJson: session.paymentsJson, metaJson: session.metaJson },
+        data: { status: 'closed', closedAt, accessCode: null, codeExpiresAt: null, codeVerifiedAt: null },
+      });
+      if (!changed.count) return { status: 409, message: 'Masa bilgileri değişti. Kontrol edip tekrar deneyin.' };
+      await tx.tableServiceRequest.updateMany({ where: { restaurantId, groupSlug: session.groupSlug, tableNumber: session.tableNumber, isRead: false, createdAt: { lte: closedAt } }, data: { isRead: true } });
+      return { status: 200, message: 'Masa kapatıldı' };
+    });
+    return res.status(result.status).json({ ok: result.status === 200, message: result.message });
+  } catch {
+    return res.status(500).json({ message: 'Masa kapatılamadı. Lütfen tekrar deneyin.' });
   }
 });
 
