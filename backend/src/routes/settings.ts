@@ -50,6 +50,7 @@ import {
   TABLE_SESSION_CODE_TTL_KEY,
   parseTableSessionCodeTtl,
 } from '../lib/table-session-code.js';
+import { parseVisitReminderMinutes, VISIT_REMINDER_KEY } from '../lib/garson-board.js';
 import { loadPrefCatalog,
   normalizePrefCatalogInput,
   PREF_CATALOG_KEY,
@@ -613,7 +614,8 @@ router.put('/welcome-music', async (req, res) => {
 
 router.put('/menu-features', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const { serviceItems, tableSessionCode, tableSessionCodeTtlMinutes, menuGames } = req.body as {
+  const { serviceItems, tableSessionCode, tableSessionCodeTtlMinutes, menuGames, garsonVisitMinutes } = req.body as {
+    garsonVisitMinutes?: number;
     serviceItems?: unknown;
     tableSessionCode?: boolean;
     tableSessionCodeTtlMinutes?: number;
@@ -681,6 +683,15 @@ router.put('/menu-features', async (req, res) => {
         key: TABLE_SESSION_CODE_ENABLED_KEY,
         value: tableSessionCode ? 'true' : 'false',
       },
+    });
+  }
+
+  if (garsonVisitMinutes != null) {
+    const minutes = parseVisitReminderMinutes(String(garsonVisitMinutes));
+    await prisma.setting.upsert({
+      where: { restaurantId_key: { restaurantId: restaurantId!, key: VISIT_REMINDER_KEY } },
+      update: { value: String(minutes) },
+      create: { restaurantId: restaurantId!, key: VISIT_REMINDER_KEY, value: String(minutes) },
     });
   }
 

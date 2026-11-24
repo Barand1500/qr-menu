@@ -264,7 +264,7 @@ export default function SahneMore({
                   </button>
                   {managerContact?.enabled && menuSlug && (
                     <button className="sh-interlude__nav" onClick={e => utility('manager', e.currentTarget)}>
-                      <small className="sh-interlude__nav-marker"><Mail size={16}/></small><span>{en ? 'Write to manager' : 'Yöneticiye yaz'}</span><ArrowUpRight/>
+                      <small>03</small><span>{en ? 'Write to manager' : 'Yöneticiye yaz'}</span><ArrowUpRight/>
                     </button>
                   )}
                   {hasContact && (
@@ -273,7 +273,7 @@ export default function SahneMore({
                       onClick={() => navigate('contact')}
                       aria-current={tab === 'contact' ? 'page' : undefined}
                     >
-                      <small>03</small>
+                      <small>{managerContact?.enabled && menuSlug ? '04' : '03'}</small>
                       <span>{en ? 'Contact' : 'İletişim'}</span>
                       <ArrowUpRight />
                     </button>

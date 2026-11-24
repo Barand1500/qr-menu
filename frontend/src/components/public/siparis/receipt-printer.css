@@ -45,10 +45,10 @@
   position: relative;
   z-index: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse; /* yazıcı altta, fiş aşağıdan yukarı çıkar */
   align-items: center;
   min-height: 100%;
-  padding: clamp(18px, 7vh, 72px) 16px 32px;
+  padding: 32px 16px clamp(18px, 7vh, 72px);
 }
 
 /* ───────── makine ───────── */
@@ -56,7 +56,7 @@
   position: relative;
   isolation: isolate;
   width: min(400px, 100%);
-  padding: 12px 12px 30px;
+  padding: 30px 12px 12px;
   background: linear-gradient(180deg, #3a3a40 0%, #26262a 100%);
   border: 1px solid #0a0a0b;
   border-radius: 26px;
@@ -79,7 +79,7 @@
 @keyframes rp-drop {
   from {
     opacity: 0;
-    transform: translateY(-26px) scale(0.97);
+    transform: translateY(26px) scale(0.97);
   }
 }
 .rp__head {
@@ -229,8 +229,8 @@
 }
 .rp__slot {
   position: absolute;
+  top: 12px;
   right: 26px;
-  bottom: 12px;
   left: 26px;
   z-index: 4;
   height: 9px;
@@ -245,9 +245,8 @@
   position: relative;
   z-index: 5;
   width: min(352px, calc(100% - 44px));
-  height: min(34rem, calc(100dvh - 19rem));
-  min-height: 15rem;
-  margin-top: -6px;
+  max-height: min(34rem, calc(100dvh - 19rem));
+  margin-bottom: -6px;
   overflow: hidden;
 }
 .rp__out.is-done {
@@ -260,7 +259,7 @@
 }
 .rp__shade {
   position: absolute;
-  inset: -2px 0 auto;
+  inset: auto 0 -2px;
   z-index: 3;
   height: 9px;
   background: rgba(0, 0, 0, 0.75);
@@ -269,7 +268,7 @@
 }
 .rp__feed {
   position: relative;
-  transform: translateY(calc(-100% + 2px));
+  transform: translateY(calc(100% - 2px));
   opacity: 0;
 }
 .rp__feed.is-out {
@@ -281,25 +280,25 @@
 }
 /* satır satır ilerleme: kısa duraklamalarla */
 @keyframes rp-feed {
-  0% { transform: translateY(calc(-100% + 2px)); }
-  7.5% { transform: translateY(-91%); }
-  10.5% { transform: translateY(-91%); }
-  18% { transform: translateY(-81%); }
-  21% { transform: translateY(-81%); }
-  28.5% { transform: translateY(-70%); }
-  31.5% { transform: translateY(-70%); }
-  39% { transform: translateY(-58%); }
-  42% { transform: translateY(-58%); }
-  49.5% { transform: translateY(-45%); }
-  52.5% { transform: translateY(-45%); }
-  60% { transform: translateY(-32%); }
-  63% { transform: translateY(-32%); }
-  70.5% { transform: translateY(-20%); }
-  73.5% { transform: translateY(-20%); }
-  81% { transform: translateY(-10%); }
-  84% { transform: translateY(-10%); }
-  91.5% { transform: translateY(-3%); }
-  94.5% { transform: translateY(-3%); }
+  0% { transform: translateY(calc(100% - 2px)); }
+  7.5% { transform: translateY(91%); }
+  10.5% { transform: translateY(91%); }
+  18% { transform: translateY(81%); }
+  21% { transform: translateY(81%); }
+  28.5% { transform: translateY(70%); }
+  31.5% { transform: translateY(70%); }
+  39% { transform: translateY(58%); }
+  42% { transform: translateY(58%); }
+  49.5% { transform: translateY(45%); }
+  52.5% { transform: translateY(45%); }
+  60% { transform: translateY(32%); }
+  63% { transform: translateY(32%); }
+  70.5% { transform: translateY(20%); }
+  73.5% { transform: translateY(20%); }
+  81% { transform: translateY(10%); }
+  84% { transform: translateY(10%); }
+  91.5% { transform: translateY(3%); }
+  94.5% { transform: translateY(3%); }
   100% { transform: translateY(0%); }
 }
 .rp__paper {
@@ -321,7 +320,7 @@
 }
 @keyframes rp-settle {
   from {
-    transform: translateY(-5px);
+    transform: translateY(5px);
   }
 }
 .rp__mark {
@@ -482,6 +481,7 @@
 @media (max-width: 460px) {
   .rp__stage {
     padding-top: 22px;
+    padding-bottom: 22px;
   }
   .rp__out {
     width: calc(100% - 38px);

@@ -167,19 +167,15 @@
   letter-spacing: 0.14em;
 }
 .sh-mhead:has(> .menu-share-trigger) {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 40px;
-  column-gap: 12px;
+  position: relative;
 }
-.sh-mhead:has(> .menu-share-trigger) > .sh-kicker,
-.sh-mhead:has(> .menu-share-trigger) > .sh-ghead__count {
-  grid-column: 1 / -1;
+.sh-mhead:has(> .menu-share-trigger) > .sh-kicker {
+  padding-inline-end: 52px;
 }
 .sh-mhead > .menu-share-trigger {
-  grid-column: 2;
-  grid-row: 2;
-  align-self: center;
-  margin-block-start: 8px;
+  position: absolute;
+  top: -4px;
+  inset-inline-end: 0;
 }
 .pd .pd-top__actions > .menu-share-trigger {
   padding: 0 !important;

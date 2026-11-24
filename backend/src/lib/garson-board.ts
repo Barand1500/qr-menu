@@ -7,6 +7,17 @@ export const GARSON_KEY = 'garson_board_v1';
 export const CLAIM_TTL_MS = 20 * 60 * 1000;
 /** Dolu bir masaya bu süredir uğranmadıysa "uğranmalı" sayılır. */
 export const VISIT_DUE_MS = 15 * 60 * 1000;
+export const VISIT_REMINDER_KEY = 'garson_visit_reminder_minutes';
+export const DEFAULT_VISIT_REMINDER_MIN = 15;
+
+/** Ayar değeri: yok → varsayılan 15 dk; 0 → hatırlatma kapalı; 5–180 dk arası. */
+export function parseVisitReminderMinutes(raw?: string | null): number {
+  if (raw == null || raw === '') return DEFAULT_VISIT_REMINDER_MIN;
+  const n = Math.round(Number(raw));
+  if (!Number.isFinite(n)) return DEFAULT_VISIT_REMINDER_MIN;
+  if (n <= 0) return 0;
+  return Math.min(180, Math.max(5, n));
+}
 export const VISIT_LATE_MS = 30 * 60 * 1000;
 const EVENT_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_EVENTS = 400;
@@ -166,6 +177,8 @@ export type GroupIn = {
   /** Masa kodu önekleri için önceden hesaplanmış kodlar ve adlar */
   tables: { code: string; name: string }[];
 };
+export type OrderRowIn = { name: string; qty: number; line: number; at: number; note: string; paid: boolean };
+
 export type SessionIn = {
   id: number;
   group: string;
@@ -176,6 +189,7 @@ export type SessionIn = {
   guestName: string | null;
   codeStatus: 'empty' | 'pending' | 'verified' | 'expired';
   activity?: PresenceSummary[];
+  orders?: OrderRowIn[];
   accessCode?: string | null;
   codeExpiresAt?: number | null;
   codeVerifiedAt?: number | null;
@@ -214,6 +228,7 @@ export type BoardTable = {
   session: {
     id: number;
     activity: PresenceSummary[];
+    orders: OrderRowIn[];
     code: string | null;
     codeExpiresAt: number | null;
     codeVerifiedAt: number | null;
@@ -276,8 +291,13 @@ export function buildBoard(input: {
   me: { id: number; name: string };
   now: number;
   codeGateEnabled?: boolean;
+  /** Dolu masaya uğrama hatırlatması (dakika); 0 = kapalı */
+  visitMinutes?: number;
 }) {
   const { groups, sessions, requests, store, me, now, codeGateEnabled = false } = input;
+  const visitMinutes = input.visitMinutes ?? DEFAULT_VISIT_REMINDER_MIN;
+  const dueMs = visitMinutes * 60_000;
+  const lateMs = dueMs * 2;
   const keyOf = (g: string, n: string) => `${g}::${n}`;
   const sessionBy = new Map(sessions.map((s) => [keyOf(s.group, s.table), s]));
 
@@ -312,11 +332,11 @@ export function buildBoard(input: {
     const lv = lastVisit(store, group, code);
     const occupied = Boolean(s);
     let visit: BoardTable['visit'] = 'none';
-    if (occupied) {
+    if (occupied && dueMs > 0) {
       // Hiç uğranmamışsa oturumun açıldığı andan itibaren say
       const since = Math.max(lv?.t ?? 0, s!.openedAt);
       const age = now - since;
-      visit = age >= VISIT_LATE_MS ? 'late' : age >= VISIT_DUE_MS ? 'due' : 'fresh';
+      visit = age >= lateMs ? 'late' : age >= dueMs ? 'due' : 'fresh';
     }
     return {
       key: k,
@@ -330,6 +350,7 @@ export function buildBoard(input: {
         ? {
             id: s.id,
             activity: s.activity || [],
+            orders: s.orders || [],
             code: codeGateEnabled && handoff?.u === me.id && s.codeStatus === 'pending' ? s.accessCode || null : null,
             codeExpiresAt: s.codeExpiresAt ?? null,
             codeVerifiedAt: s.codeVerifiedAt ?? null,

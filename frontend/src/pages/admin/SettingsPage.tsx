@@ -11,6 +11,7 @@ import {
   Globe,
   HandHelping,
   ImagePlus,
+  Footprints,
   KeyRound,
   Link2,
   MapPinned,
@@ -241,7 +242,8 @@ export default function SettingsPage() {
   const [welcomeMusicUrl, setWelcomeMusicUrl] = useState(''),
     [serviceItems, setServiceItems] = useState<MenuServiceItem[]>(() => resolveServiceItems());
   const [tableCodeEnabled, setTableCodeEnabled] = useState(false),
-    [tableCodeTtl, setTableCodeTtl] = useState(120);
+    [tableCodeTtl, setTableCodeTtl] = useState(120),
+    [visitMinutes, setVisitMinutes] = useState(15); // 0 = kapalı
   const [geoLock, setGeoLock] = useState<GeoLockConfig>({
     enabled: false,
     lat: 36.8121,
@@ -337,6 +339,14 @@ export default function SettingsPage() {
         );
         setTableCodeEnabled(
           ['true', '1'].includes(d.settings.table_session_code_enabled),
+        );
+        const visit = d.settings.garson_visit_reminder_minutes;
+        setVisitMinutes(
+          visit == null || visit === '' || !Number.isFinite(Number(visit))
+            ? 15
+            : Number(visit) <= 0
+              ? 0
+              : Math.min(180, Math.max(5, Math.round(Number(visit)))),
         );
         const ttl = Number(d.settings.table_session_code_ttl_minutes);
         setTableCodeTtl(
@@ -465,6 +475,7 @@ export default function SettingsPage() {
           serviceItems,
           tableSessionCode: tableCodeEnabled,
           tableSessionCodeTtlMinutes: tableCodeTtl,
+          garsonVisitMinutes: visitMinutes,
         });
         await put('geo-lock', geoLock);
       }
@@ -1181,6 +1192,32 @@ export default function SettingsPage() {
                         value={tableCodeTtl}
                         onChange={(e) => {
                           setTableCodeTtl(Number(e.target.value));
+                          mark('menu');
+                        }}
+                      />
+                    </label>
+                  )}
+                  <Toggle
+                    label="Masaya uğrama hatırlatması"
+                    description="Dolu bir masaya belirlenen süre uğranmazsa garson panelinde uyarı verir; masa sahipsiz kalmaz."
+                    icon={Footprints}
+                    checked={visitMinutes > 0}
+                    onChange={() => {
+                      setVisitMinutes((v) => (v > 0 ? 0 : 15));
+                      mark('menu');
+                    }}
+                  />
+                  {visitMinutes > 0 && (
+                    <label className="ast-range">
+                      Her <b>{visitMinutes} dakikada</b> bir uğranmalı
+                      <input
+                        type="range"
+                        min={5}
+                        max={60}
+                        step={5}
+                        value={Math.min(60, visitMinutes)}
+                        onChange={(e) => {
+                          setVisitMinutes(Number(e.target.value));
                           mark('menu');
                         }}
                       />

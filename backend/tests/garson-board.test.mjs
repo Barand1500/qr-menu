@@ -91,6 +91,17 @@ const late = g.buildBoard({ groups, sessions, requests: [], store: g.emptyStore(
 assert.equal(late.tables.find((t) => t.key === 'bahce::1').visit, 'late');
 assert.equal(late.tables.find((t) => t.key === 'bahce::3').visit, 'none');
 assert.equal(late.counts.due, 1);
+// hatırlatma ayarı: kapalı → uğranmalı yok; çok uzun süre → hepsi taze; ayar okuma
+const off = g.buildBoard({ groups, sessions, requests: [], store: g.emptyStore(), me: { id: 1, name: 'Ali' }, now, visitMinutes: 0 });
+assert.equal(off.counts.due, 0);
+assert.ok(off.tables.every((t) => t.visit === 'none'));
+const relaxed = g.buildBoard({ groups, sessions, requests: [], store: g.emptyStore(), me: { id: 1, name: 'Ali' }, now, visitMinutes: 180 });
+assert.equal(relaxed.counts.due, 0);
+assert.equal(g.parseVisitReminderMinutes(undefined), 15);
+assert.equal(g.parseVisitReminderMinutes('0'), 0);
+assert.equal(g.parseVisitReminderMinutes('2'), 5);
+assert.equal(g.parseVisitReminderMinutes('999'), 180);
+assert.equal(g.parseVisitReminderMinutes('abc'), 15);
 // sayaçlar
 assert.equal(board.counts.calls, 3);
 assert.equal(board.counts.callTables, 3);

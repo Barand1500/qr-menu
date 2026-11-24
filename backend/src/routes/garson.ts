@@ -5,6 +5,7 @@ import { authRequired, getRestaurantId } from '../lib/auth.js';
 import {
   ACTIVE_STATUSES,
   findActiveSession,
+  lineTotal,
   ordersTotal,
   parseOrdersJson,
   parsePaymentsJson,
@@ -22,10 +23,12 @@ import {
   buildBoard,
   logEvent,
   parseStore,
+  parseVisitReminderMinutes,
   releaseClaim,
   serializeStore,
   tableKeyValid,
   tryClaim,
+  VISIT_REMINDER_KEY,
   type GarsonStore,
   type GroupIn,
   type RequestIn,
@@ -75,7 +78,7 @@ router.get('/board', async (req, res) => {
   if (restaurantId == null || !me) return res.status(401).json({ message: 'Yetkisiz' });
   const now = Date.now();
 
-  const [groupRows, sessionRows, requestRows, storeRow, restaurant, codeConfig] = await Promise.all([
+  const [groupRows, sessionRows, requestRows, storeRow, restaurant, codeConfig, reminderRow] = await Promise.all([
     prisma.qrTableGroup.findMany({ where: { restaurantId }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] }),
     prisma.tableFloorSession.findMany({ where: { restaurantId, status: { in: [...ACTIVE_STATUSES] } } }),
     prisma.tableServiceRequest.findMany({
@@ -86,7 +89,9 @@ router.get('/board', async (req, res) => {
     prisma.setting.findUnique({ where: { restaurantId_key: { restaurantId, key: GARSON_KEY } } }),
     prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { name: true } }),
     loadTableSessionCodeConfig(restaurantId),
+    prisma.setting.findUnique({ where: { restaurantId_key: { restaurantId, key: VISIT_REMINDER_KEY } } }),
   ]);
+  const visitMinutes = parseVisitReminderMinutes(reminderRow?.value);
 
   const groups: GroupIn[] = groupRows.map((g) => {
     const styles = (g.tableStyles && typeof g.tableStyles === 'object' ? g.tableStyles : {}) as Record<string, { name?: string }>;
@@ -115,6 +120,14 @@ router.get('/board', async (req, res) => {
       accessCode: s.accessCode,
       codeExpiresAt: s.codeExpiresAt?.getTime() ?? null,
       codeVerifiedAt: codeConfig.enabled ? s.codeVerifiedAt?.getTime() ?? null : null,
+      orders: orders.slice(-80).map((o) => ({
+        name: o.name,
+        qty: o.qty,
+        line: lineTotal(o),
+        at: Date.parse(o.createdAt) || 0,
+        note: [o.note, o.freeNote].filter(Boolean).join(' · ').slice(0, 160),
+        paid: Boolean(o.settledAt),
+      })),
       total: ordersTotal(orders),
       itemCount: orders.reduce((n, o) => n + (Number(o.qty) || 0), 0),
       waiterName: parseSessionMeta(s.metaJson).waiterName || null,
@@ -132,8 +145,8 @@ router.get('/board', async (req, res) => {
     at: r.createdAt.getTime(),
   }));
 
-  const board = buildBoard({ groups, sessions, requests, store: parseStore(storeRow?.value), me, now, codeGateEnabled: codeConfig.enabled });
-  res.json({ now, codeGateEnabled: codeConfig.enabled, restaurant: restaurant?.name || '', me, hasTables: groups.length > 0, ...board });
+  const board = buildBoard({ groups, sessions, requests, store: parseStore(storeRow?.value), me, now, codeGateEnabled: codeConfig.enabled, visitMinutes });
+  res.json({ now, codeGateEnabled: codeConfig.enabled, visitMinutes, restaurant: restaurant?.name || '', me, hasTables: groups.length > 0, ...board });
 });
 
 /** "Masaya uğradım" */

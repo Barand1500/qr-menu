@@ -23,6 +23,7 @@ import {
   formatTableServiceLabel,
   getTableContext,
 } from '@/lib/tableContext';
+import { usePageBackdrop } from '@/lib/pageBackdrop';
 import { sendPresence, subscribePresence, topPresence, usePresenceEntry, type PresenceKind } from '@/lib/tablePresence';
 import '@/table-session-code.css';
 
@@ -79,6 +80,7 @@ export default function TableSessionCodeGate({ slug, masa, grup, children }: Pro
   const [modalOpen, setModalOpen] = useState(false);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const { pathname } = useLocation();
+  usePageBackdrop();
   const [success, setSuccess] = useState(false);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');

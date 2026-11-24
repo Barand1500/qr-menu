@@ -1530,3 +1530,116 @@
 .gb--w .gb-feed p {
   font-size: 14px;
 }
+
+/* servis türü renkleri (menüdeki servis düğmeleriyle aynı simgeler) */
+.gb .t-waiter { --ct: #f97316; }
+.gb .t-bill { --ct: #22c55e; }
+.gb .t-hookah { --ct: #a855f7; }
+.gb .t-valet { --ct: #3b82f6; }
+.gb .t-order { --ct: #eab308; }
+.gb .gb-calls li[class*='t-'] .gb-calls__icon {
+  color: #fff;
+  background: var(--ct);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ct) 22%, transparent);
+}
+.gb .gb-calls li[class*='t-'] {
+  border-inline-start: 4px solid var(--ct);
+}
+.gb .gb-feed li[class*='t-'] .gb-feed__icon {
+  color: var(--ct);
+  border-color: color-mix(in srgb, var(--ct) 60%, var(--gb-line));
+}
+.gb .gb-disc__badge.is-bell[class*='t-'] {
+  color: #fff;
+  background: var(--ct);
+  border-color: var(--ct);
+}
+.gb .gb-disc.is-call .gb-disc__ring {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--gb-hot) 25%, transparent);
+}
+.gb-banner.is-visit {
+  background: var(--gb-surface);
+  color: var(--gb-text);
+  border: 1px solid var(--gb-warn);
+}
+.gb-banner.is-visit > svg { color: var(--gb-warn); }
+
+/* sipariş geçmişi */
+.gb-orders {
+  background: var(--gb-surface);
+  border: 1px solid var(--gb-line);
+  border-radius: 18px;
+}
+.gb-orders summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 14px;
+  font-size: 15px;
+  font-weight: 700;
+  list-style: none;
+  cursor: pointer;
+}
+.gb-orders summary::-webkit-details-marker { display: none; }
+.gb-orders summary svg:first-child { color: var(--gb-accent); }
+.gb-orders summary span { flex: 1; }
+.gb-orders summary em {
+  color: var(--gb-muted);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 600;
+}
+.gb-orders[open] summary > svg:last-child { transform: rotate(180deg); }
+.gb-orders ol {
+  display: grid;
+  gap: 12px;
+  max-height: 320px;
+  margin: 0;
+  padding: 4px 14px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+.gb-orders time {
+  color: var(--gb-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.gb-orders ul {
+  display: grid;
+  gap: 4px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.gb-orders ul li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14.5px;
+}
+.gb-orders ul li b { color: var(--gb-accent); }
+.gb-orders ul small {
+  display: block;
+  color: var(--gb-muted);
+  font-size: 12px;
+}
+.gb-orders ul em {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  color: var(--gb-muted);
+  font-size: 13px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+.gb-orders li.is-paid em { color: var(--gb-ok); }
+
+.gb .gb-disc.is-call[class*='t-'] .gb-disc__ring {
+  background: var(--ct);
+  border-color: var(--ct);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ct) 28%, transparent);
+}

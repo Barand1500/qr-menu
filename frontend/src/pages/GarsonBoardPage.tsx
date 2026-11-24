@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, type ComponentType, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity,
@@ -6,23 +6,25 @@ import {
   Bell,
   BellOff,
   BellRing,
-  Car,
+  CarFront,
   Check,
   ChevronDown,
   Clock,
   ConciergeBell,
-  Flame,
+  HandHelping,
   Eye,
   Footprints,
   LayoutGrid,
   QrCode,
   Power,
   Receipt,
+  ReceiptText,
   ShoppingBag,
   Users,
   WifiOff,
   X,
 } from 'lucide-react';
+import HookahIcon from '@/components/public/HookahIcon';
 import AdminOverlay from '@/components/admin/AdminOverlay';
 import { api } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
@@ -36,8 +38,10 @@ const FEED_SHORT = 8;
 type Tab = 'calls' | 'tables' | 'feed';
 type Filter = 'all' | 'busy' | 'due' | 'empty';
 
-const CALL_ICON: Record<CallType, typeof Bell> = { waiter: Bell, bill: Receipt, hookah: Flame, valet: Car, order: ShoppingBag };
-const FEED_ICON: Record<FeedKind, typeof Bell> = {
+type IconType = ComponentType<{ size?: number }>;
+// Menüdeki servis düğmeleriyle aynı simgeler
+const CALL_ICON: Record<CallType, IconType> = { waiter: HandHelping, bill: ReceiptText, hookah: HookahIcon, valet: CarFront, order: ShoppingBag };
+const FEED_ICON: Record<FeedKind, IconType> = {
   ...CALL_ICON,
   scan: QrCode,
   verified: Check,
@@ -53,6 +57,18 @@ function saveCollapsed(s: Set<string>) {
   } catch {
     /* depolama kapalı */
   }
+}
+
+type OrderRow = NonNullable<BoardTable['session']>['orders'][number];
+/** Aynı dakikada eklenen kalemler tek sipariş sayılır; en yeni üstte. */
+function groupOrders(rows: OrderRow[]) {
+  const groups: { at: number; rows: OrderRow[] }[] = [];
+  for (const o of rows) {
+    const last = groups[groups.length - 1];
+    if (last && Math.abs(o.at - last.at) < 60_000) last.rows.push(o);
+    else groups.push({ at: o.at, rows: [o] });
+  }
+  return groups.reverse();
 }
 
 const shortName =(t: BoardTable) => t.label.match(/(\d+)\s*$/)?.[1] ?? t.code;
@@ -77,7 +93,7 @@ export default function GarsonBoardPage() {
   const [feedAll, setFeedAll] = useState(false);
   const [closeAsk, setCloseAsk] = useState<string | null>(null);
   const [toast, setToast] = useState('');
-  const [banner, setBanner] = useState<{ text: string; id: number; tableKey?: string } | null>(null);
+  const [banner, setBanner] = useState<{ text: string; id: number; tableKey?: string; kind?: 'visit' } | null>(null);
   // Kapalı bölümler (cihazda hatırlanır) ve yeni çağrı gelen, yanıp sönen masalar
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     try {
@@ -90,6 +106,7 @@ export default function GarsonBoardPage() {
   const codeWatch = useRef(new Map<number, { pending: boolean; mine: boolean }>());
   const loadSequence = useRef(0);
   const known = useRef<Set<number> | null>(null);
+  const dueSeen = useRef<Map<string, number> | null>(null);
   const skew = useRef(0);
   const soundRef = useRef(sound);
   soundRef.current = sound;
@@ -151,6 +168,25 @@ export default function GarsonBoardPage() {
           }
         }
       }
+      // Uğrama hatırlatması: dolu masa "uğranmalı" (1) ya da "çok bekledi" (2) seviyesine yeni geçtiyse haber ver
+      const dueNow = new Map(data.tables.filter((t) => t.visit === 'due' || t.visit === 'late').map((t) => [t.key, t.visit === 'late' ? 2 : 1]));
+      if (dueSeen.current && known.current) {
+        const prev = dueSeen.current;
+        const fresher = data.tables.filter((t) => dueNow.has(t.key) && (dueNow.get(t.key) || 0) > (prev.get(t.key) || 0));
+        const calls = data.tables.some((t) => t.calls.some((c) => !known.current!.has(c.id) && !c.claim?.mine));
+        if (fresher.length && !calls && !verified.length) {
+          const t = fresher[0];
+          setBanner({
+            text: fresher.length > 1 ? `${fresher.length} masaya uğranmalı` : `${t.label} · uğrama zamanı`,
+            id: -Math.abs(Date.now() % 1_000_000_000) - 1,
+            tableKey: t.key,
+            kind: 'visit',
+          });
+          if (soundRef.current) playAdminNotificationSound();
+          try { navigator.vibrate?.([120]); } catch { /* desteklenmiyor */ }
+        }
+      }
+      dueSeen.current = dueNow;
       known.current = ids;
     } catch {
       if (sequence !== loadSequence.current) return;
@@ -357,7 +393,7 @@ export default function GarsonBoardPage() {
       {(feedAll ? board.feed : board.feed.slice(0, FEED_SHORT)).map((f) => {
         const Icon = FEED_ICON[f.kind];
         return (
-          <li key={f.id} className={`k-${f.kind}`}>
+          <li key={f.id} className={`k-${f.kind}${f.kind in CALL_ICON ? ` t-${f.kind}` : ''}`}>
             <span className="gb-feed__icon" aria-hidden="true">
               <Icon size={16} />
             </span>
@@ -439,14 +475,17 @@ export default function GarsonBoardPage() {
                       key={t.key}
                       type="button"
                       aria-label={`${t.label}, ${cap}`}
-                      className={`gb-disc is-${t.state} v-${t.visit}${flash === t.key ? ' is-flash' : ''}${alerts.has(t.key) ? ' is-alert' : ''}${sheetKey === t.key ? ' is-picked' : ''}`}
+                      className={`gb-disc is-${t.state}${t.calls.length ? ` t-${t.calls[0].type}` : ''} v-${t.visit}${flash === t.key ? ' is-flash' : ''}${alerts.has(t.key) ? ' is-alert' : ''}${sheetKey === t.key ? ' is-picked' : ''}`}
                       onClick={() => setSheetKey(t.key)}
                     >
                       <span className={`gb-disc__ring${num.length > 3 ? ' is-long' : ''}`}>
                         <b>{num}</b>
                         {t.calls.length ? (
-                          <i className="gb-disc__badge is-bell">
-                            <BellRing size={12} aria-hidden="true" />
+                          <i className={`gb-disc__badge is-bell t-${t.calls[0].type}`}>
+                            {(() => {
+                              const CallIcon = CALL_ICON[t.calls[0].type];
+                              return <CallIcon size={12} />;
+                            })()}
                           </i>
                         ) : t.session?.scanned ? (
                           <i className={`gb-disc__badge${t.session.codeStatus === 'verified' ? ' is-verified' : ''}`} title={t.session.codeStatus === 'verified' ? 'Müşteri onaylandı' : 'QR okutuldu'}>
@@ -519,6 +558,41 @@ export default function GarsonBoardPage() {
           </span>
         </li>
       </ul>
+      {s.session && s.session.orders.length ? (
+        <details className="gb-orders">
+          <summary>
+            <ReceiptText size={18} aria-hidden="true" />
+            <span>Sipariş geçmişi</span>
+            <em>
+              {s.session.orders.length} kalem · {money(s.session.total)}
+            </em>
+            <ChevronDown size={18} aria-hidden="true" />
+          </summary>
+          <ol>
+            {groupOrders(s.session.orders).map((g, i) => (
+              <li key={i}>
+                <time>
+                  {g.at ? clock(g.at) : '—'}
+                  {g.at ? ` · ${since(now - g.at)}` : ''}
+                </time>
+                <ul>
+                  {g.rows.map((o, k) => (
+                    <li key={k} className={o.paid ? 'is-paid' : ''}>
+                      <span>
+                        <b>{o.qty}×</b> {o.name}
+                        {o.note ? <small>{o.note}</small> : null}
+                      </span>
+                      <em>
+                        {o.paid ? <Check size={13} aria-label="Ödendi" /> : null} {money(o.line)}
+                      </em>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ol>
+        </details>
+      ) : null}
       {s.calls.length ? <CallBody t={s} now={now} busy={busy.has(`c${s.key}`)} onClaim={claim} onUnclaim={unclaim} onResolve={resolve} /> : null}
       {board?.codeGateEnabled && s.session?.codeStatus === 'verified' ? (
         <p className="gb-code-verified" role="status"><Check size={18} aria-hidden="true" /> Müşteri onaylandı{s.session.codeVerifiedAt ? ' · ' + clock(s.session.codeVerifiedAt) : ''}</p>
@@ -560,7 +634,7 @@ export default function GarsonBoardPage() {
         <button
           type="button"
           key={banner.id}
-          className={`gb-banner${banner.tableKey ? ' is-verified' : ''}`}
+          className={`gb-banner${banner.kind === 'visit' ? ' is-visit' : banner.tableKey ? ' is-verified' : ''}`}
           aria-live="polite"
           onClick={() => {
             setBanner(null);
@@ -569,9 +643,9 @@ export default function GarsonBoardPage() {
             else if (wide) setSheetKey(null);
           }}
         >
-          {banner.tableKey ? <Check size={20} aria-hidden="true" /> : <BellRing size={20} aria-hidden="true" />}
+          {banner.kind === 'visit' ? <Footprints size={20} aria-hidden="true" /> : banner.tableKey ? <Check size={20} aria-hidden="true" /> : <BellRing size={20} aria-hidden="true" />}
           <span>
-            <b>{banner.tableKey ? 'Müşteri onaylandı' : 'Yeni çağrı'}</b>
+            <b>{banner.kind === 'visit' ? 'Masaya uğra' : banner.tableKey ? 'Müşteri onaylandı' : 'Yeni çağrı'}</b>
             {banner.text}
           </span>
         </button>
@@ -885,7 +959,7 @@ function CallBody({
         {t.calls.map((c: BoardCall) => {
           const Icon = CALL_ICON[c.type];
           return (
-            <li key={c.id}>
+            <li key={c.id} className={`t-${c.type}`}>
               <span className="gb-calls__icon" aria-hidden="true">
                 <Icon size={18} />
               </span>

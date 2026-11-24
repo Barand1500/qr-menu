@@ -22,6 +22,7 @@ export type BoardTable = {
   calls: BoardCall[];
   session: {
     id: number;
+    orders: { name: string; qty: number; line: number; at: number; note: string; paid: boolean }[];
     activity: { kind: 'welcome' | 'menu' | 'category' | 'product' | 'cart' | 'game' | 'code'; label: string; count: number; at: number }[];
     code: string | null;
     codeExpiresAt: number | null;
@@ -43,6 +44,7 @@ export type FeedKind = CallType | 'scan' | 'visit' | 'claim' | 'done' | 'unclaim
 export type FeedItem = { id: string; at: number; kind: FeedKind; table: string; text: string; who: string };
 
 export type Board = {
+  visitMinutes: number;
   codeGateEnabled: boolean;
   now: number;
   restaurant: string;
