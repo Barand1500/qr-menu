@@ -32,6 +32,7 @@ import { activityText, ago, clock, since, money, urgency, type Board, type Board
 import '@/garson-board.css';
 
 const POLL_MS = 4000;
+const FEED_SHORT = 8;
 type Tab = 'calls' | 'tables' | 'feed';
 type Filter = 'all' | 'busy' | 'due' | 'empty';
 
@@ -73,6 +74,7 @@ export default function GarsonBoardPage() {
   });
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [flash, setFlash] = useState<string | null>(null);
+  const [feedAll, setFeedAll] = useState(false);
   const [closeAsk, setCloseAsk] = useState<string | null>(null);
   const [toast, setToast] = useState('');
   const [banner, setBanner] = useState<{ text: string; id: number; tableKey?: string } | null>(null);
@@ -350,8 +352,9 @@ export default function GarsonBoardPage() {
       <p>QR okutmalar, çağrılar ve garson hareketleri burada sırayla görünür.</p>
     </div>
   ) : (
+    <div className={`gb-feedbox${feedAll ? ' is-all' : ''}`}>
     <ol className="gb-feed">
-      {board.feed.map((f) => {
+      {(feedAll ? board.feed : board.feed.slice(0, FEED_SHORT)).map((f) => {
         const Icon = FEED_ICON[f.kind];
         return (
           <li key={f.id} className={`k-${f.kind}`}>
@@ -371,6 +374,12 @@ export default function GarsonBoardPage() {
         );
       })}
     </ol>
+    {board.feed.length > FEED_SHORT ? (
+      <button type="button" className="gb-link gb-feedbox__more" onClick={() => setFeedAll((v) => !v)}>
+        {feedAll ? 'Daha az göster' : `Tümünü göster (${board.feed.length})`}
+      </button>
+    ) : null}
+    </div>
   );
 
   const floor = !board ? null : !board.hasTables && !tables.length ? (

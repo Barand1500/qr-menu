@@ -915,3 +915,9 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Amaç: Hesabı açık masa kapatılamıyordu; garson bilerek kapatabilsin.
 - Değişiklik: `/close` isteği `force: true` ile açık hesap kontrolünü atlar; panelde ikinci dokunuşta "Hesap … ödenmemiş olabilir. Yine de kapat" uyarısı gösterilir. Oturum değişmişse (başka işlem) hâlâ reddeder.
 - Doğrulama: tsc (front/back). Tarayıcıda/gerçek veride denenmedi.
+
+## 2026-11-24 — Garson paneli: akış kısaltıldı
+
+- Amaç: Akış 60 satıra kadar uzayıp sayfayı şişiriyordu.
+- Değişiklik: Akış son 8 hareketi gösterir; "Tümünü göster" ile açılır, webde tam liste 380 px'lik kendi içinde kayan alanda. Webde akış kart içine alındı, satırlar sıkılaştırıldı.
+- Doğrulama: tsc, vite build, Chrome fixture (390/1280) taşma ve hata yok. Ekran görüntüsüne ayrıca bakılmadı; gerçek cihazda denenmedi.

@@ -1500,3 +1500,33 @@
 .gb-close:disabled {
   opacity: 0.6;
 }
+
+/* akış: kısa liste, istenirse kendi içinde kayan tam liste */
+.gb-feedbox__more {
+  display: block;
+  margin: 6px auto 0;
+}
+.gb--w .gb-feedbox {
+  padding: 8px 14px 4px;
+  background: var(--gb-surface);
+  border: 1px solid var(--gb-line);
+  border-radius: 22px;
+}
+.gb--w .gb-feedbox.is-all .gb-feed {
+  max-height: 380px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.gb--w .gb-feed li {
+  padding: 5px 0;
+}
+.gb--w .gb-feed__icon {
+  width: 34px;
+  height: 34px;
+}
+.gb--w .gb-feed::before {
+  left: 16px;
+}
+.gb--w .gb-feed p {
+  font-size: 14px;
+}
