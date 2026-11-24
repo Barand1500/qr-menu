@@ -97,6 +97,13 @@ assert.equal(off.counts.due, 0);
 assert.ok(off.tables.every((t) => t.visit === 'none'));
 const relaxed = g.buildBoard({ groups, sessions, requests: [], store: g.emptyStore(), me: { id: 1, name: 'Ali' }, now, visitMinutes: 180 });
 assert.equal(relaxed.counts.due, 0);
+// masa kapanınca / yeni oturum açılınca eski uğrama kaydı görünmez
+const oldVisit = g.logEvent(g.emptyStore(), { k: 'visit', g: 'bahce', n: '1', u: 1, w: 'Ali' }, now - 90 * MIN);
+const closedBoard = g.buildBoard({ groups, sessions: [], requests: [], store: oldVisit, me: { id: 1, name: 'Ali' }, now });
+assert.equal(closedBoard.tables.find((t) => t.key === 'bahce::1').lastVisit, null);
+assert.equal(closedBoard.tables.find((t) => t.key === 'bahce::1').visit, 'none');
+const reopened = g.buildBoard({ groups, sessions: [{ id: 501, group: 'bahce', table: '1', status: 'open', openedAt: now - 5 * MIN, openedBy: 'qr', guestName: null, codeStatus: 'empty', total: 0, itemCount: 0, waiterName: null }], requests: [], store: oldVisit, me: { id: 1, name: 'Ali' }, now });
+assert.equal(reopened.tables.find((t) => t.key === 'bahce::1').lastVisit, null, 'önceki oturumun uğraması yeni oturumda görünmez');
 assert.equal(g.parseVisitReminderMinutes(undefined), 15);
 assert.equal(g.parseVisitReminderMinutes('0'), 0);
 assert.equal(g.parseVisitReminderMinutes('2'), 5);

@@ -329,7 +329,9 @@ export function buildBoard(input: {
     const s = sessionBy.get(k) || null;
     const calls = callsBy.get(k) || [];
     const handoff = s && codeGateEnabled ? codeHandoff(store, s.id, group, code) : null;
-    const lv = lastVisit(store, group, code);
+    // Önceki oturumlardan kalan uğrama kayıtları sayılmaz: masa kapanınca / yeni oturum açılınca sıfırlanır
+    const lvAll = s ? lastVisit(store, group, code) : null;
+    const lv = lvAll && lvAll.t >= s!.openedAt ? lvAll : null;
     const occupied = Boolean(s);
     let visit: BoardTable['visit'] = 'none';
     if (occupied && dueMs > 0) {

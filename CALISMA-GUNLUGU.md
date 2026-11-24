@@ -939,3 +939,9 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Sorun: Karşılama ve menü başlığındaki çip yalnızca "Masa 2" yazıyordu; grup bilgisi gösterilmiyordu.
 - Değişiklik: `table-session-gate` yanıtı `groupName` döndürür (backend); `tableContext.ts` içinde `useTableLabel` ("Bahçe 2", grup yoksa "Masa 2"; ad sunucudan gelince kendiliğinden güncellenir) ve `rememberTableGroupName`; karşılama (Sahne/board/klasik) ve menü başlığı bunu kullanır; `formatTableServiceLabel` de grup adını kullanır.
 - Doğrulama: tsc (front/back), vite build. Tarayıcıda gerçek QR bağlantısıyla denenmedi.
+
+## 2026-11-24 — Garson: kapanan masada eski "son uğrayan" görünmesin
+
+- Sorun: Masa kapatıldıktan sonra boş masada "Son uğrayan: sen · 1 sa 32 dk" ve masa altında "Sen · 54 dk" yazısı kalıyordu.
+- Değişiklik: `buildBoard` yalnızca açık oturumu olan masada ve kaydı oturumun açılışından sonraysa son uğramayı gösterir (kapalı masada ve yeni oturumda eski kayıt görünmez). Kayıtlar silinmez, akışta durur.
+- Doğrulama: `npm run test:garson` (yeni kapalı/yeniden açılan masa testi), backend tsc. Tarayıcıda denenmedi.
