@@ -7,6 +7,7 @@ import {
   BellRing,
   Car,
   Check,
+  ChevronDown,
   Clock,
   ConciergeBell,
   Flame,
@@ -40,7 +41,15 @@ const FEED_ICON: Record<FeedKind, typeof Bell> = {
   done: Check,
 };
 
-const shortName = (t: BoardTable) => t.label.match(/(\d+)\s*$/)?.[1] ?? t.code;
+function saveCollapsed(s: Set<string>) {
+  try {
+    localStorage.setItem('garson_board_collapsed', JSON.stringify([...s]));
+  } catch {
+    /* depolama kapalı */
+  }
+}
+
+const shortName =(t: BoardTable) => t.label.match(/(\d+)\s*$/)?.[1] ?? t.code;
 
 export default function GarsonBoardPage() {
   const navigate = useNavigate();
@@ -61,6 +70,15 @@ export default function GarsonBoardPage() {
   const [flash, setFlash] = useState<string | null>(null);
   const [toast, setToast] = useState('');
   const [banner, setBanner] = useState<{ text: string; id: number } | null>(null);
+  // Kapalı bölümler (cihazda hatırlanır) ve yeni çağrı gelen, yanıp sönen masalar
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+    try {
+      return new Set<string>(JSON.parse(localStorage.getItem('garson_board_collapsed') || '[]'));
+    } catch {
+      return new Set<string>();
+    }
+  });
+  const [alerts, setAlerts] = useState<Set<string>>(new Set());
   const known = useRef<Set<number> | null>(null);
   const skew = useRef(0);
   const soundRef = useRef(sound);
@@ -79,6 +97,26 @@ export default function GarsonBoardPage() {
         if (fresh.length) {
           const { c, t } = fresh[0];
           setBanner({ text: `${t.label} · ${c.label}`, id: c.id });
+          // Kapalı bölümde çağrı gelirse bölüm kendiliğinden açılır, masa yanıp söner
+          const keys = new Set(fresh.map((f) => f.t.key));
+          const groupNames = new Set(fresh.map((f) => f.t.groupName));
+          setCollapsed((prev) => {
+            if (![...groupNames].some((g) => prev.has(g))) return prev;
+            const next = new Set(prev);
+            groupNames.forEach((g) => next.delete(g));
+            saveCollapsed(next);
+            return next;
+          });
+          setAlerts((prev) => new Set([...prev, ...keys]));
+          window.setTimeout(
+            () =>
+              setAlerts((prev) => {
+                const next = new Set(prev);
+                keys.forEach((k) => next.delete(k));
+                return next;
+              }),
+            12000,
+          );
           if (soundRef.current) playAdminNotificationSound();
           try {
             navigator.vibrate?.([180, 80, 180]);
@@ -132,6 +170,15 @@ export default function GarsonBoardPage() {
     () => tables.filter((t) => t.calls.length).sort((a, b) => a.calls[0].at - b.calls[0].at),
     [tables],
   );
+
+  function toggleGroup(name: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(name)) next.add(name);
+      saveCollapsed(next);
+      return next;
+    });
+  }
 
   function toggleSound() {
     const next = !sound;
@@ -320,12 +367,33 @@ export default function GarsonBoardPage() {
               </button>
             </div>
           ) : (
-            groups.map((g) => (
-              <section key={g.name} className="gb-group">
-                <h3>{g.name}</h3>
+            groups.map((g) => {
+              const open = !collapsed.has(g.name);
+              const callN = g.tables.filter((t) => t.calls.length).length;
+              const busyN = g.tables.filter((t) => t.state !== 'empty').length;
+              const dueN = g.tables.filter((t) => t.visit === 'due' || t.visit === 'late').length;
+              const alertN = g.tables.filter((t) => alerts.has(t.key)).length;
+              return (
+              <section key={g.name} className={`gb-group${open ? ' is-open' : ''}${callN ? ' has-call' : ''}${alertN ? ' has-alert' : ''}`}>
+                <button type="button" className="gb-group__head" aria-expanded={open} onClick={() => toggleGroup(g.name)}>
+                  <span className="gb-group__name">{g.name}</span>
+                  <span className="gb-group__meta">
+                    {callN ? (
+                      <b className="gb-pill is-hot">
+                        <BellRing size={13} aria-hidden="true" /> {callN} çağrı
+                      </b>
+                    ) : null}
+                    {dueN ? <b className="gb-pill is-warn">{dueN} uğranmalı</b> : null}
+                    <span className="gb-group__count">
+                      {busyN}/{g.tables.length} dolu
+                    </span>
+                  </span>
+                  <ChevronDown className="gb-group__chev" size={20} aria-hidden="true" />
+                </button>
+                <div className="gb-group__body">
                 <div className="gb-grid">
                   {g.tables.map((t) => (
-                    <button key={t.key} type="button" className={`gb-tile is-${t.state} v-${t.visit}${flash === t.key ? ' is-flash' : ''}`} onClick={() => setSheetKey(t.key)}>
+                    <button key={t.key} type="button" className={`gb-tile is-${t.state} v-${t.visit}${flash === t.key ? ' is-flash' : ''}${alerts.has(t.key) ? ' is-alert' : ''}`} onClick={() => setSheetKey(t.key)}>
                       <span className="gb-tile__num">{shortName(t)}</span>
                       <span className="gb-tile__icons" aria-hidden="true">
                         {t.calls.length ? <BellRing size={13} /> : null}
@@ -342,12 +410,17 @@ export default function GarsonBoardPage() {
                                 ? 'Rezerve'
                                 : 'Uğranmadı'}
                       </small>
+                      {t.session ? (
+                        <em className="gb-tile__more">{t.session.total > 0 ? money(t.session.total) : t.session.scanned ? 'QR okutuldu' : 'Oturumda'}</em>
+                      ) : null}
                       {t.visit === 'due' || t.visit === 'late' ? <i className="gb-tile__dot" aria-label="Uğranmalı" /> : null}
                     </button>
                   ))}
                 </div>
+                </div>
               </section>
-            ))
+              );
+            })
           )}
         </main>
       ) : (

@@ -482,13 +482,175 @@
   background: color-mix(in srgb, var(--gb-accent) 22%, var(--gb-surface));
   border-color: var(--gb-accent);
 }
-.gb-group h3 {
-  margin: 0 0 10px;
-  color: var(--gb-muted);
-  font-size: 12px;
+/* açılır-kapanır bölüm */
+.gb-group {
+  background: var(--gb-surface);
+  border: 1px solid var(--gb-line);
+  border-radius: 22px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.gb-group.has-call {
+  border-color: color-mix(in srgb, var(--gb-hot) 55%, var(--gb-line));
+}
+.gb-group.has-alert {
+  animation: gb-urgent 0.9s ease-in-out 6;
+}
+.gb-group__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'name chev' 'meta chev';
+  align-items: center;
+  gap: 6px 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 16px;
+  color: var(--gb-text);
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-radius: 22px;
+}
+.gb-group__name {
+  grid-area: name;
+  overflow-wrap: anywhere;
+  font-size: 18px;
   font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+.gb-group__meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.gb-group__count {
+  color: var(--gb-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.gb-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  font-size: 12.5px;
+  font-weight: 800;
+  border-radius: 999px;
+}
+.gb-pill.is-hot {
+  color: #fff;
+  background: var(--gb-hot);
+  animation: gb-blink 1.1s ease-in-out infinite;
+}
+.gb-pill.is-warn {
+  color: var(--gb-warn);
+  background: color-mix(in srgb, var(--gb-warn) 16%, transparent);
+}
+.gb-group__chev {
+  grid-area: chev;
+  color: var(--gb-muted);
+  transition: transform 0.25s;
+}
+.gb-group.is-open .gb-group__chev {
+  transform: rotate(180deg);
+}
+.gb-group__body {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 0.28s ease, visibility 0s 0.28s;
+}
+.gb-group.is-open .gb-group__body {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 0.28s ease;
+}
+.gb-group__body > .gb-grid {
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 12px;
+}
+.gb-group.is-open .gb-group__body > .gb-grid {
+  padding-bottom: 14px;
+}
+.gb-tile__more {
+  display: none;
+  color: var(--gb-muted);
+  font-size: 12.5px;
+  font-style: normal;
+  font-weight: 700;
+}
+.gb-tile.is-alert,
+.gb-tile.is-call.is-alert {
+  animation: gb-alert 0.7s ease-in-out infinite;
+}
+@keyframes gb-alert {
+  0%,
+  100% {
+    background: color-mix(in srgb, var(--gb-hot) 22%, var(--gb-surface));
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    background: var(--gb-hot);
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--gb-hot) 30%, transparent);
+  }
+}
+
+/* geniş ekran: daha geniş sayfa, büyük masa kutuları, hesap bilgisi görünür */
+@media (min-width: 1024px) {
+  .gb > * {
+    max-width: 1180px;
+  }
+  .gb > .gb-top {
+    max-width: none;
+    padding-inline: max(24px, calc((100vw - 1180px) / 2 + 16px));
+  }
+  .gb-tabs,
+  .gb-offline {
+    max-width: 1148px;
+  }
+  .gb-tables {
+    gap: 18px;
+  }
+  .gb-group__head {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'name meta chev';
+    gap: 16px;
+    min-height: 72px;
+    padding: 14px 24px;
+  }
+  .gb-group__name {
+    font-size: 22px;
+  }
+  .gb-group__meta {
+    justify-content: flex-end;
+  }
+  .gb-group__body > .gb-grid {
+    padding-inline: 20px;
+  }
+  .gb-group.is-open .gb-group__body > .gb-grid {
+    padding-bottom: 22px;
+  }
+  .gb-grid {
+    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+    gap: 14px;
+  }
+  .gb-tile {
+    aspect-ratio: 1.25 / 1;
+    padding: 14px;
+  }
+  .gb-tile__num {
+    font-size: 38px;
+  }
+  .gb-tile__more {
+    display: block;
+    padding-right: 18px;
+  }
+  .gb-tile:hover {
+    border-color: var(--gb-accent);
+    transform: translateY(-2px);
+  }
 }
 .gb-grid {
   display: grid;

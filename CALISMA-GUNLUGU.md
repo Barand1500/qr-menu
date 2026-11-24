@@ -856,3 +856,10 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Yeni çağrıda üst bildirim + ses (aç/kapa) + titreşim, sekme başlığında sayı; 4 sn'de bir canlı yenileme, internet gidince uyarı.
 - Arka uç: `lib/garson-board.ts` (saf mantık), `routes/garson.ts` (GET /board, POST /visit /claim /unclaim /resolve). Kayıtlar ayar tablosunda (`garson_board_v1`), eşzamanlı yazımda karşılaştır-ve-yaz ile kayıpsız. Test: `npm run test:garson`.
 - Doğrulama: tsc (ön/arka), vite build, backend testi, Chrome fixture (390/1280): kartlar, bildirim, gidiyorum -> hallettim, masa sayfası, uğradım, Escape (dış tık kapatmaz), akış. Gerçek veritabanı, gerçek çağrılar, ses/titreşim ve gerçek telefon denenmedi. Backend deploy gerekir.
+
+## 2026-11-24 — Garson paneli: açılır bölümler, web/mobil yerleşim
+
+- Amaç: "Salon" gibi grup adları okunmuyordu; web ve mobil için ayrı yerleşim, açılır-kapanır bölümler, canlı çağrıda yanıp sönme isteniyordu.
+- Değişiklik: `GarsonBoardPage.tsx`, `garson-board.css`. Her masa grubu açılır-kapanır kart oldu (büyük ad; "2 çağrı", "1 uğranmalı", "5/6 dolu" özeti; durum cihazda `garson_board_collapsed` ile hatırlanır). Kapalı bölümde yeni çağrı gelirse bölüm kendiliğinden açılır, ilgili masa ~12 sn yanıp söner. Web (≥1024px): geniş sayfa, büyük masa kutuları, kutuda hesap/QR bilgisi. Mobil düzen kompakt kaldı.
+- Doğrulama: tsc, vite build, Chrome fixture (390 ve 1280): kapatma, kapalıyken çağrıda otomatik açılma, yanıp sönme, yatay taşma yok, sayfa hatası yok.
+- Doğrulanmadı: gerçek telefon/tablet, gerçek veri; 320 px ve tablet genişliği ayrıca bakılmadı.
