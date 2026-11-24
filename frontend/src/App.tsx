@@ -22,6 +22,7 @@ import MenuThemePage from '@/pages/admin/MenuThemePage';
 import GamesScreenPage from '@/pages/admin/GamesScreenPage';
 import SofraThemePage from '@/pages/admin/SofraThemePage';
 import ContactCardAdminPage from '@/pages/admin/ContactCardAdminPage';
+import GarsonBoardPage from '@/pages/GarsonBoardPage';
 import { SHOW_LEGACY_THEME_SETTINGS } from '@/lib/adminThemeSettings';
 import ExtensionsHubPage from '@/pages/admin/ExtensionsHubPage';
 import BulkTranslatePage from '@/pages/admin/BulkTranslatePage';
@@ -60,6 +61,7 @@ function AdminRoutes({ slug }: { slug: string }) {
   return (
     <Route element={<ProtectedRoute />}>
       <Route path={`${base}/masa-gorunumu`} element={<TableFloorPage />} />
+      <Route path={`${base}/garson-paneli`} element={<GarsonBoardPage />} />
       <Route path={`${base}/urun-secenekleri`} element={<ProductVariantsPage />} />
       <Route path={base} element={<AdminLayout />}>
         <Route index element={<DashboardPage />} />

@@ -24,6 +24,7 @@ import barcodeRouter from './routes/barcode.js';
 import campaignsRouter from './routes/campaigns.js';
 import bulkTranslateRouter from './routes/bulk-translate.js';
 import tableFloorRouter from './routes/table-floor.js';
+import garsonRouter from './routes/garson.js';
 import mapTilesRouter from './routes/map-tiles.js';
 import publicConfigRouter from './routes/public-config.js';
 import aiAssistantRouter from './routes/ai-assistant.js';
@@ -79,6 +80,7 @@ export function createApp() {
   app.use('/api/admin/campaigns', campaignsRouter);
   app.use('/api/admin/bulk-translate', bulkTranslateRouter);
   app.use('/api/admin/table-floor', tableFloorRouter);
+  app.use('/api/admin/garson', garsonRouter);
   app.use('/api/admin/ai', aiAssistantRouter);
   app.use('/api/menu', publicManagerMessages);
   app.use('/api/menu', publicMenuRouter);

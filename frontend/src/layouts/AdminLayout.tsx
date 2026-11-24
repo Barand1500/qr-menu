@@ -27,6 +27,7 @@ import {
   UserCog,
   Settings,
   IdCard,
+  ConciergeBell,
   Sparkles,
   CircleHelp,
 } from 'lucide-react';
@@ -532,6 +533,20 @@ export default function AdminLayout() {
 
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
             <ThemeToggleButton />
+
+            <button
+              type="button"
+              onClick={() => navigate(adminPath('garson-paneli'))}
+              data-tour="header-garson"
+              className="flex items-center gap-1.5 p-2 rounded-lg hover:bg-[var(--admin-accent-soft)] transition"
+              title="Garson paneli"
+              aria-label="Garson paneli"
+            >
+              <ConciergeBell className="w-[18px] h-[18px]" style={{ color: 'var(--admin-accent)' }} />
+              <span className="hidden sm:inline text-[11px] font-semibold" style={{ color: 'var(--admin-accent)' }}>
+                Garson
+              </span>
+            </button>
 
             <button
               type="button"
