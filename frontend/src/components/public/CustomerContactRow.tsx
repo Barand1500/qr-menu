@@ -1,3 +1,4 @@
+import { customerProfileUi } from '@/lib/customerProfileUi';
 import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { Check, Loader2, Pencil, X } from 'lucide-react';
 import { useCustomerAuth, type ContactField, type ContactRequestResult } from '@/contexts/CustomerAuthContext';
@@ -11,7 +12,8 @@ function formatPhone(raw: string) {
   return [d.slice(0, 3), d.slice(3, 6), d.slice(6, 8), d.slice(8)].filter(Boolean).join(' ');
 }
 
-function Otp6({ value, disabled, onChange }: { value: string; disabled: boolean; onChange: (v: string) => void }) {
+function Otp6({ value, disabled, onChange, lang }: { value: string; disabled: boolean; onChange: (v: string) => void; lang: string }) {
+  const ui = customerProfileUi(lang);
   const refs = useRef<Array<HTMLInputElement | null>>([]);
   const digits = Array.from({ length: 6 }, (_, i) => value[i] || '');
   useEffect(() => {
@@ -31,7 +33,7 @@ function Otp6({ value, disabled, onChange }: { value: string; disabled: boolean;
     }
   };
   return (
-    <div className="ca-otp" role="group" aria-label="6 haneli doğrulama kodu">
+    <div className="ca-otp" role="group" aria-label={ui.otpLabel}>
       {digits.map((d, i) => (
         <input
           key={i}
@@ -41,7 +43,7 @@ function Otp6({ value, disabled, onChange }: { value: string; disabled: boolean;
           inputMode="numeric"
           autoComplete={i === 0 ? 'one-time-code' : 'off'}
           maxLength={1}
-          aria-label={`${i + 1}. hane`}
+          aria-label={`${i + 1}. ${ui.digit}`}
           value={d}
           disabled={disabled}
           onFocus={(e) => e.currentTarget.select()}
@@ -62,6 +64,7 @@ function Otp6({ value, disabled, onChange }: { value: string; disabled: boolean;
  * kod girilince hesap güncellenir. Hepsi satırın içinde açılır; ayrı pencere yok.
  */
 export function ContactRow({
+  lang = 'tr',
   field,
   label,
   current,
@@ -69,6 +72,7 @@ export function ContactRow({
   visibility,
   note,
 }: {
+  lang?: string;
   field: ContactField;
   label: ReactNode;
   current: string | null;
@@ -77,6 +81,7 @@ export function ContactRow({
   visibility: ReactNode;
   note?: ReactNode;
 }) {
+  const ui = customerProfileUi(lang);
   const { requestContactChange, verifyContactChange } = useCustomerAuth();
   const [mode, setMode] = useState<'view' | 'edit' | 'code'>('view');
   const [value, setValue] = useState('');
@@ -122,7 +127,7 @@ export function ContactRow({
       setNow(Date.now());
       setMode('code');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kod gönderilemedi.');
+      setError(e instanceof Error ? e.message : ui.sendError);
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -141,7 +146,7 @@ export function ContactRow({
       window.setTimeout(() => setDone(false), 2600);
     } catch (e) {
       setCode('');
-      setError(e instanceof Error ? e.message : 'Doğrulanamadı.');
+      setError(e instanceof Error ? e.message : ui.verifyError);
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -165,13 +170,13 @@ export function ContactRow({
         <div className="ca-val">
           <p className="ca-static">{shown}</p>
           <button type="button" className="ca-edit" disabled={!restaurantId} onClick={() => setMode('edit')}>
-            <Pencil size={14} aria-hidden /> Değiştir
+            <Pencil size={14} aria-hidden /> {ui.change}
           </button>
         </div>
       ) : null}
       {done ? (
         <p className="ca-ok" role="status">
-          <Check size={15} aria-hidden /> {isPhone ? 'Telefon güncellendi' : 'E-posta güncellendi'}
+          <Check size={15} aria-hidden /> {isPhone ? ui.phoneUpdated : ui.emailUpdated}
         </p>
       ) : null}
 
@@ -182,8 +187,8 @@ export function ContactRow({
             type={isPhone ? 'tel' : 'email'}
             inputMode={isPhone ? 'tel' : 'email'}
             autoComplete={isPhone ? 'tel' : 'email'}
-            placeholder={isPhone ? 'Yeni telefon: 5XX XXX XX XX' : 'Yeni e-posta adresi'}
-            aria-label={isPhone ? 'Yeni telefon numarası' : 'Yeni e-posta adresi'}
+            placeholder={isPhone ? ui.newPhone : ui.newEmail}
+            aria-label={isPhone ? ui.newPhone : ui.newEmail}
             value={value}
             disabled={busy}
             onChange={(e) => setValue(isPhone ? formatPhone(e.target.value) : e.target.value)}
@@ -196,10 +201,10 @@ export function ContactRow({
           />
           <div className="ca-edit-actions">
             <button type="button" className="ca-mini ca-mini--ghost" disabled={busy} onClick={reset}>
-              <X size={14} aria-hidden /> Vazgeç
+              <X size={14} aria-hidden /> {ui.cancel}
             </button>
             <button type="button" className="ca-mini" disabled={busy || !valid} onClick={() => void sendCode()}>
-              {busy ? <Loader2 size={14} className="is-spin" aria-hidden /> : null} Kod gönder
+              {busy ? <Loader2 size={14} className="is-spin" aria-hidden /> : null} {ui.sendCode}
             </button>
           </div>
         </div>
@@ -208,17 +213,17 @@ export function ContactRow({
       {mode === 'code' && sent ? (
         <div className="ca-edit-box">
           <p className="ca-edit-info">
-            <b>{sent.maskedTo}</b> {sent.channel === 'sms' ? 'numarasına SMS ile' : 'adresine e-posta ile'} 6 haneli kod gönderdik.
-            {sent.channel === 'email' && isPhone ? ' (Telefon değişikliği hesabındaki e-postayla doğrulanıyor.)' : ''}
-            {sent.channel === 'sms' && !isPhone ? ' (E-posta değişikliği telefonunla doğrulanıyor.)' : ''}
+            <b>{sent.maskedTo}</b> {sent.channel === 'sms' ? ui.codeSms : ui.codeEmail}
+            {sent.channel === 'email' && isPhone ? ` (${ui.phoneViaEmail})` : ''}
+            {sent.channel === 'sms' && !isPhone ? ` (${ui.emailViaPhone})` : ''}
           </p>
-          <Otp6 value={code} disabled={busy} onChange={setCode} />
+          <Otp6 lang={lang} value={code} disabled={busy} onChange={setCode} />
           <div className="ca-edit-actions">
             <button type="button" className="ca-mini ca-mini--ghost" disabled={busy} onClick={reset}>
-              <X size={14} aria-hidden /> Vazgeç
+              <X size={14} aria-hidden /> {ui.cancel}
             </button>
             <button type="button" className="ca-mini ca-mini--ghost" disabled={busy || left > 0} onClick={() => void sendCode()}>
-              {left > 0 ? `Tekrar gönder · ${left} sn` : 'Tekrar gönder'}
+              {left > 0 ? `${ui.resend} · ${left} ${ui.seconds}` : ui.resend}
             </button>
           </div>
         </div>
@@ -235,7 +240,8 @@ export function ContactRow({
 }
 
 /** Ad soyad: doğrudan düzenlenir; değişince yanında "Kaydet" çıkar, kod gerekmez. */
-export function NameRow({ label, visibility }: { label: ReactNode; visibility: ReactNode }) {
+export function NameRow({ label, visibility, lang = 'tr' }: { label: ReactNode; visibility: ReactNode; lang?: string }) {
+  const ui = customerProfileUi(lang);
   const { customer, updateProfile } = useCustomerAuth();
   const [name, setName] = useState(customer?.fullName ?? '');
   const [busy, setBusy] = useState(false);
@@ -252,7 +258,7 @@ export function NameRow({ label, visibility }: { label: ReactNode; visibility: R
       setDone(true);
       window.setTimeout(() => setDone(false), 2200);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kaydedilemedi.');
+      setError(e instanceof Error ? e.message : ui.saveError);
     } finally {
       setBusy(false);
     }
@@ -281,13 +287,13 @@ export function NameRow({ label, visibility }: { label: ReactNode; visibility: R
         />
         {changed ? (
           <button type="button" className="ca-mini" disabled={busy} onClick={() => void save()}>
-            {busy ? <Loader2 size={14} className="is-spin" aria-hidden /> : <Check size={14} aria-hidden />} Kaydet
+            {busy ? <Loader2 size={14} className="is-spin" aria-hidden /> : <Check size={14} aria-hidden />} {ui.save}
           </button>
         ) : null}
       </div>
       {done ? (
         <p className="ca-ok" role="status">
-          <Check size={15} aria-hidden /> İsim güncellendi
+          <Check size={15} aria-hidden /> {ui.nameUpdated}
         </p>
       ) : null}
       {error ? (

@@ -890,6 +890,7 @@ function PublicMenuPageInner({
               stories={
                 displayStories && displayStories.length > 0 ? (
                   <MobileStoriesStrip
+                    lang={lang}
                     stories={displayStories}
                     sahne
                     seenScope={String(menu.restaurant.id)}

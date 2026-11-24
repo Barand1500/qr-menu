@@ -192,22 +192,6 @@
 .pd .pd-top.is-solid .pd-top__actions > .menu-share-trigger:hover {
   background: color-mix(in srgb, var(--pd-text) 10%, transparent) !important;
 }
-.cc-location-share {
-  display: flex;
-  justify-content: flex-end;
-}
-.cc-location-share > .menu-share-trigger {
-  min-height: 36px;
-  border-radius: 20px;
-  padding: 7px 11px !important;
-  background: transparent !important;
-  border-color: var(--cc-ui-line, #f6eee41f) !important;
-  color: var(--cc-ui-muted, #a99b8d);
-  font-size: 11px;
-}
-.cc-location-share > .menu-share-trigger:hover {
-  color: var(--cc-accent, #ff6b2c);
-}
 @keyframes menu-share-in {
   from {
     opacity: 0;

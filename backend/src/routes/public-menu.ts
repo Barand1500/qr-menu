@@ -83,7 +83,7 @@ import { isMaintenanceEnabled } from '../lib/maintenance.js';
 import { addRunnerScore, getRunnerScores } from '../lib/maintenance-scores.js';
 import { ABOUT_PAGE_KEY, parseAboutPage } from '../lib/about-page.js';
 import { REVIEWS_KEY, parseReviews } from '../lib/reviews-config.js';
-import { loadDict, translateAbout, translateCampaignName, translateContact, translateOptionGroups } from '../lib/translatable.js';
+import { loadDict, translateStoryName, translateAbout, translateCampaignName, translateContact, translateOptionGroups } from '../lib/translatable.js';
 import { buildPublicReviews } from '../lib/reviews-public.js';
 import { CONTACT_CARD_KEY, contactCardHasContent, parseContactCard } from '../lib/contact-card.js';
 import {
@@ -762,7 +762,7 @@ router.get('/:slug', async (req, res) => {
     .filter((s) => !hiddenProductIds || !hiddenProductIds.has(s.productId!))
     .map((s) => ({
       id: s.id,
-      name: s.name,
+      name: translateStoryName(s.id, s.name, dict, activeLang),
       imageUrl: s.imageUrl,
       productId: s.productId!,
       groupId: s.product!.groupId,

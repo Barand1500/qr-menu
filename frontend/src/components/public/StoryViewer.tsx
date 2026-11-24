@@ -1,3 +1,4 @@
+import { storyUi } from '@/lib/storyUi';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +12,7 @@ import { storySeenKey } from '@/lib/storyHistory';
 import './sahne/sahne-entertainment.css';
 
 interface StoryViewerProps {
+  lang?: string;
   stories: MenuStory[];
   initialIndex: number;
   onClose: () => void;
@@ -24,7 +26,9 @@ export default function StoryViewer({
   onClose,
   onViewed,
   sahne = false,
+  lang = 'tr',
 }: StoryViewerProps) {
+  const ui = storyUi(lang);
   const navigate = useNavigate();
   const [index, setIndex] = useState(() =>
     Math.max(0, Math.min(initialIndex, stories.length - 1)),
@@ -162,7 +166,7 @@ export default function StoryViewer({
             {sahne ? (
               <div className="sh-story-viewer__heading">
                 <small>
-                  SOFRADAN HİKÂYELER · {index + 1}/{stories.length}
+                  {ui.heading} · {index + 1}/{stories.length}
                 </small>
                 <strong>{story.name}</strong>
               </div>
@@ -177,7 +181,7 @@ export default function StoryViewer({
               type="button"
               className="sh-story-viewer__pause"
               onClick={() => setUserPaused((v) => !v)}
-              aria-label={userPaused ? 'Devam et' : 'Duraklat'}
+              aria-label={userPaused ? ui.resume : ui.pause}
               aria-pressed={userPaused}
             >
               {userPaused ? <Play size={19} /> : <Pause size={19} />}
@@ -187,7 +191,7 @@ export default function StoryViewer({
             type="button"
             className="story-viewer__close"
             onClick={onClose}
-            aria-label="Kapat"
+            aria-label={ui.close}
           >
             <X size={24} />
           </button>
@@ -252,7 +256,7 @@ export default function StoryViewer({
           />
           {failed === key && (
             <p className="sh-story-viewer__error">
-              Görsel yüklenemedi. Diğer hikâyeye geçebilirsin.
+              {ui.unavailable}
             </p>
           )}
           <div className="story-viewer__gradient" />
@@ -265,7 +269,7 @@ export default function StoryViewer({
           {sahne ? (
             <>
               <span>
-                <small>MENÜDE KEŞFET</small>
+                <small>{ui.discover}</small>
                 <strong>{story.productName || story.name}</strong>
               </span>
               <ArrowRight size={22} />
@@ -273,7 +277,7 @@ export default function StoryViewer({
           ) : (
             <>
               <ChevronUp className="w-5 h-5 rotate-90 shrink-0" />
-              <span>{story.productName || 'Ürüne git'}</span>
+              <span>{story.productName || ui.product}</span>
             </>
           )}
         </button>
@@ -283,18 +287,18 @@ export default function StoryViewer({
               type="button"
               onClick={previous}
               disabled={index === 0}
-              aria-label="Önceki hikâye"
+              aria-label={ui.previous}
             >
               <ArrowLeft size={20} />
             </button>
-            <span>{paused ? 'Duraklatıldı' : 'Basılı tut · anı yakala'}</span>
+            <span>{paused ? ui.paused : ui.hold}</span>
             <button
               type="button"
               onClick={next}
               aria-label={
                 index === stories.length - 1
-                  ? 'Hikâyeleri kapat'
-                  : 'Sonraki hikâye'
+                  ? ui.closeStories
+                  : ui.next
               }
             >
               <ArrowRight size={20} />
@@ -302,7 +306,7 @@ export default function StoryViewer({
           </div>
         ) : (
           <div className="story-viewer__hint">
-            Sol/sağ: geç · Orta: ürüne git · Basılı tut: duraklat
+            {ui.hint}
           </div>
         )}
       </section>

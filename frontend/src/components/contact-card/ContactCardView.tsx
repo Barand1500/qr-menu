@@ -1,4 +1,3 @@
-import MenuShareButton from '@/components/public/share/MenuShareButton';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement, type PointerEvent as ReactPointerEvent } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Check, Mail, MapPin, MessageCircle, Phone, RotateCw, Share2, Download } from 'lucide-react';
@@ -330,19 +329,6 @@ export default function ContactCardView({ card, restaurant, lang = 'tr', layout,
                 ))}
               </div>
             ) : null}
-            {mapUrl && (
-              <div className="cc-location-share">
-                <MenuShareButton
-                  url={mapUrl}
-                  title={`${restaurant.name} · ${lang.startsWith('tr') ? 'Konum' : 'Location'}`}
-                  lang={lang}
-                  label={
-                    lang.startsWith('tr') ? 'Konumu paylaş' : 'Share location'
-                  }
-                  showLabel
-                />
-              </div>
-            )}
             <div className="cc-share">
               <button type="button" onClick={() => void save()} disabled={busy !== ''}>
                 {status === 'save' ? <Check size={18} /> : <Download size={18} />}

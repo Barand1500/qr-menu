@@ -9,7 +9,7 @@ import { I18N_DICT_KEY, dictText, parseDict, reviewKey, type Dict } from './i18n
 export { reviewKey };
 import { getProductField } from './i18n-json.js';
 
-export type DictCategory = 'about' | 'contact' | 'reviews' | 'options' | 'campaigns';
+export type DictCategory = 'about' | 'contact' | 'reviews' | 'options' | 'campaigns' | 'stories';
 
 export type DictSource = {
   key: string;
@@ -24,6 +24,12 @@ export const aboutKey = (field: 'headline' | 'body' | `highlight:${number}`) => 
 export const contactKey = (field: 'tagline' | 'managerTitle' | 'hours' | 'address') => `contact:${field}`;
 export const optionGroupKey = (productId: number, groupId: string) => `option:${productId}:${groupId}`;
 export const optionKey = (productId: number, groupId: string, optionId: string) => `option:${productId}:${groupId}:${optionId}`;
+export const storyNameKey = (id: number) => `story:${id}:name`;
+
+export function translateStoryName(id: number, name: string, dict: Dict, lang: string): string {
+  return dictText(dict, storyNameKey(id), lang, name.trim());
+}
+
 export const campaignKey = (slug: string) => `campaign:${slug}`;
 
 export async function loadDict(restaurantId: number): Promise<Dict> {
@@ -132,6 +138,15 @@ export async function collectDictSources(restaurantId: number): Promise<DictSour
         add({ key: optionKey(p.id, g.id, o.id), category: 'options', label: `${name} · ${g.name}`, fieldLabel: FIELD.option, sourceText: o.name });
       }
     }
+  }
+
+  // Story captions are names, not the optional banner title1/title2 fields.
+  const stories = await prisma.showcaseImage.findMany({
+    where: { restaurantId, isDeleted: false, displayType: 'story' },
+    orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+  });
+  for (const story of stories) {
+    add({ key: storyNameKey(story.id), category: 'stories', label: story.name, fieldLabel: 'Hikâye adı', sourceText: story.name });
   }
 
   const campaigns = await prisma.campaign.findMany({ where: { restaurantId }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] });

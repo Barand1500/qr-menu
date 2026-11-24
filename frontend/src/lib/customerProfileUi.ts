@@ -1,6 +1,66 @@
 /** Müşteri profil / filtre banner metinleri */
 
 export type CustomerProfileUi = {
+  hello: string;
+  myCode: string;
+  preferences: string;
+  myInfo: string;
+  perks: string;
+  visible: string;
+  hidden: string;
+  restaurantSees: string;
+  accountSections: string;
+  personalFilter: string;
+  filterMenu: string;
+  emptyLiked: string;
+  emptyDisliked: string;
+  add: string;
+  remove: string;
+  qrError: string;
+  generating: string;
+  noCode: string;
+  tellWaiter: string;
+  refreshCountdown: string;
+  refresh: string;
+  points: string;
+  thisRestaurant: string;
+  guest: string;
+  restaurant: string;
+  privacyHint: string;
+  phone: string;
+  email: string;
+  optional: string;
+  contactHint: string;
+  pointsAvailable: string;
+  discount: string;
+  noneYet: string;
+  balance: string;
+  noDebt: string;
+  otherPoints: string;
+  searchRestaurant: string;
+  noResults: string;
+  noOtherPoints: string;
+  saved: string;
+  unsaved: string;
+  saveError: string;
+  change: string;
+  phoneUpdated: string;
+  emailUpdated: string;
+  nameUpdated: string;
+  newPhone: string;
+  newEmail: string;
+  cancel: string;
+  sendCode: string;
+  resend: string;
+  seconds: string;
+  sendError: string;
+  verifyError: string;
+  otpLabel: string;
+  digit: string;
+  codeSms: string;
+  codeEmail: string;
+  phoneViaEmail: string;
+  emailViaPhone: string;
   helloFiltered: (name: string) => string;
   helloFilterOff: (name: string) => string;
   closeFilter: string;
@@ -30,6 +90,67 @@ export type CustomerProfileUi = {
 };
 
 const EN: CustomerProfileUi = {
+  hello: 'Hello',
+  myCode: 'My code',
+  preferences: 'Preferences',
+  myInfo: 'My details',
+  perks: 'Benefits',
+  visible: 'Visible',
+  hidden: 'Hidden',
+  restaurantSees: 'visible to restaurants',
+  accountSections: 'Account sections',
+  personalFilter: 'Personal filter',
+  filterMenu: 'Filter the menu for me',
+  emptyLiked: 'No favourites yet',
+  emptyDisliked: 'Nothing added yet',
+  add: 'Add',
+  remove: 'remove',
+  qrError: 'Could not generate your code — try refreshing',
+  generating: 'Generating…',
+  noCode: 'No code',
+  tellWaiter: 'Tell your waiter or scan',
+  refreshCountdown: 'seconds until refresh',
+  refresh: 'Refresh',
+  points: 'points',
+  thisRestaurant: 'This restaurant',
+  guest: 'Guest',
+  restaurant: 'Restaurant',
+  privacyHint: 'Restaurants only see details you mark as “Visible”.',
+  phone: 'Phone',
+  email: 'Email',
+  optional: 'optional',
+  contactHint:
+    'Changing your phone or email requires a verification code. Changing your name does not.',
+  pointsAvailable: 'points available',
+  discount: 'Special discount',
+  noneYet: 'None yet',
+  balance: 'Balance',
+  noDebt: 'No outstanding balance',
+  otherPoints: 'Your points at other restaurants',
+  searchRestaurant: 'Search restaurants…',
+  noResults: 'No results',
+  noOtherPoints: 'No points at other restaurants yet',
+  saved: 'Saved',
+  unsaved: 'You have unsaved changes',
+  saveError: 'Could not save',
+  change: 'Change',
+  phoneUpdated: 'Phone updated',
+  emailUpdated: 'Email updated',
+  nameUpdated: 'Name updated',
+  newPhone: 'New phone: 5XX XXX XX XX',
+  newEmail: 'New email address',
+  cancel: 'Cancel',
+  sendCode: 'Send code',
+  resend: 'Resend',
+  seconds: 'sec',
+  sendError: 'Could not send the code.',
+  verifyError: 'Could not verify the code.',
+  otpLabel: '6-digit verification code',
+  digit: 'digit',
+  codeSms: 'was sent a 6-digit code by SMS.',
+  codeEmail: 'was sent a 6-digit code by email.',
+  phoneViaEmail: 'Your phone change is verified via your account email.',
+  emailViaPhone: 'Your email change is verified via your phone.',
   helloFiltered: (name) => `Hi ${name}, we filtered the menu for you.`,
   helloFilterOff: (name) => `Hi ${name} — personal filter is off.`,
   closeFilter: 'Turn filter off',
@@ -59,6 +180,67 @@ const EN: CustomerProfileUi = {
 };
 
 const TR: CustomerProfileUi = {
+  hello: 'Merhaba',
+  myCode: 'Kodum',
+  preferences: 'Tercihler',
+  myInfo: 'Bilgilerim',
+  perks: 'Avantajlar',
+  visible: 'Görünür',
+  hidden: 'Gizli',
+  restaurantSees: 'restoran görür',
+  accountSections: 'Hesap bölümleri',
+  personalFilter: 'Kişisel filtre',
+  filterMenu: 'Menüyü bana göre filtrele',
+  emptyLiked: 'Henüz eklemedin',
+  emptyDisliked: 'Henüz bir şey yok',
+  add: 'Ekle',
+  remove: 'kaldır',
+  qrError: 'Kişisel kod üretilemedi — yenile’ye bas',
+  generating: 'Üretiliyor…',
+  noCode: 'Kod yok',
+  tellWaiter: 'Garsona söyle veya okut',
+  refreshCountdown: 'sn sonra yenilenir',
+  refresh: 'Yenile',
+  points: 'puan',
+  thisRestaurant: 'Bu restoran',
+  guest: 'Misafir',
+  restaurant: 'Restoran',
+  privacyHint: 'Restoranlar yalnızca “Görünür” bıraktığın bilgileri görür.',
+  phone: 'Telefon',
+  email: 'E-posta',
+  optional: 'opsiyonel',
+  contactHint:
+    'Telefon veya e-posta değişince yeni değere bir doğrulama kodu gönderilir. İsim değişikliği kod istemez.',
+  pointsAvailable: 'puanın var',
+  discount: 'Özel indirim',
+  noneYet: 'Şimdilik yok',
+  balance: 'Borç / bakiye',
+  noDebt: 'Borcun yok',
+  otherPoints: 'Diğer restoranlardaki puanların',
+  searchRestaurant: 'Restoran ara…',
+  noResults: 'Sonuç yok',
+  noOtherPoints: 'Başka restoranda puanın yok',
+  saved: 'Kaydedildi',
+  unsaved: 'Kaydedilmemiş değişiklikler var',
+  saveError: 'Kaydedilemedi',
+  change: 'Değiştir',
+  phoneUpdated: 'Telefon güncellendi',
+  emailUpdated: 'E-posta güncellendi',
+  nameUpdated: 'İsim güncellendi',
+  newPhone: 'Yeni telefon: 5XX XXX XX XX',
+  newEmail: 'Yeni e-posta adresi',
+  cancel: 'Vazgeç',
+  sendCode: 'Kod gönder',
+  resend: 'Tekrar gönder',
+  seconds: 'sn',
+  sendError: 'Kod gönderilemedi.',
+  verifyError: 'Doğrulanamadı.',
+  otpLabel: '6 haneli doğrulama kodu',
+  digit: 'hane',
+  codeSms: 'numarasına SMS ile 6 haneli kod gönderdik.',
+  codeEmail: 'adresine e-posta ile 6 haneli kod gönderdik.',
+  phoneViaEmail: 'Telefon değişikliği hesabındaki e-postayla doğrulanıyor.',
+  emailViaPhone: 'E-posta değişikliği telefonunla doğrulanıyor.',
   helloFiltered: (name) => `Merhaba ${name}, sizin için menüyü filtreledik.`,
   helloFilterOff: (name) => `Merhaba ${name} — kişisel filtre kapalı.`,
   closeFilter: 'Filtreyi kapat',
@@ -92,7 +274,8 @@ const MAP: Record<string, CustomerProfileUi> = {
   en: EN,
   de: {
     ...EN,
-    helloFiltered: (name) => `Hallo ${name}, wir haben das Menü für Sie gefiltert.`,
+    helloFiltered: (name) =>
+      `Hallo ${name}, wir haben das Menü für Sie gefiltert.`,
     helloFilterOff: (name) => `Hallo ${name} — persönlicher Filter ist aus.`,
     closeFilter: 'Filter aus',
     openFilter: 'Filter an',
@@ -102,7 +285,8 @@ const MAP: Record<string, CustomerProfileUi> = {
     dislikedFoods: 'Nicht mag ich',
     likedHint: 'Name oder Kategorie (z. B. Pizza)',
     dislikedHint: 'Groß/Klein egal; wird ausgeblendet wenn der Name passt',
-    personalFilterHint: 'Bei Aktivierung gelten Allergien, Alkohol und Abneigungen',
+    personalFilterHint:
+      'Bei Aktivierung gelten Allergien, Alkohol und Abneigungen',
     allergies: 'Allergien',
     diet: 'Diät / Vorlieben',
     save: 'Speichern',
@@ -110,7 +294,8 @@ const MAP: Record<string, CustomerProfileUi> = {
   },
   ru: {
     ...EN,
-    helloFiltered: (name) => `Здравствуйте, ${name}, мы отфильтровали меню для вас.`,
+    helloFiltered: (name) =>
+      `Здравствуйте, ${name}, мы отфильтровали меню для вас.`,
     helloFilterOff: (name) => `Здравствуйте, ${name} — личный фильтр выключен.`,
     closeFilter: 'Выключить фильтр',
     openFilter: 'Включить фильтр',
@@ -125,7 +310,8 @@ const MAP: Record<string, CustomerProfileUi> = {
   },
   fr: {
     ...EN,
-    helloFiltered: (name) => `Bonjour ${name}, nous avons filtré le menu pour vous.`,
+    helloFiltered: (name) =>
+      `Bonjour ${name}, nous avons filtré le menu pour vous.`,
     helloFilterOff: (name) => `Bonjour ${name} — filtre personnel désactivé.`,
     closeFilter: 'Désactiver le filtre',
     openFilter: 'Activer le filtre',
@@ -141,7 +327,8 @@ const MAP: Record<string, CustomerProfileUi> = {
   es: {
     ...EN,
     helloFiltered: (name) => `Hola ${name}, filtramos el menú para ti.`,
-    helloFilterOff: (name) => `Hola ${name} — el filtro personal está desactivado.`,
+    helloFilterOff: (name) =>
+      `Hola ${name} — el filtro personal está desactivado.`,
     closeFilter: 'Desactivar filtro',
     openFilter: 'Activar filtro',
     profile: 'Perfil',
@@ -200,7 +387,8 @@ const MAP: Record<string, CustomerProfileUi> = {
   },
   nl: {
     ...EN,
-    helloFiltered: (name) => `Hallo ${name}, we hebben het menu voor je gefilterd.`,
+    helloFiltered: (name) =>
+      `Hallo ${name}, we hebben het menu voor je gefilterd.`,
     helloFilterOff: (name) => `Hallo ${name} — persoonlijk filter staat uit.`,
     closeFilter: 'Filter uit',
     openFilter: 'Filter aan',

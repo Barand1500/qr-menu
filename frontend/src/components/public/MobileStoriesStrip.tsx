@@ -1,3 +1,4 @@
+import { storyUi } from '@/lib/storyUi';
 import { useCallback, useEffect, useState } from 'react';
 import StoryViewer from './StoryViewer';
 import { imageUrl } from '@/lib/api';
@@ -15,6 +16,7 @@ export interface MenuStory {
 }
 
 interface MobileStoriesStripProps {
+  lang?: string;
   stories: MenuStory[];
   sahne?: boolean;
   seenScope?: string;
@@ -24,7 +26,9 @@ export default function MobileStoriesStrip({
   stories,
   sahne = false,
   seenScope = 'menu',
+  lang = 'tr',
 }: MobileStoriesStripProps) {
+  const ui = storyUi(lang);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const storageKey = `menu-stories-seen:v1:${seenScope}`;
   const [seen, setSeen] = useState(() => readSeenStories(storageKey));
@@ -64,7 +68,7 @@ export default function MobileStoriesStrip({
               type="button"
               onClick={() => setViewerIndex(index)}
               className={`public-stories__item${seen.includes(storySeenKey(story)) ? ' is-viewed' : ''}`}
-              aria-label={`${story.name}${seen.includes(storySeenKey(story)) ? ' · İzlendi' : ''}`}
+              aria-label={`${story.name}${seen.includes(storySeenKey(story)) ? ` · ${ui.seen}` : ''}`}
             >
               <span className="public-stories__ring">
                 <img
@@ -82,6 +86,7 @@ export default function MobileStoriesStrip({
 
       {viewerIndex !== null && (
         <StoryViewer
+          lang={lang}
           stories={stories}
           initialIndex={viewerIndex}
           onClose={close}

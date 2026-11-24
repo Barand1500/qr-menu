@@ -13,7 +13,7 @@ const stubPrisma = {
     b.onLoad({ filter: /.*/, namespace: 'stub' }, () => ({ contents: 'export const prisma = globalThis.__db;', loader: 'js' }));
   },
 };
-for (const [name, entry] of [['cleanup', 'language-cleanup.ts'], ['trans', 'translatable.ts']]) {
+for (const [name, entry] of [['cleanup', 'language-cleanup.ts'], ['trans', 'translatable.ts'], ['dict', 'i18n-dict.ts']]) {
   await build({ entryPoints: [path.join(root, 'backend/src/lib', entry)], outfile: path.join(out, name + '.mjs'), bundle: true, platform: 'node', format: 'esm', plugins: [stubPrisma] });
 }
 
@@ -31,7 +31,13 @@ const db = {
     { id: 10, restaurantId: 1, i18n: { tr: { name: 'Pide', allergens: 'Gluten' }, ru: { name: 'Пиде', description: 'вкусно', allergens: 'Глютен' } },
       optionGroups: [{ id: 'g1', name: 'Boy', type: 'single', options: [{ id: 'o1', name: 'Büyük', price: 5, isActive: true }, { id: 'o2', name: 'Gizli', price: 0, isActive: false }] }] },
   ]),
-  showcaseImage: table([{ id: 20, restaurantId: 1, isDeleted: false, i18n: { tr: { title1: 'Hafta sonu' }, ru: { title1: 'Выходные' } } }]),
+  showcaseImage: table([
+    { id: 20, restaurantId: 1, isDeleted: false, displayType: 'banner', name: 'Vitrin', i18n: { tr: { title1: 'Hafta sonu' }, ru: { title1: 'Выходные' } } },
+    { id: 21, restaurantId: 1, isDeleted: false, displayType: 'story', name: 'Kahvaltı', i18n: {} },
+    { id: 22, restaurantId: 1, isDeleted: true, displayType: 'story', name: 'Silinmiş' },
+    { id: 23, restaurantId: 2, isDeleted: false, displayType: 'story', name: 'Başka işletme' },
+    { id: 24, restaurantId: 1, isDeleted: false, displayType: 'story', name: '   ' },
+  ]),
   restaurant: table([{ id: 1, welcomeI18n: { tr: { message: 'Hoş geldiniz' }, ru: { message: 'Добро' } } }]),
   campaign: { findMany: async () => [{ slug: 'yaz', name: 'Yaz kampanyası' }] },
   setting: {
@@ -60,6 +66,19 @@ assert.ok(keys.some((k) => k.startsWith('review:')));
 assert.ok(keys.includes('option:10:g1') && keys.includes('option:10:g1:o1'));
 assert.ok(!keys.includes('option:10:g1:o2'), 'pasif seçenek çevrilmez');
 assert.ok(keys.includes('campaign:yaz'));
+
+// Story names (including rows with no i18n titles) use the same source/hash in bulk translation and menu.
+const storySources = sources.filter((s) => s.category === 'stories');
+assert.deepEqual(storySources.map((s) => s.key), ['story:21:name']);
+assert.equal(storySources[0].sourceText, 'Kahvaltı');
+const d = await import(pathToFileURL(path.join(out, 'dict.mjs')).href);
+const translated = d.dictSet({}, trans.storyNameKey(21), 'en', 'Breakfast', 'Kahvaltı');
+assert.equal(trans.translateStoryName(21, 'Kahvaltı', translated, 'en'), 'Breakfast');
+assert.equal(trans.translateStoryName(21, 'Kahvaltı', translated, 'tr'), 'Kahvaltı');
+assert.equal(trans.translateStoryName(21, ' Kahvaltı ', translated, 'en'), 'Breakfast');
+assert.equal(trans.translateStoryName(21, 'Kahvaltı', translated, 'de'), 'Kahvaltı');
+assert.equal(trans.translateStoryName(21, 'Yeni kahvaltı', translated, 'en'), 'Yeni kahvaltı');
+assert.equal(trans.translateStoryName(21, 'Kahvaltı', d.dictStripLang(translated, 'en'), 'en'), 'Kahvaltı');
 
 // ── dil silme: ru her yerden gider (tüm restoranlar), diğer diller ve Türkçe kalır
 const result = await purgeLanguage('ru');

@@ -93,6 +93,7 @@ function Switch({
 
 function TasteEditor({
   tone,
+  ui,
   label,
   hint,
   placeholder,
@@ -100,6 +101,7 @@ function TasteEditor({
   onChange,
 }: {
   tone: 'like' | 'dislike';
+  ui: ReturnType<typeof customerProfileUi>;
   label: string;
   hint: string;
   placeholder: string;
@@ -132,7 +134,7 @@ function TasteEditor({
               key={v}
               type="button"
               className="ca-chip is-on"
-              aria-label={`${v} — kaldır`}
+              aria-label={`${v} — ${ui.remove}`}
               onClick={() => onChange(values.filter((x) => x !== v))}
             >
               {v}
@@ -141,7 +143,7 @@ function TasteEditor({
           ))}
         </div>
       ) : (
-        <p className="ca-taste__empty">{tone === 'like' ? 'Henüz eklemedin' : 'Henüz bir şey yok'}</p>
+        <p className="ca-taste__empty">{tone === 'like' ? ui.emptyLiked : ui.emptyDisliked}</p>
       )}
       <div className="ca-add">
         <input
@@ -157,7 +159,7 @@ function TasteEditor({
           }}
         />
         <button type="button" onClick={add} disabled={!draft.trim()}>
-          Ekle
+          {ui.add}
         </button>
       </div>
     </div>
@@ -208,7 +210,7 @@ export default function MenuCustomerProfileModal({
       setQr({ payload: c.qrPayload, code: c.code, expiresAt: c.expiresAt });
     } catch {
       setQr({ payload: '', code: '', expiresAt: 0 });
-      setError('Kişisel kod üretilemedi — yenile’ye bas');
+      setError(ui.qrError);
     } finally {
       setQrBusy(false);
     }
@@ -269,19 +271,19 @@ export default function MenuCustomerProfileModal({
         id,
         points: Number(pts) || 0,
         current: restaurantId != null && String(restaurantId) === id,
-        label: restaurantId != null && String(restaurantId) === id && restaurantName ? restaurantName : `Restoran #${id}`,
+        label: restaurantId != null && String(restaurantId) === id && restaurantName ? restaurantName : `${ui.restaurant} #${id}`,
       }))
       .filter((r) => !r.current)
       .filter((r) => !q || r.label.toLocaleLowerCase('tr-TR').includes(q))
       .sort((a, b) => b.points - a.points);
-  }, [customer?.pointsByRestaurant, restaurantId, restaurantName, pointsQuery]);
+  }, [customer?.pointsByRestaurant, restaurantId, restaurantName, pointsQuery, ui.restaurant]);
   const otherCount = Object.keys(customer?.pointsByRestaurant || {}).filter(
     (id) => String(restaurantId) !== id,
   ).length;
 
   if (!open || !customer) return null;
 
-  const firstName = customer.fullName.trim().split(/\s+/)[0] || 'Misafir';
+  const firstName = customer.fullName.trim().split(/\s+/)[0] || ui.guest;
   const hue = avatarHue(customer.id);
   const dirty =
     alcohol !== (customer.drinksAlcohol === true ? 'yes' : customer.drinksAlcohol === false ? 'no' : 'unset') ||
@@ -320,17 +322,17 @@ export default function MenuCustomerProfileModal({
       setSaved(true);
       window.setTimeout(() => setSaved(false), 1800);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kaydedilemedi');
+      setError(err instanceof Error ? err.message : ui.saveError);
     } finally {
       setBusy(false);
     }
   }
 
   const tabs: { id: Tab; label: string; icon: typeof QrCode }[] = [
-    { id: 'code', label: 'Kodum', icon: QrCode },
-    { id: 'prefs', label: 'Tercihler', icon: SlidersHorizontal },
-    { id: 'info', label: 'Bilgilerim', icon: IdCard },
-    { id: 'perks', label: 'Avantajlar', icon: Gift },
+    { id: 'code', label: ui.myCode, icon: QrCode },
+    { id: 'prefs', label: ui.preferences, icon: SlidersHorizontal },
+    { id: 'info', label: ui.myInfo, icon: IdCard },
+    { id: 'perks', label: ui.perks, icon: Gift },
   ];
 
   const visibility = (key: keyof CustomerPrivacyFlags, label: string) => (
@@ -338,11 +340,11 @@ export default function MenuCustomerProfileModal({
       type="button"
       className={`ca-eye${privacy[key] ? ' is-on' : ''}`}
       aria-pressed={privacy[key]}
-      aria-label={`${label}: ${privacy[key] ? 'restoran görür' : 'gizli'}`}
+      aria-label={`${label}: ${privacy[key] ? ui.restaurantSees : ui.hidden}`}
       onClick={() => patchPrivacy({ [key]: !privacy[key] })}
     >
       {privacy[key] ? <Eye size={16} aria-hidden /> : <EyeOff size={16} aria-hidden />}
-      <span>{privacy[key] ? 'Görünür' : 'Gizli'}</span>
+      <span>{privacy[key] ? ui.visible : ui.hidden}</span>
     </button>
   );
 
@@ -366,7 +368,7 @@ export default function MenuCustomerProfileModal({
               {firstName.charAt(0).toLocaleUpperCase('tr')}
             </span>
             <div>
-              <p>Merhaba</p>
+              <p>{ui.hello}</p>
               <h2>{customer.fullName}</h2>
               {restaurantName ? <small>{restaurantName}</small> : null}
             </div>
@@ -377,22 +379,22 @@ export default function MenuCustomerProfileModal({
               {qr.payload ? (
                 <QRCodeSVG value={qr.payload} size={192} level="M" bgColor="#ffffff" fgColor="#0f172a" />
               ) : (
-                <span className="ca-ticket__empty">{qrBusy ? 'Üretiliyor…' : 'Kod yok'}</span>
+                <span className="ca-ticket__empty">{qrBusy ? ui.generating : ui.noCode}</span>
               )}
             </div>
             <div className="ca-ticket__cut" aria-hidden />
             <div className="ca-ticket__code" aria-live="polite">
-              <small>Garsona söyle veya okut</small>
+              <small>{ui.tellWaiter}</small>
               <strong>{qr.code ? formatCustomerCodeDisplay(qr.code) : '--- ---'}</strong>
             </div>
             <div className="ca-ticket__foot">
               <span className="ca-timer" style={{ ['--p' as string]: ratio }} aria-hidden>
                 <b>{secondsLeft}</b>
               </span>
-              <span className="ca-ticket__hint">sn sonra yenilenir</span>
+              <span className="ca-ticket__hint">{ui.refreshCountdown}</span>
               <button type="button" disabled={qrBusy} onClick={() => void rotateQr()}>
                 <RefreshCw size={14} aria-hidden className={qrBusy ? 'is-spin' : ''} />
-                Yenile
+                {ui.refresh}
               </button>
             </div>
           </div>
@@ -400,10 +402,10 @@ export default function MenuCustomerProfileModal({
           <button type="button" className="ca-points" onClick={() => setTab('perks')}>
             <Star size={18} aria-hidden />
             <span>
-              <strong>{points} puan</strong>
-              <small>{restaurantName || 'Bu restoranda'}</small>
+              <strong>{points} {ui.points}</strong>
+              <small>{restaurantName || ui.thisRestaurant}</small>
             </span>
-            <em>Avantajlar</em>
+            <em>{ui.perks}</em>
           </button>
 
           <button
@@ -430,7 +432,7 @@ export default function MenuCustomerProfileModal({
             </button>
           </header>
 
-          <nav className="ca-tabs" aria-label="Hesap bölümleri">
+          <nav className="ca-tabs" aria-label={ui.accountSections}>
             {tabs.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -458,10 +460,10 @@ export default function MenuCustomerProfileModal({
                     <SlidersHorizontal size={20} />
                   </span>
                   <div>
-                    <strong>Menüyü bana göre filtrele</strong>
+                    <strong>{ui.filterMenu}</strong>
                     <small>{ui.personalFilterHint}</small>
                   </div>
-                  <Switch on={filterEnabled} onChange={setFilterEnabled} label="Kişisel filtre" />
+                  <Switch on={filterEnabled} onChange={setFilterEnabled} label={ui.personalFilter} />
                 </div>
 
                 <fieldset className="ca-group">
@@ -522,6 +524,7 @@ export default function MenuCustomerProfileModal({
 
                 <div className="ca-tastes">
                   <TasteEditor
+                    ui={ui}
                     tone="like"
                     label={ui.likedFoods}
                     hint={ui.likedHint}
@@ -530,6 +533,7 @@ export default function MenuCustomerProfileModal({
                     onChange={setLiked}
                   />
                   <TasteEditor
+                    ui={ui}
                     tone="dislike"
                     label={ui.dislikedFoods}
                     hint={ui.dislikedHint}
@@ -543,27 +547,29 @@ export default function MenuCustomerProfileModal({
 
             {tab === 'info' ? (
               <div className="ca-sec" key="info">
-                <p className="ca-lead">Restoranlar yalnızca “Görünür” bıraktığın bilgileri görür.</p>
-                <NameRow label={ui.fullName} visibility={visibility('showName', ui.fullName)} />
+                <p className="ca-lead">{ui.privacyHint}</p>
+                <NameRow lang={lang} label={ui.fullName} visibility={visibility('showName', ui.fullName)} />
                 <ContactRow
+                  lang={lang}
                   field="phone"
-                  label="Telefon"
+                  label={ui.phone}
                   current={customer.phone}
                   restaurantId={restaurantId}
-                  visibility={visibility('showPhone', 'Telefon')}
+                  visibility={visibility('showPhone', ui.phone)}
                 />
                 <ContactRow
+                  lang={lang}
                   field="email"
                   label={
                     <>
-                      E-posta <small>(opsiyonel)</small>
+                      {ui.email} <small>({ui.optional})</small>
                     </>
                   }
                   current={customer.email}
                   restaurantId={restaurantId}
-                  visibility={visibility('showEmail', 'E-posta')}
+                  visibility={visibility('showEmail', ui.email)}
                 />
-                <p className="ca-lead ca-lead--small">Telefon veya e-posta değişince yeni değere bir doğrulama kodu gönderilir. İsim değişikliği kod istemez.</p>
+                <p className="ca-lead ca-lead--small">{ui.contactHint}</p>
               </div>
             ) : null}
 
@@ -572,33 +578,33 @@ export default function MenuCustomerProfileModal({
                 <div className="ca-hero-points">
                   <Star size={22} aria-hidden />
                   <div>
-                    <small>{restaurantName || 'Bu restoran'}</small>
+                    <small>{restaurantName || ui.thisRestaurant}</small>
                     <strong>{points}</strong>
-                    <span>puanın var</span>
+                    <span>{ui.pointsAvailable}</span>
                   </div>
                 </div>
 
                 <div className="ca-pair">
                   <div>
                     <Gift size={18} aria-hidden />
-                    <strong>Özel indirim</strong>
-                    <small>Şimdilik yok</small>
+                    <strong>{ui.discount}</strong>
+                    <small>{ui.noneYet}</small>
                   </div>
                   <div>
                     <Wallet size={18} aria-hidden />
-                    <strong>Borç / bakiye</strong>
-                    <small>Borcun yok</small>
+                    <strong>{ui.balance}</strong>
+                    <small>{ui.noDebt}</small>
                   </div>
                 </div>
 
                 <div className="ca-group">
-                    <p className="ca-legend">Diğer restoranlardaki puanların</p>
+                    <p className="ca-legend">{ui.otherPoints}</p>
                     <label className="ca-search">
                         <Search size={16} aria-hidden />
                         <input
                           value={pointsQuery}
                           onChange={(e) => setPointsQuery(e.target.value)}
-                          placeholder="Restoran ara…"
+                          placeholder={ui.searchRestaurant}
                         />
                       </label>
                     <ul className="ca-list">
@@ -608,7 +614,7 @@ export default function MenuCustomerProfileModal({
                           <b>{r.points}</b>
                         </li>
                       ))}
-                      {!perRestaurant.length ? <li className="is-empty">{otherCount ? 'Sonuç yok' : 'Başka restoranda puanın yok'}</li> : null}
+                      {!perRestaurant.length ? <li className="is-empty">{otherCount ? ui.noResults : ui.noOtherPoints}</li> : null}
                     </ul>
                   </div>
               </div>
@@ -621,10 +627,10 @@ export default function MenuCustomerProfileModal({
               <p className="ca-save__msg is-err">{error}</p>
             ) : saved ? (
               <p className="ca-save__msg is-ok">
-                <Check size={16} aria-hidden /> Kaydedildi
+                <Check size={16} aria-hidden /> {ui.saved}
               </p>
             ) : (
-              <p className="ca-save__msg">Kaydedilmemiş değişiklikler var</p>
+              <p className="ca-save__msg">{ui.unsaved}</p>
             )}
             <button type="button" disabled={busy || !dirty} onClick={() => void save()}>
               {busy ? ui.saving : ui.save}
