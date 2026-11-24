@@ -107,3 +107,25 @@ assert.equal(g.tableKeyValid('bahce', ''), null);
 assert.equal(g.tableKeyValid('a b', '5'), null);
 assert.equal(g.tableKeyValid('', 'a-1').n, 'a-1');
 console.log('PASS: garson panosu (gidiyorum, uğradım, hallettim, pano, akış)');
+
+// Code handoffs survive reloads, stay with the first visitor and never leak into another session.
+const pendingSession = { ...sessions[1], id: 77, accessCode: '012345', codeExpiresAt: now + 60 * MIN, codeVerifiedAt: null };
+let handoff = g.assignCodeHandoff(g.emptyStore(), 77, ali, { g: 'bahce', n: '2' }, now);
+assert.equal(handoff.ok, true);
+assert.equal(g.assignCodeHandoff(handoff.store, 77, ayse, { g: 'bahce', n: '2' }, now + MIN).ok, false);
+assert.equal(g.assignCodeHandoff(handoff.store, 77, ali, { g: 'bahce', n: '2' }, now + MIN).store.events.length, 1);
+let restored = g.parseStore(g.serializeStore(handoff.store, now + MIN));
+const boardFor = (session, who = 1, enabled = true, store = restored) => g.buildBoard({ groups, sessions: [session], requests: [], store, me: { id: who, name: 'Garson' }, now, codeGateEnabled: enabled });
+assert.equal(boardFor(pendingSession).tables.find(t => t.code === '2').session.code, '012345');
+assert.equal(boardFor(pendingSession, 2).tables.find(t => t.code === '2').session.code, null);
+assert.equal(boardFor(pendingSession, 2).tables.find(t => t.code === '2').session.handoff.name, 'Ali');
+assert.equal(boardFor(pendingSession, 1, false).tables.find(t => t.code === '2').session.code, null);
+assert.equal(boardFor({ ...pendingSession, id: 78 }).tables.find(t => t.code === '2').session.handoff, null);
+assert.equal(boardFor({ ...pendingSession, group: 'teras' }).tables.find(t => t.group === 'teras').session.code, null);
+assert.equal(boardFor({ ...pendingSession, codeStatus: 'expired' }).tables.find(t => t.code === '2').session.code, null);
+const verifiedBoard = boardFor({ ...pendingSession, codeStatus: 'verified', codeVerifiedAt: now });
+assert.equal(verifiedBoard.tables.find(t => t.code === '2').session.code, null);
+assert.ok(verifiedBoard.feed.some(f => f.kind === 'verified'));
+for (let i = 0; i < 500; i++) restored = g.logEvent(restored, { k: 'visit', g: 'bahce', n: '3', u: 2, w: 'Ayşe' }, now + i);
+assert.equal(g.parseStore(g.serializeStore(restored, now + MIN)).handoffs['77'].u, 1, 'unrelated activity cannot evict a pending handoff');
+console.log('PASS: masa kodu teslim sahipliği, oturum izolasyonu ve PIN gizliliği');

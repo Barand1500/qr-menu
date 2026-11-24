@@ -23,9 +23,10 @@ export type GarsonEvent = {
   r?: number;
 };
 export type Claim = { u: number; w: string; t: number };
-export type GarsonStore = { events: GarsonEvent[]; claims: Record<string, Claim> };
+export type CodeHandoff = { u: number; w: string; t: number; g: string; n: string };
+export type GarsonStore = { events: GarsonEvent[]; claims: Record<string, Claim>; handoffs: Record<string, CodeHandoff> };
 
-export const emptyStore = (): GarsonStore => ({ events: [], claims: {} });
+export const emptyStore = (): GarsonStore => ({ events: [], claims: {}, handoffs: {} });
 
 const isObject = (v: unknown): v is Record<string, unknown> => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 const KINDS: GarsonEventKind[] = ['visit', 'claim', 'unclaim', 'done'];
@@ -60,7 +61,15 @@ export function parseStore(raw?: string | null): GarsonStore {
         }
       }
     }
-    return { events, claims };
+    const handoffs: Record<string, CodeHandoff> = {};
+    if (isObject(json.handoffs)) {
+      for (const [id, h] of Object.entries(json.handoffs)) {
+        if (/^\d+$/.test(id) && isObject(h) && typeof h.u === 'number' && typeof h.t === 'number' && typeof h.g === 'string' && typeof h.n === 'string') {
+          handoffs[id] = { u: h.u, w: typeof h.w === 'string' ? h.w : '', t: h.t, g: h.g, n: h.n };
+        }
+      }
+    }
+    return { events, claims, handoffs };
   } catch {
     return emptyStore();
   }
@@ -71,7 +80,10 @@ export function serializeStore(store: GarsonStore, now: number): string {
   const events = store.events.filter((e) => now - e.t < EVENT_TTL_MS).slice(-MAX_EVENTS);
   const claims: Record<string, Claim> = {};
   for (const [id, c] of Object.entries(store.claims)) if (now - c.t < CLAIM_TTL_MS) claims[id] = c;
-  return JSON.stringify({ events, claims });
+  const handoffs = Object.fromEntries(Object.entries(store.handoffs || {})
+    .filter(([, h]) => now - h.t < EVENT_TTL_MS)
+    .sort((a, b) => b[1].t - a[1].t).slice(0, MAX_EVENTS));
+  return JSON.stringify({ events, claims, handoffs });
 }
 
 let counter = 0;
@@ -131,6 +143,20 @@ export function lastVisit(store: GarsonStore, group: string, table: string): { w
   return best ? { w: best.w, t: best.t, u: best.u } : null;
 }
 
+/** Handoff belongs to a session, not a reusable table number. First visitor keeps it. */
+export function codeHandoff(store: GarsonStore, sessionId: number, group: string, table: string): CodeHandoff | null {
+  const h = store.handoffs?.[String(sessionId)];
+  return h && h.g === group && h.n === table ? h : null;
+}
+
+export function assignCodeHandoff(store: GarsonStore, sessionId: number, who: Who, where: Where, now: number) {
+  const by = codeHandoff(store, sessionId, where.g, where.n);
+  if (by) return { store, ok: by.u === who.u, by };
+  const handoff = { ...who, ...where, t: now };
+  const next = logEvent({ ...store, handoffs: { ...store.handoffs, [String(sessionId)]: handoff } }, { k: 'visit', ...where, ...who }, now);
+  return { store: next, ok: true, by: handoff };
+}
+
 // ───── pano ─────
 
 export type GroupIn = {
@@ -148,6 +174,9 @@ export type SessionIn = {
   openedBy: string; // qr | admin
   guestName: string | null;
   codeStatus: 'empty' | 'pending' | 'verified' | 'expired';
+  accessCode?: string | null;
+  codeExpiresAt?: number | null;
+  codeVerifiedAt?: number | null;
   total: number;
   itemCount: number;
   waiterName: string | null;
@@ -181,6 +210,11 @@ export type BoardTable = {
   state: 'call' | 'busy' | 'reserved' | 'empty';
   calls: BoardCall[];
   session: {
+    id: number;
+    code: string | null;
+    codeExpiresAt: number | null;
+    codeVerifiedAt: number | null;
+    handoff: { mine: boolean; name: string; at: number } | null;
     openedAt: number;
     scanned: boolean;
     codeStatus: SessionIn['codeStatus'];
@@ -196,7 +230,7 @@ export type BoardTable = {
 export type FeedItem = {
   id: string;
   at: number;
-  kind: 'waiter' | 'bill' | 'hookah' | 'valet' | 'order' | 'scan' | 'visit' | 'claim' | 'done' | 'unclaim';
+  kind: 'waiter' | 'bill' | 'hookah' | 'valet' | 'order' | 'scan' | 'visit' | 'claim' | 'done' | 'unclaim' | 'verified';
   table: string;
   text: string;
   who: string;
@@ -238,8 +272,9 @@ export function buildBoard(input: {
   store: GarsonStore;
   me: { id: number; name: string };
   now: number;
+  codeGateEnabled?: boolean;
 }) {
-  const { groups, sessions, requests, store, me, now } = input;
+  const { groups, sessions, requests, store, me, now, codeGateEnabled = false } = input;
   const keyOf = (g: string, n: string) => `${g}::${n}`;
   const sessionBy = new Map(sessions.map((s) => [keyOf(s.group, s.table), s]));
 
@@ -270,6 +305,7 @@ export function buildBoard(input: {
     known.add(k);
     const s = sessionBy.get(k) || null;
     const calls = callsBy.get(k) || [];
+    const handoff = s && codeGateEnabled ? codeHandoff(store, s.id, group, code) : null;
     const lv = lastVisit(store, group, code);
     const occupied = Boolean(s);
     let visit: BoardTable['visit'] = 'none';
@@ -289,6 +325,11 @@ export function buildBoard(input: {
       calls,
       session: s
         ? {
+            id: s.id,
+            code: codeGateEnabled && handoff?.u === me.id && s.codeStatus === 'pending' ? s.accessCode || null : null,
+            codeExpiresAt: s.codeExpiresAt ?? null,
+            codeVerifiedAt: s.codeVerifiedAt ?? null,
+            handoff: handoff ? { mine: handoff.u === me.id, name: handoff.w, at: handoff.t } : null,
             openedAt: s.openedAt,
             scanned: s.openedBy === 'qr',
             codeStatus: s.codeStatus,
@@ -321,6 +362,9 @@ export function buildBoard(input: {
     feed.push({ id: `r${r.id}`, at: r.at, kind: type, table: label(r.group, r.table), text: CALL_LABEL[type], who: '' });
   }
   for (const s of sessions) {
+    if (s.codeVerifiedAt && now - s.codeVerifiedAt <= FEED_WINDOW_MS) {
+      feed.push({ id: `v${s.id}:${s.codeVerifiedAt}`, at: s.codeVerifiedAt, kind: 'verified', table: label(s.group, s.table), text: 'Masa kodu doğrulandı', who: '' });
+    }
     if (s.openedBy === 'qr' && now - s.openedAt <= FEED_WINDOW_MS) {
       feed.push({ id: `s${s.id}`, at: s.openedAt, kind: 'scan', table: label(s.group, s.table), text: 'QR kodu okuttu', who: '' });
     }

@@ -37,6 +37,7 @@ const CALL_ICON: Record<CallType, typeof Bell> = { waiter: Bell, bill: Receipt, 
 const FEED_ICON: Record<FeedKind, typeof Bell> = {
   ...CALL_ICON,
   scan: QrCode,
+  verified: Check,
   visit: Footprints,
   claim: Footprints,
   unclaim: X,
@@ -71,7 +72,7 @@ export default function GarsonBoardPage() {
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [flash, setFlash] = useState<string | null>(null);
   const [toast, setToast] = useState('');
-  const [banner, setBanner] = useState<{ text: string; id: number } | null>(null);
+  const [banner, setBanner] = useState<{ text: string; id: number; tableKey?: string } | null>(null);
   // Kapalı bölümler (cihazda hatırlanır) ve yeni çağrı gelen, yanıp sönen masalar
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     try {
@@ -81,14 +82,32 @@ export default function GarsonBoardPage() {
     }
   });
   const [alerts, setAlerts] = useState<Set<string>>(new Set());
+  const codeWatch = useRef(new Map<number, { pending: boolean; mine: boolean }>());
+  const loadSequence = useRef(0);
   const known = useRef<Set<number> | null>(null);
   const skew = useRef(0);
   const soundRef = useRef(sound);
   soundRef.current = sound;
 
   const load = useCallback(async () => {
+    const sequence = ++loadSequence.current;
     try {
       const data = await api<Board>('/api/admin/garson/board');
+      if (sequence !== loadSequence.current) return;
+      const verified = data.codeGateEnabled ? data.tables.filter((t) => {
+        const session = t.session;
+        const previous = session && codeWatch.current.get(session.id);
+        return session?.codeStatus === 'verified' && session.handoff?.mine && previous?.mine && previous.pending;
+      }) : [];
+      codeWatch.current = new Map(data.tables.filter((t) => t.session).map((t) => [t.session!.id, {
+        pending: t.session!.codeStatus !== 'verified', mine: Boolean(t.session!.handoff?.mine),
+      }]));
+      if (verified.length) {
+        const table = verified[0];
+        setBanner({ text: verified.length > 1 ? `${verified.length} masada müşteri doğrulandı` : `${table.label} · masa kodu doğrulandı`, id: -table.session!.id, tableKey: table.key });
+        if (soundRef.current) playAdminNotificationSound();
+        try { navigator.vibrate?.([100, 60, 100]); } catch { /* desteklenmiyor */ }
+      }
       skew.current = data.now - Date.now();
       setBoard(data);
       setOffline(false);
@@ -98,7 +117,7 @@ export default function GarsonBoardPage() {
         const fresh = data.tables.flatMap((t) => t.calls.filter((c) => !known.current!.has(c.id) && !c.claim?.mine).map((c) => ({ c, t })));
         if (fresh.length) {
           const { c, t } = fresh[0];
-          setBanner({ text: `${t.label} · ${c.label}`, id: c.id });
+          if (!verified.length) setBanner({ text: `${t.label} · ${c.label}`, id: c.id });
           // Kapalı bölümde çağrı gelirse bölüm kendiliğinden açılır, masa yanıp söner
           const keys = new Set(fresh.map((f) => f.t.key));
           const groupNames = new Set(fresh.map((f) => f.t.groupName));
@@ -129,6 +148,7 @@ export default function GarsonBoardPage() {
       }
       known.current = ids;
     } catch {
+      if (sequence !== loadSequence.current) return;
       setOffline(true);
     }
   }, []);
@@ -232,7 +252,7 @@ export default function GarsonBoardPage() {
   const visit = (t: BoardTable) =>
     run(`v${t.key}`, async () => {
       await post('visit', { group: t.group, table: t.code });
-    }, `${t.label}: uğradın, kaydedildi`, t.key);
+    }, board?.codeGateEnabled && t.session && t.session.codeStatus !== 'verified' ? undefined : `${t.label}: uğradın, kaydedildi`, t.key);
 
   const counts = board?.counts;
   const visibleTables = tables.filter((t) =>
@@ -387,7 +407,7 @@ export default function GarsonBoardPage() {
                           : t.state === 'reserved'
                             ? 'Rezerve'
                             : 'Uğranmadı';
-                  const more = t.session ? (t.session.total > 0 ? money(t.session.total) : t.session.scanned ? 'QR okutuldu' : 'Oturumda') : '';
+                  const more = t.session ? (t.session.total > 0 ? money(t.session.total) : t.session.codeStatus === 'verified' ? 'Müşteri onaylandı' : t.session.handoff ? 'Kod bekleniyor' : t.session.scanned ? 'QR okutuldu' : 'Oturumda') : '';
                   return (
                     <button
                       key={t.key}
@@ -403,8 +423,8 @@ export default function GarsonBoardPage() {
                             <BellRing size={12} aria-hidden="true" />
                           </i>
                         ) : t.session?.scanned ? (
-                          <i className="gb-disc__badge">
-                            <QrCode size={12} aria-hidden="true" />
+                          <i className={`gb-disc__badge${t.session.codeStatus === 'verified' ? ' is-verified' : ''}`} title={t.session.codeStatus === 'verified' ? 'Müşteri onaylandı' : 'QR okutuldu'}>
+                            {t.session.codeStatus === 'verified' ? <Check size={12} aria-hidden="true" /> : <QrCode size={12} aria-hidden="true" />}
                           </i>
                         ) : null}
                         {t.visit === 'due' || t.visit === 'late' ? <i className="gb-disc__dot" aria-hidden="true" /> : null}
@@ -429,7 +449,7 @@ export default function GarsonBoardPage() {
           <QrCode size={18} aria-hidden="true" />
           <span>
             {s.session?.scanned
-              ? `QR okutuldu · ${clock(s.session.openedAt)}${s.session.codeStatus === 'verified' ? ' · kod girildi ✓' : s.session.codeStatus === 'pending' ? ' · kod bekleniyor' : ''}`
+              ? `QR okutuldu · ${clock(s.session.openedAt)}${s.session.codeStatus === 'verified' ? ' · kod onaylandı ✓' : s.session.codeStatus === 'pending' ? ' · kod bekleniyor' : ''}`
               : s.session
                 ? `Masa açıldı · ${clock(s.session.openedAt)}`
                 : 'Masa boş'}
@@ -467,11 +487,32 @@ export default function GarsonBoardPage() {
         </li>
       </ul>
       {s.calls.length ? <CallBody t={s} now={now} busy={busy.has(`c${s.key}`)} onClaim={claim} onUnclaim={unclaim} onResolve={resolve} /> : null}
-      <button type="button" className={`gb-btn gb-btn--big${flash === s.key ? ' is-done' : ''}`} disabled={busy.has(`v${s.key}`)} onClick={() => void visit(s)}>
-        {flash === s.key ? <Check size={22} aria-hidden="true" /> : <Footprints size={22} aria-hidden="true" />}
-        {flash === s.key ? 'Kaydedildi' : 'Masaya uğradım'}
-      </button>
-      <p className="gb-sheet__hint">Basınca “kim, ne zaman uğradı” kaydedilir; diğer garsonlar da görür.</p>
+      {board?.codeGateEnabled && s.session?.codeStatus === 'verified' ? (
+        <p className="gb-code-verified" role="status"><Check size={18} aria-hidden="true" /> Müşteri onaylandı{s.session.codeVerifiedAt ? ' · ' + clock(s.session.codeVerifiedAt) : ''}</p>
+      ) : null}
+      {board?.codeGateEnabled && s.session && s.session.codeStatus !== 'verified' && s.session.handoff ? (
+        <div className="gb-access-code" aria-label="Masa erişim kodu">
+          <div className="gb-access-code__head"><QrCode size={20} aria-hidden="true" /><span>{s.session.handoff.mine ? 'Müşterinin masa kodu' : 'Kod teslim ediliyor'}</span></div>
+          {s.session.handoff.mine ? (
+            s.session.code ? <>
+              <strong className="gb-access-code__digits" aria-label={'Kod: ' + s.session.code.split('').join(' ')}>{s.session.code.slice(0, 3)}<span aria-hidden="true"> </span>{s.session.code.slice(3)}</strong>
+              <p>Lütfen bu kodu müşteriye iletin.</p>
+              <small>Müşteri kendi ekranına girdiğinde burada onayını göreceksiniz.</small>
+              <div className="gb-access-code__waiting" role="status"><Clock size={15} aria-hidden="true" /> Kodun girilmesi bekleniyor</div>
+            </> : <>
+              <p>Kodun süresi doldu.</p>
+              <small>Müşteriye iletmeden önce yeni bir kod alın.</small>
+              <button type="button" className="gb-btn gb-btn--big" disabled={busy.has('v' + s.key)} onClick={() => void visit(s)}>Kodu yenile</button>
+            </>
+          ) : <><p>{s.session.handoff.name} kodu müşteriye iletiyor.</p><small>Müşteri kodu girdiğinde bu alan kendiliğinden güncellenir.</small></>}
+        </div>
+      ) : <>
+        <button type="button" className={`gb-btn gb-btn--big${flash === s.key ? ' is-done' : ''}`} disabled={busy.has('v' + s.key)} onClick={() => void visit(s)}>
+          {flash === s.key ? <Check size={22} aria-hidden="true" /> : <Footprints size={22} aria-hidden="true" />}
+          {flash === s.key ? 'Kaydedildi' : 'Masaya uğradım'}
+        </button>
+        <p className="gb-sheet__hint">{board?.codeGateEnabled && s.session && s.session.codeStatus !== 'verified' ? 'Uğradığınızı işaretleyin; müşteriye vereceğiniz kod burada görünsün.' : 'Basınca “kim, ne zaman uğradı” kaydedilir; diğer garsonlar da görür.'}</p>
+      </>}
     </>
   );
 
@@ -481,16 +522,18 @@ export default function GarsonBoardPage() {
         <button
           type="button"
           key={banner.id}
-          className="gb-banner"
+          className={`gb-banner${banner.tableKey ? ' is-verified' : ''}`}
+          aria-live="polite"
           onClick={() => {
             setBanner(null);
-            setTab('calls');
-            if (wide) setSheetKey(null);
+            setTab(banner.tableKey ? 'tables' : 'calls');
+            if (banner.tableKey) setSheetKey(banner.tableKey);
+            else if (wide) setSheetKey(null);
           }}
         >
-          <BellRing size={20} aria-hidden="true" />
+          {banner.tableKey ? <Check size={20} aria-hidden="true" /> : <BellRing size={20} aria-hidden="true" />}
           <span>
-            <b>Yeni çağrı</b>
+            <b>{banner.tableKey ? 'Müşteri onaylandı' : 'Yeni çağrı'}</b>
             {banner.text}
           </span>
         </button>
@@ -698,7 +741,7 @@ export default function GarsonBoardPage() {
         ))}
       </nav>
 
-      {overlays}
+      {!sheet && overlays}
 
       {sheet ? (
         <AdminOverlay label={`${sheet.label} ayrıntısı`} className="gb-overlay" onClose={() => setSheetKey(null)}>
@@ -715,6 +758,7 @@ export default function GarsonBoardPage() {
             </header>
             <div className="gb-sheet__body">{detailBody(sheet)}</div>
           </div>
+          {overlays}
         </AdminOverlay>
       ) : null}
     </div>

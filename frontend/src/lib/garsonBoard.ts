@@ -21,6 +21,11 @@ export type BoardTable = {
   state: 'call' | 'busy' | 'reserved' | 'empty';
   calls: BoardCall[];
   session: {
+    id: number;
+    code: string | null;
+    codeExpiresAt: number | null;
+    codeVerifiedAt: number | null;
+    handoff: { mine: boolean; name: string; at: number } | null;
     openedAt: number;
     scanned: boolean;
     codeStatus: 'empty' | 'pending' | 'verified' | 'expired';
@@ -33,10 +38,11 @@ export type BoardTable = {
   visit: 'fresh' | 'due' | 'late' | 'none';
 };
 
-export type FeedKind = CallType | 'scan' | 'visit' | 'claim' | 'done' | 'unclaim';
+export type FeedKind = CallType | 'scan' | 'visit' | 'claim' | 'done' | 'unclaim' | 'verified';
 export type FeedItem = { id: string; at: number; kind: FeedKind; table: string; text: string; who: string };
 
 export type Board = {
+  codeGateEnabled: boolean;
   now: number;
   restaurant: string;
   me: { id: number; name: string };

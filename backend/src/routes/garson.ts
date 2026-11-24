@@ -3,14 +3,16 @@ import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId } from '../lib/auth.js';
 import {
   ACTIVE_STATUSES,
+  findActiveSession,
   ordersTotal,
   parseOrdersJson,
   parseSessionMeta,
   tableCode,
 } from '../lib/table-floor.js';
-import { resolveCodeGateStatus } from '../lib/table-session-code.js';
+import { codeExpiryDate, generateUniqueAccessCode, loadTableSessionCodeConfig, resolveCodeGateStatus } from '../lib/table-session-code.js';
 import {
   GARSON_KEY,
+  assignCodeHandoff,
   activeClaim,
   buildBoard,
   logEvent,
@@ -68,7 +70,7 @@ router.get('/board', async (req, res) => {
   if (restaurantId == null || !me) return res.status(401).json({ message: 'Yetkisiz' });
   const now = Date.now();
 
-  const [groupRows, sessionRows, requestRows, storeRow, restaurant] = await Promise.all([
+  const [groupRows, sessionRows, requestRows, storeRow, restaurant, codeConfig] = await Promise.all([
     prisma.qrTableGroup.findMany({ where: { restaurantId }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] }),
     prisma.tableFloorSession.findMany({ where: { restaurantId, status: { in: [...ACTIVE_STATUSES] } } }),
     prisma.tableServiceRequest.findMany({
@@ -78,6 +80,7 @@ router.get('/board', async (req, res) => {
     }),
     prisma.setting.findUnique({ where: { restaurantId_key: { restaurantId, key: GARSON_KEY } } }),
     prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { name: true } }),
+    loadTableSessionCodeConfig(restaurantId),
   ]);
 
   const groups: GroupIn[] = groupRows.map((g) => {
@@ -102,7 +105,10 @@ router.get('/board', async (req, res) => {
       openedAt: s.openedAt.getTime(),
       openedBy: s.openedBy,
       guestName: s.guestName,
-      codeStatus: resolveCodeGateStatus(s),
+      codeStatus: codeConfig.enabled ? resolveCodeGateStatus(s) : 'empty',
+      accessCode: s.accessCode,
+      codeExpiresAt: s.codeExpiresAt?.getTime() ?? null,
+      codeVerifiedAt: codeConfig.enabled ? s.codeVerifiedAt?.getTime() ?? null : null,
       total: ordersTotal(orders),
       itemCount: orders.reduce((n, o) => n + (Number(o.qty) || 0), 0),
       waiterName: parseSessionMeta(s.metaJson).waiterName || null,
@@ -120,23 +126,49 @@ router.get('/board', async (req, res) => {
     at: r.createdAt.getTime(),
   }));
 
-  const board = buildBoard({ groups, sessions, requests, store: parseStore(storeRow?.value), me, now });
-  res.json({ now, restaurant: restaurant?.name || '', me, hasTables: groups.length > 0, ...board });
+  const board = buildBoard({ groups, sessions, requests, store: parseStore(storeRow?.value), me, now, codeGateEnabled: codeConfig.enabled });
+  res.json({ now, codeGateEnabled: codeConfig.enabled, restaurant: restaurant?.name || '', me, hasTables: groups.length > 0, ...board });
 });
 
 /** "Masaya uğradım" */
 router.post('/visit', async (req, res) => {
-  const restaurantId = await getRestaurantId(req);
-  const me = await whoAmI(req);
-  if (restaurantId == null || !me) return res.status(401).json({ message: 'Yetkisiz' });
-  const at = tableKeyValid(req.body?.group, req.body?.table);
-  if (!at) return res.status(400).json({ message: 'Geçersiz masa' });
-  const now = Date.now();
-  await mutateStore(restaurantId, (store) => ({
-    store: logEvent(store, { k: 'visit', g: at.g, n: at.n, u: me.id, w: me.name }, now),
-    result: true,
-  }));
-  res.json({ ok: true, at: now, name: me.name });
+  try {
+    const restaurantId = await getRestaurantId(req);
+    const me = await whoAmI(req);
+    if (restaurantId == null || !me) return res.status(401).json({ message: 'Yetkisiz' });
+    const at = tableKeyValid(req.body?.group, req.body?.table);
+    if (!at) return res.status(400).json({ message: 'Geçersiz masa' });
+    const now = Date.now();
+    const [config, session] = await Promise.all([
+      loadTableSessionCodeConfig(restaurantId),
+      findActiveSession(restaurantId, at.n, at.g || null),
+    ]);
+    if (config.enabled && session && !session.codeVerifiedAt) {
+      const assigned = await mutateStore(restaurantId, (store) => {
+        const result = assignCodeHandoff(store, session.id, { u: me.id, w: me.name }, at, now);
+        return { store: result.store, result };
+      });
+      if (!assigned.ok) {
+        return res.status(409).json({ message: assigned.by.w + ' bu masaya kodu iletiyor.', code: 'CODE_ASSIGNED' });
+      }
+      // Keep a valid code stable. Compare-and-set avoids resetting a concurrent customer verification.
+      if (resolveCodeGateStatus(session) !== 'pending') {
+        const accessCode = await generateUniqueAccessCode(restaurantId);
+        await prisma.tableFloorSession.updateMany({
+          where: { id: session.id, restaurantId, status: { in: [...ACTIVE_STATUSES] }, accessCode: session.accessCode, codeVerifiedAt: null },
+          data: { accessCode, codeExpiresAt: codeExpiryDate(config.ttlMinutes) },
+        });
+      }
+    } else {
+      await mutateStore(restaurantId, (store) => ({
+        store: logEvent(store, { k: 'visit', g: at.g, n: at.n, u: me.id, w: me.name }, now),
+        result: true,
+      }));
+    }
+    res.json({ ok: true, at: now, name: me.name });
+  } catch {
+    res.status(500).json({ message: 'Ziyaret kaydedilemedi. Lütfen tekrar deneyin.' });
+  }
 });
 
 async function loadRequest(restaurantId: number, id: unknown) {
