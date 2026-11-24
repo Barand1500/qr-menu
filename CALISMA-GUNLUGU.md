@@ -870,3 +870,9 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Değişiklik: `GarsonBoardPage.tsx` ve `garson-board.css` yeniden yazıldı (veri/çağrı mantığı ve API aynı). Telefon: üstte radar durum kartı ("3 masa bekliyor" / "Her şey yolunda"), altta yüzen sekme çubuğu (Çağrılar/Masalar/Akış), yuvarlak masalar, alttan açılan ayrıntı sayfası. Web (≥1024px): sekmesiz üç bölmeli komuta merkezi — solda durum + süzgeç, ortada açılır-kapanır salon planı, sağda çağrılar + akış; masa seçince ayrıntı sağ panelde açılır (Escape/X ile kapanır). Açılır bölümler ve çağrıda otomatik açılma/yanıp sönme korundu.
 - Doğrulama: tsc, vite build, Chrome fixture 320/390 (telefon) ve 1024/1280 (web): çağrı al/hallettim, uğradım, bölüm kapatma ve otomatik açılma, Escape, yatay taşma yok, sayfa hatası yok.
 - Doğrulanmadı: gerçek cihaz, tablet (768) genişliği, gerçek veri.
+
+## 2026-11-24 — Paylaşım simgesi / mobil kategori başlığı
+- Git geçmişi ve son garson paneli günlüğü incelendi. Bu iş yalnızca müşteri paylaşım kontrolleriyle sınırlı tutuldu.
+- Ürün detayının birleşik üst çubuğunda paylaşımın kendine ait yuvarlak kenarlığı/zemini kaldırıldı; sepet ve servisle aynı şeffaf yüzey, boyut ve hover davranışı kullanılır. Klavye odak göstergesi korundu.
+- Mobil kategori/arama başlığına özel sınıf eklendi. Üst bilgi 10 px yapıldı; paylaşım, başlıkla aynı grid satırında dikey ortalanır. Uzun kategori adlarında da hizalama korunur. Ana menünün üst yazısı ve masaüstü kategori yerleşimi değiştirilmedi.
+- Doğrulama: frontend TypeScript/Vite build geçti (mevcut büyük paket uyarısı sürüyor). Chrome fixture 320/390/768 px kategori, uzun kategori ve çok görselli ürün detayı; 1440 px ürün detayı: başlık/paylaşım merkezleri, üst yazı ölçüsü, ürün düğmesinin kenarlıksız/şeffaf zemini, paylaşımı açma-Escape ile kapatma ve yatay taşma kontrol edildi. JS hatası yok; ekran görüntüleri incelendi. Fiziksel telefon/Zen denenmedi. Commit/push yapılmadı.

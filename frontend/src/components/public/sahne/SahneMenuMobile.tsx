@@ -268,7 +268,7 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
         ) : (
           <>
             <div
-              className="sh-mhead"
+              className="sh-mhead sh-mhead--category"
               key={m.searching ? 'search' : p.activeGroup}
             >
               <p className="sh-kicker">
