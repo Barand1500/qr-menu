@@ -928,3 +928,8 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Değişiklik: Backend: ayar `garson_visit_reminder_minutes` (yok=15, 0=kapalı, 5–180), `PUT /settings/menu-features` `garsonVisitMinutes`, pano `visitMinutes` ve `session.orders`; uğranmalı eşiği ayara bağlı (çok bekledi = 2×). Frontend: garson panelinde tür renkleri/simgeleri, "Masaya uğra" bildirimi (ses+titreşim, yeni seviyeye geçişte), ayrıntıda açılır "Sipariş geçmişi"; ayarlarda açma/kapama + 5–60 dk kaydırıcı; `receipt-printer.css` ters çevrildi; `pageBackdrop.ts` (html/body arka planı tema rengine eşitlenir, tema-rengi meta etiketi); `menu-share.css` mobil kategori başlığında paylaş düğmesi sağ üst; `SahneMore.tsx` 03 Yöneticiye yaz / 04 İletişim.
 - Doğrulama: tsc (front/back), vite build, `npm run test:garson` (yeni hatırlatma testleri), Chrome fixture: garson (390/1280) ve fiş yazıcısı (390/1280, ekran görüntüsüyle yazıcı altta/fiş yukarı doğrulandı).
 - Doğrulanmadı: menüde alt beyazlığın gerçek telefonda (adres çubuğu/overscroll) giderildiği; kategori paylaş düğmesinin yeni konumu ve Yöneticiye yaz numaralarının ekranda görünümü (Sahne teması tarayıcıda açılmadı); ayarlar sayfasındaki yeni kaydırıcı tarayıcıda denenmedi; hatırlatma bildirimi gerçek süreyle beklenmedi.
+
+## 2026-11-24 — Kategori paylaş düğmesi (masaüstü) kutunun sağ üst köşesine
+
+- Sorun: Masaüstü kategori başlığında paylaş düğmesi metin sütununun içinde kalıyordu. Düzeltme: `menu-share.css` düğmeyi başlık kartının (`.sh-ghead`) sağ üst köşesine sabitler (telefondaki başlıkta önceki turda sağ üste alınmıştı).
+- Doğrulama: vite build. Sahne teması tarayıcıda açılıp ekran görüntüsüyle bakılmadı.

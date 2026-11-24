@@ -152,14 +152,12 @@
   opacity: 0.5;
   cursor: wait;
 }
-.sh-ghead__copy:has(> .menu-share-trigger) {
-  position: relative;
-  padding-inline-end: 53px;
-}
+/* masaüstü: paylaş düğmesi kutunun (başlık kartının) sağ üst köşesinde */
 .sh-ghead__copy > .menu-share-trigger {
   position: absolute;
-  inset-inline-end: 0;
-  top: 5px;
+  top: clamp(14px, 1.6vw, 22px);
+  inset-inline-end: clamp(14px, 1.6vw, 22px);
+  z-index: 3;
 }
 .sh-mhead--category > .sh-kicker {
   font-size: 10px;
