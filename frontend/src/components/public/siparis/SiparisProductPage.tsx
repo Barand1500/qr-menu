@@ -2,7 +2,7 @@ import MenuShareButton from '../share/MenuShareButton';
 import { publicMenuShareUrl } from '@/lib/menuShare';
 import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, ArrowLeft, Check, Clock, Plus, UtensilsCrossed } from 'lucide-react';
+import { ArrowLeft, Check, Clock, Plus, UtensilsCrossed } from 'lucide-react';
 import { formatMoney, imageUrl } from '@/lib/api';
 import { menuProductPath } from '@/lib/menuPaths';
 import ProductImageGallery, { useProductGalleryIndex } from '@/components/public/ProductImageGallery';
@@ -11,6 +11,7 @@ import MenuColorModeToggle from '@/components/public/MenuColorModeToggle';
 import TableServiceButtons from '@/components/public/TableServiceButtons';
 import SiparisCartButton from '@/components/public/siparis/SiparisCartButton';
 import SiparisKcal from '@/components/public/siparis/SiparisKcal';
+import IngredientCard from '@/components/public/siparis/IngredientCard';
 import SiparisProductOptions from '@/components/public/siparis/SiparisProductOptions';
 import { useSiparisCart } from '@/hooks/useSiparisCart';
 import type { MenuColorMode } from '@/lib/menuColorMode';
@@ -245,24 +246,8 @@ export default function SiparisProductPage({
 
             {product.ingredients || product.allergens ? (
               <div className="pd-facts">
-                {product.ingredients ? (
-                  <section className="pd-fact">
-                    <h2>
-                      <UtensilsCrossed size={15} />
-                      {en ? 'Ingredients' : 'İçindekiler'}
-                    </h2>
-                    <p>{product.ingredients}</p>
-                  </section>
-                ) : null}
-                {product.allergens ? (
-                  <section className="pd-fact pd-fact--warn">
-                    <h2>
-                      <AlertTriangle size={15} />
-                      {en ? 'Allergens' : 'Alerjenler'}
-                    </h2>
-                    <p>{product.allergens}</p>
-                  </section>
-                ) : null}
+                {product.ingredients ? <IngredientCard text={product.ingredients} kind="ingredients" en={en} /> : null}
+                {product.allergens ? <IngredientCard text={product.allergens} kind="allergens" en={en} /> : null}
               </div>
             ) : null}
 
