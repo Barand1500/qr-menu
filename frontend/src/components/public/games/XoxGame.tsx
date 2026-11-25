@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { getMenuGameGuestId } from '@/lib/menuGames';
 import { gamesUi } from '@/lib/menuGamesUi';
-import { resolveTableContext } from '@/lib/tableContext';
+import { formatTableServiceLabel, resolveTableContext } from '@/lib/tableContext';
 
 type XoxMark = 'X' | 'O';
 type XoxCell = XoxMark | null;
@@ -136,7 +136,7 @@ export default function XoxGame({ slug, lang = 'tr' }: { slug: string; lang?: st
     <div className="menu-game-xox">
       <div className="menu-game-xox__bar">
         <span>
-          {ui.table} <strong>{table.masa}</strong>
+          {table.grup ? <strong>{formatTableServiceLabel(table.masa, table.grup)}</strong> : <>{ui.table} <strong>{table.masa}</strong></>}
           {room?.yourMark ? (
             <>
               {' '}

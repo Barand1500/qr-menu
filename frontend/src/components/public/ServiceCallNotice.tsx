@@ -15,6 +15,7 @@ import {
 } from "@/lib/serviceCallFeedback";
 import "./service-call-notice.css";
 import HookahIcon from './HookahIcon';
+import { formatTableServiceLabel, getTableContext } from '@/lib/tableContext';
 
 const VISIBLE_MS = 6500;
 const EXIT_MS = 320;
@@ -167,7 +168,9 @@ export default function ServiceCallNotice({
             {en ? "REQUEST RECEIVED" : "ÇAĞRIN ALINDI"}
             {notice.tableNumber && (
               <span className="service-notice__table">
-                {en ? "Table" : "Masa"} {notice.tableNumber}
+                {getTableContext().grup
+                  ? formatTableServiceLabel(notice.tableNumber, getTableContext().grup)
+                  : `${en ? "Table" : "Masa"} ${notice.tableNumber}`}
               </span>
             )}
           </div>

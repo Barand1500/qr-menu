@@ -974,3 +974,9 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Değişiklik: `GarsonVibrationEditor.tsx` + `admin-settings.css`: her servis kendi rengiyle (garson panelindeki renkler) bir kart; desenler çizimle gösterilir (dolu çubuk = titreme, boşluk = ara; Kapalı = üstü çizili simge); her kartın sağında "Dene" — telefonda cihazı titretir, masaüstünde çubuklar desen süresince sırayla yanar; telefonda Dene tam genişlik düğme, desen kutuları 5 eşit sütun.
 - Doğrulama: tsc, vite build, Chrome fixture 1000 (açık/koyu) ve 390: taşma ve hata yok, ekran görüntüleriyle bakıldı. Seçim artık titretmez, yalnızca "Dene" titretir.
 - Doğrulanmadı: gerçek telefonda titreşim ve ayarlar sayfasının tamamı içinde görünümü (bileşen ayrı sayfada denendi), kaydetme akışı.
+
+## 2026-11-25 — "Çağrın alındı" bildirimi ve XOX oyununda grup adlı masa etiketi
+
+- Sorun: Müşterinin servis çağrısı bildiriminde sağ üstte "Masa 1" yazıyordu (grup adı yoktu).
+- Değişiklik: `ServiceCallNotice.tsx` grup varsa `formatTableServiceLabel` ile "Bahçe 1" yazar, yoksa "Masa 1"; `XoxGame.tsx` aynı etiketi kullanır. Önceki turdaki `tableContext.ts` grup adı altyapısı kullanıldı.
+- Doğrulama: tsc, vite build. Tarayıcıda gerçek QR ile denenmedi. Fiş yazıcısındaki "Masa" satırı grup varsa "Masa: Bahçe 5" gösterir (değiştirilmedi).
