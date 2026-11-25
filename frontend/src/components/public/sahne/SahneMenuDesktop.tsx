@@ -25,6 +25,7 @@ import {
   useReveal,
 } from './shared';
 import SahnePeek, { type PeekItem } from './SahnePeek';
+import KaitenBelt from './KaitenBelt';
 import './sahne.css';
 import './sahne-menu.css';
 
@@ -148,6 +149,8 @@ export default function SahneMenuDesktop(p: SofraMenuProps) {
       nav.scrollTop = active.offsetTop + active.offsetHeight - nav.clientHeight + 12;
   }, [p.activeGroup, p.groups, p.lang, copy.picksLabel]);
 
+  // Ayarlardan açıksa ve kategori 4–24 ürünlüyse ürünler dönen bantta gösterilir
+  const beltOn = p.config.beltView === true && !m.home && !m.searching && p.products.length >= 4 && p.products.length <= 24;
   const grid = (rows: SofraProduct[]) => (
     <div className="sh-grid">
       {rows.map((dish, i) => (
@@ -276,7 +279,7 @@ export default function SahneMenuDesktop(p: SofraMenuProps) {
               !m.home && <MenuState t={t} />
             ) : (
               <>
-                {p.products.length > 0 && grid(p.products)}
+                {p.products.length > 0 && (beltOn ? <KaitenBelt dishes={p.products} t={t} lang={p.lang} onOpen={m.open} onAdd={p.onAdd} /> : grid(p.products))}
                 {p.subgroups?.map(
                   (g) =>
                     g.products.length > 0 && (

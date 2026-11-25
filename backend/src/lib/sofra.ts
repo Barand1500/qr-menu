@@ -6,5 +6,10 @@ export async function loadSofraConfig(restaurantId: number, legacyWelcome?: unkn
   });
   const config = withLegacyWelcome(parseSofraConfig(row?.value), legacyWelcome);
   if (!config.managerContact.enabled) config.managerContact = { enabled: false, email: '', phone: '' };
+  // Bant görünümü Ayarlar'daki ayrı anahtardan gelir (tema kaydı bunu ezmesin)
+  const belt = await prisma.setting.findUnique({
+    where: { restaurantId_key: { restaurantId, key: 'category_belt_view' } },
+  });
+  config.beltView = belt?.value === 'true';
   return config;
 }

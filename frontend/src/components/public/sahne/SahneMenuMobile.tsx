@@ -15,6 +15,7 @@ import {
 } from './menuShared';
 import { Photo, cssVars, isRtl, pad2, useReveal, useSahneNav } from './shared';
 import MenuShareButton from '../share/MenuShareButton';
+import KaitenBelt from './KaitenBelt';
 import { publicMenuShareUrl } from '@/lib/menuShare';
 import { menuGroupPath } from '@/lib/menuPaths';
 import './sahne.css';
@@ -120,6 +121,7 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
     g.name.toLocaleLowerCase(p.lang).includes(needle),
   );
 
+  const beltOn = p.config.beltView === true && !m.home && !m.searching && p.products.length >= 4 && p.products.length <= 24;
   const grid = (rows: SofraProduct[], lead: boolean) => (
     <div className="sh-grid">
       {rows.map((dish, i) => (
@@ -307,7 +309,7 @@ export default function SahneMenuMobile(p: SofraMenuProps) {
                 <MenuState t={t} />
               ) : (
                 <>
-                  {p.products.length > 0 && grid(p.products, !m.searching)}
+                  {p.products.length > 0 && (beltOn ? <KaitenBelt dishes={p.products} t={t} lang={p.lang} onOpen={m.open} onAdd={p.onAdd} /> : grid(p.products, !m.searching))}
                   {p.subgroups?.map(
                     (g) =>
                       g.products.length > 0 && (

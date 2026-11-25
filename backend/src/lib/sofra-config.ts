@@ -23,6 +23,8 @@ export interface SofraConfig {
   cartEnabled: boolean;
   /** Ürün detayında varyant/seçenekler gösterilsin mi */
   variantsEnabled: boolean;
+  /** Kategori sayfasında ürünler dönen sushi bandında gösterilsin mi (Ayarlar'dan; varsayılan kapalı) */
+  beltView: boolean;
   texts: Record<string, Partial<SofraCopy>>;
 }
 export const SOFRA_DEFAULTS: SofraConfig = {
@@ -33,6 +35,7 @@ export const SOFRA_DEFAULTS: SofraConfig = {
   menuImage: '/sofra/breakfast.webp',
   cartEnabled: true,
   variantsEnabled: true,
+  beltView: false,
   texts: {
     tr: {
       welcomeTitle: 'İyi yemek.\nGüzel sohbet.',
@@ -103,6 +106,7 @@ export function normalizeSofraConfig(raw: unknown): SofraConfig {
     // Eski kayıtlarda alan yok: açık sayılır. Yalnızca açıkça false ise kapanır.
     cartEnabled: source.cartEnabled !== false,
     variantsEnabled: source.variantsEnabled !== false,
+    beltView: source.beltView === true,
     texts,
   };
 }

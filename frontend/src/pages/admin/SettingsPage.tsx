@@ -248,7 +248,8 @@ export default function SettingsPage() {
     [tableCodeTtl, setTableCodeTtl] = useState(120),
     [visitMinutes, setVisitMinutes] = useState(15), // 0 = kapalı
     [vibration, setVibration] = useState<VibrationMap>(DEFAULT_VIBRATION),
-    [plateView, setPlateView] = useState(false);
+    [plateView, setPlateView] = useState(false),
+    [beltView, setBeltView] = useState(false);
   const [geoLock, setGeoLock] = useState<GeoLockConfig>({
     enabled: false,
     lat: 36.8121,
@@ -347,6 +348,7 @@ export default function SettingsPage() {
         );
         setVibration(parseVibration(d.settings.garson_vibration));
         setPlateView(d.settings.product_plate_view === 'true');
+        setBeltView(d.settings.category_belt_view === 'true');
         const visit = d.settings.garson_visit_reminder_minutes;
         setVisitMinutes(
           visit == null || visit === '' || !Number.isFinite(Number(visit))
@@ -485,6 +487,7 @@ export default function SettingsPage() {
           garsonVisitMinutes: visitMinutes,
           garsonVibration: vibration,
           productPlateView: plateView,
+          categoryBeltView: beltView,
         });
         await put('geo-lock', geoLock);
       }
@@ -1177,8 +1180,8 @@ export default function SettingsPage() {
                   />
                 </Section>
                 <Section
-                  title="Ürün sayfası"
-                  description="Müşterinin açtığı ürün detay sayfasının görünümü."
+                  title="Ürün ve kategori görünümü"
+                  description="Müşterinin gördüğü kategori ve ürün sayfalarının görünümü."
                 >
                   <Toggle
                     label="Tabak görünümü"
@@ -1187,6 +1190,16 @@ export default function SettingsPage() {
                     checked={plateView}
                     onChange={() => {
                       setPlateView((v) => !v);
+                      mark('menu');
+                    }}
+                  />
+                  <Toggle
+                    label="Sushi bandı (kategori sayfası)"
+                    description="Açıkken kategoriye girince ürünler dönen bir bant üzerindeki tabaklar olarak görünür: üstüne gelince bant durur, çevirebilir, tabağa dokununca ayrıntısı büyür. Telefonda yatay kayan bant olur. Kapalıyken ürünler her zamanki kartlarla listelenir. 4–24 ürünlü kategorilerde çalışır."
+                    icon={Disc3}
+                    checked={beltView}
+                    onChange={() => {
+                      setBeltView((v) => !v);
                       mark('menu');
                     }}
                   />
