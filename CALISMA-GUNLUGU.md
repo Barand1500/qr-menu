@@ -994,3 +994,10 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Değişiklik: `lib/ingredientChips.ts` (serbest metni etiketlere böler: temel malzemeler / "isteğe göre eklenebilir" ayrılır; liste gibi değilse null → eski düz yazı kartı), `IngredientCard.tsx` (başlık + sayaç, tanıdık malzemelere küçük simge, ekstralar kesik çizgili "+" etiket, alerjenler amber etiket, 12'den çoksa "+N tane daha"/"Daha az göster", etiketler sırayla belirir), `siparis-product.css` (webde tam genişlik), `SiparisProductPage.tsx` kullanır. Yalnızca Sipariş temasının ürün sayfası; diğer temalar (Standart, Alive, Luxury vb.) değişmedi.
 - Doğrulama: tsc, vite build, parser testi (kullanıcının örnek metni dahil), Chrome fixture 390/1100 koyu tema: ekran görüntüsüyle bakıldı, taşma yok.
 - Doğrulanmadı: gerçek ürün sayfasında (görsel/sepet çubuğuyla birlikte) görünüm; farklı yazılmış içerik metinlerinde ayrıştırma (heuristik; hatalı bölünürse düz yazıya düşer ama bazı cümleler yanlış etiketlenebilir); İngilizce/diğer dillerde ayrıştırma sınırlı.
+
+## 2026-11-25 — Sahne menüsü (web): kategori ön izlemesine parçalı açılış animasyonu
+
+- Amaç: Kategori üstüne gelince çıkan resim tek kart olarak beliriyordu; GSAP'li clipPath örneğinden esinlenilen parçalı açılış istendi.
+- Değişiklik: `SahnePeek.tsx` (yeni) + `SahneMenuDesktop.tsx` + `sahne-menu.css`. Resim, SVG maske parçalarının (kareler, yatay hap çubuklar, mozaik, daireler, dikey çubuklar; kategori sırasına göre döner) ortadan büyümesiyle parça parça belirir, bir kez nefes alır; imleç ayrılınca parçalar kenarlardan kapanır. Hızlı geçişte önceki animasyon kesilir. Resim önce yüklenir, sonra maske açılır. Hareket azaltmada animasyonsuz gösterim. GSAP projede zaten vardı (yeni paket yok). Kart 190 → 230 px.
+- Doğrulama: tsc, vite build, Chrome fixture (sahte resimle): beş maske, ara kare ve son hâl ekran görüntüsüyle, ayrılınca gizlenme, hızlı geçiş sonrası takılma yok, konsol hatası yok.
+- Doğrulanmadı: gerçek Sahne menüsünde gerçek kategori fotoğraflarıyla ve gerçek fare hareketiyle; Safari/Firefox'ta `clip-path` + SVG dönüşümü.

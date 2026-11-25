@@ -24,6 +24,7 @@ import {
   useCardPointer,
   useReveal,
 } from './shared';
+import SahnePeek, { type PeekItem } from './SahnePeek';
 import './sahne.css';
 import './sahne-menu.css';
 
@@ -112,7 +113,7 @@ export default function SahneMenuDesktop(p: SofraMenuProps) {
   const root = useRef<HTMLDivElement>(null);
   const rail = useRef<HTMLElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
-  const [peek, setPeek] = useState<string | null>(null);
+  const [peek, setPeek] = useState<PeekItem | null>(null);
   const editing = Boolean(p.onTextEdit);
   const brand = p.config.brandName || p.restaurant.name;
 
@@ -196,16 +197,14 @@ export default function SahneMenuDesktop(p: SofraMenuProps) {
                 key={g.id}
                 aria-current={!m.searching && p.activeGroup === g.id ? 'page' : undefined}
                 onClick={() => p.onGroupChange?.(g.id)}
-                onPointerEnter={() => setPeek(g.imageUrl || null)}
+                onPointerEnter={() => setPeek(g.imageUrl ? { src: g.imageUrl, i } : null)}
               >
                 <span className="sh-rail__n">{pad2(i + 1)}</span>
                 <span className="sh-rail__name">{g.name}</span>
               </button>
             ))}
           </nav>
-          <div className={`sh-peek${peek ? ' is-on' : ''}`} aria-hidden="true">
-            {peek && <Photo key={peek} src={peek} eager />}
-          </div>
+          <SahnePeek item={peek} />
         </aside>
         <main className="sh-stage">
           {p.beforeContent}
