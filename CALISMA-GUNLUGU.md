@@ -1015,3 +1015,10 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Sorun: Geniş ekranda (≥768px) bildirim sayfanın üstünde çıkıyordu.
 - Değişiklik: `siparis-menu.css` içindeki masaüstü üst konum kuralı ve kullanılmayan `siparis-toast-in-top` animasyonu kaldırıldı; bildirim telefonda ve webde aşağıda (alt çubuğun hemen üstünde) çıkar.
 - Doğrulama: tsc, vite build. Tarayıcıda gerçek ekranla bakılmadı.
+
+## 2026-11-25 — Tabak görünümü (telefon): dokununca tabak öne gelir
+
+- İstek: Telefonda tabağa dokununca büyüyüp öne gelsin; başka yere dokununca ya da kaydırınca küçülsün.
+- Değişiklik: `Plate.tsx` + `plate-product.css`. Dokununca (sürüklemeden) tabak yaylanarak ekran genişliğine yakın büyür (~1,5×, ekrana göre hesaplanır), yörünge yazısı silinir, gölge/ışık artar, dalga çıkar; tabağın dışına dokununca, tabağa tekrar dokununca ya da ~24 px kaydırınca yumuşakça küçülür. Çevirme (yatay sürükleme) büyükken de çalışır. Hareket azaltmada animasyonsuz (1,25×).
+- Doğrulama: tsc, vite build, Chrome fixture 390 (dokunmatik): büyüdü (1,56×), dışarı dokununca ve kaydırınca eski boyuta döndü, ekran görüntüsüne bakıldı, hata yok.
+- Doğrulanmadı: gerçek telefonda parmakla his/akıcılık, çok küçük/çok uzun ekranlarda hesaplanan ölçek.

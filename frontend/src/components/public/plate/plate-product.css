@@ -134,6 +134,7 @@
   }
 }
 .pl-plate__cover,
+.pl-plate__zoom,
 .pl-plate__grow,
 .pl-plate__enter,
 .pl-plate__tilt {
@@ -752,5 +753,25 @@
   .pl-aurora,
   .pl-steam i {
     animation: none;
+  }
+}
+
+/* telefonda tabak öne gelince */
+.pl-plate.is-zoomed .pl-plate__rim {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    inset 0 -14px 32px rgba(0, 0, 0, 0.3),
+    0 60px 110px -20px rgba(0, 0, 0, 0.95),
+    0 0 170px -20px color-mix(in srgb, var(--pl-glow) 85%, transparent);
+}
+.pl-plate__zoom {
+  will-change: transform;
+}
+@media (max-width: 1023px) {
+  .pl-plate__rim {
+    cursor: zoom-in;
+  }
+  .pl-plate.is-zoomed .pl-plate__rim {
+    cursor: zoom-out;
   }
 }

@@ -36,6 +36,9 @@ const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const Plate = forwardRef<PlateHandle, Props>(function Plate({ images, index, alt, orbit, hot, warn, steam, diet }, ref) {
   const rootRef = useRef<HTMLDivElement>(null);
   const coverRef = useRef<HTMLDivElement>(null);
+  const zoomRef = useRef<HTMLDivElement>(null);
+  const zoomOn = useRef(false);
+  const [zoomed, setZoomed] = useState(false);
   const growRef = useRef<HTMLDivElement>(null);
   const enterRef = useRef<HTMLDivElement>(null);
   const tiltRef = useRef<HTMLDivElement>(null);
@@ -161,6 +164,44 @@ const Plate = forwardRef<PlateHandle, Props>(function Plate({ images, index, alt
     s.tween = gsap.to(s, { rot: s.rot + 70, duration: 1.1, ease: 'power4.out', onUpdate: () => void gsap.set(spinRef.current, { rotation: s.rot }) });
   }, [index, reduced]);
 
+  // ----- telefonda dokununca tabak öne gelir (büyür); başka yere dokununca ya da kaydırınca küçülür -----
+  const setZoom = (on: boolean) => {
+    if (zoomOn.current === on) return;
+    zoomOn.current = on;
+    setZoomed(on);
+    const el = zoomRef.current;
+    const root = rootRef.current;
+    if (!el || !root) return;
+    if (reduced) {
+      gsap.set(el, { scale: on ? 1.25 : 1 });
+      return;
+    }
+    const stage = root.closest('.pl-stage') as HTMLElement | null;
+    const rim = root.clientWidth * 0.88;
+    const room = Math.min((stage?.clientWidth || window.innerWidth) * 0.96, (stage ? stage.clientHeight - 150 : window.innerHeight * 0.55) * 1);
+    const scale = clamp(room / rim, 1.2, 1.85);
+    gsap.to(el, { scale: on ? scale : 1, duration: on ? 0.8 : 0.55, ease: on ? 'back.out(1.5)' : 'power3.inOut', overwrite: 'auto' });
+    gsap.to(orbitRef.current, { opacity: on ? 0 : 1, duration: 0.4, overwrite: 'auto' });
+    if (on) ripple();
+  };
+  useEffect(() => {
+    if (!zoomed) return;
+    const startY = window.scrollY;
+    const onDown = (e: PointerEvent) => {
+      if (!rimRef.current?.contains(e.target as Node)) setZoom(false);
+    };
+    const onScroll = () => {
+      if (Math.abs(window.scrollY - startY) > 24) setZoom(false);
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true);
+      window.removeEventListener('scroll', onScroll);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoomed]);
+
   // ----- tabağı çevirme (fare: çember boyunca, dokunmatik: yatay sürükleme) -----
   function down(e: RPointerEvent<HTMLElement>) {
     if (reduced || (e.pointerType === 'mouse' && e.button !== 0)) return;
@@ -211,6 +252,7 @@ const Plate = forwardRef<PlateHandle, Props>(function Plate({ images, index, alt
       /* zaten bırakılmış */
     }
     setGrab(false);
+    if (s.moved < 3 && s.touch) setZoom(!zoomOn.current);
     const kick = s.moved < 3 ? 34 : clamp(s.vel * 0.28, -900, 900);
     s.tween?.kill();
     s.tween = gsap.to(s, { rot: s.rot + kick, duration: s.moved < 3 ? 1 : 1.8, ease: 'power3.out', onUpdate: () => void gsap.set(spinRef.current, { rotation: s.rot }) });
@@ -312,8 +354,9 @@ const Plate = forwardRef<PlateHandle, Props>(function Plate({ images, index, alt
 
   const diets = diet !== 'none';
   return (
-    <div className={`pl-plate${grab ? ' is-grab' : ''}`} ref={rootRef} role="img" aria-label={alt}>
+    <div className={`pl-plate${grab ? ' is-grab' : ''}${zoomed ? ' is-zoomed' : ''}`} ref={rootRef} role="img" aria-label={alt}>
       <div className="pl-plate__cover" ref={coverRef}>
+       <div className="pl-plate__zoom" ref={zoomRef}>
         <div className="pl-plate__grow" ref={growRef}>
           <div className="pl-plate__floor" ref={floorRef} />
           <div className="pl-plate__enter" ref={enterRef}>
@@ -363,6 +406,7 @@ const Plate = forwardRef<PlateHandle, Props>(function Plate({ images, index, alt
           ) : null}
           <div className="pl-toss" ref={tossRef} aria-hidden="true" />
         </div>
+       </div>
       </div>
       <div className="pl-cursor" ref={cursorRef} aria-hidden="true">
         <span>{grab ? 'Çeviriyorsun' : 'Çevir'}</span>
