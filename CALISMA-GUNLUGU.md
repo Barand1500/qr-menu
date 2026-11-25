@@ -1043,3 +1043,9 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Değişiklik: `kaiten.css`: pencere `.kb-dlg.sahne` ile sabitlendi, `.kb` yeni istif bağlamı (`isolation: isolate`) oluşturur, belt kapsayıcısından gereksiz `sahne` sınıfı kaldırıldı (min-height/arka plan veriyordu); pencerede "Sepete ekle" yazısı hep görünür. `KaitenBelt.tsx`: hareketi azalt açıkken bant artık yine akar ama yavaş (masaüstü 15 / telefon 12 px/sn) ve yaylanmasız; durdur düğmesi duruyor; ayrıntı penceresi açıkken bant durur, kapanınca devam eder.
 - Doğrulama: tsc, vite build, Chrome fixture: normal ve hareket-azalt modlarında bant akıyor (41 / 19 px / 1,5 sn), pencere açıkken duruyor, kapanınca akıyor, pencerenin üstünde yalnızca pencere var; 1280 ve 390 ekran görüntüleri (pencere düzgün, telefonda alttan sayfa), taşma/konsol hatası yok.
 - Doğrulanmadı: gerçek menüde gerçek fotoğraflarla, gerçek telefonda performans.
+
+## 2026-11-25 — Sushi bandı: alttaki fiyat açıklaması kaldırıldı
+
+- İstek: Bandın altındaki fiyat aralıklı renk açıklaması (mavi 230–270 ₺ vb.) kalksın.
+- Değişiklik: `KaitenBelt.tsx`'ten `Legend` bileşeni ve fiyat dilimi listesi, `kaiten.css`'ten ilgili kurallar silindi. Tabak halkaları yine fiyata göre renkli kalır; ürün adı/fiyatı ortadaki adada (masaüstü) ya da bandın altındaki satırda (telefon) görünür. Altta yalnızca kısa ipucu satırı duruyor.
+- Doğrulama: tsc, vite build, Chrome fixture (1280/390) hata yok.

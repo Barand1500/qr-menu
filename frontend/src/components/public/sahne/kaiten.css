@@ -137,7 +137,7 @@
   text-transform: uppercase;
 }
 
-/* kontroller, renk açıklaması, ipucu */
+/* kontroller ve ipucu */
 .kb-ctrl {
   display: flex;
   justify-content: center;
@@ -161,28 +161,6 @@
 }
 .kb-ctrl button:active {
   transform: scale(0.92);
-}
-.kb-legend {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px 18px;
-  margin: 16px 0 0;
-  padding: 0;
-  color: var(--sh-muted, #a99b8d);
-  font-size: 12.5px;
-  list-style: none;
-}
-.kb-legend li {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-.kb-legend i {
-  width: 11px;
-  height: 11px;
-  border: 2.5px solid var(--kb-c);
-  border-radius: 50%;
 }
 .kb-hint {
   margin: 10px 0 0;

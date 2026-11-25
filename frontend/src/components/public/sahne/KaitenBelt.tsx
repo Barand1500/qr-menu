@@ -18,18 +18,12 @@ const TIER_COLORS = ['#3b6bff', '#10b981', '#f59e0b', '#a855f7', '#f43f5e'];
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const mod = (v: number, m: number) => ((v % m) + m) % m;
 
-type Tier = { color: string; min: number; max: number; currency: SofraProduct['currency'] };
+/** Fiyata göre tabak halkası rengi (en çok 5 dilim) */
 function buildTiers(dishes: SofraProduct[]) {
   const uniq = [...new Set(dishes.map((d) => d.price))].sort((a, b) => a - b);
   const k = Math.max(1, Math.min(TIER_COLORS.length, uniq.length));
   const tierOf = (price: number) => Math.min(k - 1, Math.floor((uniq.indexOf(price) * k) / Math.max(1, uniq.length)));
-  const tiers: Tier[] = Array.from({ length: k }, (_, i) => ({ color: TIER_COLORS[i], min: Infinity, max: -Infinity, currency: dishes[0]?.currency }));
-  dishes.forEach((d) => {
-    const t = tiers[tierOf(d.price)];
-    t.min = Math.min(t.min, d.price);
-    t.max = Math.max(t.max, d.price);
-  });
-  return { tiers: tiers.filter((t) => t.min !== Infinity), colorOf: (price: number) => TIER_COLORS[tierOf(price)] };
+  return { colorOf: (price: number) => TIER_COLORS[tierOf(price)] };
 }
 
 function PlateFace({ dish, color, i }: { dish: SofraProduct; color: string; i: number }) {
@@ -43,19 +37,6 @@ function PlateFace({ dish, color, i }: { dish: SofraProduct; color: string; i: n
       </span>
       {dish.soldOut ? <em className="kb-plate__out" aria-hidden="true" /> : null}
     </>
-  );
-}
-
-function Legend({ tiers, en }: { tiers: Tier[]; en: boolean }) {
-  return (
-    <ul className="kb-legend" aria-label={en ? 'Plate colors by price' : 'Tabak renkleri (fiyata göre)'}>
-      {tiers.map((t) => (
-        <li key={t.color}>
-          <i style={{ ['--kb-c' as string]: t.color } as React.CSSProperties} aria-hidden="true" />
-          {t.min === t.max ? formatMoney(t.min, t.currency) : `${formatMoney(t.min, t.currency)} – ${formatMoney(t.max, t.currency)}`}
-        </li>
-      ))}
-    </ul>
   );
 }
 
@@ -203,7 +184,7 @@ function geometry(W: number, n: number) {
   return { Wf, Rout, hw, rc, a, L, cosT, Hf, spacing, pd, height };
 }
 
-function OvalBelt({ dishes, colorOf, tiers, en, motion, frozen, onPick }: BeltProps) {
+function OvalBelt({ dishes, colorOf, en, motion, frozen, onPick }: BeltProps) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const els = useRef<(HTMLButtonElement | null)[]>([]);
@@ -511,14 +492,13 @@ function OvalBelt({ dishes, colorOf, tiers, en, motion, frozen, onPick }: BeltPr
           <ChevronRight size={18} />
         </button>
       </div>
-      <Legend tiers={tiers} en={en} />
       <p className="kb-hint">{en ? 'Hover to stop the belt, drag to spin it, pick a plate.' : 'Üstüne gelince bant durur, sürükleyip çevir, bir tabak seç.'}</p>
     </div>
   );
 }
 
 // ───────────────────────── yatay bant (telefon) ─────────────────────────
-function StripBelt({ dishes, colorOf, tiers, t, en, motion, frozen, onPick, onAdd, onOpen }: BeltProps & { onAdd?: SofraMenuProps['onAdd']; onOpen: (id: number) => void }) {
+function StripBelt({ dishes, colorOf, t, en, motion, frozen, onPick, onAdd, onOpen }: BeltProps & { onAdd?: SofraMenuProps['onAdd']; onOpen: (id: number) => void }) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const els = useRef<(HTMLButtonElement | null)[]>([]);
@@ -796,7 +776,6 @@ function StripBelt({ dishes, colorOf, tiers, t, en, motion, frozen, onPick, onAd
           </div>
         </div>
       ) : null}
-      <Legend tiers={tiers} en={en} />
       <p className="kb-hint">{en ? 'Swipe the belt, tap a plate for details.' : 'Bandı kaydır, ayrıntı için tabağa dokun.'}</p>
     </div>
   );
@@ -805,7 +784,6 @@ function StripBelt({ dishes, colorOf, tiers, t, en, motion, frozen, onPick, onAd
 type BeltProps = {
   dishes: SofraProduct[];
   colorOf: (price: number) => string;
-  tiers: Tier[];
   t: MenuText;
   en: boolean;
   /** false: kullanıcı hareketi azaltmış (bant yine akar ama yavaş ve yaylanmasız) */
@@ -837,9 +815,9 @@ export default function KaitenBelt({
     return () => mq.removeEventListener('change', on);
   }, []);
   const motion = typeof window !== 'undefined' ? !window.matchMedia('(prefers-reduced-motion: reduce)').matches : true;
-  const { tiers, colorOf } = useMemo(() => buildTiers(dishes), [dishes]);
+  const { colorOf } = useMemo(() => buildTiers(dishes), [dishes]);
   const [open, setOpen] = useState<{ i: number; rect: DOMRect } | null>(null);
-  const common = { dishes, colorOf, tiers, t, en, motion, frozen: open !== null, onPick: (i: number, rect: DOMRect) => setOpen({ i, rect }) };
+  const common = { dishes, colorOf, t, en, motion, frozen: open !== null, onPick: (i: number, rect: DOMRect) => setOpen({ i, rect }) };
   const d = open ? dishes[open.i] : null;
   return (
     <div className="kb" data-wide={wide || undefined}>
