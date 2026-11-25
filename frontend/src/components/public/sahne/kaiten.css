@@ -2,6 +2,7 @@
 .kb {
   position: relative;
   margin-bottom: 8px;
+  isolation: isolate; /* tabakların yüksek z-index'i ayrıntı penceresinin üstüne çıkmasın */
 }
 .kb-stage {
   position: relative;
@@ -254,12 +255,15 @@
 }
 
 /* ───────── ayrıntı penceresi ───────── */
-.kb-dlg {
+.kb-dlg.sahne {
   position: fixed;
   inset: 0;
   z-index: 120;
   display: grid;
+  min-height: 0;
   padding: 16px;
+  overflow: visible;
+  background: none;
   place-items: center;
 }
 .kb-dlg__bd {
@@ -416,7 +420,7 @@
   background: rgba(255, 255, 255, 0.08);
 }
 @media (max-width: 760px) {
-  .kb-dlg {
+  .kb-dlg.sahne {
     padding: 0;
     place-items: end center;
   }
@@ -439,4 +443,20 @@
   .kb-now {
     animation: none;
   }
+}
+
+/* ayrıntı penceresinde "Sepete ekle" yazısı hep görünür */
+.kb-dlg.sahne .sh-add {
+  padding: 0 20px;
+  color: var(--sh-on-accent, #1a0d05);
+  background: var(--sh-accent, #ff6b2c);
+  border-color: var(--sh-accent, #ff6b2c);
+}
+.kb-dlg.sahne .sh-add > span {
+  max-width: 170px;
+  margin-inline-start: 8px;
+  opacity: 1;
+}
+.kb-dlg.sahne .sh-add:disabled {
+  opacity: 0.55;
 }

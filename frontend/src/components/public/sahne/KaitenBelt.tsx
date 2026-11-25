@@ -203,17 +203,18 @@ function geometry(W: number, n: number) {
   return { Wf, Rout, hw, rc, a, L, cosT, Hf, spacing, pd, height };
 }
 
-function OvalBelt({ dishes, colorOf, tiers, en, motion, onPick }: BeltProps) {
+function OvalBelt({ dishes, colorOf, tiers, en, motion, frozen, onPick }: BeltProps) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const els = useRef<(HTMLButtonElement | null)[]>([]);
   const [w, setW] = useState(900);
   const [hover, setHover] = useState<number | null>(null);
-  const [playing, setPlaying] = useState(motion);
+  const [playing, setPlaying] = useState(true);
   const n = dishes.length;
   const g = useMemo(() => geometry(w, n), [w, n]);
-  const st = useRef({ off: 0, vel: 0, hovering: false, drag: false, down: false, moved: 0, lastX: 0, lastT: 0, lock: false, visible: true, raf: 0, last: 0, playing: motion });
+  const st = useRef({ off: 0, vel: 0, hovering: false, drag: false, down: false, moved: 0, lastX: 0, lastT: 0, lock: false, visible: true, raf: 0, last: 0, playing: true, frozen: false });
   st.current.playing = playing;
+  st.current.frozen = frozen;
   const geoRef = useRef(g);
   geoRef.current = g;
 
@@ -341,12 +342,12 @@ function OvalBelt({ dishes, colorOf, tiers, en, motion, onPick }: BeltProps) {
       const dt = Math.min(0.04, (now - s.last) / 1000 || 0.016);
       s.last = now;
       if (!s.drag && !s.lock) {
-        const target = s.playing && !s.hovering ? 34 : 0;
+        const target = s.playing && !s.hovering && !s.frozen ? (motion ? 34 : 15) : 0;
         s.vel += (target - s.vel) * (1 - Math.exp(-dt * (target ? 1.6 : 4.5)));
         s.off = mod(s.off + s.vel * dt, geoRef.current.L);
       }
       render();
-      s.raf = motion && s.visible ? requestAnimationFrame(frame) : 0;
+      s.raf = s.visible ? requestAnimationFrame(frame) : 0;
     };
     const kick = () => {
       if (!s.raf) {
@@ -380,7 +381,7 @@ function OvalBelt({ dishes, colorOf, tiers, en, motion, onPick }: BeltProps) {
     const target = s.off + dir * g.spacing;
     gsap.to(s, {
       off: target,
-      duration: motion ? 0.85 : 0,
+      duration: motion ? 0.85 : 0.3,
       ease: 'power3.out',
       onUpdate: () => {
         s.off = mod(s.off, g.L);
@@ -517,7 +518,7 @@ function OvalBelt({ dishes, colorOf, tiers, en, motion, onPick }: BeltProps) {
 }
 
 // ───────────────────────── yatay bant (telefon) ─────────────────────────
-function StripBelt({ dishes, colorOf, tiers, t, en, motion, onPick, onAdd, onOpen }: BeltProps & { onAdd?: SofraMenuProps['onAdd']; onOpen: (id: number) => void }) {
+function StripBelt({ dishes, colorOf, tiers, t, en, motion, frozen, onPick, onAdd, onOpen }: BeltProps & { onAdd?: SofraMenuProps['onAdd']; onOpen: (id: number) => void }) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const els = useRef<(HTMLButtonElement | null)[]>([]);
@@ -532,7 +533,8 @@ function StripBelt({ dishes, colorOf, tiers, t, en, motion, onPick, onAdd, onOpe
   const total = copies * n;
   const bandH = pd * 1.12;
   const height = bandH + 46;
-  const st = useRef({ off: 0, vel: 0, drag: false, down: false, moved: 0, lastX: 0, lastT: 0, lock: false, visible: true, raf: 0, last: 0, autoplay: motion, idle: 0, focus: 0 });
+  const st = useRef({ off: 0, vel: 0, drag: false, down: false, moved: 0, lastX: 0, lastT: 0, lock: false, visible: true, raf: 0, last: 0, autoplay: true, idle: 0, focus: 0, frozen: false });
+  st.current.frozen = frozen;
   const geo = useRef({ w, pd, spacing, loopLen, total, n, bandH, height });
   geo.current = { w, pd, spacing, loopLen, total, n, bandH, height };
 
@@ -639,7 +641,7 @@ function StripBelt({ dishes, colorOf, tiers, t, en, motion, onPick, onAdd, onOpe
       landing += bestDelta;
       gsap.to(s, {
         off: landing,
-        duration: motion ? 0.9 : 0,
+        duration: motion ? 0.9 : 0.3,
         ease: 'power3.out',
         onUpdate: () => {
           if (!s.raf) render();
@@ -662,12 +664,12 @@ function StripBelt({ dishes, colorOf, tiers, t, en, motion, onPick, onAdd, onOpe
       const dt = Math.min(0.04, (now - s.last) / 1000 || 0.016);
       s.last = now;
       if (!s.drag && !s.lock) {
-        const target = s.autoplay ? -26 : 0;
+        const target = s.autoplay && !s.frozen ? (motion ? -26 : -12) : 0;
         s.vel += (target - s.vel) * (1 - Math.exp(-dt * 2));
         s.off += s.vel * dt;
       }
       render();
-      s.raf = motion && s.visible ? requestAnimationFrame(frame) : 0;
+      s.raf = s.visible ? requestAnimationFrame(frame) : 0;
     };
     const kick = () => {
       if (!s.raf) {
@@ -738,7 +740,7 @@ function StripBelt({ dishes, colorOf, tiers, t, en, motion, onPick, onAdd, onOpe
     }
     window.clearTimeout(s.idle);
     s.idle = window.setTimeout(() => {
-      if (motion) s.autoplay = true;
+      s.autoplay = true;
     }, 2800);
   };
 
@@ -806,7 +808,10 @@ type BeltProps = {
   tiers: Tier[];
   t: MenuText;
   en: boolean;
+  /** false: kullanıcı hareketi azaltmış (bant yine akar ama yavaş ve yaylanmasız) */
   motion: boolean;
+  /** ayrıntı penceresi açıkken bant durur */
+  frozen: boolean;
   onPick: (i: number, rect: DOMRect) => void;
 };
 
@@ -834,10 +839,10 @@ export default function KaitenBelt({
   const motion = typeof window !== 'undefined' ? !window.matchMedia('(prefers-reduced-motion: reduce)').matches : true;
   const { tiers, colorOf } = useMemo(() => buildTiers(dishes), [dishes]);
   const [open, setOpen] = useState<{ i: number; rect: DOMRect } | null>(null);
-  const common = { dishes, colorOf, tiers, t, en, motion, onPick: (i: number, rect: DOMRect) => setOpen({ i, rect }) };
+  const common = { dishes, colorOf, tiers, t, en, motion, frozen: open !== null, onPick: (i: number, rect: DOMRect) => setOpen({ i, rect }) };
   const d = open ? dishes[open.i] : null;
   return (
-    <div className="kb sahne" data-wide={wide || undefined}>
+    <div className="kb" data-wide={wide || undefined}>
       {wide ? <OvalBelt {...common} /> : <StripBelt {...common} onAdd={onAdd} onOpen={onOpen} />}
       {open && d ? (
         <Dialog dish={d} color={colorOf(d.price)} index={open.i} total={dishes.length} t={t} en={en} origin={open.rect} onClose={() => setOpen(null)} onAdd={onAdd} onOpen={onOpen} />
