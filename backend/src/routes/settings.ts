@@ -614,7 +614,8 @@ router.put('/welcome-music', async (req, res) => {
 
 router.put('/menu-features', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const { serviceItems, tableSessionCode, tableSessionCodeTtlMinutes, menuGames, garsonVisitMinutes, garsonVibration } = req.body as {
+  const { serviceItems, tableSessionCode, tableSessionCodeTtlMinutes, menuGames, garsonVisitMinutes, garsonVibration, productPlateView } = req.body as {
+    productPlateView?: boolean;
     garsonVibration?: unknown;
     garsonVisitMinutes?: number;
     serviceItems?: unknown;
@@ -684,6 +685,14 @@ router.put('/menu-features', async (req, res) => {
         key: TABLE_SESSION_CODE_ENABLED_KEY,
         value: tableSessionCode ? 'true' : 'false',
       },
+    });
+  }
+
+  if (typeof productPlateView === 'boolean') {
+    await prisma.setting.upsert({
+      where: { restaurantId_key: { restaurantId: restaurantId!, key: 'product_plate_view' } },
+      update: { value: productPlateView ? 'true' : 'false' },
+      create: { restaurantId: restaurantId!, key: 'product_plate_view', value: productPlateView ? 'true' : 'false' },
     });
   }
 

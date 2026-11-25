@@ -12,6 +12,7 @@ import TableServiceButtons from '@/components/public/TableServiceButtons';
 import SiparisCartButton from '@/components/public/siparis/SiparisCartButton';
 import SiparisKcal from '@/components/public/siparis/SiparisKcal';
 import IngredientCard from '@/components/public/siparis/IngredientCard';
+import PlateProductPage from '@/components/public/plate/PlateProductPage';
 import SiparisProductOptions from '@/components/public/siparis/SiparisProductOptions';
 import { useSiparisCart } from '@/hooks/useSiparisCart';
 import type { MenuColorMode } from '@/lib/menuColorMode';
@@ -37,6 +38,7 @@ type ProductDetail = {
     tableService?: boolean;
     siparisCart?: boolean;
     siparisVariants?: boolean;
+    plateView?: boolean;
   };
   optionGroups?: ProductOptionGroup[];
   soldOut?: boolean;
@@ -55,7 +57,7 @@ type RelatedProduct = {
  * Ürün detayı (Sofra ve Sipariş temaları). Görsel kenardan kenara tam kaplar; başlık görselin
  * üstünde durur, içerik kartı kaydırdıkça görselin üzerine çıkar. Sepet işlemi altta sabit çubukta.
  */
-export default function SiparisProductPage({
+function ClassicProductPage({
   product,
   related,
   galleryImages,
@@ -302,4 +304,14 @@ export default function SiparisProductPage({
       </div>
     </div>
   );
+}
+
+type PageProps = Parameters<typeof ClassicProductPage>[0];
+
+/** Ayarlarda "Tabak görünümü" açıksa yeni sahne tasarımı, değilse klasik sayfa. */
+export default function SiparisProductPage(props: PageProps) {
+  if (props.product.menuFeatures?.plateView === true && props.galleryImages.length > 0) {
+    return <PlateProductPage {...props} />;
+  }
+  return <ClassicProductPage {...props} />;
 }

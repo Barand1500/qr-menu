@@ -475,6 +475,9 @@ router.get('/:slug/products/:productId', async (req, res) => {
   const luxuryCfg = parseLuxuryThemeConfig(luxuryConfigSetting?.value);
   const linearCfg = parseLinearThemeConfig(linearConfigSetting?.value);
   const siparisCfg = parseSiparisThemeConfig(siparisConfigSetting?.value);
+  const plateSetting = await prisma.setting.findUnique({
+    where: { restaurantId_key: { restaurantId: restaurant.id, key: 'product_plate_view' } },
+  });
   const gamesCfg = parseMenuGamesConfig(gamesConfigSetting?.value, gamesLegacySetting?.value);
 
   res.json({
@@ -526,6 +529,7 @@ router.get('/:slug/products/:productId', async (req, res) => {
       linearVariants: linearCfg.variantsEnabled,
       siparisCart: siparisCfg.cartEnabled,
       siparisVariants: siparisCfg.variantsEnabled,
+      plateView: plateSetting?.value === 'true',
     },
     optionGroups: translateOptionGroups(activeOptionGroups(product.optionGroups), product.id, dict, activeLang),
     ...stockPublicFields(product),

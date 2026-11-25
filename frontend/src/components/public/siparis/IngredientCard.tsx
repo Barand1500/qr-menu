@@ -12,10 +12,13 @@ export default function IngredientCard({
   text,
   kind,
   en = false,
+  onHoverItem,
 }: {
   text: string;
   kind: 'ingredients' | 'allergens';
   en?: boolean;
+  /** Etiketin üstüne gelince/odaklanınca adı bildirir (tabak görünümünde yörüngede parlar) */
+  onHoverItem?: (name: string | null) => void;
 }) {
   const warn = kind === 'allergens';
   const [open, setOpen] = useState(false);
@@ -45,7 +48,13 @@ export default function IngredientCard({
   const chip = (name: string, isExtra: boolean) => {
     const emoji = isExtra || warn ? '' : ingredientEmoji(name);
     return (
-      <li key={name} className={`pd-ing__chip${isExtra ? ' is-extra' : ''}`} style={{ ['--i' as string]: n++ } as CSSProperties}>
+      <li
+        key={name}
+        className={`pd-ing__chip${isExtra ? ' is-extra' : ''}`}
+        style={{ ['--i' as string]: n++ } as CSSProperties}
+        onPointerEnter={onHoverItem ? () => onHoverItem(name) : undefined}
+        onPointerLeave={onHoverItem ? () => onHoverItem(null) : undefined}
+      >
         {isExtra ? <Plus size={12} strokeWidth={2.6} aria-hidden="true" /> : emoji ? <span className="pd-ing__emoji" aria-hidden="true">{emoji}</span> : <i className="pd-ing__dot" aria-hidden="true" />}
         {name}
       </li>

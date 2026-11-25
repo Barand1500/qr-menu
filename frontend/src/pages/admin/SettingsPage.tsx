@@ -11,6 +11,7 @@ import {
   Globe,
   HandHelping,
   ImagePlus,
+  Disc3,
   Footprints,
   KeyRound,
   Link2,
@@ -246,7 +247,8 @@ export default function SettingsPage() {
   const [tableCodeEnabled, setTableCodeEnabled] = useState(false),
     [tableCodeTtl, setTableCodeTtl] = useState(120),
     [visitMinutes, setVisitMinutes] = useState(15), // 0 = kapalı
-    [vibration, setVibration] = useState<VibrationMap>(DEFAULT_VIBRATION);
+    [vibration, setVibration] = useState<VibrationMap>(DEFAULT_VIBRATION),
+    [plateView, setPlateView] = useState(false);
   const [geoLock, setGeoLock] = useState<GeoLockConfig>({
     enabled: false,
     lat: 36.8121,
@@ -344,6 +346,7 @@ export default function SettingsPage() {
           ['true', '1'].includes(d.settings.table_session_code_enabled),
         );
         setVibration(parseVibration(d.settings.garson_vibration));
+        setPlateView(d.settings.product_plate_view === 'true');
         const visit = d.settings.garson_visit_reminder_minutes;
         setVisitMinutes(
           visit == null || visit === '' || !Number.isFinite(Number(visit))
@@ -481,6 +484,7 @@ export default function SettingsPage() {
           tableSessionCodeTtlMinutes: tableCodeTtl,
           garsonVisitMinutes: visitMinutes,
           garsonVibration: vibration,
+          productPlateView: plateView,
         });
         await put('geo-lock', geoLock);
       }
@@ -1168,6 +1172,21 @@ export default function SettingsPage() {
                     items={serviceItems}
                     onChange={(next) => {
                       setServiceItems(next);
+                      mark('menu');
+                    }}
+                  />
+                </Section>
+                <Section
+                  title="Ürün sayfası"
+                  description="Müşterinin açtığı ürün detay sayfasının görünümü."
+                >
+                  <Toggle
+                    label="Tabak görünümü"
+                    description="Açıkken ürün yuvarlak bir tabak sahnesinde durur: fareyle eğilir, parmakla döner, malzemeler çevresinde dolanır, seçimlere tepki verir. Kapalıyken mevcut tasarım korunur. En iyi sonucu yukarıdan çekilmiş tabak fotoğrafları verir."
+                    icon={Disc3}
+                    checked={plateView}
+                    onChange={() => {
+                      setPlateView((v) => !v);
                       mark('menu');
                     }}
                   />
