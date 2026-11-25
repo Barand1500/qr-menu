@@ -80,6 +80,39 @@
     transform: translateY(-8px);
   }
 }
+/* Altta ortalı bildirim (şimdilik Ürünler sayfası kullanır; sayfa akışını kaydırmaz) */
+.admin-toast.admin-toast--bottom {
+  top: auto;
+  right: 0;
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  left: 0;
+  margin-inline: auto;
+  animation-name: admin-toast-in-up;
+}
+.admin-toast.admin-toast--bottom.is-leaving {
+  animation-name: admin-toast-out-down;
+}
+@media (max-width: 767px) {
+  .admin-toast.admin-toast--bottom {
+    bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+}
+@keyframes admin-toast-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes admin-toast-out-down {
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .admin-toast,
   .admin-toast.is-leaving {

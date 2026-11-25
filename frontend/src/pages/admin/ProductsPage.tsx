@@ -850,7 +850,7 @@ export default function ProductsPage() {
       <AdminToast
         notice={notice}
         onClose={() => setNotice(null)}
-        className={modalOpen ? 'pe-modal-toast' : ''}
+        className={`admin-toast--bottom${modalOpen ? ' pe-modal-toast' : ''}`}
       />
       <header className="ap-head">
         <PageHeading title="Ürünler" subtitle={`${total} ürün`} />

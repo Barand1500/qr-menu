@@ -1022,3 +1022,9 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Değişiklik: `Plate.tsx` + `plate-product.css`. Dokununca (sürüklemeden) tabak yaylanarak ekran genişliğine yakın büyür (~1,5×, ekrana göre hesaplanır), yörünge yazısı silinir, gölge/ışık artar, dalga çıkar; tabağın dışına dokununca, tabağa tekrar dokununca ya da ~24 px kaydırınca yumuşakça küçülür. Çevirme (yatay sürükleme) büyükken de çalışır. Hareket azaltmada animasyonsuz (1,25×).
 - Doğrulama: tsc, vite build, Chrome fixture 390 (dokunmatik): büyüdü (1,56×), dışarı dokununca ve kaydırınca eski boyuta döndü, ekran görüntüsüne bakıldı, hata yok.
 - Doğrulanmadı: gerçek telefonda parmakla his/akıcılık, çok küçük/çok uzun ekranlarda hesaplanan ölçek.
+
+## 2026-11-25 — Düzeltme: müşteri bildirimi geri alındı, yönetici panelinde Ürünler bildirimi aşağıya
+
+- Yanlış anlaşılma: "Ürün sepete eklendi" (müşteri menüsü) bildiriminin konumunu değiştirmiştim; istenen bu değildi. `siparis-menu.css` değişikliği geri alındı (masaüstünde bildirim yine üstte).
+- Asıl istek: Yönetici panelinde ürün eklendikten/kaydedildikten sonra çıkan bildirim ("Ürün kaydedildi.") üstte değil altta çıksın. `AdminToast` için `admin-toast--bottom` varyantı (alt orta, kısa yukarı kayma animasyonu; telefonda alt çubuğun üstünde) eklendi, yalnızca `ProductsPage` kullanır; diğer admin sayfaları eskisi gibi sağ üstte. Ürün penceresi açıkken telefondaki mevcut `pe-modal-toast` konumu korunur.
+- Doğrulama: tsc, vite build, Chrome fixture 1280/390: bildirim alt ortada (merkez sapması 0).
