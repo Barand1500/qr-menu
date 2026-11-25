@@ -1,4 +1,4 @@
-import { summarizePresence } from '../lib/table-presence.js';
+import { presencePrefs, summarizePresence } from '../lib/table-presence.js';
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId } from '../lib/auth.js';
@@ -24,6 +24,7 @@ import {
   logEvent,
   parseStore,
   parseVisitReminderMinutes,
+  splitVariant,
   releaseClaim,
   serializeStore,
   tableKeyValid,
@@ -117,11 +118,12 @@ router.get('/board', async (req, res) => {
       guestName: s.guestName,
       codeStatus: codeConfig.enabled ? resolveCodeGateStatus(s) : 'empty',
       activity: summarizePresence(parseSessionMeta(s.metaJson).presence, now),
+      prefs: presencePrefs(parseSessionMeta(s.metaJson).presence, now),
       accessCode: s.accessCode,
       codeExpiresAt: s.codeExpiresAt?.getTime() ?? null,
       codeVerifiedAt: codeConfig.enabled ? s.codeVerifiedAt?.getTime() ?? null : null,
       orders: orders.slice(-80).map((o) => ({
-        name: o.name,
+        ...splitVariant(o.name),
         qty: o.qty,
         line: lineTotal(o),
         at: Date.parse(o.createdAt) || 0,

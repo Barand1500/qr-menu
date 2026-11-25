@@ -7,7 +7,7 @@ export type BoardCall = {
   type: CallType;
   label: string;
   note: string;
-  items: { name: string; qty: number }[];
+  items: { name: string; qty: number; variant: string }[];
   at: number;
   claim: { name: string; at: number; mine: boolean } | null;
 };
@@ -22,7 +22,8 @@ export type BoardTable = {
   calls: BoardCall[];
   session: {
     id: number;
-    orders: { name: string; qty: number; line: number; at: number; note: string; paid: boolean }[];
+    orders: { name: string; variant: string; qty: number; line: number; at: number; note: string; paid: boolean }[];
+    prefs: string[];
     activity: { kind: 'welcome' | 'menu' | 'category' | 'product' | 'cart' | 'game' | 'code'; label: string; count: number; at: number }[];
     code: string | null;
     codeExpiresAt: number | null;

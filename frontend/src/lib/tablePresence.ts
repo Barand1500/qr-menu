@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { api } from '@/lib/api';
+import { loadDietaryPrefs } from '@/lib/dietAllergens';
 
 /** Müşterinin şu an hangi ekranda olduğu (garson panosuna kaba bilgi). Sepet içeriği, arama metni, konum gitmez. */
 export type PresenceKind = 'welcome' | 'menu' | 'category' | 'product' | 'cart' | 'game' | 'code';
@@ -51,12 +52,22 @@ export function presenceVisitorId(): string {
   }
 }
 
+/** Müşterinin menüde işaretlediği alerji/diyet kimlikleri; garson panosunda masa uyarısı olarak görünür (süresi kısa, kalıcı kaydedilmez). */
+function dietaryFlags(): string[] {
+  try {
+    const prefs = loadDietaryPrefs();
+    return [...prefs.allergens.map((id) => `a:${id}`), ...prefs.diets.map((id) => `d:${id}`)];
+  } catch {
+    return [];
+  }
+}
+
 export function sendPresence(
   slug: string,
   body: { tableNumber: string; groupSlug: string | null; sessionId: number; kind: PresenceKind; label: string; active: boolean },
 ) {
   return api(`/api/menu/${slug}/table-presence`, {
     method: 'POST',
-    body: JSON.stringify({ ...body, visitorId: presenceVisitorId() }),
+    body: JSON.stringify({ ...body, visitorId: presenceVisitorId(), prefs: body.active ? dietaryFlags() : [] }),
   }).catch(() => undefined);
 }

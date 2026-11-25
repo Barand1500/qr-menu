@@ -1,4 +1,4 @@
-import { useCallback, type ComponentType, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, type ComponentType, type CSSProperties, type PointerEvent as RPointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity,
@@ -19,6 +19,7 @@ import {
   Power,
   Receipt,
   ReceiptText,
+  ShieldAlert,
   ShoppingBag,
   Users,
   WifiOff,
@@ -30,6 +31,7 @@ import { api } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
 import { applyDocumentTitle } from '@/lib/siteTitle';
 import { playAdminNotificationSound } from '@/lib/notificationSound';
+import { allergenLabel, dietLabel } from '@/lib/dietAllergens';
 import { activityText, ago, clock, since, money, urgency, type Board, type BoardCall, type BoardTable, type CallType, type FeedKind } from '@/lib/garsonBoard';
 import '@/garson-board.css';
 
@@ -39,6 +41,9 @@ type Tab = 'calls' | 'tables' | 'feed';
 type Filter = 'all' | 'busy' | 'due' | 'empty';
 
 type IconType = ComponentType<{ size?: number }>;
+// Servise göre ayrı titreşim: telefona bakmadan fark edilir
+const VIBRATE: Record<CallType, number[]> = { waiter: [180, 80, 180], bill: [320], hookah: [80, 60, 80, 60, 80], valet: [520], order: [120, 60, 120, 60, 260] };
+const TYPE_COLOR: Record<CallType, string> = { waiter: '#f97316', bill: '#22c55e', hookah: '#a855f7', valet: '#3b82f6', order: '#eab308' };
 // Menüdeki servis düğmeleriyle aynı simgeler
 const CALL_ICON: Record<CallType, IconType> = { waiter: HandHelping, bill: ReceiptText, hookah: HookahIcon, valet: CarFront, order: ShoppingBag };
 const FEED_ICON: Record<FeedKind, IconType> = {
@@ -93,7 +98,7 @@ export default function GarsonBoardPage() {
   const [feedAll, setFeedAll] = useState(false);
   const [closeAsk, setCloseAsk] = useState<string | null>(null);
   const [toast, setToast] = useState('');
-  const [banner, setBanner] = useState<{ text: string; id: number; tableKey?: string; kind?: 'visit' } | null>(null);
+  const [banner, setBanner] = useState<{ text: string; id: number; tableKey?: string; kind?: 'visit'; callType?: CallType } | null>(null);
   // Kapalı bölümler (cihazda hatırlanır) ve yeni çağrı gelen, yanıp sönen masalar
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     try {
@@ -139,7 +144,7 @@ export default function GarsonBoardPage() {
         const fresh = data.tables.flatMap((t) => t.calls.filter((c) => !known.current!.has(c.id) && !c.claim?.mine).map((c) => ({ c, t })));
         if (fresh.length) {
           const { c, t } = fresh[0];
-          if (!verified.length) setBanner({ text: `${t.label} · ${c.label}`, id: c.id });
+          if (!verified.length) setBanner({ text: `${t.label} · ${c.label}`, id: c.id, callType: c.type });
           // Kapalı bölümde çağrı gelirse bölüm kendiliğinden açılır, masa yanıp söner
           const keys = new Set(fresh.map((f) => f.t.key));
           const groupNames = new Set(fresh.map((f) => f.t.groupName));
@@ -162,7 +167,7 @@ export default function GarsonBoardPage() {
           );
           if (soundRef.current) playAdminNotificationSound();
           try {
-            navigator.vibrate?.([180, 80, 180]);
+            navigator.vibrate?.(VIBRATE[c.type]);
           } catch {
             /* titreşim desteklenmiyor */
           }
@@ -207,6 +212,28 @@ export default function GarsonBoardPage() {
     };
   }, [load]);
 
+  // Panel açıkken telefon ekranı kararmasın (destekleyen tarayıcılarda)
+  useEffect(() => {
+    type Lock = { release: () => Promise<void> };
+    let lock: Lock | null = null;
+    let dead = false;
+    const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<Lock> } };
+    const ask = () => {
+      if (dead || document.hidden || !nav.wakeLock) return;
+      nav.wakeLock.request('screen').then((l) => {
+        if (dead) void l.release();
+        else lock = l;
+      }).catch(() => undefined);
+    };
+    ask();
+    document.addEventListener('visibilitychange', ask);
+    return () => {
+      dead = true;
+      document.removeEventListener('visibilitychange', ask);
+      void lock?.release().catch(() => undefined);
+    };
+  }, []);
+
   // Sekme başlığında bekleyen sayısı
   useEffect(() => {
     const n = board?.counts.calls || 0;
@@ -230,7 +257,14 @@ export default function GarsonBoardPage() {
   const sheet = tables.find((t) => t.key === sheetKey) || null;
 
   const callTables = useMemo(
-    () => tables.filter((t) => t.calls.length).sort((a, b) => a.calls[0].at - b.calls[0].at),
+    () => {
+      // Önce yolda olduğum, sonra kimsenin almadığı, en sonda başkasının gittiği çağrılar; her grupta en uzun bekleyen önde
+      const rank = (t: BoardTable) => {
+        const claim = t.calls.find((c) => c.claim)?.claim;
+        return claim ? (claim.mine ? 0 : 2) : 1;
+      };
+      return tables.filter((t) => t.calls.length).sort((a, b) => rank(a) - rank(b) || a.calls[0].at - b.calls[0].at);
+    },
     [tables],
   );
 
@@ -376,9 +410,11 @@ export default function GarsonBoardPage() {
     </div>
   ) : (
     <div className="gb-list" aria-live="polite">
-      {callTables.map((t, i) => (
-        <CallCard key={t.key} t={t} now={now} busy={busy.has(`c${t.key}`)} flash={flash === t.key} index={i} onClaim={claim} onUnclaim={unclaim} onResolve={resolve} onOpen={() => setSheetKey(t.key)} />
-      ))}
+      {callTables.map((t, i) => {
+        const cl = t.calls.find((c) => c.claim)?.claim;
+        const next = i === 0 && (!cl || cl.mine) ? (cl?.mine ? 'mine' : 'next') : undefined;
+        return <CallCard key={t.key} t={t} now={now} busy={busy.has(`c${t.key}`)} flash={flash === t.key} index={i} next={next} onClaim={claim} onUnclaim={unclaim} onResolve={resolve} onOpen={() => setSheetKey(t.key)} />;
+      })}
     </div>
   );
 
@@ -442,6 +478,9 @@ export default function GarsonBoardPage() {
           <section key={g.name} className={`gb-zone${open ? ' is-open' : ''}${callN ? ' has-call' : ''}${alertN ? ' has-alert' : ''}`}>
             <button type="button" className="gb-zone__head" aria-expanded={open} onClick={() => toggleGroup(g.name)}>
               <span className="gb-zone__name">{g.name}</span>
+              <span className="gb-zone__bar" aria-hidden="true">
+                <i style={{ width: `${g.tables.length ? Math.round((busyN / g.tables.length) * 100) : 0}%` }} />
+              </span>
               <span className="gb-zone__meta">
                 {callN ? (
                   <b className="gb-pill is-hot">
@@ -459,10 +498,27 @@ export default function GarsonBoardPage() {
               <div className="gb-discs">
                 {g.tables.map((t) => {
                   const num = shortName(t);
+                  const newest = t.calls[t.calls.length - 1];
+                  const types = [...new Set(t.calls.map((c) => c.type))];
+                  const ringStyle = types.length > 1
+                    ? ({ ['--cg' as string]: `conic-gradient(from -90deg, ${types.map((ty, i) => `${TYPE_COLOR[ty]} ${(i * 100) / types.length}% ${((i + 1) * 100) / types.length}%`).join(', ')})` } as CSSProperties)
+                    : undefined;
+                  const overdue = t.visit === 'due' || t.visit === 'late';
+                  const live = activityText(t.session?.activity);
+                  const hasAllergy = Boolean(t.session?.prefs?.some((p) => p.startsWith('a:')));
+                  // Uğrama yayı: ayardaki süreye göre ne kadar zamanı kaldı (yüzde)
+                  const dueMs = (board?.visitMinutes || 0) * 60_000;
+                  const arcPct = t.session && dueMs > 0 && !overdue && t.state !== 'call'
+                    ? Math.max(0, Math.min(100, Math.round((1 - (now - Math.max(t.lastVisit?.at || 0, t.session.openedAt)) / dueMs) * 100)))
+                    : null;
                   const cap =
                     t.state === 'call'
-                      ? t.calls[0].label
-                      : t.lastVisit
+                      ? `${newest.label}${t.calls.length > 1 ? ` +${t.calls.length - 1}` : ''}`
+                      : overdue
+                        ? 'Uğranmalı'
+                        : live
+                        ? live
+                        : t.lastVisit
                         ? `${t.lastVisit.mine ? 'Sen' : t.lastVisit.name.split(' ')[0]} · ${ago(now - t.lastVisit.at)}`
                         : t.state === 'empty'
                           ? 'Boş'
@@ -471,19 +527,19 @@ export default function GarsonBoardPage() {
                             : 'Uğranmadı';
                   const more = t.session ? (t.session.total > 0 ? money(t.session.total) : t.session.codeStatus === 'verified' ? 'Müşteri onaylandı' : t.session.handoff ? 'Kod bekleniyor' : t.session.scanned ? 'QR okutuldu' : 'Oturumda') : '';
                   return (
+                    <div key={t.key} className="gb-slot">
                     <button
-                      key={t.key}
                       type="button"
                       aria-label={`${t.label}, ${cap}`}
-                      className={`gb-disc is-${t.state}${t.calls.length ? ` t-${t.calls[0].type}` : ''} v-${t.visit}${flash === t.key ? ' is-flash' : ''}${alerts.has(t.key) ? ' is-alert' : ''}${sheetKey === t.key ? ' is-picked' : ''}`}
+                      className={`gb-disc is-${t.state}${t.calls.length ? ` t-${newest.type}${types.length > 1 ? ' has-multi' : ''}` : ''} v-${t.visit}${flash === t.key ? ' is-flash' : ''}${alerts.has(t.key) ? ' is-alert' : ''}${sheetKey === t.key ? ' is-picked' : ''}`}
                       onClick={() => setSheetKey(t.key)}
                     >
-                      <span className={`gb-disc__ring${num.length > 3 ? ' is-long' : ''}`}>
+                      <span className={`gb-disc__ring${num.length > 3 ? ' is-long' : ''}`} style={ringStyle}>
                         <b>{num}</b>
                         {t.calls.length ? (
-                          <i className={`gb-disc__badge is-bell t-${t.calls[0].type}`}>
+                          <i className={`gb-disc__badge is-bell t-${newest.type}`}>
                             {(() => {
-                              const CallIcon = CALL_ICON[t.calls[0].type];
+                              const CallIcon = CALL_ICON[newest.type];
                               return <CallIcon size={12} />;
                             })()}
                           </i>
@@ -492,12 +548,35 @@ export default function GarsonBoardPage() {
                             {t.session.codeStatus === 'verified' ? <Check size={12} aria-hidden="true" /> : <QrCode size={12} aria-hidden="true" />}
                           </i>
                         ) : null}
-                        {t.visit === 'due' || t.visit === 'late' ? <i className="gb-disc__dot" aria-hidden="true" /> : null}
+                        {hasAllergy ? (
+                          <i className="gb-disc__badge is-allergy" title="Alerji bildirdi">
+                            <ShieldAlert size={12} aria-hidden="true" />
+                          </i>
+                        ) : null}
+                        {arcPct != null ? (
+                          <svg className={`gb-disc__arc${arcPct < 35 ? ' is-low' : ''}`} viewBox="0 0 100 100" aria-hidden="true">
+                            <circle className="gb-disc__arc-bg" cx="50" cy="50" r="47" />
+                            <circle className="gb-disc__arc-fg" cx="50" cy="50" r="47" pathLength="100" strokeDasharray={`${arcPct} 100`} />
+                          </svg>
+                        ) : null}
                       </span>
-                      <small>{cap}</small>
-                      {activityText(t.session?.activity) ? <span className="gb-disc__live">{activityText(t.session?.activity)}</span> : null}
+                      <small className={!overdue && t.state !== 'call' && live ? 'is-live' : ''}>{cap}</small>
                       {more ? <em>{more}</em> : null}
                     </button>
+                    {overdue && t.state !== 'call' ? (
+                      <button
+                        type="button"
+                        className="gb-disc__quick"
+                        title="Uğradım"
+                        aria-label={`${t.label}: uğradım olarak işaretle`}
+                        disabled={busy.has(`v${t.key}`)}
+                        onClick={() => void visit(t)}
+                      >
+                        <Clock size={14} aria-hidden="true" className="q-clock" />
+                        <Check size={15} aria-hidden="true" className="q-check" />
+                      </button>
+                    ) : null}
+                    </div>
                   );
                 })}
               </div>
@@ -511,6 +590,21 @@ export default function GarsonBoardPage() {
   const detailBody = (s: BoardTable) => (
     <>
       <ul className="gb-facts">
+        {s.session?.prefs?.length ? (
+          <li className="is-prefs">
+            <ShieldAlert size={18} aria-hidden="true" />
+            <span>
+              <b>Alerji / diyet</b>
+              <span className="gb-prefs">
+                {s.session.prefs.map((p) => (
+                  <i key={p} className={p.startsWith('a:') ? 'is-allergen' : ''}>
+                    {p.startsWith('a:') ? allergenLabel(p.slice(2), 'tr') : dietLabel(p.slice(2), 'tr')}
+                  </i>
+                ))}
+              </span>
+            </span>
+          </li>
+        ) : null}
         <li>
           <QrCode size={18} aria-hidden="true" />
           <span>
@@ -580,6 +674,7 @@ export default function GarsonBoardPage() {
                     <li key={k} className={o.paid ? 'is-paid' : ''}>
                       <span>
                         <b>{o.qty}×</b> {o.name}
+                        {o.variant ? <VariantTags text={o.variant} /> : null}
                         {o.note ? <small>{o.note}</small> : null}
                       </span>
                       <em>
@@ -618,7 +713,7 @@ export default function GarsonBoardPage() {
           {flash === s.key ? <Check size={22} aria-hidden="true" /> : <Footprints size={22} aria-hidden="true" />}
           {flash === s.key ? 'Kaydedildi' : 'Masaya uğradım'}
         </button>
-        <p className="gb-sheet__hint">{board?.codeGateEnabled && s.session && s.session.codeStatus !== 'verified' ? 'Uğradığınızı işaretleyin; müşteriye vereceğiniz kod burada görünsün.' : 'Basınca “kim, ne zaman uğradı” kaydedilir; diğer garsonlar da görür.'}</p>
+        {board?.codeGateEnabled && s.session && s.session.codeStatus !== 'verified' ? <p className="gb-sheet__hint">Uğradığınızı işaretleyin; müşteriye vereceğiniz kod burada görünsün.</p> : null}
       </>}
       {s.session ? (
         <button type="button" className={`gb-close${closeAsk === s.key ? ' is-ask' : ''}`} disabled={busy.has(`x${s.key}`)} onClick={() => closeTable(s)}>
@@ -634,7 +729,7 @@ export default function GarsonBoardPage() {
         <button
           type="button"
           key={banner.id}
-          className={`gb-banner${banner.kind === 'visit' ? ' is-visit' : banner.tableKey ? ' is-verified' : ''}`}
+          className={`gb-banner${banner.kind === 'visit' ? ' is-visit' : banner.tableKey ? ' is-verified' : banner.callType ? ` is-call t-${banner.callType}` : ''}`}
           aria-live="polite"
           onClick={() => {
             setBanner(null);
@@ -643,7 +738,14 @@ export default function GarsonBoardPage() {
             else if (wide) setSheetKey(null);
           }}
         >
-          {banner.kind === 'visit' ? <Footprints size={20} aria-hidden="true" /> : banner.tableKey ? <Check size={20} aria-hidden="true" /> : <BellRing size={20} aria-hidden="true" />}
+          {banner.kind === 'visit' ? <Footprints size={20} aria-hidden="true" /> : banner.tableKey ? <Check size={20} aria-hidden="true" /> : banner.callType ? (
+            <span className="gb-banner__icon" aria-hidden="true">
+              {(() => {
+                const BannerIcon = CALL_ICON[banner.callType];
+                return <BannerIcon size={22} />;
+              })()}
+            </span>
+          ) : <BellRing size={20} aria-hidden="true" />}
           <span>
             <b>{banner.kind === 'visit' ? 'Masaya uğra' : banner.tableKey ? 'Müşteri onaylandı' : 'Yeni çağrı'}</b>
             {banner.text}
@@ -701,16 +803,6 @@ export default function GarsonBoardPage() {
             {soundBtn}
           </div>
           {status}
-          <div className="gb-rail__stats">
-            <div>
-              <b>{counts?.busy ?? 0}</b>
-              <span>Dolu masa</span>
-            </div>
-            <div className={counts?.due ? 'is-warn' : ''}>
-              <b>{counts?.due ?? 0}</b>
-              <span>Uğranmalı</span>
-            </div>
-          </div>
           <nav className="gb-rail__filters" aria-label="Süzgeç">
             <h3>Masaları göster</h3>
             {FILTERS.map(([id, label]) => (
@@ -724,23 +816,6 @@ export default function GarsonBoardPage() {
         </aside>
 
         <main className="gb-center">
-          <header className="gb-center__head">
-            <h1>Salon planı</h1>
-            <button
-              type="button"
-              className="gb-link"
-              onClick={() => {
-                const names = groups.map((g) => g.name);
-                const allClosed = names.every((n) => collapsed.has(n));
-                const next = new Set(collapsed);
-                names.forEach((n) => (allClosed ? next.delete(n) : next.add(n)));
-                setCollapsed(next);
-                saveCollapsed(next);
-              }}
-            >
-              {groups.length && groups.every((g) => collapsed.has(g.name)) ? 'Hepsini aç' : 'Hepsini kapat'}
-            </button>
-          </header>
           {offlineNote}
           {!board ? loading : floor}
         </main>
@@ -793,27 +868,6 @@ export default function GarsonBoardPage() {
       {offlineNote}
       <div className="gb-m-hero">
         {status}
-        <div className="gb-m-chips">
-          <button
-            type="button"
-            className={counts?.due ? 'is-warn' : ''}
-            onClick={() => {
-              setTab('tables');
-              setFilter('due');
-            }}
-          >
-            <b>{counts?.due ?? 0}</b> uğranmalı
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setTab('tables');
-              setFilter('busy');
-            }}
-          >
-            <b>{counts?.busy ?? 0}</b> dolu masa
-          </button>
-        </div>
       </div>
 
       {!board ? (
@@ -889,13 +943,26 @@ function useWide() {
   return wide;
 }
 
-/** Bekleyen masa kartı. */
+/** Seçenek özeti ("Büyük, Peynirli") küçük etiketler olarak. */
+function VariantTags({ text }: { text: string }) {
+  return (
+    <span className="gb-var">
+      {text.split(/\s*[,·]\s*/).filter(Boolean).map((part, k) => (
+        <i key={k}>{part}</i>
+      ))}
+    </span>
+  );
+}
+
+/** Bekleyen masa kartı. Sağa kaydırınca ana işlem yapılır (gidiyorum / hallettim); düğmeler her zaman da vardır. */
+const SWIPE_AT = 96;
 function CallCard({
   t,
   now,
   busy,
   flash,
   index,
+  next,
   onClaim,
   onUnclaim,
   onResolve,
@@ -906,6 +973,7 @@ function CallCard({
   busy: boolean;
   flash: boolean;
   index: number;
+  next?: 'next' | 'mine';
   onClaim: (t: BoardTable, force?: boolean) => void;
   onUnclaim: (t: BoardTable) => void;
   onResolve: (t: BoardTable) => void;
@@ -914,24 +982,93 @@ function CallCard({
   const wait = now - t.calls[0].at;
   const level = urgency(wait);
   const num = shortName(t);
+  const newest = t.calls[t.calls.length - 1];
+  const types = [...new Set(t.calls.map((c) => c.type))];
+  const cg = types.length > 1
+    ? ({ ['--cg' as string]: `conic-gradient(from -90deg, ${types.map((ty, i) => `${TYPE_COLOR[ty]} ${(i * 100) / types.length}% ${((i + 1) * 100) / types.length}%`).join(', ')})` } as CSSProperties)
+    : undefined;
+  const claim = t.calls.find((c) => c.claim)?.claim || null;
+  const mine = Boolean(claim?.mine);
+  const swipeable = !busy && !(claim && !mine);
+
+  const [dx, setDx] = useState(0);
+  const drag = useRef<{ x: number; y: number; locked: boolean } | null>(null);
+  const moved = useRef(false);
+
+  function down(e: RPointerEvent<HTMLElement>) {
+    if (!swipeable || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    drag.current = { x: e.clientX, y: e.clientY, locked: false };
+    moved.current = false;
+  }
+  function move(e: RPointerEvent<HTMLElement>) {
+    const d = drag.current;
+    if (!d) return;
+    const ox = e.clientX - d.x;
+    const oy = e.clientY - d.y;
+    if (!d.locked) {
+      if (Math.abs(oy) > 12 && Math.abs(oy) > Math.abs(ox)) {
+        drag.current = null; // dikey kaydırma: sayfa kayar
+        return;
+      }
+      if (ox > 10) {
+        d.locked = true;
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+      }
+    }
+    if (d.locked) {
+      moved.current = true;
+      setDx(Math.max(0, Math.min(150, ox)));
+    }
+  }
+  function up() {
+    const d = drag.current;
+    drag.current = null;
+    if (d?.locked && dx >= SWIPE_AT) {
+      if (mine) onResolve(t);
+      else onClaim(t);
+    }
+    setDx(0);
+  }
+
+  const hint = mine ? 'Hallettim' : 'Ben gidiyorum';
   return (
-    <article className={`gb-card is-${level}${flash ? ' is-flash' : ''}`} style={{ ['--i' as string]: index }}>
-      <button type="button" className="gb-card__head" onClick={onOpen} aria-label={`${t.label} ayrıntısı`}>
-        <span className={`gb-card__num${num.length > 3 ? ' is-long' : ''}`}>{num}</span>
-        <span className="gb-card__table">
-          <small>{t.groupName}</small>
-          <strong>{t.label}</strong>
-        </span>
-        <span className="gb-timer">
-          <Clock size={14} aria-hidden="true" /> {ago(wait)}
-        </span>
-      </button>
-      <CallBody t={t} now={now} busy={busy} onClaim={onClaim} onUnclaim={onUnclaim} onResolve={onResolve} />
-      <p className="gb-card__visit">
-        <Footprints size={14} aria-hidden="true" />
-        {t.lastVisit ? `Son uğrayan: ${t.lastVisit.mine ? 'sen' : t.lastVisit.name} · ${since(now - t.lastVisit.at)}` : 'Bu masaya henüz uğranmadı'}
-      </p>
-    </article>
+    <div className={`gb-swipe${dx > 0 ? ' is-dragging' : ''}${dx >= SWIPE_AT ? ' is-armed' : ''}${mine ? ' is-mine' : ''}`} style={{ ['--dx' as string]: `${dx}px` }}>
+      <span className="gb-swipe__hint" aria-hidden="true">
+        {mine ? <Check size={22} /> : <Footprints size={22} />} {hint}
+      </span>
+      <article
+        className={`gb-card is-${level} t-${newest.type}${types.length > 1 ? ' has-multi' : ''}${flash ? ' is-flash' : ''}${next ? ` gb-card--next is-${next}` : ''}`}
+        style={{ ['--i' as string]: index, ...cg }}
+        onPointerDown={down}
+        onPointerMove={move}
+        onPointerUp={up}
+        onPointerCancel={up}
+        onClickCapture={(e) => {
+          if (moved.current) {
+            e.stopPropagation();
+            e.preventDefault();
+            moved.current = false;
+          }
+        }}
+      >
+        {next ? <span className="gb-card__ribbon">{next === 'mine' ? 'Yoldasın' : 'Sıradaki'}</span> : null}
+        <button type="button" className="gb-card__head" onClick={onOpen} aria-label={`${t.label} ayrıntısı`}>
+          <span className={`gb-card__num${num.length > 3 ? ' is-long' : ''}`}>{num}</span>
+          <span className="gb-card__table">
+            <small>{t.groupName}</small>
+            <strong>{t.label}</strong>
+          </span>
+          <span className="gb-timer">
+            <Clock size={14} aria-hidden="true" /> {ago(wait)}
+          </span>
+        </button>
+        <CallBody t={t} now={now} busy={busy} onClaim={onClaim} onUnclaim={onUnclaim} onResolve={onResolve} />
+        <p className="gb-card__visit">
+          <Footprints size={14} aria-hidden="true" />
+          {t.lastVisit ? `Son uğrayan: ${t.lastVisit.mine ? 'sen' : t.lastVisit.name} · ${since(now - t.lastVisit.at)}` : 'Bu masaya henüz uğranmadı'}
+        </p>
+      </article>
+    </div>
   );
 }
 
@@ -968,8 +1105,9 @@ function CallBody({
                 {c.items.length ? (
                   <div className="gb-items">
                     {c.items.map((i, k) => (
-                      <span key={k}>
+                      <span key={k} className={i.variant ? 'has-variant' : ''}>
                         <b>{i.qty}×</b> {i.name}
+                        {i.variant ? <VariantTags text={i.variant} /> : null}
                       </span>
                     ))}
                   </div>

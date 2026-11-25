@@ -32,4 +32,10 @@ assert.equal(p.parsePresence(list, now + p.PRESENCE_TTL_MS + 5000).length, 0);
 // bozuk veri güvenli
 assert.deepEqual(p.parsePresence('x', now), []);
 assert.deepEqual(p.parsePresence([{ id: '../..', kind: 'cart', at: now }], now), []);
+// alerji/diyet işaretleri: yalnızca bilinen katalog kimlikleri geçer, serbest metin atılır
+let withPrefs = p.updatePresence([], { id: 'visitor-pref01', kind: 'menu', label: '', at: now, prefs: ['a:gluten', 'd:vegan', 'x:evil', '<script>', 'a:gluten'] }, true, now);
+withPrefs = p.updatePresence(withPrefs, { id: 'visitor-pref02', kind: 'cart', label: '', at: now, prefs: ['a:dairy'] }, true, now);
+assert.deepEqual(p.parsePresence(withPrefs, now).find((v) => v.id === 'visitor-pref01').prefs, ['a:gluten', 'd:vegan']);
+assert.deepEqual([...p.presencePrefs(withPrefs, now)].sort(), ['a:dairy', 'a:gluten', 'd:vegan']);
+assert.deepEqual(p.presencePrefs(withPrefs, now + p.PRESENCE_TTL_MS + 1), [], 'süre dolunca işaretler de silinir');
 console.log('table-presence: tamam');

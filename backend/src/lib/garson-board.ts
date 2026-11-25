@@ -177,7 +177,7 @@ export type GroupIn = {
   /** Masa kodu önekleri için önceden hesaplanmış kodlar ve adlar */
   tables: { code: string; name: string }[];
 };
-export type OrderRowIn = { name: string; qty: number; line: number; at: number; note: string; paid: boolean };
+export type OrderRowIn = { name: string; variant: string; qty: number; line: number; at: number; note: string; paid: boolean };
 
 export type SessionIn = {
   id: number;
@@ -189,6 +189,7 @@ export type SessionIn = {
   guestName: string | null;
   codeStatus: 'empty' | 'pending' | 'verified' | 'expired';
   activity?: PresenceSummary[];
+  prefs?: string[];
   orders?: OrderRowIn[];
   accessCode?: string | null;
   codeExpiresAt?: number | null;
@@ -213,7 +214,7 @@ export type BoardCall = {
   type: 'waiter' | 'bill' | 'hookah' | 'valet' | 'order';
   label: string;
   note: string;
-  items: { name: string; qty: number }[];
+  items: { name: string; qty: number; variant: string }[];
   at: number;
   claim: { name: string; at: number; mine: boolean } | null;
 };
@@ -228,6 +229,7 @@ export type BoardTable = {
   session: {
     id: number;
     activity: PresenceSummary[];
+    prefs: string[];
     orders: OrderRowIn[];
     code: string | null;
     codeExpiresAt: number | null;
@@ -262,13 +264,20 @@ const CALL_LABEL: Record<BoardCall['type'], string> = {
   order: 'Sipariş verdi',
 };
 
-export function parseOrder(json: string | null): { items: { name: string; qty: number }[]; note: string } {
+/** "Pizza (Büyük, Peynirli)" → ürün adı ve seçenek özeti ayrı gösterilebilsin */
+export function splitVariant(raw: string): { name: string; variant: string } {
+  const m = /^(.*?)\s*\(([^()]{1,120})\)\s*$/.exec(raw);
+  if (!m || !m[1].trim()) return { name: raw, variant: '' };
+  return { name: m[1].trim(), variant: m[2].trim() };
+}
+
+export function parseOrder(json: string | null): { items: { name: string; qty: number; variant: string }[]; note: string } {
   if (!json) return { items: [], note: '' };
   try {
     const data = JSON.parse(json) as { items?: unknown; note?: unknown };
     const items = (Array.isArray(data.items) ? data.items : [])
       .filter(isObject)
-      .map((i) => ({ name: String(i.name || '').slice(0, 80), qty: Math.max(1, Math.round(Number(i.qty) || 1)) }))
+      .map((i) => ({ ...splitVariant(String(i.name || '').slice(0, 120)), qty: Math.max(1, Math.round(Number(i.qty) || 1)) }))
       .filter((i) => i.name);
     return { items, note: typeof data.note === 'string' ? data.note.slice(0, 300) : '' };
   } catch {
@@ -352,6 +361,7 @@ export function buildBoard(input: {
         ? {
             id: s.id,
             activity: s.activity || [],
+            prefs: s.prefs || [],
             orders: s.orders || [],
             code: codeGateEnabled && handoff?.u === me.id && s.codeStatus === 'pending' ? s.accessCode || null : null,
             codeExpiresAt: s.codeExpiresAt ?? null,

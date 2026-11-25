@@ -1432,10 +1432,13 @@ router.post('/:slug/table-request', async (req, res) => {
         clientPrice >= floorPrice - 0.001
           ? Math.min(clientPrice, Math.max(floorPrice * 40, floorPrice) + 2000)
           : floorPrice;
-      const name =
+      const baseName =
         getProductField(product.i18n, langCode, 'name') ||
         String(i.name || '').trim() ||
         'Ürün';
+      // Sepetteki "Ürün (Büyük, Peynirli)" seçenek özeti kaybolmasın: sonundaki parantezi koru
+      const variant = /\s\(([^()]{1,120})\)\s*$/.exec(String(i.name || ''))?.[1]?.trim();
+      const name = variant && !/\([^()]*\)\s*$/.test(baseName) ? `${baseName} (${variant})` : baseName;
 
       items.push({
         productId: product.id,
@@ -1651,7 +1654,7 @@ router.post('/:slug/table-presence', async (req, res) => {
       if (!session) return res.status(409).json({ code: 'SESSION_CLOSED' });
       let raw: Record<string, unknown> = {};
       try { const parsed = JSON.parse(session.metaJson || '{}'); if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) raw = parsed; } catch { /* legacy empty metadata */ }
-      const presence = updatePresence(raw.presence, { id: visitorId, kind, label: String(body.label || ''), at: Date.now() }, body.active !== false);
+      const presence = updatePresence(raw.presence, { id: visitorId, kind, label: String(body.label || ''), at: Date.now(), prefs: Array.isArray(body.prefs) ? body.prefs : undefined }, body.active !== false);
       const changed = await prisma.tableFloorSession.updateMany({ where: { id: session.id, restaurantId: restaurant.id, status: { in: ['open', 'reserved'] }, metaJson: session.metaJson }, data: { metaJson: JSON.stringify({ ...raw, presence }) } });
       if (changed.count) return res.json({ ok: true });
     }
