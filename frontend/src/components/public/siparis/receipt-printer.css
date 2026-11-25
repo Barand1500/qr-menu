@@ -505,3 +505,349 @@
     transition: none;
   }
 }
+
+/* ───────── menüye dön (üstte büyük kart) ───────── */
+.rp .rp__stage {
+  padding-top: 112px;
+}
+.rp .rp__out {
+  max-height: min(34rem, calc(100dvh - 21rem));
+}
+.rp__back {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top, 0px));
+  left: 50%;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(580px, calc(100% - 28px));
+  padding: 12px 14px 12px 12px;
+  overflow: hidden;
+  color: #1a0d05;
+  font: inherit;
+  text-align: start;
+  background: linear-gradient(120deg, #ff6b2c, #ffb44a);
+  border: 0;
+  border-radius: 24px;
+  box-shadow: 0 22px 44px -18px rgba(255, 107, 44, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  opacity: 0;
+  transform: translate(-50%, -26px) scale(0.96);
+  pointer-events: none;
+  cursor: pointer;
+  transition: opacity 0.45s 0.5s, transform 0.6s 0.5s cubic-bezier(0.2, 1.25, 0.3, 1), box-shadow 0.2s;
+}
+.rp[data-stage='complete'] .rp__back {
+  opacity: 1;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+.rp__back::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.45) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: rp-shine 3.8s ease-in-out 1.6s infinite;
+  pointer-events: none;
+}
+@keyframes rp-shine {
+  0%,
+  60%,
+  100% {
+    transform: translateX(-120%);
+  }
+  85% {
+    transform: translateX(120%);
+  }
+}
+.rp__back:hover {
+  box-shadow: 0 28px 54px -16px rgba(255, 107, 44, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.rp__back:active {
+  filter: brightness(0.95);
+}
+.rp__back:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+.rp__back-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  background: rgba(26, 13, 5, 0.14);
+  border-radius: 17px;
+}
+.rp__back-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+.rp__back-text strong {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.rp__back-text small {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  opacity: 0.78;
+}
+.rp__back-go {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: #fff;
+  background: #1a0d05;
+  border-radius: 50%;
+  animation: rp-nudge 1.6s ease-in-out infinite;
+}
+@keyframes rp-nudge {
+  50% {
+    transform: translateX(5px);
+  }
+}
+
+/* ───────── fişi tutup koparma ───────── */
+.rp.is-free {
+  overflow: hidden;
+}
+.rp__out.is-free {
+  overflow: visible !important;
+}
+.rp__feed.is-grab {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: transform;
+}
+.rp__feed.is-held {
+  cursor: grabbing;
+}
+.rp__feed.is-flying {
+  z-index: 8;
+  cursor: grabbing;
+}
+.rp__feed.is-flying .rp__paper {
+  filter: drop-shadow(0 26px 28px rgba(0, 0, 0, 0.55));
+}
+.rp__feed.is-hidden {
+  visibility: hidden;
+}
+.rp__tab {
+  position: absolute;
+  bottom: 26px;
+  left: 50%;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 15px;
+  color: #fff;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: rgba(28, 25, 23, 0.9);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 10px 20px -8px rgba(0, 0, 0, 0.6);
+  transform: translateX(-50%);
+  cursor: grab;
+  touch-action: none;
+  animation: rp-tab-in 0.5s 1.2s both, rp-tab-bob 1.8s ease-in-out 1.8s infinite;
+}
+@keyframes rp-tab-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+}
+@keyframes rp-tab-bob {
+  50% {
+    transform: translate(-50%, -5px);
+  }
+}
+
+/* yazıcıda kalan koparılmış kağıt ucu */
+.rp__stub {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  height: 22px;
+  background: var(--rp-paper);
+  -webkit-mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% / 14px 100%;
+  mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% / 14px 100%;
+  filter: drop-shadow(0 -2px 4px rgba(0, 0, 0, 0.35));
+  animation: rp-stub-in 0.3s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+@keyframes rp-stub-in {
+  from {
+    transform: translateY(14px);
+  }
+}
+.rp__shards {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  z-index: 7;
+  pointer-events: none;
+}
+.rp__shards i {
+  position: absolute;
+  width: 9px;
+  height: 13px;
+  background: var(--rp-paper);
+  clip-path: polygon(50% 0, 100% 100%, 0 82%);
+  opacity: 0;
+  animation: rp-shard 0.75s cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+}
+@keyframes rp-shard {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--x), var(--y)) rotate(var(--r));
+  }
+}
+
+/* buruşma: kağıt kırışıp daireye sıkışır */
+.rp__feed.is-crumple {
+  animation: rp-crumple 0.54s cubic-bezier(0.5, 0, 0.7, 1) forwards;
+}
+@keyframes rp-crumple {
+  0% {
+    scale: 1;
+    rotate: 0deg;
+  }
+  20% {
+    scale: 0.88 0.94;
+    rotate: -4deg;
+  }
+  38% {
+    scale: 0.7 0.62;
+    rotate: 5deg;
+  }
+  58% {
+    scale: 0.46 0.5;
+    rotate: -8deg;
+  }
+  78% {
+    scale: 0.3 0.3;
+    rotate: 10deg;
+  }
+  100% {
+    scale: 0.19;
+    rotate: 0deg;
+  }
+}
+.rp__feed.is-crumple .rp__paper {
+  animation: rp-paper-ball 0.54s ease-in forwards;
+}
+@keyframes rp-paper-ball {
+  0% {
+    clip-path: inset(0 round 0);
+    filter: drop-shadow(0 26px 28px rgba(0, 0, 0, 0.55));
+  }
+  100% {
+    clip-path: inset(30% 7% 30% 7% round 50%);
+    filter: contrast(1.3) saturate(0.7) brightness(0.92);
+  }
+}
+.rp__creases {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+.rp__feed.is-crumple .rp__creases {
+  animation: rp-creases 0.54s ease-in forwards;
+}
+@keyframes rp-creases {
+  to {
+    opacity: 1;
+  }
+}
+
+/* fırlatılabilen kağıt topu */
+.rp__ball {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  width: 70px;
+  height: 70px;
+  cursor: grab;
+  touch-action: none;
+  will-change: transform;
+  filter: drop-shadow(0 12px 10px rgba(0, 0, 0, 0.5));
+}
+.rp__ball:active {
+  cursor: grabbing;
+}
+.rp__ball-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: rp-ball-pop 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+@keyframes rp-ball-pop {
+  from {
+    transform: scale(0.5);
+  }
+}
+
+@media (max-width: 460px) {
+  .rp .rp__stage {
+    padding-top: 100px;
+  }
+  .rp__back-text strong {
+    font-size: 18px;
+  }
+  .rp__back-text small {
+    font-size: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rp__back,
+  .rp__back::after,
+  .rp__back-go,
+  .rp__tab,
+  .rp__stub,
+  .rp__shards i,
+  .rp__ball-svg {
+    animation: none;
+    transition: none;
+  }
+  .rp__tab {
+    opacity: 1;
+  }
+}
+
+/* tutamak yazıyla çakışmasın: kağıdın altında boşluk bırak */
+.rp__paper {
+  padding-bottom: 68px;
+}
+.rp .rp__out {
+  max-height: min(36rem, calc(100dvh - 19.5rem));
+}
+.rp .rp__stage {
+  padding-top: 100px;
+}
+.rp__tab {
+  bottom: 14px;
+}
