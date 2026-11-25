@@ -2088,3 +2088,31 @@
   margin-inline-end: 5px;
   vertical-align: 1px;
 }
+
+/* seçili masa: halka yerine yumuşak ışık kutusu (yayla üst üste binmez) */
+.gb .gb-disc.is-picked .gb-disc__ring {
+  outline: none;
+  box-shadow: none;
+}
+.gb .gb-disc.is-picked.is-call .gb-disc__ring {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ct, var(--gb-hot)) 28%, transparent);
+}
+.gb .gb-slot:has(.gb-disc.is-picked) {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gb-accent) 16%, transparent), color-mix(in srgb, var(--gb-accent) 4%, transparent));
+  border-radius: 24px;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--gb-accent) 55%, transparent), 0 14px 28px -18px color-mix(in srgb, var(--gb-accent) 70%, transparent);
+}
+.gb .gb-slot:has(.gb-disc.is-picked)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 26px;
+  height: 4px;
+  background: var(--gb-accent);
+  border-radius: 0 0 6px 6px;
+  transform: translateX(-50%);
+}
+.gb .gb-slot:has(.gb-disc.is-picked) .gb-disc__ring {
+  transform: scale(1.04);
+}

@@ -31,6 +31,7 @@ import { api } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
 import { applyDocumentTitle } from '@/lib/siteTitle';
 import { playAdminNotificationSound } from '@/lib/notificationSound';
+import { parseVibration, vibrate } from '@/lib/garsonVibration';
 import { allergenLabel, dietLabel } from '@/lib/dietAllergens';
 import { activityText, ago, clock, since, money, urgency, type Board, type BoardCall, type BoardTable, type CallType, type FeedKind } from '@/lib/garsonBoard';
 import '@/garson-board.css';
@@ -41,8 +42,6 @@ type Tab = 'calls' | 'tables' | 'feed';
 type Filter = 'all' | 'busy' | 'due' | 'empty';
 
 type IconType = ComponentType<{ size?: number }>;
-// Servise göre ayrı titreşim: telefona bakmadan fark edilir
-const VIBRATE: Record<CallType, number[]> = { waiter: [180, 80, 180], bill: [320], hookah: [80, 60, 80, 60, 80], valet: [520], order: [120, 60, 120, 60, 260] };
 const TYPE_COLOR: Record<CallType, string> = { waiter: '#f97316', bill: '#22c55e', hookah: '#a855f7', valet: '#3b82f6', order: '#eab308' };
 // Menüdeki servis düğmeleriyle aynı simgeler
 const CALL_ICON: Record<CallType, IconType> = { waiter: HandHelping, bill: ReceiptText, hookah: HookahIcon, valet: CarFront, order: ShoppingBag };
@@ -167,7 +166,7 @@ export default function GarsonBoardPage() {
           );
           if (soundRef.current) playAdminNotificationSound();
           try {
-            navigator.vibrate?.(VIBRATE[c.type]);
+            vibrate(parseVibration(data.vibration)[c.type]);
           } catch {
             /* titreşim desteklenmiyor */
           }

@@ -50,7 +50,7 @@ import {
   TABLE_SESSION_CODE_TTL_KEY,
   parseTableSessionCodeTtl,
 } from '../lib/table-session-code.js';
-import { parseVisitReminderMinutes, VISIT_REMINDER_KEY } from '../lib/garson-board.js';
+import { parseVibration, parseVisitReminderMinutes, VIBRATION_KEY, VISIT_REMINDER_KEY } from '../lib/garson-board.js';
 import { loadPrefCatalog,
   normalizePrefCatalogInput,
   PREF_CATALOG_KEY,
@@ -614,7 +614,8 @@ router.put('/welcome-music', async (req, res) => {
 
 router.put('/menu-features', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
-  const { serviceItems, tableSessionCode, tableSessionCodeTtlMinutes, menuGames, garsonVisitMinutes } = req.body as {
+  const { serviceItems, tableSessionCode, tableSessionCodeTtlMinutes, menuGames, garsonVisitMinutes, garsonVibration } = req.body as {
+    garsonVibration?: unknown;
     garsonVisitMinutes?: number;
     serviceItems?: unknown;
     tableSessionCode?: boolean;
@@ -683,6 +684,15 @@ router.put('/menu-features', async (req, res) => {
         key: TABLE_SESSION_CODE_ENABLED_KEY,
         value: tableSessionCode ? 'true' : 'false',
       },
+    });
+  }
+
+  if (garsonVibration != null && typeof garsonVibration === 'object') {
+    const value = JSON.stringify(parseVibration(garsonVibration));
+    await prisma.setting.upsert({
+      where: { restaurantId_key: { restaurantId: restaurantId!, key: VIBRATION_KEY } },
+      update: { value },
+      create: { restaurantId: restaurantId!, key: VIBRATION_KEY, value },
     });
   }
 

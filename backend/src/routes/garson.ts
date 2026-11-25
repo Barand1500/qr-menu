@@ -23,8 +23,10 @@ import {
   buildBoard,
   logEvent,
   parseStore,
+  parseVibration,
   parseVisitReminderMinutes,
   splitVariant,
+  VIBRATION_KEY,
   releaseClaim,
   serializeStore,
   tableKeyValid,
@@ -79,7 +81,7 @@ router.get('/board', async (req, res) => {
   if (restaurantId == null || !me) return res.status(401).json({ message: 'Yetkisiz' });
   const now = Date.now();
 
-  const [groupRows, sessionRows, requestRows, storeRow, restaurant, codeConfig, reminderRow] = await Promise.all([
+  const [groupRows, sessionRows, requestRows, storeRow, restaurant, codeConfig, reminderRow, vibrationRow] = await Promise.all([
     prisma.qrTableGroup.findMany({ where: { restaurantId }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] }),
     prisma.tableFloorSession.findMany({ where: { restaurantId, status: { in: [...ACTIVE_STATUSES] } } }),
     prisma.tableServiceRequest.findMany({
@@ -91,6 +93,7 @@ router.get('/board', async (req, res) => {
     prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { name: true } }),
     loadTableSessionCodeConfig(restaurantId),
     prisma.setting.findUnique({ where: { restaurantId_key: { restaurantId, key: VISIT_REMINDER_KEY } } }),
+    prisma.setting.findUnique({ where: { restaurantId_key: { restaurantId, key: VIBRATION_KEY } } }),
   ]);
   const visitMinutes = parseVisitReminderMinutes(reminderRow?.value);
 
@@ -148,7 +151,7 @@ router.get('/board', async (req, res) => {
   }));
 
   const board = buildBoard({ groups, sessions, requests, store: parseStore(storeRow?.value), me, now, codeGateEnabled: codeConfig.enabled, visitMinutes });
-  res.json({ now, codeGateEnabled: codeConfig.enabled, visitMinutes, restaurant: restaurant?.name || '', me, hasTables: groups.length > 0, ...board });
+  res.json({ now, codeGateEnabled: codeConfig.enabled, visitMinutes, vibration: parseVibration(vibrationRow?.value), restaurant: restaurant?.name || '', me, hasTables: groups.length > 0, ...board });
 });
 
 /** "Masaya uğradım" */

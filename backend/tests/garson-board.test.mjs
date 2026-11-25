@@ -66,7 +66,11 @@ const by = (k) => board.tables.find((t) => t.key === k);
 
 assert.equal(by('bahce::3').state, 'call');
 assert.equal(by('bahce::3').calls[0].label, 'Sipariş verdi');
-assert.deepEqual(by('bahce::3').calls[0].items, [{ name: 'Çay', qty: 2 }, { name: 'Su', qty: 1 }]);
+assert.deepEqual(by('bahce::3').calls[0].items, [{ name: 'Çay', variant: '', qty: 2 }, { name: 'Su', variant: '', qty: 1 }]);
+// seçenekli ürün: ad ve seçenek özeti ayrılır
+assert.deepEqual(g.splitVariant('Pizza (Büyük, Peynirli)'), { name: 'Pizza', variant: 'Büyük, Peynirli' });
+assert.deepEqual(g.splitVariant('Çay'), { name: 'Çay', variant: '' });
+assert.deepEqual(g.parseOrder(JSON.stringify({ items: [{ name: 'Kahve (Orta)', qty: 1 }] })).items, [{ name: 'Kahve', variant: 'Orta', qty: 1 }]);
 assert.equal(by('bahce::3').calls[0].note, 'şekersiz');
 assert.equal(by('bahce::3').calls[0].claim.name, 'Ayşe');
 assert.equal(by('bahce::3').calls[0].claim.mine, false);
@@ -104,6 +108,12 @@ assert.equal(closedBoard.tables.find((t) => t.key === 'bahce::1').lastVisit, nul
 assert.equal(closedBoard.tables.find((t) => t.key === 'bahce::1').visit, 'none');
 const reopened = g.buildBoard({ groups, sessions: [{ id: 501, group: 'bahce', table: '1', status: 'open', openedAt: now - 5 * MIN, openedBy: 'qr', guestName: null, codeStatus: 'empty', total: 0, itemCount: 0, waiterName: null }], requests: [], store: oldVisit, me: { id: 1, name: 'Ali' }, now });
 assert.equal(reopened.tables.find((t) => t.key === 'bahce::1').lastVisit, null, 'önceki oturumun uğraması yeni oturumda görünmez');
+// servis titreşimi: geçersiz kimlikler yok sayılır, eksikler varsayılan olur
+assert.deepEqual(g.parseVibration(undefined), g.DEFAULT_VIBRATION);
+assert.equal(g.parseVibration({ valet: 'off', waiter: 'evil', bill: 'long' }).valet, 'off');
+assert.equal(g.parseVibration({ waiter: 'evil' }).waiter, g.DEFAULT_VIBRATION.waiter);
+assert.equal(g.parseVibration(JSON.stringify({ hookah: 'short' })).hookah, 'short');
+assert.deepEqual(g.parseVibration('{bozuk'), g.DEFAULT_VIBRATION);
 assert.equal(g.parseVisitReminderMinutes(undefined), 15);
 assert.equal(g.parseVisitReminderMinutes('0'), 0);
 assert.equal(g.parseVisitReminderMinutes('2'), 5);

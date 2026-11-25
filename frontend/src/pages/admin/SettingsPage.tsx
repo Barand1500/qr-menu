@@ -63,6 +63,8 @@ import {
 import { useAddons } from '@/hooks/useAddons';
 import { resolveServiceItems, type MenuServiceItem } from '@/lib/tableService';
 import ServiceItemsEditor from '@/components/admin/ServiceItemsEditor';
+import GarsonVibrationEditor from '@/components/admin/GarsonVibrationEditor';
+import { DEFAULT_VIBRATION, parseVibration, type VibrationMap } from '@/lib/garsonVibration';
 import { daysUntilLicenseEnd, formatLicenseDate } from '@/lib/license';
 import {
   SUPPORT_PHONE_DISPLAY,
@@ -243,7 +245,8 @@ export default function SettingsPage() {
     [serviceItems, setServiceItems] = useState<MenuServiceItem[]>(() => resolveServiceItems());
   const [tableCodeEnabled, setTableCodeEnabled] = useState(false),
     [tableCodeTtl, setTableCodeTtl] = useState(120),
-    [visitMinutes, setVisitMinutes] = useState(15); // 0 = kapalı
+    [visitMinutes, setVisitMinutes] = useState(15), // 0 = kapalı
+    [vibration, setVibration] = useState<VibrationMap>(DEFAULT_VIBRATION);
   const [geoLock, setGeoLock] = useState<GeoLockConfig>({
     enabled: false,
     lat: 36.8121,
@@ -340,6 +343,7 @@ export default function SettingsPage() {
         setTableCodeEnabled(
           ['true', '1'].includes(d.settings.table_session_code_enabled),
         );
+        setVibration(parseVibration(d.settings.garson_vibration));
         const visit = d.settings.garson_visit_reminder_minutes;
         setVisitMinutes(
           visit == null || visit === '' || !Number.isFinite(Number(visit))
@@ -476,6 +480,7 @@ export default function SettingsPage() {
           tableSessionCode: tableCodeEnabled,
           tableSessionCodeTtlMinutes: tableCodeTtl,
           garsonVisitMinutes: visitMinutes,
+          garsonVibration: vibration,
         });
         await put('geo-lock', geoLock);
       }
@@ -1163,6 +1168,18 @@ export default function SettingsPage() {
                     items={serviceItems}
                     onChange={(next) => {
                       setServiceItems(next);
+                      mark('menu');
+                    }}
+                  />
+                </Section>
+                <Section
+                  title="Garson titreşimi"
+                  description="Garson panelinde yeni çağrı gelince telefonun nasıl titreyeceği."
+                >
+                  <GarsonVibrationEditor
+                    value={vibration}
+                    onChange={(next) => {
+                      setVibration(next);
                       mark('menu');
                     }}
                   />

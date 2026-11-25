@@ -1,4 +1,4 @@
-﻿/* Ayarlar çalışma alanı. Gezinme ve form birbirinden bağımsızdır. */
+/* Ayarlar çalışma alanı. Gezinme ve form birbirinden bağımsızdır. */
 .ast-page {
   min-width: 0;
   color: var(--admin-text);
@@ -1442,4 +1442,82 @@
   font-size: 11px;
   line-height: 1.6;
   color: var(--admin-text-muted);
+}
+
+/* garson titreşim ayarı */
+.ast-vib {
+  display: grid;
+  gap: 12px;
+}
+.ast-vib-note {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--admin-text-muted);
+}
+.ast-vib-note svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--admin-accent);
+}
+.ast-vib-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ast-vib-row {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--admin-card);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 16px;
+}
+.ast-vib-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-text);
+}
+.ast-vib-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--admin-accent);
+  background: var(--admin-accent-soft);
+  border-radius: 11px;
+}
+.ast-vib-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ast-vib-pick button {
+  min-height: 40px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+  background: transparent;
+  border: 1px solid var(--admin-card-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.ast-vib-pick button.is-on {
+  color: var(--admin-btn-primary-text);
+  background: var(--admin-accent);
+  border-color: var(--admin-accent);
+}
+.ast-vib-foot {
+  font-size: 11px;
+  color: var(--admin-text-subtle);
 }

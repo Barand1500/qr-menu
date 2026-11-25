@@ -46,6 +46,7 @@ export type FeedItem = { id: string; at: number; kind: FeedKind; table: string; 
 
 export type Board = {
   visitMinutes: number;
+  vibration?: Partial<Record<CallType, 'off' | 'short' | 'double' | 'triple' | 'long'>>;
   codeGateEnabled: boolean;
   now: number;
   restaurant: string;

@@ -10,6 +10,35 @@ export const VISIT_DUE_MS = 15 * 60 * 1000;
 export const VISIT_REMINDER_KEY = 'garson_visit_reminder_minutes';
 export const DEFAULT_VISIT_REMINDER_MIN = 15;
 
+/** Garson telefonunun servis türüne göre titreşimi (yönetici seçer). Sunucu yalnızca kimlikleri saklar. */
+export const VIBRATION_KEY = 'garson_vibration';
+export const VIBRATION_IDS = ['off', 'short', 'double', 'triple', 'long'] as const;
+export const DEFAULT_VIBRATION: Record<'waiter' | 'bill' | 'hookah' | 'valet' | 'order', (typeof VIBRATION_IDS)[number]> = {
+  waiter: 'double',
+  bill: 'short',
+  hookah: 'triple',
+  valet: 'long',
+  order: 'double',
+};
+export function parseVibration(raw: unknown): typeof DEFAULT_VIBRATION {
+  let src: unknown = raw;
+  if (typeof raw === 'string') {
+    try {
+      src = JSON.parse(raw);
+    } catch {
+      src = null;
+    }
+  }
+  const out = { ...DEFAULT_VIBRATION };
+  if (src && typeof src === 'object') {
+    for (const key of Object.keys(out) as (keyof typeof out)[]) {
+      const v = (src as Record<string, unknown>)[key];
+      if (typeof v === 'string' && (VIBRATION_IDS as readonly string[]).includes(v)) out[key] = v as (typeof VIBRATION_IDS)[number];
+    }
+  }
+  return out;
+}
+
 /** Ayar değeri: yok → varsayılan 15 dk; 0 → hatırlatma kapalı; 5–180 dk arası. */
 export function parseVisitReminderMinutes(raw?: string | null): number {
   if (raw == null || raw === '') return DEFAULT_VISIT_REMINDER_MIN;
