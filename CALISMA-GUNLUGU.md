@@ -967,3 +967,10 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Değişiklik: Seçili masa artık halka yerine yumuşak ışıklı bir kutu içinde (üstte küçük tutamaç şeridi, halka hafif büyür); `garson-board.css`. Servise göre titreşim ayarı Ayarlar → Menü deneyimi'ne ("Garson titreşimi" bölümü) taşındı: her servis için Kapalı/Kısa/Çift/Üçlü/Uzun seçilir, seçince cihaz örnek titreşir. Backend: `garson_vibration` ayarı (yalnızca kimlikler, geçersizler varsayılana düşer), `PUT /settings/menu-features` `garsonVibration`, pano `vibration`. Frontend: `lib/garsonVibration.ts`, `GarsonVibrationEditor.tsx`.
 - Doğrulama: tsc (front/back), vite build, `npm run test:garson` (yeni titreşim ayar testleri), Chrome fixture hem açık hem KOYU temada (koyu için `colorScheme: 'dark'`). Not: önceki ekran görüntüleri tarayıcının varsayılan açık temasıyla alınmıştı; panel sistem temasını (prefers-color-scheme) izler, bu yüzden koyu cihazlarda koyu görünür.
 - Doğrulanmadı: ayarlar sayfasındaki yeni bölümün tarayıcıda görünümü, gerçek telefonda titreşim desenleri.
+
+## 2026-11-25 — Garson titreşimi ayar ekranı yeniden tasarlandı
+
+- Sorun: Ayarlar'daki "Garson titreşimi" bölümü sade bir düğme listesiydi, "Dene" yoktu.
+- Değişiklik: `GarsonVibrationEditor.tsx` + `admin-settings.css`: her servis kendi rengiyle (garson panelindeki renkler) bir kart; desenler çizimle gösterilir (dolu çubuk = titreme, boşluk = ara; Kapalı = üstü çizili simge); her kartın sağında "Dene" — telefonda cihazı titretir, masaüstünde çubuklar desen süresince sırayla yanar; telefonda Dene tam genişlik düğme, desen kutuları 5 eşit sütun.
+- Doğrulama: tsc, vite build, Chrome fixture 1000 (açık/koyu) ve 390: taşma ve hata yok, ekran görüntüleriyle bakıldı. Seçim artık titretmez, yalnızca "Dene" titretir.
+- Doğrulanmadı: gerçek telefonda titreşim ve ayarlar sayfasının tamamı içinde görünümü (bileşen ayrı sayfada denendi), kaydetme akışı.

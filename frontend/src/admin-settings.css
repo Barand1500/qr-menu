@@ -1444,80 +1444,193 @@
   color: var(--admin-text-muted);
 }
 
-/* garson titreşim ayarı */
+/* garson titreşim ayarı: desen çizimi + Dene */
 .ast-vib {
   display: grid;
-  gap: 12px;
-}
-.ast-vib-note {
-  display: flex;
-  gap: 8px;
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--admin-text-muted);
-}
-.ast-vib-note svg {
-  flex: none;
-  margin-top: 2px;
-  color: var(--admin-accent);
+  gap: 14px;
 }
 .ast-vib-list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .ast-vib-row {
   display: grid;
-  gap: 10px;
-  padding: 12px 14px;
-  background: var(--admin-card);
-  border: 1px solid var(--admin-card-border);
-  border-radius: 16px;
+  gap: 14px;
+  padding: 14px 16px 16px;
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--vc) 9%, transparent), transparent 60%),
+    var(--admin-card);
+  border: 1px solid color-mix(in srgb, var(--vc) 24%, var(--admin-card-border));
+  border-radius: 18px;
 }
-.ast-vib-name {
+.ast-vib-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--admin-text);
+  gap: 12px;
 }
 .ast-vib-icon {
   display: grid;
+  flex: none;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  color: var(--admin-accent);
-  background: var(--admin-accent-soft);
-  border-radius: 11px;
+  width: 42px;
+  height: 42px;
+  color: #fff;
+  background: var(--vc);
+  border-radius: 14px;
+  box-shadow: 0 8px 18px -8px var(--vc);
 }
-.ast-vib-pick {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.ast-vib-name {
+  flex: 1;
+  min-width: 0;
 }
-.ast-vib-pick button {
-  min-height: 40px;
-  padding: 0 14px;
-  font: inherit;
-  font-size: 12.5px;
+.ast-vib-name strong {
+  display: block;
+  font-size: 14px;
   font-weight: 600;
+  color: var(--admin-text);
+}
+.ast-vib-name small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
   color: var(--admin-text-muted);
-  background: transparent;
-  border: 1px solid var(--admin-card-border);
+}
+.ast-vib-try {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 0 18px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--vc);
+  background: color-mix(in srgb, var(--vc) 12%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--vc) 45%, transparent);
   border-radius: 999px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: transform 0.15s, background 0.2s, color 0.2s;
+}
+.ast-vib-try:hover {
+  background: color-mix(in srgb, var(--vc) 20%, transparent);
+}
+.ast-vib-try:active {
+  transform: scale(0.94);
+}
+.ast-vib-try.is-on {
+  color: #fff;
+  background: var(--vc);
+  animation: ast-vib-shake 0.5s ease-in-out;
+}
+@keyframes ast-vib-shake {
+  20% { transform: translateX(-2px) rotate(-2deg); }
+  40% { transform: translateX(2px) rotate(2deg); }
+  60% { transform: translateX(-2px) rotate(-1deg); }
+  80% { transform: translateX(1px) rotate(1deg); }
+}
+.ast-vib-pick {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.ast-vib-pick button {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 12px 4px 10px;
+  font: inherit;
+  color: var(--admin-text-muted);
+  background: var(--admin-bg);
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, transform 0.15s;
+}
+.ast-vib-pick button:hover {
+  border-color: color-mix(in srgb, var(--vc) 50%, var(--admin-card-border));
+}
+.ast-vib-pick button:active {
+  transform: scale(0.96);
+}
+.ast-vib-pick button em {
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 600;
 }
 .ast-vib-pick button.is-on {
-  color: var(--admin-btn-primary-text);
-  background: var(--admin-accent);
-  border-color: var(--admin-accent);
+  color: var(--admin-text);
+  background: color-mix(in srgb, var(--vc) 12%, var(--admin-card));
+  border-color: var(--vc);
+  box-shadow: 0 8px 20px -12px var(--vc);
+}
+.ast-vib-draw {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 26px;
+}
+.ast-vib-wave {
+  display: inline-flex;
+  align-items: center;
+}
+.ast-vib-wave i {
+  display: block;
+  height: 14px;
+  background: color-mix(in srgb, var(--admin-text-muted) 45%, transparent);
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+.ast-vib-wave b {
+  display: block;
+  height: 2px;
+}
+.ast-vib-pick button.is-on .ast-vib-wave i {
+  background: var(--vc);
+}
+.ast-vib-wave i.is-play {
+  animation: ast-vib-bar var(--dur) linear var(--start) both;
+}
+@keyframes ast-vib-bar {
+  0%,
+  100% {
+    background: var(--vc);
+    transform: scaleY(1.7);
+    box-shadow: 0 0 12px var(--vc);
+  }
 }
 .ast-vib-foot {
-  font-size: 11px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
   color: var(--admin-text-subtle);
+}
+@media (max-width: 480px) {
+  .ast-vib-head {
+    flex-wrap: wrap;
+  }
+  .ast-vib-try {
+    width: 100%;
+    justify-content: center;
+    order: 3;
+  }
+  .ast-vib-pick {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .ast-vib-pick button {
+    padding: 10px 2px 8px;
+  }
+  .ast-vib-wave {
+    transform: scale(0.72);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ast-vib-try.is-on,
+  .ast-vib-wave i.is-play {
+    animation: none;
+  }
 }
