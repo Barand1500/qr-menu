@@ -1082,3 +1082,10 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
   - Ön yüz: `GarsonHistory.tsx` (liste, ayrıntı: süre tileleri, çağrılar ve kim kaç dakikada gitti, zaman çizelgesi; kalabalıkta katılımlar tek satır), garson panelinde telefonda 4. sekme "Geçmiş", geniş ekranda sol menüde "Masa geçmişi", masa ayrıntısında "Bu masanın geçmişi" ve telefon sayısı, çağrıda "+N kişi de aynısını istedi". Müşteri tarafında kimlik artık kalıcı depoda (aynı telefondaki sekmeler tek kişi) ve QR/kapı/kod/çağrı isteklerine eklendi.
 - Doğrulama: backend ve frontend tsc, vite build, `npm run test:garson` (yeni `table-people` testi: 10 kişi, sahip kuralı, tekrar basış, süre hesapları, kapalı/açık oturum özeti; `garson-code` testindeki sayaç yalnızca kod yazılarını sayacak şekilde güncellendi), Chrome fixture (geçmiş sayfası 390/320/1280: taşma ve konsol hatası yok; mevcut garson fixture'ı geçiyor).
 - Doğrulanmadı: `public-menu.ts` içindeki çağrı/sipariş yolları (tekrar kuralı, `SESSION_CLOSED` koruması, kişi kaydı) gerçek veritabanı ve gerçek telefonlarla uçtan uca denenmedi; yalnızca derleme ve saf mantık testleri var. Eski (bu sürümden önceki) oturumlarda kişi/çağrı günlüğü yok: geçmişte yalnızca açılış, kapanış, ödeme ve garson siparişleri görünür. Masa sahibinin şimdilik ek bir yetkisi yok (yalnızca kayıt ve görünürlük).
+
+## 2026-11-26 — Yorum ayarlarına "Google Place ID ile ekle"
+
+- İstek: Patronun verdiği Google Place ID ve Places anahtarı sisteme girilsin.
+- Değişiklik: `ReviewsIntegration.tsx`. İşletme seçilmemişken aramanın altında "Ya da Google Place ID" alanı ve "Kimlikle ekle" düğmesi var; kimlik Google'dan doğrulanır (ad/adres dolar), sonra "Kaydet" ile saklanır. Anahtar kod, günlük veya depoya yazılmadı; yalnızca sunucu `.env` içindeki `GOOGLE_PLACES_API_KEY` kullanılır (değişmedi).
+- Doğrulama: frontend tsc temiz. Gerçek Google çağrısı yapılmadı.
+- Bekleyen (kullanıcı yapar): sunucu `.env`'e anahtarı ekleyip uygulamayı yeniden başlatmak; panelde Place ID'yi ekleyip Kaydet'e basmak; Google Cloud'da anahtarı kısıtlamak.

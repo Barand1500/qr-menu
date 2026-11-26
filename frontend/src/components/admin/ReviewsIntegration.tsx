@@ -16,7 +16,7 @@ export type ReviewsDraft = {
 };
 type Loaded = { config: ReviewsDraft; keyConfigured: boolean };
 type Hit = { id: string; name: string; address: string; rating: number | null; count: number | null };
-type TestResult = { name: string; rating: number | null; count: number | null; reviewCount: number; sample: { name: string; text: string; rating: number } | null };
+type TestResult = { name: string; address?: string; rating: number | null; count: number | null; reviewCount: number; sample: { name: string; text: string; rating: number } | null };
 type Status = { tone: 'ok' | 'idle' | 'off'; text: string };
 
 const MAX_MANUAL = 12;
@@ -34,6 +34,8 @@ export function useReviewsState(onToast: (text: string, error?: boolean) => void
   const [testing, setTesting] = useState(false);
   const [test, setTest] = useState<TestResult | null>(null);
   const [testError, setTestError] = useState('');
+  const [idInput, setIdInput] = useState('');
+  const [idBusy, setIdBusy] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -108,6 +110,25 @@ export function useReviewsState(onToast: (text: string, error?: boolean) => void
     }
   }
 
+  /** Google yer kimliği (Place ID) elde varsa aramadan doğrudan eklenir; Google'dan doğrulanıp ad/adres doldurulur. */
+  async function addById() {
+    const id = idInput.trim();
+    if (!id || idBusy) return;
+    setIdBusy(true);
+    setSearchError('');
+    try {
+      const place = await api<TestResult>('/api/admin/settings/reviews/test', { method: 'POST', body: JSON.stringify({ placeId: id }) });
+      set({ placeId: id, placeName: place.name, placeAddress: place.address || '', googleEnabled: true });
+      setIdInput('');
+      setTest(place);
+      setTestError('');
+    } catch (e) {
+      setSearchError(apiError(e));
+    } finally {
+      setIdBusy(false);
+    }
+  }
+
   function pick(hit: Hit) {
     set({ placeId: hit.id, placeName: hit.name, placeAddress: hit.address, googleEnabled: true });
     setHits([]);
@@ -148,7 +169,7 @@ export function useReviewsState(onToast: (text: string, error?: boolean) => void
 
   return {
     ready, loaded, draft, dirty, saving, keyConfigured, set, setManual, save, toggle, reset: () => loaded && setDraft(loaded.config),
-    query, setQuery, hits, searching, searchError, search, pick, testing, test, testError, runTest,
+    query, setQuery, hits, searching, searchError, search, pick, idInput, setIdInput, idBusy, addById, testing, test, testError, runTest,
     googleStatus, manualStatus,
   };
 }
@@ -208,6 +229,14 @@ export function ReviewsChannel({ s, part }: { s: ReviewsState; part: 'google' | 
               </div>
               <button type="button" className="ig-btn" disabled={!s.keyConfigured || s.searching || s.query.trim().length < 2} onClick={() => void s.search()}>
                 {s.searching ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Search size={16} aria-hidden />} Ara
+              </button>
+            </div>
+            <div className="rvi-search">
+              <div onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), void s.addById())}>
+                <Field label="Ya da Google Place ID" value={s.idInput} onChange={s.setIdInput} placeholder="ChIJ…" maxLength={200} />
+              </div>
+              <button type="button" className="ig-btn" disabled={!s.keyConfigured || s.idBusy || s.idInput.trim().length < 10} onClick={() => void s.addById()}>
+                {s.idBusy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Plus size={16} aria-hidden />} Kimlikle ekle
               </button>
             </div>
             {s.searchError ? <p className="rvi-error">{s.searchError}</p> : null}
