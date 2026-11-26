@@ -851,3 +851,209 @@
 .rp__tab {
   bottom: 14px;
 }
+
+/* ───────── "Sipariş onaylandı" damgası ───────── */
+.rp__stamp {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: fit-content;
+  margin: 4px 4px 10px auto;
+  justify-items: center;
+  gap: 1px;
+  padding: 5px 10px 4px;
+  color: #d4382a;
+  font-family: system-ui, sans-serif;
+  text-align: center;
+  border: 3px solid #d4382a;
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1.5px rgba(212, 56, 42, 0.45);
+  mix-blend-mode: multiply;
+  opacity: 0.9;
+  transform: rotate(-11deg);
+  animation: rp-stamp 0.5s 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  pointer-events: none;
+}
+.rp__stamp b {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  line-height: 1.05;
+}
+.rp__stamp small {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+}
+.rp__stamp.is-dup {
+  color: #b45309;
+  border-color: #b45309;
+  box-shadow: inset 0 0 0 1.5px rgba(180, 83, 9, 0.45);
+}
+@keyframes rp-stamp {
+  0% {
+    opacity: 0;
+    transform: rotate(-4deg) scale(2.4);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.9;
+    transform: rotate(-11deg) scale(1);
+  }
+}
+
+/* ───────── fişin yanındaki yazı (geniş ekran); dar ekranda makine ekranındaki satır kullanılır ───────── */
+.rp__side {
+  display: none;
+}
+.rp__chips {
+  display: none;
+}
+/* dar ekran: yalnızca fiş koptuktan sonra, boşalan alanın ortasında görünür */
+@media (max-width: 1099px) {
+  .rp__side--gone {
+    position: fixed;
+    top: 38%;
+    right: 26px;
+    left: 26px;
+    z-index: 2;
+    display: block;
+    text-align: center;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  .rp__side--gone .rp__side-in {
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+    animation: rp-side 0.5s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  }
+  .rp__side--gone h2 {
+    margin: 0;
+    font-size: 30px;
+    font-weight: 850;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+  }
+  .rp__side--gone p {
+    margin: 0;
+    color: #b5b0aa;
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  .rp__side--gone .rp__kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    color: #34d399;
+    font-size: 13px;
+    font-weight: 700;
+    background: rgba(52, 211, 153, 0.12);
+    border: 1px solid rgba(52, 211, 153, 0.32);
+    border-radius: 999px;
+  }
+}
+@media (min-width: 1100px) {
+  .rp__side {
+    position: fixed;
+    top: 50%;
+    left: calc(50% + 248px);
+    z-index: 2;
+    display: block;
+    width: min(400px, calc(50vw - 248px - 32px));
+    transform: translateY(-58%);
+    pointer-events: none;
+  }
+  .rp__side-in {
+    display: grid;
+    gap: 14px;
+    justify-items: start;
+    animation: rp-side 0.5s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  }
+  .rp__side h2 {
+    margin: 0;
+    font-size: clamp(30px, 3.4vw, 46px);
+    font-weight: 850;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+  .rp__side p {
+    margin: 0;
+    color: #b5b0aa;
+    font-size: 17px;
+    line-height: 1.45;
+  }
+  .rp__kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px 6px 10px;
+    color: #fbbf24;
+    font-size: 13px;
+    font-weight: 700;
+    background: rgba(251, 191, 36, 0.12);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: 999px;
+  }
+  .rp__kicker i {
+    width: 8px;
+    height: 8px;
+    background: currentColor;
+    border-radius: 50%;
+    animation: rp-blink 1.2s ease-in-out infinite;
+  }
+  .rp__side--done .rp__kicker,
+  .rp__side--gone .rp__kicker {
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.12);
+    border-color: rgba(52, 211, 153, 0.32);
+  }
+  .rp__side--dup .rp__kicker {
+    color: #fb923c;
+    background: rgba(251, 146, 60, 0.12);
+    border-color: rgba(251, 146, 60, 0.32);
+  }
+  .rp__side--done h2 {
+    background: linear-gradient(100deg, #fff 30%, #fbbf24);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .rp__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .rp__chips span {
+    padding: 8px 14px;
+    color: #e7e5e4;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 14px;
+    font-weight: 600;
+    background: rgba(251, 191, 36, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.28);
+    border-radius: 999px;
+  }
+}
+@keyframes rp-side {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes rp-blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rp__stamp,
+  .rp__side-in,
+  .rp__kicker i {
+    animation: none;
+  }
+}

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
-import { AlertCircle, ArrowRight, Check, ChevronsUp, Loader2, RotateCcw, UtensilsCrossed } from 'lucide-react';
+import { AlertCircle, ArrowRight, Check, ChefHat, ChevronsUp, Loader2, RotateCcw, UtensilsCrossed } from 'lucide-react';
 import { imageUrl } from '@/lib/api';
 import './receipt-printer.css';
 
@@ -44,6 +44,17 @@ const COPY = {
     retry: 'Tekrar dene',
     close: 'Kapat',
     machine: 'Sipariş fişi yazıcısı',
+    stamp: 'SİPARİŞ ONAYLANDI',
+    stampDup: 'DAHA ÖNCE İLETİLDİ',
+    items: 'ürün',
+    side: {
+      processing: { k: 'Sipariş', h: 'Mutfağa yolluyoruz.', b: 'Bir saniye, siparişin yola çıktı.' },
+      printing: { k: 'Sipariş', h: 'Fişin basılıyor.', b: 'Aşçı fişi okurken sen rahatla.' },
+      done: { k: 'Sipariş onaylandı', h: 'Tamam, mutfak fişi aldı.', b: 'Fişi tutup yukarı çekerek koparabilirsin. Kopyası zaten bizde.' },
+      dup: { k: 'Zaten iletilmişti', h: 'Bu sipariş bizde.', b: 'Merak etme, tekrar göndermedik. Fişi koparıp bakabilirsin.' },
+      torn: { k: 'Koptu!', h: 'Tam bir profesyonel.', b: 'Bırakırsan buruşturup top yaparız.' },
+      gone: { k: 'Hazırlanıyor', h: 'Fişini artık göremiyoruz.', b: 'Ama olsun, senin için çoktan hazırlanmaya başladık bile.' },
+    },
   },
   en: {
     processing: 'Placing your order',
@@ -67,6 +78,17 @@ const COPY = {
     retry: 'Try again',
     close: 'Close',
     machine: 'Order receipt printer',
+    stamp: 'ORDER CONFIRMED',
+    stampDup: 'ALREADY SENT',
+    items: 'items',
+    side: {
+      processing: { k: 'Order', h: 'Sending it to the kitchen.', b: 'One second, your order is on its way.' },
+      printing: { k: 'Order', h: 'Printing your ticket.', b: 'Relax while the chef reads it.' },
+      done: { k: 'Order confirmed', h: 'Got it, the kitchen has it.', b: 'Grab the ticket and pull up to tear it off. We keep a copy anyway.' },
+      dup: { k: 'Already sent', h: 'We already have this one.', b: 'No worries, we did not send it twice. Tear the ticket off and take a look.' },
+      torn: { k: 'Torn!', h: 'A true professional.', b: 'Let go and we will crumple it into a ball.' },
+      gone: { k: 'Cooking', h: 'We can no longer see your ticket.', b: 'But that is fine: we already started preparing it for you.' },
+    },
   },
 };
 
@@ -563,6 +585,10 @@ export default function ReceiptPrinter({
   const grabbable = stage === 'complete' && !reduce && !scrollable && (phase === 'idle' || phase === 'held' || phase === 'free');
   const grab = { onPointerDown: down, onPointerMove: move, onPointerUp: up, onPointerCancel: up };
   const freeMode = phase === 'free' || phase === 'crumple';
+  const msgKey = stage === 'processing' ? 'processing' : stage === 'printing' ? 'printing' : phase === 'ball' || phase === 'gone' ? 'gone' : torn ? 'torn' : data.duplicate ? 'dup' : 'done';
+  const msg = t.side[msgKey];
+  const itemCount = data.items.reduce((n, i) => n + i.qty, 0);
+  const stampTime = data.at.toLocaleTimeString(t === COPY.en ? 'en-GB' : 'tr-TR', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div className={`rp${freeMode ? ' is-free' : ''}`} ref={rootRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t.machine} data-stage={stage}>
@@ -603,11 +629,11 @@ export default function ReceiptPrinter({
                 <strong className="rp__total">{data.total}</strong>
               </div>
             </div>
-            <div className="rp__status" role="status" aria-live="polite" key={stage}>
+            <div className="rp__status" role="status" aria-live="polite" key={`${stage}${msgKey === 'gone' ? 'g' : ''}`}>
               <span className={`rp__icon rp__icon--${stage}`} aria-hidden="true">
-                {stage === 'complete' ? <Check size={14} strokeWidth={3} /> : stage === 'error' ? <AlertCircle size={15} /> : <Loader2 size={15} className="rp__spin" />}
+                {msgKey === 'gone' ? <ChefHat size={15} /> : stage === 'complete' ? <Check size={14} strokeWidth={3} /> : stage === 'error' ? <AlertCircle size={15} /> : <Loader2 size={15} className="rp__spin" />}
               </span>
-              <span>{stage === 'error' ? errorMessage || t.error : stage === 'complete' && data.duplicate ? t.duplicate : t[stage]}</span>
+              <span>{stage === 'error' ? errorMessage || t.error : msgKey === 'gone' ? t.side.gone.h : stage === 'complete' && data.duplicate ? t.duplicate : t[stage]}</span>
             </div>
           </div>
           <span className="rp__slot" aria-hidden="true" />
@@ -647,6 +673,12 @@ export default function ReceiptPrinter({
                 </div>
                 <p className="rp__name">{data.brandName}</p>
                 <hr />
+                {stage === 'complete' ? (
+                  <div className={`rp__stamp${data.duplicate ? ' is-dup' : ''}`} aria-hidden="true">
+                    <b>{data.duplicate ? t.stampDup : t.stamp}</b>
+                    <small>{stampTime}</small>
+                  </div>
+                ) : null}
                 <ul className="rp__lines">
                   {data.items.map((i, k) => (
                     <li key={k}>
@@ -706,6 +738,28 @@ export default function ReceiptPrinter({
           </div>
         )}
       </div>
+
+      {stage !== 'error' ? (
+        <aside className={`rp__side rp__side--${msgKey}`} aria-hidden="true">
+          <div className="rp__side-in" key={msgKey}>
+            <span className="rp__kicker">
+              {msgKey === 'gone' ? <ChefHat size={15} /> : <i />}
+              {msg.k}
+            </span>
+            <h2>{msg.h}</h2>
+            <p>{msg.b}</p>
+            {stage === 'complete' ? (
+              <div className="rp__chips">
+                <span>{data.tableLabel}</span>
+                <span>
+                  {itemCount} {t.items}
+                </span>
+                <span>{data.total}</span>
+              </div>
+            ) : null}
+          </div>
+        </aside>
+      ) : null}
 
       {phase === 'ball' ? (
         <div ref={ballRef} className="rp__ball" onPointerDown={ballDown} onPointerMove={ballMove} onPointerUp={ballUp} onPointerCancel={ballUp} aria-hidden="true">
