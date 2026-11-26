@@ -77,6 +77,18 @@ export function parsePlace(json: unknown): GooglePlace {
   };
 }
 
+/** Google hata cevabını yöneticinin ne yapacağını söyleyen kısa mesaja çevirir. */
+function placesFailure(status: number, info: string): string {
+  if (info.includes('api_key_invalid') || info.includes('api key not valid')) return 'Google anahtarı geçersiz. Anahtarı Google Cloud\'dan kopyalayıp .env dosyasında kontrol edin.';
+  if (info.includes('billing')) return 'Google projesinde faturalama kapalı. Google Cloud → Billing bölümünden bir ödeme hesabı bağlayın.';
+  if (info.includes('service_disabled') || info.includes('has not been used') || info.includes('is disabled')) return 'Google projesinde "Places API (New)" kapalı. Google Cloud → APIs & Services → Library bölümünden açın, 1-2 dakika bekleyin.';
+  if (info.includes('referer') || info.includes('ip_address_blocked') || info.includes('ip address') || info.includes('api_target_blocked') || info.includes('are blocked')) return 'Anahtarın kısıtlaması sunucuyu engelliyor. Google Cloud → Credentials bölümünde kısıtlamayı "Yok" yapın ya da sunucu IP\'sini ekleyip "Places API (New)" seçin.';
+  if (info.includes('quota') || info.includes('resource_exhausted') || status === 429) return 'Google kullanım kotası doldu. Biraz sonra tekrar deneyin.';
+  if (status === 401 || status === 403) return 'Google anahtarı reddedildi. Places API (New) açık mı, faturalama var mı, anahtar kısıtlaması sunucuya izin veriyor mu kontrol edin.';
+  if (status === 400) return 'Google isteği kabul etmedi. Place ID\'yi kontrol edin.';
+  return 'Google şu an yanıt vermiyor. Biraz sonra tekrar deneyin.';
+}
+
 async function call(path: string, init: RequestInit & { fieldMask: string }): Promise<unknown> {
   const key = placesKey();
   if (!key) throw new PlacesError('Google anahtarı sunucuda tanımlı değil.', 503);
@@ -94,13 +106,16 @@ async function call(path: string, init: RequestInit & { fieldMask: string }): Pr
       },
     });
     if (!res.ok) {
-      // Anahtarı ve ayrıntıyı müşteriye/ekrana taşımayız
-      throw new PlacesError(
-        res.status === 403 || res.status === 401
-          ? 'Google anahtarı reddedildi (Places API (New) açık ve faturalama etkin olmalı).'
-          : 'Google şu an yanıt vermiyor.',
-        502,
-      );
+      // Google'ın hata gövdesinden sebebi anlayıp sade Türkçe söyleriz; anahtarı ekrana taşımayız
+      let info = '';
+      try {
+        const body = (await res.json()) as { error?: { status?: string; message?: string; details?: { reason?: string }[] } };
+        const e = body.error;
+        info = `${e?.status || ''} ${e?.details?.map((d) => d.reason || '').join(' ') || ''} ${e?.message || ''}`.toLowerCase();
+      } catch {
+        /* gövde okunamadı */
+      }
+      throw new PlacesError(placesFailure(res.status, info), 502);
     }
     return await res.json();
   } catch (e) {

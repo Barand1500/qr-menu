@@ -1089,3 +1089,8 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Değişiklik: `ReviewsIntegration.tsx`. İşletme seçilmemişken aramanın altında "Ya da Google Place ID" alanı ve "Kimlikle ekle" düğmesi var; kimlik Google'dan doğrulanır (ad/adres dolar), sonra "Kaydet" ile saklanır. Anahtar kod, günlük veya depoya yazılmadı; yalnızca sunucu `.env` içindeki `GOOGLE_PLACES_API_KEY` kullanılır (değişmedi).
 - Doğrulama: frontend tsc temiz. Gerçek Google çağrısı yapılmadı.
 - Bekleyen (kullanıcı yapar): sunucu `.env`'e anahtarı ekleyip uygulamayı yeniden başlatmak; panelde Place ID'yi ekleyip Kaydet'e basmak; Google Cloud'da anahtarı kısıtlamak.
+
+## 2026-11-26 — Google hata mesajları
+- Amaç: "anahtar reddedildi" tek mesajı yerine sebebi söyleyen mesajlar.
+- Değişiklik: backend/src/lib/google-places.ts, Google hata gövdesi okunup (API kapalı, faturalama, kısıtlama, kota, geçersiz anahtar) ayrı Türkçe mesaj verir.
+- Doğrulama: backend tsc temiz. Gerçek Google çağrısıyla denenmedi.
