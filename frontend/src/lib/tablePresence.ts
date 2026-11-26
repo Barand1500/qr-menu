@@ -39,16 +39,28 @@ export function usePresenceEntry(kind: PresenceKind, label = '', on = true) {
   }, [kind, label, on]);
 }
 
+/**
+ * Bu telefonun rastgele kimliği (ad, konum yok). Aynı telefondaki sekmeler tek kişi sayılsın diye kalıcı depoda tutulur;
+ * masa oturumunda ilk gelen telefon "masa sahibi" olur, sonrakiler misafir.
+ */
 export function presenceVisitorId(): string {
+  const make = () => `v-${Math.random().toString(36).slice(2, 12)}${Date.now().toString(36)}`;
   try {
-    let id = sessionStorage.getItem('menu_presence_id');
-    if (!id) {
-      id = `v-${Math.random().toString(36).slice(2, 12)}${Date.now().toString(36)}`;
-      sessionStorage.setItem('menu_presence_id', id);
-    }
+    let id = localStorage.getItem('menu_presence_id') || sessionStorage.getItem('menu_presence_id');
+    if (!id) id = make();
+    localStorage.setItem('menu_presence_id', id);
     return id;
   } catch {
-    return `v-${Math.random().toString(36).slice(2, 14)}`;
+    try {
+      let id = sessionStorage.getItem('menu_presence_id');
+      if (!id) {
+        id = make();
+        sessionStorage.setItem('menu_presence_id', id);
+      }
+      return id;
+    } catch {
+      return make();
+    }
   }
 }
 

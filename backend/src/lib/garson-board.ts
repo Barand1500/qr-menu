@@ -219,6 +219,10 @@ export type SessionIn = {
   codeStatus: 'empty' | 'pending' | 'verified' | 'expired';
   activity?: PresenceSummary[];
   prefs?: string[];
+  /** oturuma katılan telefon sayısı (ilki masa sahibi) */
+  people?: number;
+  /** çağrı numarası → o çağrıya ek basan kişi sayısı */
+  repeats?: Record<number, number>;
   orders?: OrderRowIn[];
   accessCode?: string | null;
   codeExpiresAt?: number | null;
@@ -245,6 +249,8 @@ export type BoardCall = {
   note: string;
   items: { name: string; qty: number; variant: string }[];
   at: number;
+  /** aynı çağrıya basan diğer kişiler */
+  repeats: number;
   claim: { name: string; at: number; mine: boolean } | null;
 };
 export type BoardTable = {
@@ -259,6 +265,7 @@ export type BoardTable = {
     id: number;
     activity: PresenceSummary[];
     prefs: string[];
+    people: number;
     orders: OrderRowIn[];
     code: string | null;
     codeExpiresAt: number | null;
@@ -352,6 +359,7 @@ export function buildBoard(input: {
       note: (r.note || order.note || '').slice(0, 300),
       items: order.items,
       at: r.at,
+      repeats: sessionBy.get(keyOf(r.group, r.table))?.repeats?.[r.id] || 0,
       claim: claim ? { name: claim.w, at: claim.t, mine: claim.u === me.id } : null,
     };
     const k = keyOf(r.group, r.table);
@@ -391,6 +399,7 @@ export function buildBoard(input: {
             id: s.id,
             activity: s.activity || [],
             prefs: s.prefs || [],
+            people: s.people || 0,
             orders: s.orders || [],
             code: codeGateEnabled && handoff?.u === me.id && s.codeStatus === 'pending' ? s.accessCode || null : null,
             codeExpiresAt: s.codeExpiresAt ?? null,

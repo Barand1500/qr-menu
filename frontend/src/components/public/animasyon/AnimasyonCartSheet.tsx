@@ -8,6 +8,7 @@ import { useSiparisCart } from '@/hooks/useSiparisCart';
 import { useMenuSlug } from '@/hooks/useMenuSlug';
 import { resolveTableContext, formatTableServiceLabel } from '@/lib/tableContext';
 import { notifyTableRequestCreated } from '@/lib/tableRequestNotify';
+import { presenceVisitorId } from '@/lib/tablePresence';
 import { notifyWaiterCalled } from '@/lib/menuGames';
 import { allergenLabel, loadDietaryPrefs } from '@/lib/dietAllergens';
 import { gsap, prefersReducedMotion, useGSAP } from '@/lib/gsapSetup';
@@ -105,6 +106,7 @@ export default function AnimasyonCartSheet({ lang }: { lang: string }) {
         type: 'waiter' as const,
         tableNumber: tableCtx.masa,
         groupSlug: tableCtx.grup || undefined,
+        visitorId: presenceVisitorId(),
         note: note.trim() || undefined,
         order:
           items.length > 0

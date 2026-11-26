@@ -1,4 +1,6 @@
 import { presencePrefs, summarizePresence } from '../lib/table-presence.js';
+import { appendLog, buildHistory, repeatCounts } from '../lib/table-people.js';
+import { logTable } from '../lib/table-session-log.js';
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { authRequired, getRestaurantId } from '../lib/auth.js';
@@ -74,6 +76,20 @@ async function mutateStore<T>(restaurantId: number, fn: (store: GarsonStore) => 
   throw new Error('Kayıt şu an yoğun, lütfen tekrar deneyin.');
 }
 
+function toGroups(groupRows: { slug: string; name: string; tableCount: number; prefix: string | null; tableStyles: unknown }[]): GroupIn[] {
+  return groupRows.map((g) => {
+    const styles = (g.tableStyles && typeof g.tableStyles === 'object' ? g.tableStyles : {}) as Record<string, { name?: string }>;
+    return {
+      slug: g.slug,
+      name: g.name,
+      tables: Array.from({ length: Math.max(1, g.tableCount) }, (_, i) => ({
+        code: tableCode(i + 1, g.prefix || ''),
+        name: styles[String(i + 1)]?.name?.trim() || `${g.name} ${i + 1}`,
+      })),
+    };
+  });
+}
+
 /** Pano: tüm masalar, açık çağrılar, kim nereye gidiyor, son uğramalar ve akış. */
 router.get('/board', async (req, res) => {
   const restaurantId = await getRestaurantId(req);
@@ -97,20 +113,11 @@ router.get('/board', async (req, res) => {
   ]);
   const visitMinutes = parseVisitReminderMinutes(reminderRow?.value);
 
-  const groups: GroupIn[] = groupRows.map((g) => {
-    const styles = (g.tableStyles && typeof g.tableStyles === 'object' ? g.tableStyles : {}) as Record<string, { name?: string }>;
-    return {
-      slug: g.slug,
-      name: g.name,
-      tables: Array.from({ length: Math.max(1, g.tableCount) }, (_, i) => ({
-        code: tableCode(i + 1, g.prefix || ''),
-        name: styles[String(i + 1)]?.name?.trim() || `${g.name} ${i + 1}`,
-      })),
-    };
-  });
+  const groups = toGroups(groupRows);
 
   const sessions: SessionIn[] = sessionRows.map((s) => {
     const orders = parseOrdersJson(s.ordersJson);
+    const meta = parseSessionMeta(s.metaJson);
     return {
       id: s.id,
       group: s.groupSlug || '',
@@ -122,6 +129,8 @@ router.get('/board', async (req, res) => {
       codeStatus: codeConfig.enabled ? resolveCodeGateStatus(s) : 'empty',
       activity: summarizePresence(parseSessionMeta(s.metaJson).presence, now),
       prefs: presencePrefs(parseSessionMeta(s.metaJson).presence, now),
+      people: meta.people?.length || 0,
+      repeats: repeatCounts(meta.log || []),
       accessCode: s.accessCode,
       codeExpiresAt: s.codeExpiresAt?.getTime() ?? null,
       codeVerifiedAt: codeConfig.enabled ? s.codeVerifiedAt?.getTime() ?? null : null,
@@ -189,6 +198,7 @@ router.post('/visit', async (req, res) => {
         result: true,
       }));
     }
+    await logTable(restaurantId, at.g || null, at.n, { k: 'visit', w: me.name });
     res.json({ ok: true, at: now, name: me.name });
   } catch {
     res.status(500).json({ message: 'Ziyaret kaydedilemedi. Lütfen tekrar deneyin.' });
@@ -223,9 +233,16 @@ router.post('/close', async (req, res) => {
       const remaining = remainingBalance(parseOrdersJson(session.ordersJson), parsePaymentsJson(session.paymentsJson), seatFee, meta.checkDiscount);
       if (remaining > 0.009 && !force) return { status: 409, message: 'Masada açık hesap var. Önce masa yönetiminden ödemeyi tamamlayın.' };
       const closedAt = new Date();
+      let rawMeta: Record<string, unknown> = {};
+      try {
+        const parsed = JSON.parse(session.metaJson || '{}');
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) rawMeta = parsed as Record<string, unknown>;
+      } catch {
+        /* eski boş meta */
+      }
       const changed = await tx.tableFloorSession.updateMany({
         where: { id: session.id, restaurantId, status: { in: [...ACTIVE_STATUSES] }, ordersJson: session.ordersJson, paymentsJson: session.paymentsJson, metaJson: session.metaJson },
-        data: { status: 'closed', closedAt, accessCode: null, codeExpiresAt: null, codeVerifiedAt: null },
+        data: { status: 'closed', closedAt, accessCode: null, codeExpiresAt: null, codeVerifiedAt: null, metaJson: JSON.stringify(appendLog(rawMeta, { t: closedAt.getTime(), k: 'close', w: me.name })) },
       });
       if (!changed.count) return { status: 409, message: 'Masa bilgileri değişti. Kontrol edip tekrar deneyin.' };
       await tx.tableServiceRequest.updateMany({ where: { restaurantId, groupSlug: session.groupSlug, tableNumber: session.tableNumber, isRead: false, createdAt: { lte: closedAt } }, data: { isRead: true } });
@@ -260,6 +277,7 @@ router.post('/claim', async (req, res) => {
   if (!out.ok) {
     return res.status(409).json({ message: `${out.by?.w || 'Başka bir garson'} zaten gidiyor.`, code: 'CLAIMED', by: out.by?.w || '' });
   }
+  await logTable(restaurantId, request.groupSlug, request.tableNumber, { k: 'claim', w: me.name, r: request.id });
   res.json({ ok: true });
 });
 
@@ -275,7 +293,7 @@ router.post('/unclaim', async (req, res) => {
     // Yalnızca kendi işaretini kaldırabilir
     if (!c || c.u !== me.id) return { store, result: false };
     return { store: releaseClaim(store, request.id, { u: me.id, w: me.name }, { g: request.groupSlug || '', n: request.tableNumber }, now, false), result: true };
-  });
+  }).then((ok) => (ok ? logTable(restaurantId, request.groupSlug, request.tableNumber, { k: 'unclaim', w: me.name, r: request.id }) : undefined));
   res.json({ ok: true });
 });
 
@@ -293,8 +311,72 @@ router.post('/resolve', async (req, res) => {
       store: releaseClaim(store, request.id, { u: me.id, w: me.name }, { g: request.groupSlug || '', n: request.tableNumber }, now, true),
       result: true,
     }));
+    await logTable(restaurantId, request.groupSlug, request.tableNumber, { k: 'done', w: me.name, r: request.id });
   }
   res.json({ ok: true });
+});
+
+const HISTORY_LIMIT = 40;
+
+async function historyFor(restaurantId: number, rows: Awaited<ReturnType<typeof prisma.tableFloorSession.findMany>>, now: number) {
+  const groups = toGroups(await prisma.qrTableGroup.findMany({ where: { restaurantId } }));
+  const names = new Map<string, string>();
+  for (const g of groups) for (const t of g.tables) names.set(`${g.slug}::${t.code}`, t.name);
+  return rows.map((s) => {
+    const orders = parseOrdersJson(s.ordersJson);
+    const payments = parsePaymentsJson(s.paymentsJson);
+    let meta: Record<string, unknown> = {};
+    try {
+      const parsed = JSON.parse(s.metaJson || '{}');
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) meta = parsed as Record<string, unknown>;
+    } catch {
+      /* eski boş meta */
+    }
+    return buildHistory({
+      session: { id: s.id, group: s.groupSlug || '', table: s.tableNumber, status: s.status, openedAt: s.openedAt.getTime(), closedAt: s.closedAt?.getTime() ?? null, openedBy: s.openedBy },
+      label: names.get(`${s.groupSlug || ''}::${s.tableNumber}`) || `Masa ${s.tableNumber}`,
+      meta,
+      staffOrders: orders.filter((o) => o.source === 'admin').map((o) => ({ at: Date.parse(o.createdAt) || 0, qty: Number(o.qty) || 0 })),
+      payments: payments.map((p) => ({ at: Date.parse(p.createdAt) || 0, amount: Number(p.amount) || 0, method: String(p.method) })),
+      total: ordersTotal(orders),
+      itemCount: orders.reduce((n, o) => n + (Number(o.qty) || 0), 0),
+      now,
+    });
+  });
+}
+
+/** Masa geçmişi: son oturumlar (isteğe bağlı tek masa), her biri özetiyle. Ayrıntı için /history/:id. */
+router.get('/history', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  if (restaurantId == null) return res.status(401).json({ message: 'Yetkisiz' });
+  const at = req.query.table ? tableKeyValid(req.query.group ?? '', req.query.table) : null;
+  if (req.query.table && !at) return res.status(400).json({ message: 'Geçersiz masa' });
+  const before = Number(req.query.before);
+  const rows = await prisma.tableFloorSession.findMany({
+    where: {
+      restaurantId,
+      status: { in: ['open', 'closed'] },
+      ...(at ? { tableNumber: at.n, groupSlug: at.g || null } : {}),
+      ...(Number.isFinite(before) && before > 0 ? { openedAt: { lt: new Date(before) } } : {}),
+    },
+    orderBy: { openedAt: 'desc' },
+    take: HISTORY_LIMIT + 1,
+  });
+  const now = Date.now();
+  const page = (await historyFor(restaurantId, rows.slice(0, HISTORY_LIMIT), now)).map((h) => h.summary);
+  res.json({ now, sessions: page, more: rows.length > HISTORY_LIMIT });
+});
+
+router.get('/history/:id', async (req, res) => {
+  const restaurantId = await getRestaurantId(req);
+  if (restaurantId == null) return res.status(401).json({ message: 'Yetkisiz' });
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ message: 'Geçersiz oturum' });
+  const row = await prisma.tableFloorSession.findFirst({ where: { id, restaurantId } });
+  if (!row) return res.status(404).json({ message: 'Oturum bulunamadı' });
+  const now = Date.now();
+  const [h] = await historyFor(restaurantId, [row], now);
+  res.json({ now, ...h });
 });
 
 export default router;

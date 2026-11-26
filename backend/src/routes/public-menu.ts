@@ -59,10 +59,13 @@ import {
   loadTableSessionCodeConfig,
   resolveCodeGateStatus,
 } from '../lib/table-session-code.js';
+import { cleanVisitorId, callPerson, joinPerson } from '../lib/table-people.js';
+import { logRepeatCall, logSession, recordPerson } from '../lib/table-session-log.js';
 import {
   appendOrdersToSession,
   findActiveSession,
   openOrGetSession,
+  parseSessionMeta,
   type FloorOrderItem,
 } from '../lib/table-floor.js';
 import { consumeStockForItems, isSoldOut } from '../lib/product-stock.js';
@@ -1358,6 +1361,21 @@ router.post('/:slug/table-request', async (req, res) => {
     }
   }
 
+  // Masa kapandıktan sonra eski telefonlar yeni oturum açmasın: yeniden QR okutmaları gerekir
+  const visitorId = cleanVisitorId((req.body as { visitorId?: unknown }).visitorId);
+  const activeSession = masa !== 'admin' ? await findActiveSession(restaurant.id, masa, grup) : null;
+  if (masa !== 'admin' && visitorId && !activeSession) {
+    const last = await prisma.tableFloorSession.findFirst({
+      where: { restaurantId: restaurant.id, tableNumber: masa, groupSlug: grup, status: 'closed', closedAt: { gte: new Date(Date.now() - 4 * 60 * 60 * 1000) } },
+      orderBy: { closedAt: 'desc' },
+      select: { metaJson: true },
+    });
+    if (last && parseSessionMeta(last.metaJson).people?.some((p) => p.v === visitorId)) {
+      return res.status(409).json({ message: 'Bu masa kapatıldı. Yeni sipariş veya çağrı için QR kodunu tekrar okutun.', code: 'SESSION_CLOSED' });
+    }
+  }
+  const person = activeSession && visitorId ? await recordPerson(restaurant.id, activeSession.id, visitorId) : null;
+
   let orderJson: string | null = null;
   let floorLines: FloorOrderItem[] = [];
   let stockItems: { productId: number | null; qty: number }[] = [];
@@ -1484,21 +1502,30 @@ router.post('/:slug/table-request', async (req, res) => {
     }
   }
 
-  const recent = await prisma.tableServiceRequest.findFirst({
-    where: {
-      restaurantId: restaurant.id,
-      tableNumber: masa,
-      groupSlug: grup,
-      type: requestType,
-      createdAt: { gte: new Date(Date.now() - 45_000) },
-    },
+  // Aynı içerik aynı telefondan 45 sn içinde tekrar gelirse (çift dokunma) tek kayıt. Başka telefon sipariş verirse yeni kayıt.
+  // Açık duran düz "garson / hesap" çağrısına başka kişiler de basarsa yeni satır açılmaz, "+1 kişi" olarak sayılır.
+  const sameKind = { restaurantId: restaurant.id, tableNumber: masa, groupSlug: grup, type: requestType, orderJson: orderJson ?? null };
+  let recent = await prisma.tableServiceRequest.findFirst({
+    where: { ...sameKind, createdAt: { gte: new Date(Date.now() - 45_000) } },
     orderBy: { createdAt: 'desc' },
   });
+  if (recent && orderJson && activeSession && person) {
+    let rawMeta: Record<string, unknown> = {};
+    try { rawMeta = JSON.parse(activeSession.metaJson || '{}') as Record<string, unknown>; } catch { /* eski boş meta */ }
+    const first = callPerson(rawMeta, recent.id);
+    if (first && first !== person.index) recent = null;
+  }
+  if (!recent && !orderJson && (requestType === 'waiter' || requestType === 'bill')) {
+    recent = await prisma.tableServiceRequest.findFirst({
+      where: { ...sameKind, isRead: false, createdAt: { gte: new Date(Date.now() - 30 * 60_000) } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
   if (recent) {
     if (requestType === 'valet' && recent.note !== noteText) {
       return res.status(409).json({ message: 'Önceki vale çağrınız iletildi. Farklı plaka için lütfen kısa bir süre bekleyin.' });
     }
-    // Aynı masa 45 sn içinde tekrar çağırırsa hata yerine idempotent başarı
+    if (activeSession && person) void logRepeatCall(restaurant.id, activeSession.id, person.index, requestType, recent.id);
     return res.json({
       ok: true,
       duplicate: true,
@@ -1533,8 +1560,16 @@ router.post('/:slug/table-request', async (req, res) => {
   // Masa görünümü: oturumu aç + müşteri siparişini ekle
   if (masa !== 'admin') {
     try {
-      const session = await openOrGetSession(restaurant.id, masa, grup, 'qr');
+      const session = activeSession || (await openOrGetSession(restaurant.id, masa, grup, 'qr'));
       if (floorLines.length) await appendOrdersToSession(session.id, floorLines);
+      const who = person || (await recordPerson(restaurant.id, session.id, visitorId));
+      await logSession(
+        restaurant.id,
+        session.id,
+        orderJson
+          ? { k: 'order', p: who?.index, r: row.id, n: floorLines.reduce((n, l) => n + l.qty, 0), a: Math.round(floorLines.reduce((n, l) => n + l.price * l.qty, 0) * 100) / 100 }
+          : { k: 'call', p: who?.index, ty: requestType, r: row.id },
+      );
     } catch {
       /* floor sync best-effort */
     }
@@ -1591,12 +1626,14 @@ router.post('/:slug/table-checkin', async (req, res) => {
 
   const grup = groupSlug ? String(groupSlug).trim().slice(0, 100) : null;
   const session = await openOrGetSession(restaurant.id, masa, grup, 'qr');
+  const person = await recordPerson(restaurant.id, session.id, cleanVisitorId((req.body as { visitorId?: unknown }).visitorId));
 
   res.json({
     ok: true,
     sessionId: session.id,
     openedAt: session.openedAt.toISOString(),
     openedBy: session.openedBy,
+    person: person ? { no: person.index, owner: person.owner, people: person.people } : null,
   });
 });
 
@@ -1612,8 +1649,10 @@ router.get('/:slug/table-session-gate', async (req, res) => {
   const codeCfg = await loadTableSessionCodeConfig(restaurant.id);
   const groupRow = grup ? await prisma.qrTableGroup.findFirst({ where: { restaurantId: restaurant.id, slug: grup }, select: { name: true } }) : null;
   const groupName = groupRow?.name || null;
+  const gateVisitor = cleanVisitorId(req.query.v);
   if (!codeCfg.enabled || !masa || masa === 'admin') {
     const activeSession = masa && masa !== 'admin' ? await findActiveSession(restaurant.id, masa, grup) : null;
+    if (activeSession) await recordPerson(restaurant.id, activeSession.id, gateVisitor);
     return res.json({
       enabled: false,
       needsCode: false,
@@ -1627,6 +1666,7 @@ router.get('/:slug/table-session-gate', async (req, res) => {
   }
 
   const session = await openOrGetSession(restaurant.id, masa, grup, 'qr');
+  await recordPerson(restaurant.id, session.id, gateVisitor);
   const status = resolveCodeGateStatus(session);
   res.json({
     enabled: true,
@@ -1659,7 +1699,8 @@ router.post('/:slug/table-presence', async (req, res) => {
       let raw: Record<string, unknown> = {};
       try { const parsed = JSON.parse(session.metaJson || '{}'); if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) raw = parsed; } catch { /* legacy empty metadata */ }
       const presence = updatePresence(raw.presence, { id: visitorId, kind, label: String(body.label || ''), at: Date.now(), prefs: Array.isArray(body.prefs) ? body.prefs : undefined }, body.active !== false);
-      const changed = await prisma.tableFloorSession.updateMany({ where: { id: session.id, restaurantId: restaurant.id, status: { in: ['open', 'reserved'] }, metaJson: session.metaJson }, data: { metaJson: JSON.stringify({ ...raw, presence }) } });
+      const joined = joinPerson(raw, visitorId, Date.now());
+      const changed = await prisma.tableFloorSession.updateMany({ where: { id: session.id, restaurantId: restaurant.id, status: { in: ['open', 'reserved'] }, metaJson: session.metaJson }, data: { metaJson: JSON.stringify({ ...joined.raw, presence }) } });
       if (changed.count) return res.json({ ok: true });
     }
     return res.status(409).json({ code: 'PRESENCE_BUSY' });
@@ -1732,6 +1773,7 @@ router.post('/:slug/table-session-unlock', async (req, res) => {
     where: { id: session.id },
     data: { codeVerifiedAt: new Date() },
   });
+  await recordPerson(restaurant.id, session.id, cleanVisitorId((req.body as { visitorId?: unknown }).visitorId), { verify: true });
 
   res.json({
     ok: true,

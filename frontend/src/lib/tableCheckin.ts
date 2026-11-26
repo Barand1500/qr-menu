@@ -1,5 +1,6 @@
 import { api } from '@/lib/api';
 import { ADMIN_PREVIEW_TABLE } from '@/lib/tableContext';
+import { presenceVisitorId } from '@/lib/tablePresence';
 
 /** QR / menü açılışında masa oturumunu başlatır (admin önizleme hariç) */
 export function checkInTable(
@@ -14,6 +15,7 @@ export function checkInTable(
     body: JSON.stringify({
       tableNumber: masa,
       groupSlug: grup || undefined,
+      visitorId: presenceVisitorId(),
       lat: coords?.lat,
       lng: coords?.lng,
     }),

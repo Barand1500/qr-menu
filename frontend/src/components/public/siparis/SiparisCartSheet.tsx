@@ -13,6 +13,7 @@ import { notifyTableRequestCreated } from '@/lib/tableRequestNotify';
 import { notifyWaiterCalled } from '@/lib/menuGames';
 import { allergenLabel, loadDietaryPrefs } from '@/lib/dietAllergens';
 import { useTableSessionCode } from '@/components/public/TableSessionCodeGate';
+import { presenceVisitorId } from '@/lib/tablePresence';
 import { useSheetPresence, useSheetFocus } from '@/components/public/sofra/SofraSheet';
 import './cart-slip.css';
 
@@ -87,6 +88,7 @@ export default function SiparisCartSheet({ lang }: { lang: string }) {
         type: 'waiter' as const,
         tableNumber: tableCtx.masa,
         groupSlug: tableCtx.grup || undefined,
+        visitorId: presenceVisitorId(),
         note: note.trim() || undefined,
         order: {
           items: items.map((i) => ({ productId: i.productId, name: i.name, qty: i.qty, price: i.price, calories: i.calories ?? null })),

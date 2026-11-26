@@ -13,6 +13,7 @@ import {
 import { api, isCodeRequiredError } from "@/lib/api";
 import { useMenuSlug } from "@/hooks/useMenuSlug";
 import { resolveTableContext } from "@/lib/tableContext";
+import { presenceVisitorId } from "@/lib/tablePresence";
 import { notifyTableRequestCreated } from "@/lib/tableRequestNotify";
 import { notifyServiceCallConfirmed } from "@/lib/serviceCallFeedback";
 import { useTableSessionCode } from "@/components/public/TableSessionCodeGate";
@@ -159,6 +160,7 @@ export default function TableServiceButtons({
             type: kind,
             tableNumber: tableCtx.masa,
             groupSlug: tableCtx.grup || undefined,
+            visitorId: presenceVisitorId(),
             ...(kind === "valet"
               ? { plate: plate.trim().toLocaleUpperCase("tr-TR") }
               : {}),

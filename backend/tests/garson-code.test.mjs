@@ -133,13 +133,15 @@ const db = {
     },
     findMany: async ({ where }) => sessions.filter((r) => matches(r, where)),
     updateMany: async ({ where, data }) => {
-      if (verifyDuringRefresh) {
+      // oturum günlüğü (metaJson) yazıları kod yenilemeyle ilgisiz: yalnızca kod yazılarını say
+      const codeWrite = 'accessCode' in data;
+      if (verifyDuringRefresh && codeWrite) {
         sessions.find((r) => r.id === where.id).codeVerifiedAt = new Date();
         verifyDuringRefresh = false;
       }
       const row = sessions.find((r) => matches(r, where));
       if (!row) return { count: 0 };
-      writes++;
+      if (codeWrite) writes++;
       Object.assign(row, data);
       return { count: 1 };
     },

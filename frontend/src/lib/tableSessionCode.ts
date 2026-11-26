@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import { presenceVisitorId } from '@/lib/tablePresence';
 
 export const TABLE_SESSION_CODE_CACHE_PREFIX = 'menu_table_code_ok:';
 
@@ -65,6 +66,7 @@ export async function fetchTableSessionGate(
 ): Promise<TableSessionGateInfo> {
   const qs = new URLSearchParams();
   qs.set('masa', masa);
+  qs.set('v', presenceVisitorId());
   if (grup) qs.set('grup', grup);
   return api<TableSessionGateInfo>(`/api/menu/${slug}/table-session-gate?${qs}`);
 }
@@ -82,6 +84,6 @@ export async function unlockTableSession(
     expiresAt?: string | null;
   }>(`/api/menu/${slug}/table-session-unlock`, {
     method: 'POST',
-    body: JSON.stringify({ tableNumber: masa, groupSlug: grup, code }),
+    body: JSON.stringify({ tableNumber: masa, groupSlug: grup, code, visitorId: presenceVisitorId() }),
   });
 }

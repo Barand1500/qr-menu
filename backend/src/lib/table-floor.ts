@@ -1,4 +1,5 @@
 import { parsePresence, type PresenceClient } from './table-presence.js';
+import { parseLog, parsePeople, type LogEntry, type Person } from './table-people.js';
 import { prisma } from './prisma.js';
 import {
   codeExpiryDate,
@@ -62,6 +63,11 @@ export type FloorSessionMeta = {
   waiterUserId?: number | null;
   waiterName?: string | null;
   checkDiscount?: FloorCheckDiscount | null;
+  /** Oturuma katılan telefonlar (ilki masa sahibi) ve oturum günlüğü: bkz. table-people.ts */
+  people?: Person[];
+  log?: LogEntry[];
+  owner?: string;
+  verifiedBy?: string;
 };
 
 export const WAITER_ALERT_MS = 8_000;
@@ -90,6 +96,10 @@ export function parseSessionMeta(raw?: string | null): FloorSessionMeta {
             ? Number(r.waiterUserId)
             : null,
       waiterName: String(r.waiterName || '').trim().slice(0, 120) || null,
+      people: parsePeople(r.people),
+      log: parseLog(r.log),
+      owner: typeof r.owner === 'string' ? r.owner : undefined,
+      verifiedBy: typeof r.verifiedBy === 'string' ? r.verifiedBy : undefined,
       checkDiscount:
         discountRaw && discountValue > 0
           ? {
@@ -111,6 +121,10 @@ export function serializeSessionMeta(meta: FloorSessionMeta): string {
     waiterUserId: meta.waiterUserId ?? null,
     waiterName: meta.waiterName || null,
     checkDiscount: meta.checkDiscount?.value ? meta.checkDiscount : null,
+    people: meta.people?.length ? meta.people : undefined,
+    log: meta.log?.length ? meta.log : undefined,
+    owner: meta.owner,
+    verifiedBy: meta.verifiedBy,
   });
 }
 

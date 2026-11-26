@@ -9,6 +9,8 @@ export type BoardCall = {
   note: string;
   items: { name: string; qty: number; variant: string }[];
   at: number;
+  /** aynı çağrıya basan diğer kişiler */
+  repeats: number;
   claim: { name: string; at: number; mine: boolean } | null;
 };
 
@@ -24,6 +26,8 @@ export type BoardTable = {
     id: number;
     orders: { name: string; variant: string; qty: number; line: number; at: number; note: string; paid: boolean }[];
     prefs: string[];
+    /** oturuma katılan telefon sayısı (ilki masa sahibi) */
+    people: number;
     activity: { kind: 'welcome' | 'menu' | 'category' | 'product' | 'cart' | 'game' | 'code'; label: string; count: number; at: number }[];
     code: string | null;
     codeExpiresAt: number | null;
@@ -56,6 +60,45 @@ export type Board = {
   feed: FeedItem[];
   counts: { calls: number; callTables: number; busy: number; due: number; mine: number };
 };
+
+/** Masa geçmişi (sunucuda oturum günlüğünden üretilir) */
+export type HistoryItem = {
+  id: string;
+  t: number;
+  kind: 'open' | 'join' | 'call' | 'bill' | 'order' | 'repeat' | 'claim' | 'unclaim' | 'done' | 'visit' | 'pay' | 'close';
+  callType?: string;
+  text: string;
+  who?: string;
+  ms?: number;
+};
+export type HistoryCall = { id: number; type: string; at: number; person: number; repeats: number; claimBy: string | null; claimMs: number | null; doneBy: string | null; doneMs: number | null };
+export type HistorySummary = {
+  id: number;
+  group: string;
+  table: string;
+  label: string;
+  status: string;
+  openedAt: number;
+  closedAt: number | null;
+  durationMs: number;
+  people: number;
+  calls: number;
+  avgClaimMs: number | null;
+  slowClaimMs: number | null;
+  billAt: number | null;
+  paidAt: number | null;
+  billToCloseMs: number | null;
+  total: number;
+  itemCount: number;
+  closedBy: string | null;
+  callList: HistoryCall[];
+};
+
+/** Süre: "3 dk", "1 sa 5 dk"; bir dakikadan azsa "1 dk'dan az" */
+export function span(ms: number): string {
+  const t = ago(ms);
+  return t === 'az önce' ? "1 dk'dan az" : t;
+}
 
 export type Activity = NonNullable<BoardTable['session']>['activity'][number];
 const ACTIVITY_TEXT: Record<Activity['kind'], (l: string) => string> = {

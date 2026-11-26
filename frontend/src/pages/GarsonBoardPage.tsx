@@ -14,6 +14,7 @@ import {
   HandHelping,
   Eye,
   Footprints,
+  History,
   LayoutGrid,
   QrCode,
   Power,
@@ -27,6 +28,7 @@ import {
 } from 'lucide-react';
 import HookahIcon from '@/components/public/HookahIcon';
 import AdminOverlay from '@/components/admin/AdminOverlay';
+import GarsonHistory, { type HistoryFilter } from '@/components/garson/GarsonHistory';
 import { api } from '@/lib/api';
 import { adminPath } from '@/lib/adminPath';
 import { applyDocumentTitle } from '@/lib/siteTitle';
@@ -38,7 +40,7 @@ import '@/garson-board.css';
 
 const POLL_MS = 4000;
 const FEED_SHORT = 8;
-type Tab = 'calls' | 'tables' | 'feed';
+type Tab = 'calls' | 'tables' | 'feed' | 'history';
 type Filter = 'all' | 'busy' | 'due' | 'empty';
 
 type IconType = ComponentType<{ size?: number }>;
@@ -95,6 +97,7 @@ export default function GarsonBoardPage() {
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [flash, setFlash] = useState<string | null>(null);
   const [feedAll, setFeedAll] = useState(false);
+  const [histFilter, setHistFilter] = useState<HistoryFilter | null>(null);
   const [closeAsk, setCloseAsk] = useState<string | null>(null);
   const [toast, setToast] = useState('');
   const [banner, setBanner] = useState<{ text: string; id: number; tableKey?: string; kind?: 'visit'; callType?: CallType } | null>(null);
@@ -328,6 +331,11 @@ export default function GarsonBoardPage() {
       await post('visit', { group: t.group, table: t.code });
     }, board?.codeGateEnabled && t.session && t.session.codeStatus !== 'verified' ? undefined : `${t.label}: uğradın, kaydedildi`, t.key);
 
+  const openHistory = (t: BoardTable) => {
+    setHistFilter({ group: t.group, code: t.code, label: t.label });
+    setSheetKey(null);
+    setTab('history');
+  };
   const closeTable = (t: BoardTable) => {
     if (!t.session) return;
     if (closeAsk !== t.key) {
@@ -614,6 +622,12 @@ export default function GarsonBoardPage() {
                 : 'Masa boş'}
           </span>
         </li>
+        {s.session && s.session.people > 0 ? (
+          <li>
+            <Users size={18} aria-hidden="true" />
+            <span>{s.session.people === 1 ? 'Masada 1 telefon (masa sahibi)' : `${s.session.people} telefon bağlı · ilk okutan masa sahibi`}</span>
+          </li>
+        ) : null}
         {s.session && s.session.itemCount > 0 ? (
           <li>
             <Receipt size={18} aria-hidden="true" />
@@ -651,6 +665,9 @@ export default function GarsonBoardPage() {
           </span>
         </li>
       </ul>
+      <button type="button" className="gb-histbtn" onClick={() => openHistory(s)}>
+        <History size={18} aria-hidden="true" /> Bu masanın geçmişi
+      </button>
       {s.session && s.session.orders.length ? (
         <details className="gb-orders">
           <summary>
@@ -802,6 +819,9 @@ export default function GarsonBoardPage() {
             {soundBtn}
           </div>
           {status}
+          <button type="button" className={`gb-rail__hist${tab === 'history' ? ' is-active' : ''}`} aria-pressed={tab === 'history'} onClick={() => { if (tab !== 'history') setHistFilter(null); setTab(tab === 'history' ? 'calls' : 'history'); }}>
+            <History size={18} aria-hidden="true" /> Masa geçmişi
+          </button>
           <nav className="gb-rail__filters" aria-label="Süzgeç">
             <h3>Masaları göster</h3>
             {FILTERS.map(([id, label]) => (
@@ -816,7 +836,7 @@ export default function GarsonBoardPage() {
 
         <main className="gb-center">
           {offlineNote}
-          {!board ? loading : floor}
+          {tab === 'history' ? <GarsonHistory filter={histFilter} onFilter={setHistFilter} /> : !board ? loading : floor}
         </main>
 
         <aside className="gb-side">
@@ -884,6 +904,8 @@ export default function GarsonBoardPage() {
           </div>
           {floor}
         </main>
+      ) : tab === 'history' ? (
+        <main className="gb-m-main"><GarsonHistory filter={histFilter} onFilter={setHistFilter} /></main>
       ) : (
         <main className="gb-m-main">{feed}</main>
       )}
@@ -894,9 +916,10 @@ export default function GarsonBoardPage() {
             ['calls', 'Çağrılar', BellRing, counts?.callTables],
             ['tables', 'Masalar', LayoutGrid, 0],
             ['feed', 'Akış', Activity, 0],
+            ['history', 'Geçmiş', History, 0],
           ] as [Tab, string, typeof Bell, number | undefined][]
         ).map(([id, label, Icon, n]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'is-active' : ''} onClick={() => setTab(id)}>
+          <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'is-active' : ''} onClick={() => { if (id === 'history' && tab !== 'history') setHistFilter(null); setTab(id); }}>
             <span className="gb-dock__icon">
               <Icon size={22} aria-hidden="true" />
               {n ? <em>{n}</em> : null}
@@ -1101,6 +1124,7 @@ function CallBody({
               </span>
               <div>
                 <strong>{c.label}</strong>
+                {c.repeats ? <em className="gb-repeat">+{c.repeats} kişi de aynısını istedi</em> : null}
                 {c.items.length ? (
                   <div className="gb-items">
                     {c.items.map((i, k) => (
