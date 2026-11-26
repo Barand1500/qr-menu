@@ -1056,3 +1056,17 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Değişiklik: `SahnePeek.tsx`. Parçalar önceki gibi her kategoride farklı biçimde belirir; ardından birbirine doğru büyüyüp birleşir (boşluklar kapanır, daireler köşeli parçalara dönüşür) ve en sonda tek yuvarlak köşeli resim olarak tamamı görünür. İmleç ayrılınca birleşik resim önce yeniden parçalanır, sonra kenarlardan kapanır. Önceki "nefes alma" hareketi kaldırıldı. Hareket azaltmada doğrudan tam resim gösterilir.
 - Doğrulama: tsc, vite build, Chrome fixture (sahte resim): kareler/daireler birleşip tam yuvarlak köşeli resme dönüşüyor (ara kareler ve son hâl ekran görüntüsüyle), ayrılınca gizleniyor, konsol hatası yok.
 - Doğrulanmadı: gerçek kategori fotoğraflarıyla ve diğer üç maske türünde (çubuklar, mozaik, dikey çubuklar) ayrı ayrı ekran görüntüsü; son adımdaki köşe geçişinde çok küçük bir sıçrama olabilir.
+
+## 2026-11-26 — Sipariş sonrası fiş ekranı: onay damgası ve yandaki yazılar
+
+- Amaç: Sipariş onaylandıktan sonraki fiş yazıcısı ekranını (21st.dev "food ticket print" ilhamıyla) daha anlamlı yapmak.
+- Değişiklik: `ReceiptPrinter.tsx` ve `receipt-printer.css`. Fişe kağıda mürekkep gibi basılan kırmızı "SİPARİŞ ONAYLANDI" damgası eklendi (saat ile; zaten iletilmiş sipariş için turuncu "DAHA ÖNCE İLETİLDİ"). Geniş ekranda (1100 px ve üstü) fişin sağında duruma göre değişen yazı: alınıyor → basılıyor → "Tamam, mutfak fişi aldı" (masa/ürün/toplam çipleriyle) → fiş koparılınca "Koptu!" → top olunca "Fişini artık göremiyoruz. Ama olsun, senin için çoktan hazırlanmaya başladık bile." Dar ekranda yalnızca fiş koptuktan sonra, boşalan alanda bu son mesaj görünür; makine ekranındaki durum satırı da değişir. TR/EN metinler eklendi. Kopar/buruştur/fırlat mantığına dokunulmadı.
+- Doğrulama: tsc, vite build, Chrome fixture (1280 ve 390): damga fiyatları kapatmıyor, yan yazı her aşamada değişiyor, kopar/top/savurma/otomatik kopar/hareket azaltma akışı çalışıyor, yatay taşma ve konsol hatası yok.
+- Doğrulanmadı: gerçek telefon; 640–1099 px arası tablet genişliği; çok uzun ürün listesinde damganın konumu; 21st.dev paketi kurulmadı, yalnızca ekran görüntüsündeki tasarım örnek alındı.
+
+## 2026-11-26 — Sushi bandı: tabağa dokununca doğrudan ürün sayfası, telefonda boşluk
+
+- İstek: Bantta bir tabağa tıklayınca araya ikinci bir pencere girmesin, doğrudan ürün detayı açılsın (telefon ve masaüstü); telefonda sayfanın altında çok boşluk kalıyordu.
+- Değişiklik: `KaitenBelt.tsx`, `kaiten.css`. Ara ayrıntı penceresi (ve CSS'i, "bant durur" mantığı) tamamen kaldırıldı; tabak tıklaması `onOpen(ürün id)` çağırır. Telefonda adı satırındaki ikinci ok düğmesi kaldırıldı (sepet/seçenek düğmesi zaten kalıyor). Telefon bandının tabakları büyütüldü (genişliğin %46'sı, en çok 200 px) ve bant + adı satırı + ipucu boş ekranın ortasında duruyor (`min-height`).
+- Doğrulama: tsc, vite build, Chrome fixture (1280 ve 390): tıklayınca doğru ürün id'si gidiyor, ara pencere yok, bant akıyor/sürükleniyor, taşma ve konsol hatası yok.
+- Doğrulanmadı: gerçek telefonda boşluğun azalması (fixture'da sayfa yalnızca bant içeriyor; gerçek sayfada başlık, alt bilgi ve alt menü ile yüksekliğin `calc(100svh - 330px)` tahmini uyuşmayabilir); gerçek ürün sayfasına geçiş.

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
-import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, Pause, Play, Utensils, X, ArrowUpRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pause, Play, Utensils } from 'lucide-react';
 import gsap from 'gsap';
 import { formatMoney, imageUrl } from '@/lib/api';
 import type { SofraProduct } from '../sofra/SofraElements';
@@ -11,7 +10,7 @@ import './kaiten.css';
 /**
  * Kategori sayfası "sushi bandı": ürünler dönen bir bandın üzerinde tabaklar olarak gelir.
  * Masaüstünde oval bant (üstüne gelince durur, sürüklenip savrulur), telefonda yatay kayan bant.
- * Tabak renkleri fiyat dilimlerini gösterir; tabağa tıklayınca büyüyüp ayrıntısı açılır.
+ * Tabak renkleri fiyat dilimlerini gösterir; tabağa tıklayınca doğrudan ürün sayfası açılır.
  */
 
 const TIER_COLORS = ['#3b6bff', '#10b981', '#f59e0b', '#a855f7', '#f43f5e'];
@@ -37,105 +36,6 @@ function PlateFace({ dish, color, i }: { dish: SofraProduct; color: string; i: n
       </span>
       {dish.soldOut ? <em className="kb-plate__out" aria-hidden="true" /> : null}
     </>
-  );
-}
-
-// ───────────────────────── ayrıntı penceresi ─────────────────────────
-function Dialog({
-  dish,
-  color,
-  index,
-  total,
-  t,
-  en,
-  origin,
-  onClose,
-  onAdd,
-  onOpen,
-}: {
-  dish: SofraProduct;
-  color: string;
-  index: number;
-  total: number;
-  t: MenuText;
-  en: boolean;
-  origin: DOMRect | null;
-  onClose: () => void;
-  onAdd?: SofraMenuProps['onAdd'];
-  onOpen: (id: number) => void;
-}) {
-  const card = useRef<HTMLDivElement>(null);
-  const plate = useRef<HTMLDivElement>(null);
-  const closeBtn = useRef<HTMLButtonElement>(null);
-  const [leaving, setLeaving] = useState(false);
-  const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-
-  const close = useCallback(() => {
-    if (leaving) return;
-    if (reduce || !card.current) return onClose();
-    setLeaving(true);
-    gsap.to(card.current, { scale: 0.9, y: 24, opacity: 0, duration: 0.26, ease: 'power2.in', onComplete: onClose });
-  }, [leaving, onClose, reduce]);
-
-  useLayoutEffect(() => {
-    if (reduce || !card.current) return;
-    const r = card.current.getBoundingClientRect();
-    const from = origin ? { x: origin.left + origin.width / 2 - (r.left + r.width / 2), y: origin.top + origin.height / 2 - (r.top + r.height / 2), scale: 0.28, opacity: 0 } : { y: 40, scale: 0.9, opacity: 0 };
-    const tl = gsap.timeline();
-    tl.from(card.current, { ...from, duration: 0.75, ease: 'expo.out' });
-    if (plate.current) tl.from(plate.current, { rotation: -140, scale: 0.55, duration: 1.1, ease: 'expo.out' }, 0.05);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    closeBtn.current?.focus({ preventScroll: true });
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && close();
-    window.addEventListener('keydown', key);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', key);
-      document.body.style.overflow = prev;
-    };
-  }, [close]);
-
-  return createPortal(
-    <div className="kb-dlg sahne" role="dialog" aria-modal="true" aria-label={dish.name}>
-      <div className={`kb-dlg__bd${leaving ? ' is-out' : ''}`} onClick={close} />
-      <div className="kb-dlg__card" ref={card} data-dish style={{ ['--kb-c' as string]: color } as React.CSSProperties}>
-        <button type="button" className="kb-dlg__x" ref={closeBtn} onClick={close} aria-label={t.close}>
-          <span>{t.close}</span>
-          <X size={16} aria-hidden="true" />
-        </button>
-        <div className="kb-dlg__plate" ref={plate}>
-          <i className="kb-dlg__halo" aria-hidden="true" />
-          <span className="kb-dlg__ring">
-            <span className="kb-dlg__disc">{dish.imageUrl ? <img src={imageUrl(dish.imageUrl)} alt={dish.name} draggable={false} /> : <Utensils size={48} aria-hidden="true" />}</span>
-          </span>
-        </div>
-        <div className="kb-dlg__body">
-          <p className="kb-dlg__kicker">
-            <i aria-hidden="true" />
-            {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
-          </p>
-          <h3>{dish.name}</h3>
-          {dish.description ? <p className="kb-dlg__desc">{dish.description}</p> : null}
-          <div className="kb-dlg__chips">
-            {dish.calories != null ? <span>{dish.calories} kcal</span> : null}
-            {dish.soldOut ? <span>{t.soldOut}</span> : null}
-          </div>
-          <div className="kb-dlg__foot">
-            <strong>{formatMoney(dish.price, dish.currency)}</strong>
-            {onAdd ? <AddButton dish={dish} t={t} onAdd={onAdd} /> : null}
-            <button type="button" className="kb-dlg__more" onClick={() => onOpen(dish.id)}>
-              {en ? 'Details' : 'Ayrıntı'}
-              <ArrowUpRight size={16} aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body,
   );
 }
 
@@ -184,7 +84,7 @@ function geometry(W: number, n: number) {
   return { Wf, Rout, hw, rc, a, L, cosT, Hf, spacing, pd, height };
 }
 
-function OvalBelt({ dishes, colorOf, en, motion, frozen, onPick }: BeltProps) {
+function OvalBelt({ dishes, colorOf, en, motion, onPick }: BeltProps) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const els = useRef<(HTMLButtonElement | null)[]>([]);
@@ -193,9 +93,8 @@ function OvalBelt({ dishes, colorOf, en, motion, frozen, onPick }: BeltProps) {
   const [playing, setPlaying] = useState(true);
   const n = dishes.length;
   const g = useMemo(() => geometry(w, n), [w, n]);
-  const st = useRef({ off: 0, vel: 0, hovering: false, drag: false, down: false, moved: 0, lastX: 0, lastT: 0, lock: false, visible: true, raf: 0, last: 0, playing: true, frozen: false });
+  const st = useRef({ off: 0, vel: 0, hovering: false, drag: false, down: false, moved: 0, lastX: 0, lastT: 0, lock: false, visible: true, raf: 0, last: 0, playing: true });
   st.current.playing = playing;
-  st.current.frozen = frozen;
   const geoRef = useRef(g);
   geoRef.current = g;
 
@@ -323,7 +222,7 @@ function OvalBelt({ dishes, colorOf, en, motion, frozen, onPick }: BeltProps) {
       const dt = Math.min(0.04, (now - s.last) / 1000 || 0.016);
       s.last = now;
       if (!s.drag && !s.lock) {
-        const target = s.playing && !s.hovering && !s.frozen ? (motion ? 34 : 15) : 0;
+        const target = s.playing && !s.hovering ? (motion ? 34 : 15) : 0;
         s.vel += (target - s.vel) * (1 - Math.exp(-dt * (target ? 1.6 : 4.5)));
         s.off = mod(s.off + s.vel * dt, geoRef.current.L);
       }
@@ -467,7 +366,7 @@ function OvalBelt({ dishes, colorOf, en, motion, frozen, onPick }: BeltProps) {
             onPointerLeave={() => setHover((h) => (h === i ? null : h))}
             onFocus={() => setHover(i)}
             onBlur={() => setHover((h) => (h === i ? null : h))}
-            onClick={(e) => onPick(i, e.currentTarget.getBoundingClientRect())}
+            onClick={() => onPick(i)}
           >
             <PlateFace dish={d} color={colorOf(d.price)} i={i} />
           </button>
@@ -498,14 +397,14 @@ function OvalBelt({ dishes, colorOf, en, motion, frozen, onPick }: BeltProps) {
 }
 
 // ───────────────────────── yatay bant (telefon) ─────────────────────────
-function StripBelt({ dishes, colorOf, t, en, motion, frozen, onPick, onAdd, onOpen }: BeltProps & { onAdd?: SofraMenuProps['onAdd']; onOpen: (id: number) => void }) {
+function StripBelt({ dishes, colorOf, t, en, motion, onPick, onAdd }: BeltProps & { onAdd?: SofraMenuProps['onAdd'] }) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const els = useRef<(HTMLButtonElement | null)[]>([]);
   const [w, setW] = useState(390);
   const [focus, setFocus] = useState(0);
   const n = dishes.length;
-  const pd = clamp(w * 0.36, 112, 156);
+  const pd = clamp(w * 0.46, 120, 200);
   const spacing = pd * 1.12;
   const cycle = n * spacing;
   const copies = Math.max(1, Math.ceil((w + 2 * spacing) / cycle));
@@ -513,8 +412,7 @@ function StripBelt({ dishes, colorOf, t, en, motion, frozen, onPick, onAdd, onOp
   const total = copies * n;
   const bandH = pd * 1.12;
   const height = bandH + 46;
-  const st = useRef({ off: 0, vel: 0, drag: false, down: false, moved: 0, lastX: 0, lastT: 0, lock: false, visible: true, raf: 0, last: 0, autoplay: true, idle: 0, focus: 0, frozen: false });
-  st.current.frozen = frozen;
+  const st = useRef({ off: 0, vel: 0, drag: false, down: false, moved: 0, lastX: 0, lastT: 0, lock: false, visible: true, raf: 0, last: 0, autoplay: true, idle: 0, focus: 0 });
   const geo = useRef({ w, pd, spacing, loopLen, total, n, bandH, height });
   geo.current = { w, pd, spacing, loopLen, total, n, bandH, height };
 
@@ -644,7 +542,7 @@ function StripBelt({ dishes, colorOf, t, en, motion, frozen, onPick, onAdd, onOp
       const dt = Math.min(0.04, (now - s.last) / 1000 || 0.016);
       s.last = now;
       if (!s.drag && !s.lock) {
-        const target = s.autoplay && !s.frozen ? (motion ? -26 : -12) : 0;
+        const target = s.autoplay ? (motion ? -26 : -12) : 0;
         s.vel += (target - s.vel) * (1 - Math.exp(-dt * 2));
         s.off += s.vel * dt;
       }
@@ -752,7 +650,7 @@ function StripBelt({ dishes, colorOf, t, en, motion, frozen, onPick, onAdd, onOp
               aria-label={`${d.name}, ${formatMoney(d.price, d.currency)}`}
               tabIndex={j < n ? 0 : -1}
               aria-hidden={j >= n ? true : undefined}
-              onClick={(e) => onPick(j % n, e.currentTarget.getBoundingClientRect())}
+              onClick={() => onPick(j % n)}
             >
               <PlateFace dish={d} color={colorOf(d.price)} i={j} />
             </button>
@@ -770,9 +668,6 @@ function StripBelt({ dishes, colorOf, t, en, motion, frozen, onPick, onAdd, onOp
           </div>
           <div className="kb-now__act">
             {onAdd ? <AddButton dish={cur} t={t} onAdd={onAdd} round /> : null}
-            <button type="button" className="kb-now__more" onClick={() => onOpen(cur.id)} aria-label={en ? 'Details' : 'Ayrıntı'}>
-              <ArrowUpRight size={18} aria-hidden="true" />
-            </button>
           </div>
         </div>
       ) : null}
@@ -788,9 +683,7 @@ type BeltProps = {
   en: boolean;
   /** false: kullanıcı hareketi azaltmış (bant yine akar ama yavaş ve yaylanmasız) */
   motion: boolean;
-  /** ayrıntı penceresi açıkken bant durur */
-  frozen: boolean;
-  onPick: (i: number, rect: DOMRect) => void;
+  onPick: (i: number) => void;
 };
 
 export default function KaitenBelt({
@@ -816,15 +709,11 @@ export default function KaitenBelt({
   }, []);
   const motion = typeof window !== 'undefined' ? !window.matchMedia('(prefers-reduced-motion: reduce)').matches : true;
   const { colorOf } = useMemo(() => buildTiers(dishes), [dishes]);
-  const [open, setOpen] = useState<{ i: number; rect: DOMRect } | null>(null);
-  const common = { dishes, colorOf, t, en, motion, frozen: open !== null, onPick: (i: number, rect: DOMRect) => setOpen({ i, rect }) };
-  const d = open ? dishes[open.i] : null;
+  // tabağa dokununca ara pencere yok: doğrudan ürün sayfası
+  const common = { dishes, colorOf, t, en, motion, onPick: (i: number) => onOpen(dishes[i].id) };
   return (
     <div className="kb" data-wide={wide || undefined}>
-      {wide ? <OvalBelt {...common} /> : <StripBelt {...common} onAdd={onAdd} onOpen={onOpen} />}
-      {open && d ? (
-        <Dialog dish={d} color={colorOf(d.price)} index={open.i} total={dishes.length} t={t} en={en} origin={open.rect} onClose={() => setOpen(null)} onAdd={onAdd} onOpen={onOpen} />
-      ) : null}
+      {wide ? <OvalBelt {...common} /> : <StripBelt {...common} onAdd={onAdd} />}
     </div>
   );
 }
