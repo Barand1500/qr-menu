@@ -1049,3 +1049,10 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - İstek: Bandın altındaki fiyat aralıklı renk açıklaması (mavi 230–270 ₺ vb.) kalksın.
 - Değişiklik: `KaitenBelt.tsx`'ten `Legend` bileşeni ve fiyat dilimi listesi, `kaiten.css`'ten ilgili kurallar silindi. Tabak halkaları yine fiyata göre renkli kalır; ürün adı/fiyatı ortadaki adada (masaüstü) ya da bandın altındaki satırda (telefon) görünür. Altta yalnızca kısa ipucu satırı duruyor.
 - Doğrulama: tsc, vite build, Chrome fixture (1280/390) hata yok.
+
+## 2026-11-26 — Kategori ön izlemesi: parçalar birleşip tüm resmi gösteriyor
+
+- Sorun: Masaüstünde kategori üstüne gelince çıkan parçalı resim, parçalar arasındaki boşluklar yüzünden resmin bazı kısımlarını gizli bırakıyordu.
+- Değişiklik: `SahnePeek.tsx`. Parçalar önceki gibi her kategoride farklı biçimde belirir; ardından birbirine doğru büyüyüp birleşir (boşluklar kapanır, daireler köşeli parçalara dönüşür) ve en sonda tek yuvarlak köşeli resim olarak tamamı görünür. İmleç ayrılınca birleşik resim önce yeniden parçalanır, sonra kenarlardan kapanır. Önceki "nefes alma" hareketi kaldırıldı. Hareket azaltmada doğrudan tam resim gösterilir.
+- Doğrulama: tsc, vite build, Chrome fixture (sahte resim): kareler/daireler birleşip tam yuvarlak köşeli resme dönüşüyor (ara kareler ve son hâl ekran görüntüsüyle), ayrılınca gizleniyor, konsol hatası yok.
+- Doğrulanmadı: gerçek kategori fotoğraflarıyla ve diğer üç maske türünde (çubuklar, mozaik, dikey çubuklar) ayrı ayrı ekran görüntüsü; son adımdaki köşe geçişinde çok küçük bir sıçrama olabilir.
