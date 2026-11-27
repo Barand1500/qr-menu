@@ -156,6 +156,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void (async () => {
       try {
+        // Google ile dönüş: belirteç adres parçasında gelir; saklanır ve adresten silinir
+        const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        const gToken = hash.get('google_token');
+        if (gToken || hash.get('google_error')) {
+          if (gToken) storeToken(gToken, hash.get('remember') !== '0');
+          history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
         if (readToken()) await refresh();
       } catch {
         clearToken();

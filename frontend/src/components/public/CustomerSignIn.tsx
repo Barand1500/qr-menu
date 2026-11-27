@@ -20,7 +20,7 @@ import {
   Utensils,
   X,
 } from 'lucide-react';
-import { imageUrl } from '@/lib/api';
+import { api, imageUrl } from '@/lib/api';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import { useSheetFocus } from './sofra/SofraSheet';
 import {
@@ -31,6 +31,7 @@ import {
 } from '@/lib/customerEmailAuth';
 import './customer-sign-in.css';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
 type Step = 'options' | 'email' | 'password' | 'code' | 'create';
 export default function CustomerSignIn({
   onClose,
@@ -65,6 +66,7 @@ export default function CustomerSignIn({
   const [message, setMessage] = useState('');
   const [remember, setRemember] = useState(true);
   const [consent, setConsent] = useState(false);
+  const [googleOn, setGoogleOn] = useState(false);
   const panel = useSheetFocus(true, onClose);
   const input = useRef<HTMLInputElement>(null);
   const remaining = Math.max(0, Math.ceil((resendAt - now) / 1000));
@@ -101,6 +103,15 @@ export default function CustomerSignIn({
       };
   const fan = photos.slice(0, 3).map((src) => imageUrl(src));
 
+  useEffect(() => {
+    let live = true;
+    api<{ enabled: boolean }>('/api/customer/auth/google/status')
+      .then((r) => live && setGoogleOn(r.enabled === true))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
   useEffect(() => {
     input.current?.focus();
   }, [step]);
@@ -422,21 +433,42 @@ export default function CustomerSignIn({
                     </span>
                   </button>
                   <span className="customer-entry__or">{en ? 'or' : 'veya'}</span>
-                  <button
-                    type="button"
-                    className="customer-entry__google"
-                    disabled
-                    aria-describedby={`${id}-google`}
-                  >
-                    <span className="customer-entry__google-mark">G</span>
-                    {en ? 'Continue with Google' : 'Google ile Devam Et'}
-                    <small>{en ? 'Soon' : 'Yakında'}</small>
-                  </button>
+                  {googleOn ? (
+                    <a
+                      className="customer-entry__google"
+                      href={`${API_BASE}/api/customer/auth/google/start?remember=1&ret=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+                    >
+                      <span className="customer-entry__google-mark">G</span>
+                      {en ? 'Continue with Google' : 'Google ile Devam Et'}
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      className="customer-entry__google"
+                      disabled
+                      aria-describedby={`${id}-google`}
+                    >
+                      <span className="customer-entry__google-mark">G</span>
+                      {en ? 'Continue with Google' : 'Google ile Devam Et'}
+                      <small>{en ? 'Soon' : 'Yakında'}</small>
+                    </button>
+                  )}
                   <p id={`${id}-google`} className="customer-entry__sr-only">
-                    {en
-                      ? 'Google sign-in is not enabled yet.'
-                      : 'Google ile giriş şimdilik kapalı.'}
+                    {googleOn
+                      ? en
+                        ? 'Opens Google to sign in.'
+                        : 'Giriş için Google’a gider.'
+                      : en
+                        ? 'Google sign-in is not enabled yet.'
+                        : 'Google ile giriş şimdilik kapalı.'}
                   </p>
+                  {googleOn && (
+                    <p className="customer-entry__legal">
+                      {en
+                        ? 'By continuing you accept the privacy notice (KVKK).'
+                        : 'Devam ederek KVKK aydınlatma metnini kabul etmiş olursun.'}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <form

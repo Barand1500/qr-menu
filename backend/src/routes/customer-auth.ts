@@ -14,6 +14,19 @@ import {
 } from '../lib/customer-auth.js';
 import { issueCustomerQrChallenge } from '../lib/customer-qr-challenge.js';
 import { ContactError, UNAVAILABLE, requestContactChange, verifyContactChange } from '../lib/customer-contact.js';
+import {
+  GoogleLoginError,
+  STATE_COOKIE,
+  authorizeUrl,
+  exchangeCode,
+  googleLoginConfig,
+  googleRedirectUri,
+  makeState,
+  readCookie,
+  readState,
+  safeReturnPath,
+  signInWithGoogle,
+} from '../lib/customer-google.js';
 import customerEmailRouter from './customer-email.js';
 import {
   allowCustomerEmailRequest,
@@ -22,6 +35,40 @@ import {
 
 const router = Router();
 router.use('/email', customerEmailRouter);
+
+/** Google ile devam et: tarayıcı Google'a gider, dönüşte oturum belirteci adres parçasıyla (#) menüye iletilir. */
+router.get('/google/status', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ enabled: Boolean(googleLoginConfig()) });
+});
+
+router.get('/google/start', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const cfg = googleLoginConfig();
+  const ret = safeReturnPath(req.query.ret);
+  if (!cfg || !allowCustomerEmailRequest(`google-start:${req.ip || 'unknown'}`, 60))
+    return res.redirect(`${ret}#google_error=unavailable`);
+  const { state, nonce } = makeState(ret, req.query.remember !== '0');
+  res.append('Set-Cookie', `${STATE_COOKIE}=${nonce}; Max-Age=600; Path=/api/customer/auth/google; HttpOnly; SameSite=Lax${req.secure || req.get('x-forwarded-proto') === 'https' ? '; Secure' : ''}`);
+  res.redirect(authorizeUrl(cfg.id, googleRedirectUri(req), state));
+});
+
+router.get('/google/callback', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.append('Set-Cookie', `${STATE_COOKIE}=; Max-Age=0; Path=/api/customer/auth/google; HttpOnly; SameSite=Lax`);
+  const st = readState(req.query.state, readCookie(req.headers.cookie, STATE_COOKIE));
+  if (!st) return res.redirect('/#google_error=expired');
+  const back = (code: string) => res.redirect(`${st.ret}#google_error=${code}`);
+  if (typeof req.query.code !== 'string' || !req.query.code) return back('cancelled');
+  if (!allowCustomerEmailRequest(`google-callback:${req.ip || 'unknown'}`, 60)) return back('busy');
+  try {
+    const who = await exchangeCode(req.query.code, googleRedirectUri(req));
+    const done = await signInWithGoogle(who.email, who.name, st.rem);
+    res.redirect(`${st.ret}#google_token=${encodeURIComponent(done.token)}&remember=${st.rem ? 1 : 0}`);
+  } catch (e) {
+    back(e instanceof GoogleLoginError ? e.message : 'failed');
+  }
+});
 
 router.post('/register', async (req, res) => {
   // Old clients cannot bypass the new e-mail verification flow.

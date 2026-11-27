@@ -1094,3 +1094,9 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Amaç: "anahtar reddedildi" tek mesajı yerine sebebi söyleyen mesajlar.
 - Değişiklik: backend/src/lib/google-places.ts, Google hata gövdesi okunup (API kapalı, faturalama, kısıtlama, kota, geçersiz anahtar) ayrı Türkçe mesaj verir.
 - Doğrulama: backend tsc temiz. Gerçek Google çağrısıyla denenmedi.
+
+## 2026-11-27 — Müşteri girişinde Google ile devam et
+- Amaç: menüdeki "Google ile Devam Et" (Yakında) düğmesini çalıştırmak.
+- Değişiklik: backend/src/lib/customer-google.ts + routes/customer-auth.ts (google/status, start, callback; state çerezle tarayıcıya bağlı, kimlik belirteci aud/iss/exp/e-posta doğrulamalı). Aynı e-posta varsa o hesaba girer, yoksa açar (şifre rastgele). Frontend: CustomerSignIn düğmesi sunucu açıksa çalışır, CustomerAuthContext dönüşte belirteci alıp adresten siler.
+- Env: CUSTOMER_GOOGLE_CLIENT_ID/SECRET (ya da GOOGLE_CLIENT_ID/SECRET). Google Console redirect URI: https://menu.guzelteknoloji.com/api/customer/auth/google/callback
+- Doğrulama: backend tsc, customer-google testi, frontend tsc + vite build. Gerçek Google ile denenmedi; hata dönüşünde ekranda uyarı yok.

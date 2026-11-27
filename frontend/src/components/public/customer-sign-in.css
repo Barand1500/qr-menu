@@ -405,6 +405,20 @@
   font-size: 15px;
   font-weight: 500;
 }
+.customer-entry__google:is(a) {
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.customer-entry__google:is(a):hover {
+  background: var(--ce-line);
+}
+.customer-entry__legal {
+  margin: 10px 4px 0;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ce-muted);
+}
 .customer-entry__google:disabled {
   opacity: 0.55;
 }
