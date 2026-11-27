@@ -115,6 +115,7 @@ Gruplar: `$Trendyol`, `$Yemeksepeti`, `$Getir`, `$MigrosYemek`, `$KUVER` (adı `
 - [x] `C:\VEGA\Sefim\connectionstring.txt` otomatik bulma (C–F sürücüleri); bulunamazsa pencerenin her yerine sürükle-bırak.
 - [x] Eşleştirme kodu, dakikalık döngü, "değişmedi" sinyali, sorun bildirimi, günlük, Windows ile başlama, kaldırma, teşhis.
 - [x] Kendini `%LOCALAPPDATA%\Cirak` altına kurar; tek kopya; daha yeni sürüm açılınca eskisini kapatıp yerine geçer.
+- [x] 1.0.2: kapanırken panele haber verir ("Çırak kapatıldı"). Panelde ortadaki Çırak simgesi her zaman son sürümü indirir. Kendini kurma + Windows ile başlama kaydının kullanıcının bilgisayarında çalıştığı görüldü.
 
 ### Faz 4 — Doğrulama
 - [x] Backend: tsc, `npm run test:sefim`, `test:garson`, entegrasyon testleri. Frontend: tsc, vite build.

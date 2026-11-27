@@ -49,6 +49,8 @@ type SefimState = {
   device: string | null;
   bridgeNote: string | null;
   bridgeVersion: string | null;
+  /** Çırak tepsiden kapatıldı */
+  closed: boolean;
   online: boolean;
   lastSeenAt: string | null;
   snapshotAt: string | null;
@@ -202,7 +204,9 @@ export function useSefimState(onToast: (text: string, error?: boolean) => void) 
       ? { tone: 'off', text: 'Bağlı değil · Çırak ile 2 dakikada kurulur' }
       : !state.settings.enabled
         ? { tone: 'idle', text: 'Bağlı · eşitleme duraklatıldı' }
-        : state.online && state.bridgeNote
+        : state.closed
+          ? { tone: 'idle', text: 'Çırak kapatıldı · kasa bilgisayarında masaüstündeki Çırak simgesinden açın' }
+          : state.online && state.bridgeNote
           ? { tone: 'idle', text: "Çırak çalışıyor ama Şefim'i okuyamıyor" }
           : state.online
           ? { tone: 'ok', text: `Bağlı · son eşitleme ${ago(state.lastApplyAt || state.snapshotAt)}` }
@@ -262,7 +266,7 @@ function Question({ n, title, hint, children }: { n: number | string; title: str
 function CirakMark({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden>
-      <rect width="64" height="64" rx="18" fill="#E05D38" />
+      <rect width="64" height="64" rx="18" style={{ fill: 'var(--admin-accent, #E05D38)' }} />
       <path d="M20 35c-4.5 0-7.5-3.2-7.5-7.2 0-3.9 3.1-7 7-7 .9 0 1.7.1 2.5.4C23.6 17 27.4 14 32 14s8.4 3 10 7.2c.8-.3 1.6-.4 2.5-.4 3.9 0 7 3.1 7 7 0 4-3 7.2-7.5 7.2" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
       <path d="M21 41h22M21 41v6.5c0 1.4 1.1 2.5 2.5 2.5h17c1.4 0 2.5-1.1 2.5-2.5V41" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M36 28l5 5-5 5" fill="none" stroke="#FFD2C2" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
@@ -285,13 +289,19 @@ function Line({ s, products }: { s: SefimState; products: number }) {
       <i className="sf-wire" aria-hidden>
         <em />
       </i>
-      <div className="sf-node sf-node--cirak">
+      <a className="sf-node sf-node--cirak" href={DOWNLOAD_URL} download title="Çırak'ın son sürümünü indir">
         <span>
           <CirakMark size={26} />
+          <i aria-hidden>
+            <Download size={11} strokeWidth={3} />
+          </i>
         </span>
         <b>Çırak</b>
-        <small>{s.linked ? (s.online ? `${ago(s.lastSeenAt)} konuştu` : `çevrimdışı · ${ago(s.lastSeenAt)}`) : 'kurulmadı'}</small>
-      </div>
+        <small>
+          {s.linked ? (s.closed ? 'kapatıldı' : s.online ? `${ago(s.lastSeenAt)} konuştu` : `çevrimdışı · ${ago(s.lastSeenAt)}`) : 'kurulmadı'}
+        </small>
+        <em>son sürümü indir</em>
+      </a>
       <i className="sf-wire" aria-hidden>
         <em />
       </i>
