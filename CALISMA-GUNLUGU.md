@@ -1100,3 +1100,12 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Değişiklik: backend/src/lib/customer-google.ts + routes/customer-auth.ts (google/status, start, callback; state çerezle tarayıcıya bağlı, kimlik belirteci aud/iss/exp/e-posta doğrulamalı). Aynı e-posta varsa o hesaba girer, yoksa açar (şifre rastgele). Frontend: CustomerSignIn düğmesi sunucu açıksa çalışır, CustomerAuthContext dönüşte belirteci alıp adresten siler.
 - Env: CUSTOMER_GOOGLE_CLIENT_ID/SECRET (ya da GOOGLE_CLIENT_ID/SECRET). Google Console redirect URI: https://menu.guzelteknoloji.com/api/customer/auth/google/callback
 - Doğrulama: backend tsc, customer-google testi, frontend tsc + vite build. Gerçek Google ile denenmedi; hata dönüşünde ekranda uyarı yok.
+
+## 2026-11-27 — Vega Şefim entegrasyonu + Çırak köprü programı
+- Amaç: Restoranın Şefim'deki ürün/fiyat/grup/porsiyonları QR menüye kendiliğinden gelsin. Tüm ayrıntı ve durum: `docs/sefim-entegrasyon/YOL-HARITASI.md` (yeni asistan önce onu okusun). Başlangıç noktası commit 8acbf63.
+- Sahadan doğrulanan: Şefim yerel SQL Server (`C:\VEGA\Sefim\connectionstring.txt`, veritabanı `sefim`); ürünler `Product`, porsiyonlar `Choice1/Choice2`, fiyat şablonları `ProductTemplate(Price)`. `$Trendyol` vb. gruplar paket platformu kopyaları (sistem grubu).
+- Backend: Prisma `SefimLink` + `SefimMap` (yeni tablolar → deploy'da `npm run setup`), `lib/sefim-sync.ts` (saf plan), `lib/sefim-link.ts`, `routes/sefim.ts` (`/api/sefim/*` köprü, `/api/admin/sefim/*` panel), `test:sefim`.
+- Panel: Entegrasyonlar'da "Vega Şefim" kartı (`SefimIntegration.tsx`): kurulum adımları, eşleştirme kodu, soru kartlarıyla ayarlar (ne alınsın, hangi fiyat, hangi gruplar, otomatik/onaylı, silinen ürün, aynı adlı ürün, yeni ürün görünürlüğü, isim düzeltme), önizleme + "Menüye uygula", geçmiş.
+- Çırak: qr-menu dışında `../Cirak` (kendi git deposu, README'li). .NET Framework 4.8 tek exe; `frontend/public/indir/Cirak.exe` olarak panelden indirilir.
+- Doğrulama: backend tsc + test:sefim/test:garson/entegrasyon testleri; frontend tsc + vite build; panel fixture 1280/390/320 açık/koyu taşma ve hata yok; Çırak 46 birim testi + uçtan uca (gerçek /api/sefim kodu, bellek içi DB) + pencere ekran görüntüleri + exe duman testi.
+- Yapılmayan: gerçek Şefim SQL Server'ında okuma, `Options` sütunları, kurulum/kısayol/başlangıç kaydının gerçek oturumda denenmesi, canlı sunucuda db push sonrası eşleşme. Exe imzasız (SmartScreen uyarısı).

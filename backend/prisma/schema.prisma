@@ -50,6 +50,8 @@ model Restaurant {
   tableSessions  TableFloorSession[]
   customerLedger MenuCustomerLedger[]
   priceChanges   PriceChange[]
+  sefimLink      SefimLink?
+  sefimMaps      SefimMap[]
 
   @@map("restoranlar")
 }
@@ -504,4 +506,55 @@ model ManagerMessage {
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   @@index([restaurantId, isRead, createdAt])
   @@map("yonetici_mesajlari")
+}
+
+/// Vega Şefim köprüsü (Çırak): restoran başına tek bağlantı. Anahtarın yalnızca SHA-256 özeti saklanır.
+model SefimLink {
+  restaurantId  Int       @id @map("restoran_id")
+  tokenHash     String?   @unique @map("anahtar_ozet") @db.Char(64)
+  pairHash      String?   @unique @map("eslestirme_ozet") @db.Char(64)
+  pairExpiresAt DateTime? @map("eslestirme_bitis")
+  device        String?   @map("cihaz") @db.VarChar(160)
+  /// Panel ayarları (mod, fiyat kaynağı, gruplar, alanlar…)
+  settings      Json      @map("ayarlar")
+  /// Ayar değişince artar; köprü bunu görünce hemen tam görüntü gönderir
+  settingsVer   Int       @default(1) @map("ayar_surum")
+  /// Şefim'den gelen son görüntü (JSON metin)
+  snapshot      String?   @map("goruntu") @db.LongText
+  snapshotHash  String?   @map("goruntu_ozet") @db.Char(64)
+  snapshotAt    DateTime? @map("goruntu_zaman")
+  lastSeenAt    DateTime? @map("son_gorulme")
+  /// Çırak'ın bildirdiği sorun (ör. Şefim veritabanına bağlanamadı); sorun yoksa boş
+  bridgeNote    String?   @map("kopru_not") @db.VarChar(300)
+  bridgeVersion String?   @map("kopru_surum") @db.VarChar(40)
+  /// Son uygulanan görüntü özeti + ayar sürümü (aynısını iki kez uygulamamak için)
+  appliedKey    String?   @map("uygulanan") @db.VarChar(80)
+  lastApplyAt   DateTime? @map("son_uygulama")
+  /// Son 20 işlem: [{at, ok, auto, summary, error}]
+  history       Json      @map("gecmis")
+  createdAt     DateTime  @default(now()) @map("olusturma")
+  updatedAt     DateTime  @updatedAt @map("guncelleme")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@map("sefim_baglanti")
+}
+
+/// Şefim kaydı ↔ menü kaydı eşleri. kind: product (anahtar = Şefim ürün Id) | group (anahtar = grup adı)
+model SefimMap {
+  id           Int     @id @default(autoincrement())
+  restaurantId Int     @map("restoran_id")
+  kind         String  @db.VarChar(10)
+  sefimKey     String  @map("sefim_anahtar") @db.VarChar(190)
+  localId      Int     @map("yerel_id")
+  /// Ürünün Şefim'deki grubu (grup seçimden çıkınca ürün gizlenmesin diye)
+  sefimGroup   String? @map("sefim_grup") @db.VarChar(190)
+  /// Eşitleme bu ürünü gizledi mi (geri gelirse yeniden açılır)
+  hiddenBySync Boolean @default(false) @map("esitleme_gizledi")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, kind, sefimKey])
+  @@index([restaurantId, kind, localId])
+  @@map("sefim_esler")
 }

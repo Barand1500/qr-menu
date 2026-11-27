@@ -32,6 +32,7 @@ import customerAuthRouter from './routes/customer-auth.js';
 import menuGamesRouter from './routes/menu-games.js';
 import customersRouter from './routes/customers.js';
 import themeSettingsRouter from './routes/theme-settings.js';
+import { sefimAdminRouter, sefimBridgeRouter } from './routes/sefim.js';
 
 export function createApp() {
   const app = express();
@@ -82,6 +83,8 @@ export function createApp() {
   app.use('/api/admin/table-floor', tableFloorRouter);
   app.use('/api/admin/garson', garsonRouter);
   app.use('/api/admin/ai', aiAssistantRouter);
+  app.use('/api/admin/sefim', sefimAdminRouter);
+  app.use('/api/sefim', sefimBridgeRouter);
   app.use('/api/menu', publicManagerMessages);
   app.use('/api/menu', publicMenuRouter);
   app.use('/api/menu', menuGamesRouter);

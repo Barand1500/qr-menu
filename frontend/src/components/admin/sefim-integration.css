@@ -1,0 +1,765 @@
+/* Ayarlar > Entegrasyonlar > Vega Şefim (Çırak). Yüzeyler panel temasından, vurgu Çırak'ın mandalina renginden. */
+.sf {
+  --sf: #e05d38;
+  --sf-soft: color-mix(in srgb, var(--sf) 14%, transparent);
+  --sf-line: color-mix(in srgb, var(--sf) 45%, var(--admin-card-border));
+  --sf-ok: #16a34a;
+  position: relative;
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  padding: 22px;
+  background: var(--admin-card);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 26px;
+}
+.sf.is-on {
+  border-color: var(--sf-line);
+  box-shadow: 0 22px 50px -30px color-mix(in srgb, var(--sf) 70%, transparent);
+}
+.sf .ig-switch.is-on,
+.sf .ig-btn.sf-btn {
+  background: var(--sf);
+}
+.sf .ig-btn.sf-btn {
+  color: #fff;
+}
+.sf-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.sf-head > div {
+  flex: 1;
+  min-width: 0;
+}
+.sf-head h3 {
+  margin: 0;
+  color: var(--admin-text);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.sf-head p {
+  margin: 3px 0 0;
+  color: var(--admin-text-muted);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.sf-head__icon {
+  display: grid;
+  flex: none;
+  filter: drop-shadow(0 10px 18px color-mix(in srgb, var(--sf) 40%, transparent));
+}
+
+/* ── Şefim → Çırak → Menü hattı */
+.sf-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 18px 14px 14px;
+  background: var(--admin-input-bg);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 20px;
+}
+.sf-node {
+  display: grid;
+  flex: none;
+  justify-items: center;
+  gap: 4px;
+  width: 96px;
+  text-align: center;
+}
+.sf-node > span {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  color: var(--admin-text-muted);
+  background: var(--admin-card);
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 15px;
+  transition: color 0.3s, border-color 0.3s;
+}
+.sf-node--cirak > span {
+  background: transparent;
+  border: 0;
+}
+.sf-node b {
+  color: var(--admin-text);
+  font-size: 13px;
+}
+.sf-node small {
+  color: var(--admin-text-muted);
+  font-size: 11.5px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.sf-wire {
+  position: relative;
+  flex: 1;
+  min-width: 18px;
+  height: 2px;
+  margin-top: 23px;
+  background: repeating-linear-gradient(90deg, var(--admin-card-border) 0 6px, transparent 6px 11px);
+  border-radius: 2px;
+}
+.sf-wire em {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  margin-top: -4.5px;
+  background: var(--sf);
+  border-radius: 50%;
+  opacity: 0;
+  box-shadow: 0 0 0 4px var(--sf-soft);
+}
+.sf-line.is-live .sf-wire {
+  background: var(--sf-line);
+}
+.sf-line.is-live .sf-wire em {
+  animation: sf-flow 2.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+.sf-line.is-live .sf-wire + .sf-node + .sf-wire em {
+  animation-delay: 1.1s;
+}
+.sf-line.is-live .sf-node > span {
+  color: var(--sf);
+  border-color: var(--sf-line);
+}
+.sf-line.is-sleep .sf-node--cirak > span {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+@keyframes sf-flow {
+  0% {
+    left: 0;
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% - 9px);
+    opacity: 0;
+  }
+}
+.sf.is-party .sf-node--cirak > span {
+  animation: sf-pop 0.9s cubic-bezier(0.3, 1.6, 0.5, 1) 2;
+}
+@keyframes sf-pop {
+  50% {
+    transform: scale(1.22) rotate(-8deg);
+  }
+}
+
+/* ── kurulum adımları */
+.sf-steps {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sf-steps li {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  background: var(--admin-input-bg);
+  border-radius: 18px;
+}
+.sf-steps li > b,
+.sf-q header > b {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--sf);
+  font-size: 14px;
+  background: var(--sf-soft);
+  border-radius: 50%;
+}
+.sf-steps h4,
+.sf-q h4 {
+  margin: 3px 0 4px;
+  color: var(--admin-text);
+  font-size: 15px;
+  font-weight: 700;
+}
+.sf-steps p,
+.sf-q header p {
+  margin: 0;
+  color: var(--admin-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.sf-steps code {
+  padding: 1px 6px;
+  font-size: 12px;
+  background: var(--admin-card);
+  border-radius: 6px;
+}
+.sf-steps .ig-btn {
+  margin-top: 12px;
+}
+.sf-dl {
+  text-decoration: none;
+}
+.sf-code button {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 8px;
+  padding: 12px 18px;
+  color: var(--admin-text);
+  font: inherit;
+  background: var(--admin-card);
+  border: 2px dashed var(--sf);
+  border-radius: 16px;
+  cursor: pointer;
+}
+.sf-code button span {
+  font: 800 clamp(24px, 6vw, 30px) / 1 ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  letter-spacing: 0.12em;
+}
+.sf-code button svg {
+  color: var(--sf);
+}
+.sf-code p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+/* ── bloklar */
+.sf-block {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.sf-block__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 0;
+  color: var(--admin-text);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.sf-block__title svg {
+  color: var(--sf);
+}
+.sf-block__title small {
+  margin-left: auto;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ── önizleme */
+.sf-preview {
+  display: grid;
+  gap: 12px;
+}
+.sf-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.sf-tile {
+  display: grid;
+  gap: 2px;
+  padding: 14px;
+  background: var(--admin-input-bg);
+  border-radius: 18px;
+  --c: var(--sf);
+}
+.sf-tile.is-create {
+  --c: #16a34a;
+}
+.sf-tile.is-price {
+  --c: #e05d38;
+}
+.sf-tile.is-update {
+  --c: #5a7ca6;
+}
+.sf-tile.is-hide {
+  --c: #86a7c8;
+}
+.sf-tile span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 15%, transparent);
+  border-radius: 9px;
+}
+.sf-tile b {
+  margin-top: 6px;
+  color: var(--admin-text);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+}
+.sf-tile small {
+  color: var(--admin-text-muted);
+  font-size: 12.5px;
+}
+.sf-tile.is-zero {
+  opacity: 0.5;
+}
+.sf-same,
+.sf-wait {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 14px 16px;
+  color: var(--admin-text);
+  font-size: 14px;
+  background: var(--admin-input-bg);
+  border-radius: 16px;
+}
+.sf-same svg {
+  color: var(--sf-ok);
+}
+.sf-wait {
+  color: var(--admin-text-muted);
+}
+.sf-wait p {
+  margin: 0;
+}
+.sf-warn,
+.sf-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.sf-warn {
+  padding: 12px 14px;
+  color: #b45309;
+  background: color-mix(in srgb, #f59e0b 12%, transparent);
+  border-radius: 14px;
+}
+.sf-warn svg,
+.sf-note svg {
+  flex: none;
+  margin-top: 2px;
+}
+.sf-note {
+  color: var(--admin-text-muted);
+}
+.sf-preview__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.sf-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 4px;
+  color: var(--sf);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.sf-link .is-up,
+.sf-more .is-up {
+  transform: rotate(180deg);
+}
+.sf-ops {
+  display: grid;
+  max-height: min(420px, 55vh);
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--admin-input-bg);
+  border-radius: 16px;
+  overscroll-behavior: contain;
+}
+.sf-ops li {
+  display: flex;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 12px;
+}
+.sf-ops li + li {
+  border-top: 1px solid var(--admin-card-border);
+}
+.sf-ops li > i {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 7px;
+  background: #5a7ca6;
+  border-radius: 50%;
+}
+.sf-ops li.is-create > i,
+.sf-ops li.is-group > i,
+.sf-ops li.is-show > i {
+  background: #16a34a;
+}
+.sf-ops li.is-hide > i {
+  background: #86a7c8;
+}
+.sf-ops li > span {
+  display: grid;
+  min-width: 0;
+}
+.sf-ops b {
+  color: var(--admin-text);
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.sf-ops small {
+  color: var(--admin-text-muted);
+  font-size: 12.5px;
+}
+.sf-ops__load {
+  color: var(--admin-text-muted);
+  font-size: 13px;
+}
+
+/* ── sorular */
+.sf-qs {
+  gap: 10px;
+}
+.sf-q {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  background: var(--admin-input-bg);
+  border-radius: 20px;
+}
+.sf-q header {
+  display: flex;
+  gap: 12px;
+}
+.sf-q h4 {
+  margin-top: 4px;
+}
+.sf-choice {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: 8px;
+}
+.sf-choice--2 {
+  --cols: 2;
+}
+.sf-choice button {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-height: 92px;
+  padding: 13px 14px;
+  color: var(--admin-text);
+  font: inherit;
+  text-align: left;
+  background: var(--admin-card);
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+}
+.sf-choice button:active {
+  transform: scale(0.98);
+}
+.sf-choice button[aria-checked='true'] {
+  background: var(--sf-soft);
+  border-color: var(--sf);
+}
+.sf-choice__icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 4px;
+  color: var(--admin-text-muted);
+  background: var(--admin-input-bg);
+  border-radius: 10px;
+}
+.sf-choice button[aria-checked='true'] .sf-choice__icon {
+  color: #fff;
+  background: var(--sf);
+}
+.sf-choice strong {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.sf-choice em {
+  padding: 2px 7px;
+  color: var(--sf);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  background: var(--sf-soft);
+  border-radius: 99px;
+}
+.sf-choice small {
+  color: var(--admin-text-muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.sf-groups {
+  display: grid;
+  gap: 8px;
+}
+.sf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sf-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  color: var(--admin-text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  background: var(--admin-card);
+  border: 1.5px solid var(--admin-card-border);
+  border-radius: 99px;
+  cursor: pointer;
+}
+.sf-chips button small {
+  color: var(--admin-text-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.sf-chips button[aria-pressed='true'] {
+  background: var(--sf-soft);
+  border-color: var(--sf);
+}
+.sf-chips button[aria-pressed='true'] small {
+  color: var(--sf);
+}
+.sf-chips--muted button[aria-pressed='false'] {
+  opacity: 0.75;
+}
+.sf-more {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 16px;
+  color: var(--admin-text);
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 1.5px dashed var(--admin-card-border);
+  border-radius: 16px;
+  cursor: pointer;
+}
+.sf-more span {
+  font-size: 14px;
+  font-weight: 700;
+}
+.sf-more small {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--admin-text-muted);
+  font-size: 12.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.sf-fine {
+  display: grid;
+  gap: 10px;
+}
+.sf-toggle {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--admin-input-bg);
+  border-radius: 20px;
+}
+.sf-toggle > span {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+}
+.sf-toggle b {
+  color: var(--admin-text);
+  font-size: 15px;
+}
+.sf-toggle small {
+  color: var(--admin-text-muted);
+  font-size: 13px;
+}
+
+/* ── geçmiş */
+.sf-history {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sf-history li {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding: 0 0 14px;
+}
+.sf-history li > i {
+  position: relative;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  background: var(--sf-ok);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--sf-ok) 16%, transparent);
+}
+.sf-history li:not(:last-child) > i::after {
+  position: absolute;
+  top: 16px;
+  left: 4px;
+  width: 2px;
+  height: calc(100% + 10px);
+  background: var(--admin-card-border);
+  content: '';
+}
+.sf-history li.is-bad > i {
+  background: #dc2626;
+  box-shadow: 0 0 0 4px color-mix(in srgb, #dc2626 16%, transparent);
+}
+.sf-history span {
+  display: grid;
+  min-width: 0;
+}
+.sf-history b {
+  color: var(--admin-text);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.sf-history small {
+  color: var(--admin-text-muted);
+  font-size: 12px;
+}
+.sf-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--admin-card-border);
+}
+.sf-foot > span {
+  flex: 1;
+  min-width: 160px;
+  color: var(--admin-text-muted);
+  font-size: 12.5px;
+}
+.sf-foot .ig-btn {
+  min-height: 42px;
+}
+.sf .ig-btn.sf-danger {
+  color: #fff;
+  background: #dc2626;
+}
+.sf-save {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 0 -22px -22px;
+  border-radius: 0 0 26px 26px;
+}
+
+@media (max-width: 720px) {
+  .sf-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .sf-choice,
+  .sf-choice--2 {
+    grid-template-columns: 1fr;
+  }
+  .sf-choice button {
+    grid-template-columns: auto 1fr;
+    column-gap: 12px;
+    min-height: 0;
+  }
+  .sf-choice__icon {
+    grid-row: span 2;
+    margin: 0;
+  }
+}
+@media (max-width: 560px) {
+  .sf {
+    gap: 16px;
+    padding: 16px;
+    border-radius: 22px;
+  }
+  .sf-save {
+    margin: 0 -16px -16px;
+    border-radius: 0 0 22px 22px;
+  }
+  .sf-line {
+    padding: 14px 8px 12px;
+  }
+  .sf-node {
+    width: 74px;
+  }
+  .sf-node small {
+    font-size: 10.5px;
+  }
+  .sf-q {
+    padding: 14px;
+  }
+  .sf-steps li {
+    padding: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-line.is-live .sf-wire em,
+  .sf.is-party .sf-node--cirak > span {
+    animation: none;
+  }
+  .sf-line.is-live .sf-wire em {
+    left: calc(50% - 4.5px);
+    opacity: 1;
+  }
+}
+
+/* dar ekranda içerik kartın dışına taşmasın: tüm ızgaralar tek, daralabilen sütun */
+.sf,
+.sf-block,
+.sf-q,
+.sf-preview,
+.sf-fine,
+.sf-groups {
+  grid-template-columns: minmax(0, 1fr);
+}
+.sf-block__title {
+  flex-wrap: wrap;
+}
