@@ -28,6 +28,8 @@ export const PUSH_INTERVAL_SEC = 60;
 const PAIR_TTL_MS = 15 * 60_000;
 const ONLINE_MS = 3 * PUSH_INTERVAL_SEC * 1000;
 const HISTORY_MAX = 20;
+/** Çırak kapanırken "bye" gönderir; bu not varken panel onu çevrimdışı gösterir (şema değişikliği gerektirmez). */
+export const CLOSED_NOTE = 'Çırak bu bilgisayarda kapatıldı.';
 const CODE_ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
 export const sha = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
@@ -245,6 +247,10 @@ export async function receivePush(link: LinkRow, body: unknown) {
   let hash = link.snapshotHash;
   const config = { groups: settings.groups, settingsVer: link.settingsVer, intervalSec: PUSH_INTERVAL_SEC, paused: !settings.enabled };
   const version = typeof b.version === 'string' ? b.version.slice(0, 40) : link.bridgeVersion;
+  if (b.bye === true) {
+    await prisma.sefimLink.update({ where: { restaurantId: link.restaurantId }, data: { bridgeNote: CLOSED_NOTE, bridgeVersion: version } });
+    return { ok: true, hash, applied: null, config };
+  }
   if (typeof b.problem === 'string' && b.problem.trim()) {
     // Çırak çalışıyor ama Şefim'i okuyamadı: menüye dokunma, panele söyle
     await prisma.sefimLink.update({ where: { restaurantId: link.restaurantId }, data: { lastSeenAt: now, bridgeNote: b.problem.trim().slice(0, 300), bridgeVersion: version } });
@@ -296,9 +302,10 @@ export async function adminState(restaurantId: number) {
   return {
     linked: Boolean(link.tokenHash),
     device: link.device,
-    bridgeNote: link.bridgeNote,
+    bridgeNote: link.bridgeNote === CLOSED_NOTE ? null : link.bridgeNote,
+    closed: Boolean(link.tokenHash && link.bridgeNote === CLOSED_NOTE),
     bridgeVersion: link.bridgeVersion,
-    online: Boolean(link.tokenHash && link.lastSeenAt && Date.now() - link.lastSeenAt.getTime() < ONLINE_MS),
+    online: Boolean(link.tokenHash && link.bridgeNote !== CLOSED_NOTE && link.lastSeenAt && Date.now() - link.lastSeenAt.getTime() < ONLINE_MS),
     lastSeenAt: link.lastSeenAt,
     snapshotAt: link.snapshotAt,
     lastApplyAt: link.lastApplyAt,

@@ -219,6 +219,17 @@ try {
   await call('POST', '/api/sefim/push', { snapshot: snap2, version: '1.0.0' }, bearer);
   assert.equal((await call('GET', '/api/admin/sefim', null, admin)).body.bridgeNote, null, 'sorun geçince not silinir');
 
+  // 6d) Çırak kapatıldı → panel hemen çevrimdışı/kapatıldı der; tekrar açılınca düzelir
+  await call('POST', '/api/sefim/push', { bye: true, version: '1.0.2' }, bearer);
+  state = (await call('GET', '/api/admin/sefim', null, admin)).body;
+  assert.equal(state.online, false);
+  assert.equal(state.closed, true);
+  assert.equal(state.bridgeNote, null, 'kapanış notu sorun gibi gösterilmez');
+  await call('POST', '/api/sefim/push', { snapshot: snap2, version: '1.0.2' }, bearer);
+  state = (await call('GET', '/api/admin/sefim', null, admin)).body;
+  assert.equal(state.online, true);
+  assert.equal(state.closed, false);
+
   // 7) bağlantıyı kes → eski anahtar çalışmaz
   state = (await call('DELETE', '/api/admin/sefim', null, admin)).body;
   assert.equal(state.linked, false);
