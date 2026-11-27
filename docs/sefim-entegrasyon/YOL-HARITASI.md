@@ -69,7 +69,7 @@ Gruplar: `$Trendyol`, `$Yemeksepeti`, `$Getir`, `$MigrosYemek`, `$KUVER` (adı `
 - Seçenekler (Options/OptionCats) → bizim `choice` türü, fiyatı ekler (`add`).
 - "İsimleri düzelt" açıksa `KLASİK DÜRÜMLER` → `Klasik Dürümler` (Türkçe harf kuralları).
 
-## 6. Panel ayarları (Ayarlar → Entegrasyonlar → Vega Şefim)
+## 6. Panel ayarları (Ayarlar → Bağlantılar → Vega Şefim)
 
 | Ayar | Seçenekler | Varsayılan |
 |---|---|---|
@@ -104,7 +104,7 @@ Gruplar: `$Trendyol`, `$Yemeksepeti`, `$Getir`, `$MigrosYemek`, `$KUVER` (adı `
 - Not: "değişmedi" sinyalinde özet tutmazsa sunucu `resend` ister; görüntüsüz istek asla boş görüntü olarak kaydedilmez (menü boşalmasın).
 
 ### Faz 2 — Panel (qr-menu/frontend) — 2026-11-27
-- [x] `components/admin/SefimIntegration.tsx` + `sefim-integration.css`; Entegrasyonlar'da ilk kart "Vega Şefim".
+- [x] `components/admin/SefimIntegration.tsx` + `sefim-integration.css`; Ayarlar → Bağlantılar bölümünün başında "Vega Şefim" (2026-11-27'de Entegrasyonlar kartlarından buraya taşındı).
 - [x] Şefim → Çırak → Menü canlı hattı, 3 adımlı kurulum (indir · Şefim'i bulsun · kod), soru kartlarıyla ayarlar, "İnce ayarlar" katlanır.
 - [x] Önizleme kutuları + tek tek liste + "Menüye uygula" (onaylı modda), geçmiş, bağlantıyı kes (iki adımlı).
 - [x] Fixture ile 1280/390/320, açık/koyu temada taşma ve konsol hatası yok (`frontend/node_modules/.qr-check/sf-run.mjs`).
@@ -124,7 +124,7 @@ Gruplar: `$Trendyol`, `$Yemeksepeti`, `$Getir`, `$MigrosYemek`, `$KUVER` (adı `
 
 ## 9. Deploy sırası
 1. qr-menu commit/push → sunucuda her zamanki güncelleme + **`npm run setup`** (yeni tablolar) + frontend derlemesi → CloudPanel Restart.
-2. Panel → Ayarlar → Entegrasyonlar → Vega Şefim kartı görünmeli; "Çırak'ı indir" `/indir/Cirak.exe` indirmeli.
+2. Panel → Ayarlar → Bağlantılar → Vega Şefim kartı görünmeli; "Çırak'ı indir" `/indir/Cirak.exe` indirmeli.
 3. Restoran bilgisayarında Çırak → kod → ilk eşitleme. İlk seferde "Önce ben bakayım" modu seçilip önizleme kontrol edilmesi önerilir.
 
 ## 10. Sıradaki olası işler (henüz yapılmadı)

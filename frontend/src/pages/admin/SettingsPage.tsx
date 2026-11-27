@@ -74,6 +74,7 @@ import {
 } from '@/lib/supportContact';
 import ImageFitSettings from '@/components/admin/ImageFitSettings';
 import IntegrationsSettings from '@/components/admin/IntegrationsSettings';
+import { SefimPanel, useSefimState } from '@/components/admin/SefimIntegration';
 import '@/admin-settings.css';
 
 type SectionId =
@@ -235,8 +236,7 @@ export default function SettingsPage() {
     [companyAbout, setCompanyAbout] = useState('');
   const aboutPage = useRef(DEFAULT_ABOUT_PAGE);
   const [messages, setMessages] = useState<Record<number, string>>({});
-  const [integrationEnabled, setIntegrationEnabled] = useState(false),
-    [openaiApiKey, setOpenaiApiKey] = useState('');
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null),
     [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [socialLinks, setSocialLinks] = useState<SocialLinkConfig[]>(
@@ -282,6 +282,8 @@ export default function SettingsPage() {
     uploadingIcon ||
     translating !== null;
   const toast = (text: string, error = false) => setNotice({ text, error });
+  // Vega Şefim (Çırak) bağlantısı: Bağlantılar bölümünde
+  const sefim = useSefimState(toast);
   const { mode: imageMode, prepare: prepareImages, setMode: setImageMode } = useImageBackground();
   async function chooseImageMode(next: ImageBackgroundMode) {
     if (next === imageMode) return;
@@ -324,7 +326,6 @@ export default function SettingsPage() {
             d.welcomeMessages.map((m) => [m.languageId, m.message]),
           ),
         );
-        setIntegrationEnabled(d.settings.integration_enabled === 'true');
         setOpenaiApiKey(d.settings.openai_api_key || '');
         setLogoPreview(
           d.restaurant.logoUrl ? imageUrl(d.restaurant.logoUrl) : null,
@@ -496,7 +497,7 @@ export default function SettingsPage() {
         partial = true;
       }
       if (dirty.includes('connections')) {
-        await put('integration', { enabled: integrationEnabled, openaiApiKey });
+        await put('integration', { openaiApiKey });
         partial = true;
       }
       setDirty([]);
@@ -1381,19 +1382,11 @@ export default function SettingsPage() {
             )}
             {active === 'connections' && (
               <>
+                <SefimPanel h={sefim} />
                 <Section
-                  title="Entegrasyon"
-                  description="Harici POS veya sipariş sistemleriyle bağlantı."
+                  title="Yapay zekâ"
+                  description="Otomatik çeviri ve öneriler için."
                 >
-                  <Toggle
-                    label="Entegrasyonu etkinleştir"
-                    icon={Plug}
-                    checked={integrationEnabled}
-                    onChange={() => {
-                      setIntegrationEnabled((v) => !v);
-                      mark('connections');
-                    }}
-                  />
                   <label className="ast-key-label">
                     OpenAI API anahtarı
                     <input

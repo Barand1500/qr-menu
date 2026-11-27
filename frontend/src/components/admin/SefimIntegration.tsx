@@ -103,6 +103,10 @@ export function useSefimState(onToast: (text: string, error?: boolean) => void) 
   const [pair, setPair] = useState<{ code: string; expiresAt: string } | null>(null);
   const [justLinked, setJustLinked] = useState(false);
   const dirtyRef = useRef(false);
+  // Sayfa her çizimde yeni toast üretse de zamanlayıcılar sıfırlanmasın
+  const toastRef = useRef(onToast);
+  toastRef.current = onToast;
+  const toast = (text: string, error?: boolean) => toastRef.current(text, error);
 
   const hydrate = useCallback((s: SefimState, keepDraft = false) => {
     setState(s);
@@ -139,21 +143,21 @@ export function useSefimState(onToast: (text: string, error?: boolean) => void) 
       if (s?.linked) {
         setPair(null);
         setJustLinked(true);
-        onToast('Çırak bağlandı! Şefim menünüz birazdan gelecek.');
+        toastRef.current('Çırak bağlandı! Şefim menünüz birazdan gelecek.');
         window.setTimeout(() => setJustLinked(false), 7000);
       } else if (new Date(pair.expiresAt).getTime() < Date.now()) setPair(null);
     }, 4000);
     return () => window.clearInterval(id);
-  }, [pair, load, onToast]);
+  }, [pair, load]);
 
   async function save() {
     if (!draft) return;
     setBusy('save');
     try {
       hydrate(await api<SefimState>('/api/admin/sefim/settings', { method: 'PUT', body: JSON.stringify(draft) }));
-      onToast('Şefim ayarları kaydedildi.');
+      toast('Şefim ayarları kaydedildi.');
     } catch (e) {
-      onToast(apiError(e), true);
+      toast(apiError(e), true);
     } finally {
       setBusy('');
     }
@@ -163,9 +167,9 @@ export function useSefimState(onToast: (text: string, error?: boolean) => void) 
     try {
       const r = await api<{ summary: Summary; state: SefimState }>('/api/admin/sefim/apply', { method: 'POST' });
       hydrate(r.state, dirtyRef.current);
-      onToast(`Menü güncellendi: ${describe(r.summary)}`);
+      toast(`Menü güncellendi: ${describe(r.summary)}`);
     } catch (e) {
-      onToast(apiError(e), true);
+      toast(apiError(e), true);
     } finally {
       setBusy('');
     }
@@ -175,7 +179,7 @@ export function useSefimState(onToast: (text: string, error?: boolean) => void) 
     try {
       setPair(await api<{ code: string; expiresAt: string }>('/api/admin/sefim/pair-code', { method: 'POST' }));
     } catch (e) {
-      onToast(apiError(e), true);
+      toast(apiError(e), true);
     } finally {
       setBusy('');
     }
@@ -184,9 +188,9 @@ export function useSefimState(onToast: (text: string, error?: boolean) => void) 
     setBusy('unlink');
     try {
       hydrate(await api<SefimState>('/api/admin/sefim', { method: 'DELETE' }), dirtyRef.current);
-      onToast('Çırak bağlantısı kesildi. Menünüz olduğu gibi kaldı.');
+      toast('Çırak bağlantısı kesildi. Menünüz olduğu gibi kaldı.');
     } catch (e) {
-      onToast(apiError(e), true);
+      toast(apiError(e), true);
     } finally {
       setBusy('');
     }
@@ -527,8 +531,9 @@ export function SefimPanel({ h }: { h: SefimHook }) {
           <CirakMark size={46} />
         </span>
         <div>
+          <span className="sf-head__kicker">Adisyon entegrasyonu</span>
           <h3>Vega Şefim</h3>
-          <p>Şefim'deki ürünler ve fiyatlar menünüze kendiliğinden gelir.</p>
+          <p>Şefim'deki ürünler, fiyatlar ve porsiyonlar menünüze kendiliğinden gelir. Aradaki işi Çırak yapar.</p>
         </div>
         {s.linked ? (
           <button

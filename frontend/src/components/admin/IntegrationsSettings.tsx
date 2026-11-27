@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Check, ChefHat, Eye, EyeOff, Loader2, Mail, MessageSquareQuote, MessageSquareText, Star, Send, Server, X, Zap } from 'lucide-react';
+import { Check, Eye, EyeOff, Loader2, Mail, MessageSquareQuote, MessageSquareText, Star, Send, Server, X, Zap } from 'lucide-react';
 import { api } from '@/lib/api';
 import IntegrationHub, { type HubTile } from './IntegrationHub';
 import { ReviewsChannel, useReviewsState } from './ReviewsIntegration';
-import { SefimPanel, useSefimState } from './SefimIntegration';
 import './integrations-settings.css';
 
 type Encryption = 'starttls' | 'ssl' | 'none';
@@ -305,7 +304,6 @@ export default function IntegrationsSettings({ onToast, adminEmail }: { onToast:
   const [smtpWire, setSmtpWire] = useState<'idle' | 'busy' | 'ok' | 'bad'>('idle');
   const [smsWire, setSmsWire] = useState<'idle' | 'busy' | 'ok' | 'bad'>('idle');
   const reviews = useReviewsState(onToast);
-  const sefim = useSefimState(onToast);
   const [openId, setOpenId] = useState<string | null>(null);
 
   const hydrate = (r: Loaded) => {
@@ -522,17 +520,16 @@ export default function IntegrationsSettings({ onToast, adminEmail }: { onToast:
   );
 
   const tiles: HubTile[] = [
-    { id: 'sefim', icon: <ChefHat size={24} />, title: 'Vega Şefim', blurb: "Şefim'deki ürün ve fiyatlar menünüze kendiliğinden gelir", status: sefim.status, dirty: sefim.dirty, hue: 'linear-gradient(135deg,#e05d38,#f59e0b)' },
     { id: 'smtp', icon: <Mail size={24} />, title: 'E-posta', blurb: 'Giriş kodları ve bildirimler bu hesaptan gider', status: smtpStatus, dirty: smtpDirty, hue: 'linear-gradient(135deg,#6366f1,#a855f7)' },
     { id: 'sms', icon: <MessageSquareText size={24} />, title: 'SMS', blurb: 'Telefon numarasına kısa mesaj göndermek için', status: smsStatus, dirty: smsDirty, hue: 'linear-gradient(135deg,#8b5cf6,#ec4899)' },
     { id: 'google', icon: <Star size={24} />, title: 'Google yorumları', blurb: 'Puanınız ve yorumlarınız karşılama ekranında görünür', status: reviews.googleStatus, dirty: reviews.dirty, hue: 'linear-gradient(135deg,#f59e0b,#ef4444)' },
     { id: 'manual', icon: <MessageSquareQuote size={24} />, title: 'Müşteri yorumları', blurb: 'Gerçekten aldığınız güzel sözleri kendiniz yazın', status: reviews.manualStatus, dirty: reviews.dirty, hue: 'linear-gradient(135deg,#14b8a6,#3b82f6)' },
   ];
   const panel =
-    openId === 'sefim' ? <SefimPanel h={sefim} /> : openId === 'smtp' ? smtpPanel : openId === 'sms' ? smsPanel : openId === 'google' ? <ReviewsChannel s={reviews} part="google" /> : openId === 'manual' ? <ReviewsChannel s={reviews} part="manual" /> : null;
+    openId === 'smtp' ? smtpPanel : openId === 'sms' ? smsPanel : openId === 'google' ? <ReviewsChannel s={reviews} part="google" /> : openId === 'manual' ? <ReviewsChannel s={reviews} part="manual" /> : null;
 
   return (
-    <IntegrationHub tiles={tiles} openId={openId} onOpen={setOpenId} onClose={() => setOpenId(null)} busy={saving !== null || reviews.saving || sefim.busy !== ''} >
+    <IntegrationHub tiles={tiles} openId={openId} onOpen={setOpenId} onClose={() => setOpenId(null)} busy={saving !== null || reviews.saving} >
       {panel}
     </IntegrationHub>
   );

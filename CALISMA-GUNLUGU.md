@@ -1109,3 +1109,8 @@ Bu dosya, projeyi devralan kişinin veya yapay zeka asistanının yapılan işle
 - Çırak: qr-menu dışında `../Cirak` (kendi git deposu, README'li). .NET Framework 4.8 tek exe; `frontend/public/indir/Cirak.exe` olarak panelden indirilir.
 - Doğrulama: backend tsc + test:sefim/test:garson/entegrasyon testleri; frontend tsc + vite build; panel fixture 1280/390/320 açık/koyu taşma ve hata yok; Çırak 46 birim testi + uçtan uca (gerçek /api/sefim kodu, bellek içi DB) + pencere ekran görüntüleri + exe duman testi.
 - Yapılmayan: gerçek Şefim SQL Server'ında okuma, `Options` sütunları, kurulum/kısayol/başlangıç kaydının gerçek oturumda denenmesi, canlı sunucuda db push sonrası eşleşme. Exe imzasız (SmartScreen uyarısı).
+
+## 2026-11-27 — Şefim paneli Bağlantılar'a taşındı + Çırak 1.0.1 (pencere kendini yenilemiyor)
+- Kullanıcı düzeltmesi: Vega Şefim'in yeri Ayarlar → **Bağlantılar** (oradaki "Entegrasyon / Harici POS" yer tutucusu bunun içindi). Panel oraya taşındı, Entegrasyonlar kartlarından çıkarıldı. Hiçbir yerde okunmayan `integration_enabled` anahtarı kaldırıldı; OpenAI anahtarı "Yapay zekâ" kartında kaldı. Başlık afiş görünümüne geçti.
+- Çırak 1.0.1: pencere her 2 sn tüm sayfayı yeniden çiziyordu (kaydırma sıfırlanıyor, tıklamalar kaçıyordu). Artık yalnızca gerçek değişiklikte çiziliyor, süre yazıları yerinde güncelleniyor. Sürüm artırıldı ki kurulu 1.0.0'ın yerine geçsin.
+- Doğrulama: frontend tsc + vite build; panel fixture 1280/390/320 taşma/hata yok; Çırak birim + uçtan uca testleri; yeni kararlılık testi (6,5 sn bekleme sonrası kaydırma 400→400, öğe aynı). Ayarlar sayfasının içinde (gerçek sayfa düzeninde) tarayıcıda bakılmadı.
